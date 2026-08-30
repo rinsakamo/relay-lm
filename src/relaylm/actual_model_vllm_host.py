@@ -164,6 +164,8 @@ class VLLMScreeningPlan:
     continuity_runtime: ExplicitContinuityRuntimeConfiguration
     scenario_ids: tuple[str, ...]
     conditions: dict[str, VLLMScreeningCondition]
+    scenario_set_path: str | None = None
+    scenario_set_revision: str | None = None
     capacity_evidence_id: str | None = None
     format_version: int = VLLM_SCREENING_PLAN_FORMAT_VERSION
 
@@ -180,6 +182,29 @@ class VLLMScreeningPlan:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise ActualModelVLLMHostError(f"{name} must be a non-empty string")
+        if (self.scenario_set_path is None) != (self.scenario_set_revision is None):
+            raise ActualModelVLLMHostError(
+                "scenario_set_path and scenario_set_revision must be supplied together"
+            )
+        if self.scenario_set_path is not None:
+            if not isinstance(self.scenario_set_path, str) or not self.scenario_set_path.strip():
+                raise ActualModelVLLMHostError(
+                    "scenario_set_path must be a non-empty string or null"
+                )
+            scenario_path = Path(self.scenario_set_path)
+            if scenario_path.is_absolute() or ".." in scenario_path.parts:
+                raise ActualModelVLLMHostError(
+                    "scenario_set_path must be repository-relative"
+                )
+            assert self.scenario_set_revision is not None
+            if (
+                not isinstance(self.scenario_set_revision, str)
+                or not self.scenario_set_revision.startswith("sha256:")
+                or len(self.scenario_set_revision) != 71
+            ):
+                raise ActualModelVLLMHostError(
+                    "scenario_set_revision must be a sha256 revision or null"
+                )
         if self.capacity_evidence_id is not None and (
             not isinstance(self.capacity_evidence_id, str)
             or not self.capacity_evidence_id.strip()
@@ -267,6 +292,9 @@ class VLLMScreeningPlan:
                 for key, condition in self.conditions.items()
             },
         }
+        if self.scenario_set_path is not None:
+            mapping["scenario_set_path"] = self.scenario_set_path
+            mapping["scenario_set_revision"] = self.scenario_set_revision
         if self.capacity_evidence_id is not None:
             mapping["capacity_evidence_id"] = self.capacity_evidence_id
         return mapping
@@ -448,7 +476,9 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
     observed_keys = set(mapping)
     missing_keys = sorted(required_keys - observed_keys)
     unknown_keys = sorted(
-        observed_keys - required_keys - {"capacity_evidence_id"}
+        observed_keys
+        - required_keys
+        - {"capacity_evidence_id", "scenario_set_path", "scenario_set_revision"}
     )
     if missing_keys:
         raise ActualModelVLLMHostError(
@@ -511,6 +541,16 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
                 for index, value in enumerate(scenarios)
             ),
             conditions=conditions,
+            scenario_set_path=(
+                _string(mapping["scenario_set_path"], "scenario_set_path")
+                if mapping.get("scenario_set_path") is not None
+                else None
+            ),
+            scenario_set_revision=(
+                _string(mapping["scenario_set_revision"], "scenario_set_revision")
+                if mapping.get("scenario_set_revision") is not None
+                else None
+            ),
             capacity_evidence_id=(
                 _string(mapping["capacity_evidence_id"], "capacity_evidence_id")
                 if mapping.get("capacity_evidence_id") is not None
@@ -805,7 +845,19 @@ def prepare_vllm_screening_condition(
             live_counter_identity=live_counter_identity,
         )
 
-    scenario_set = load_actual_model_scenario_set(root / CANONICAL_SCENARIO_SET_PATH)
+    scenario_set_path = (
+        root / plan.scenario_set_path
+        if plan.scenario_set_path is not None
+        else root / CANONICAL_SCENARIO_SET_PATH
+    )
+    scenario_set = load_actual_model_scenario_set(scenario_set_path)
+    if (
+        plan.scenario_set_revision is not None
+        and scenario_set.revision != plan.scenario_set_revision
+    ):
+        raise ActualModelVLLMHostError(
+            "screening scenario-set revision does not match the execution template"
+        )
     fixture_root = root / CANONICAL_FIXTURE_PATH
     fixture_revision = character_fixture_revision(fixture_root)
     _validate_scenarios(plan=plan, scenario_set=scenario_set)
@@ -1077,7 +1129,7 @@ def _required_capacity_coverage(
             definition = scenario_set.scenario(scenario_id)
         except KeyError as exc:
             raise ActualModelVLLMHostError(
-                f"screening scenario is not in canonical foundation-v2: {scenario_id}"
+                f"screening scenario is not in the bound scenario set: {scenario_id}"
             ) from exc
         for turn_index in range(1, len(definition.scenario.turns) + 1):
             for pass_id, request in requests:
@@ -1306,7 +1358,7 @@ def _validate_scenarios(
             definition = scenario_set.scenario(scenario_id)
         except KeyError as exc:
             raise ActualModelVLLMHostError(
-                f"screening scenario is not in canonical foundation-v2: {scenario_id}"
+                f"screening scenario is not in the bound scenario set: {scenario_id}"
             ) from exc
         if definition.scenario.family == "restart_quality":
             raise ActualModelVLLMHostError(

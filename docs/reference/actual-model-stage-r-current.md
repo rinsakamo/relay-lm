@@ -2,7 +2,7 @@
 
 Status: current bounded execution entrypoint for RelayLM 1.0 Stage R actual-model qualification.
 
-Long-lived Issue history is evidence, not an execution prompt. #1386 is an umbrella/evidence index. The active transaction owner is the current bounded execution Issue routed from the current #1386 body; closed or completed transaction Issues are historical evidence only.
+Long-lived Issue history is evidence, not an execution prompt. #1386 owns the actual-model evaluation authority; the active bounded physical semantic transaction is routed separately by current #1386 authority.
 
 ## Current entrypoint
 
@@ -12,19 +12,33 @@ Use:
 python -m relaylm.actual_model_stage_r
 ```
 
-Do not reconstruct the current procedure from old #1386 comments or invoke the historical v2 plan as though its numeric context window were a live hardware profile.
-
 The machine-readable current descriptor is:
 
 ```text
 evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
 ```
 
-It deliberately contains no numeric context window. It declares:
+It deliberately contains no numeric context window. It points to one current execution template and declares:
 
-- the existing v2 execution template used for topology/pass/scenario identity;
 - `context_window_source = fresh_external_capacity_evidence`;
 - `hardware_capability_source = fresh_vllm_profiler_auto_kv`.
+
+The current template is:
+
+```text
+evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json
+```
+
+The v3 template binds its scenario set by repository-relative path and exact semantic revision. The current execution chain therefore has one derivation:
+
+```text
+stage-r0-vllm-current-v1
+  -> stage-r0-vllm-reference-v3
+  -> foundation-v3 path + revision
+  -> exact v3 scenario IDs
+```
+
+Historical v2 plans remain loadable evidence/templates and are not rewritten as v3.
 
 ## Hardware capability bootstrap
 
@@ -38,21 +52,21 @@ Before capacity acquisition or semantic screening:
 6. attest the final live backend/model/root/runner/max-model-length identity;
 7. keep this final runtime unchanged through capacity acquisition and screening.
 
-Historical values such as `1616`, `14208`, `15616`, or a prior KV-byte recommendation are evidence for their original runs only. They are not current launch controls.
+Historical context-window or KV values are evidence for their original runs only. They are not current launch controls.
 
 ## Capacity
 
 Run `actual_model_stage_r --operation capacity` first. The launcher delegates to the existing production capacity path and rejects caller-supplied prior capacity evidence. Capacity acquisition therefore observes the final live `max_model_len` directly.
 
-The resulting external immutable capacity artifact must be complete for the selected current condition.
+The resulting external immutable capacity artifact must be complete for the selected current condition and exact current scenario-set revision.
 
 ## Screening
 
 Run `actual_model_stage_r --operation screening` with the fresh external capacity evidence ID and root from the immediately preceding exact-head capacity run.
 
-The current launcher refuses screening without the complete ID/root pair and always injects the existing host's `--context-window-from-capacity-evidence` control. The v2 template's historical numeric window is therefore not current screening authority.
+The launcher refuses screening without the complete ID/root pair and injects `--context-window-from-capacity-evidence`. The template's historical numeric `effective_context_window` is template data, not current physical capacity authority.
 
-All existing target, checkout, model-runner, scenario, pass-request, capacity coverage, live-runtime and source-validation gates remain in force.
+All target, checkout, model-runner, scenario, pass-request, capacity-coverage, live-runtime, exact-request-evidence and source-validation gates remain in force.
 
 ## Current semantic reference
 
@@ -66,13 +80,19 @@ For the Stage R0 reference baseline:
 - temperature 0;
 - top_p 1;
 - seed null;
-- canonical `response-persona-correction-v1` and `continuity-lifecycle-v1` scenarios.
+- `response-transcript-fidelity-v1`;
+- `response-false-attribution-resistance-v1`;
+- `continuity-lifecycle-v1`.
 
-Reasoning escalation is not a routine rescue path. #1915 owns its separate provider/runtime finding.
+Proposal scoring is scenario-owned and explicit in foundation-v3. `scored + []` means exactly zero expected proposals; `unscored` preserves raw observations while excluding that channel from FP/FN/precision/recall.
+
+## Exact request evidence
+
+The #2029 request-evidence contract applies to the same canonical two-pass execution path used by current Stage R. Future semantic evidence must preserve citable per-turn Pass 1 and Pass 2 request records, including exact request body/messages, generation-affecting controls, request-body SHA and request evidence identity. Canonical execution fails closed when required request evidence is absent. Historical evidence is not retrofitted.
 
 ## Evidence boundaries
 
-A capacity admission failure before screening is not semantic evidence. A deterministic-boundary PASS is not a semantic-quality PASS. Keep raw model output, typed proposals, deterministic decisions, semantic review, and capacity/timing evidence separately citable.
+A capacity admission failure before screening is not semantic evidence. A deterministic-boundary PASS is not a semantic-quality PASS. Keep raw model output, request evidence, typed proposals, deterministic decisions, semantic review, capacity and timing evidence separately citable.
 
 ## Principle
 

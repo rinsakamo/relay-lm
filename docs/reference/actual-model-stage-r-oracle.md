@@ -1,142 +1,149 @@
-# Stage R oracle contract
+# Stage R oracle and prompt-crystallization comparison contract
 
-Status: #2025 evaluation-contract audit. This document does **not** change the production Core prompt or `core-semantic-v1`.
+Status: current #2025 evaluation-contract decision under #1386 actual-model evaluation ownership. This document does **not** change the production Core prompt or `core-semantic-v1`.
 
-## Principle
+## Established proposal-scoring semantics
 
-> Do not suppress useful cognition merely to make a benchmark label sparse.
+Historical `foundation-v1` / `foundation-v2` format-1 evidence remains immutable. In those identities an empty proposal-label array is a scored channel with exactly zero expected proposals.
 
-> The oracle measures RelayLM cognition; RelayLM is not reshaped merely to satisfy the oracle.
+Foundation-v3 uses explicit channel scoring:
 
-## Finding: proposal-channel scope was ambiguous
+- `scored` + `[]` = the channel is evaluated and exactly zero proposals are expected;
+- `unscored` = raw proposals and deterministic outcomes remain evidence, but the channel is excluded from FP/FN/precision/recall.
 
-Historical `foundation-v1` / `foundation-v2` scenario sets use format 1. Their `proposal_labels` always contain both `state` and `continuity` arrays. The historical proposal evaluator therefore interprets an empty array as a scored channel with zero expected proposals.
+Required provider capabilities, human quality axes and proposal-scoring scope are separate declarations.
 
-That remains the meaning of those immutable evaluation identities.
+## Current foundation-v3 identity
 
-The ambiguity appears when a scenario intends to evaluate only one structured channel. `response-persona-correction-v1` declares `state_candidates` as its required provider capability and belongs to a product-quality family whose human axes are response coherence, persona continuity, correctness and unsupported recall, yet its empty Continuity labels were also aggregated as zero-expected proposal labels. This let a useful cross-turn `blue_notebook` referent become a Continuity false positive even though the scenario itself repeatedly carries the notebook across turns.
-
-Format 2 makes scoring scope explicit per scenario:
-
-```json
-"proposal_scoring": {
-  "state": "scored",
-  "continuity": "unscored"
-}
-```
-
-The meanings are deliberately distinct:
-
-- `scored` + `[]`: the channel is evaluated and exactly zero proposals are expected;
-- `unscored`: raw proposals and deterministic outcomes remain evidence, but they do not contribute FP/FN, precision or recall for that scenario.
-
-Required provider capabilities, human product-quality axes and proposal scoring are separate declarations. No one of them is inferred from another.
-
-Legacy format-1 scenario sets remain implicit `scored/scored`, and their normalized mappings omit `proposal_scoring`. Old evidence is not reinterpreted.
-
-## Candidate Stage R scenario identity
-
-`evaluation/actual_model/scenario_sets/foundation-v3.json` is an audit candidate, not yet the current Stage R authority.
-
-It separates the mixed `response-persona-correction-v1` concerns into:
-
-### Neutral transcript fidelity
-
-`response-transcript-fidelity-v1`
-
-- keeps the ordinary user-name correction;
-- states neutrally that notebook contents have not been discussed;
-- asks for an answer constrained to recorded conversation;
-- scores State proposals;
-- leaves Continuity unscored so useful cross-turn cognition is not punished merely for being present.
-
-### Adversarial false attribution
-
-`response-false-attribution-resistance-v1`
-
-- first asks the Character to state its own name/role;
-- then falsely claims the Character previously called itself `ミナ`;
-- scores neither proposal channel;
-- isolates visible transcript-fidelity / unsupported-recall behavior from State/Continuity sparsity.
-
-### Continuity lifecycle
-
-`continuity-lifecycle-v1` is retained unchanged at the user-turn level and scores Continuity only. State proposals are unscored in this scenario.
-
-## Legitimate repair is a separate harness concern
-
-A true repair test must first prove that an assistant mistake actually occurred and then test acknowledgement/correction of that recorded mistake. The current scenario format supplies only user turns and lets the model generate assistant responses, so a fixture cannot truthfully guarantee a particular prior assistant error without adding a stronger scripted/mixed-role harness contract.
-
-Do not fake legitimate repair by writing a user accusation and treating the accusation itself as proof that the assistant made the error.
-
-A future repair fixture, if needed, must own explicit assistant-event setup or another reproducible precondition.
-
-## Prompt-debt audit
-
-PRs #2022 and #2024 added increasingly specific model-facing rules in response to #2017 failures. The following are now treated as prompt-debt candidates rather than automatic permanent invariants:
-
-- apology-specific prohibitions for unrecorded assistant history;
-- repeated variants of the same provenance/history rule;
-- topic / `continue` suppression as a referent gate;
-- explicit future-reference-only referent gating;
-- repeated transition and source restatements already covered by general State/Continuity authority rules.
-
-No production prompt wording is removed or added by #2025's evaluation-only audit transaction.
-
-The non-production candidate at `evaluation/actual_model/prompt_candidates/principle-only-two-pass-v1.txt` crystallizes the model-facing contract into general cognitive principles. It is not frozen Core authority and must not be production-wired without a separate #1533 semantic transaction.
-
-## Evidence boundary before candidate promotion
-
-The latest #2017 comment establishes that the recorded assistant history did not contain the claimed prior notebook guess. It does not, by itself, expose the exact serialized Turn 3 `CognitiveInput` bytes used by the physical provider call.
-
-Before `foundation-v3` becomes current Stage R authority, the physical-evidence owner must inspect the immutable failed-run artifact and record whether the relevant prior assistant messages were present in the serialized Turn 3 CognitiveInput. This is an evidence check, not a prompt change.
-
-If the serialized input omitted required history, that is a projection/harness finding. If it contained the relevant history, the old result remains a real failure under its old oracle, while the new focused oracle can test the model capability without the previous pragmatic confound.
-
-## Comparison gate for prompt crystallization
-
-After the oracle identity is coherent, compare:
-
-- A: current accumulated production prompt;
-- B: principle-only candidate.
-
-Hold fixed model artifact, tokenizer/chat template, provider/runtime, reasoning controls, context window and Cognitive Budget, scenario revision, decoding configuration, and deterministic validators/materializers.
-
-Measure at least:
-
-- response coherence;
-- correctness / unsupported recall;
-- persona continuity;
-- State proposal precision/recall where scored;
-- Continuity proposal precision/recall where scored;
-- protocol compliance;
-- serialized model-facing prompt tokens;
-- Pass 1 latency;
-- Pass 2 settle time.
-
-The reduced prompt may replace production only if it preserves or improves semantic quality/governance and materially reduces model-facing instruction complexity.
-
-Any production prompt replacement advances Core semantic identity and must be owned by a separate #1533 transaction followed by fresh qualification.
-
-## Evidence policy
-
-Never retroactively convert an old #2017 FAIL into PASS.
+Current Stage R uses `evaluation/actual_model/scenario_sets/foundation-v3.json`, bound by the v3 execution template to semantic revision:
 
 ```text
-historical run
-  = verdict under evaluation identity N
-
-oracle/schema/fixture correction
-  = evaluation identity N+1
-
-fresh execution
-  = independent qualification result
+sha256:ad9e1940f9c6c8ae77ef71271ca1fad98a3b0b8b36dda9da6ea69cdf12846cd6
 ```
 
-The historical `foundation-v1` / `foundation-v2` files remain immutable evidence surfaces.
+It selects exactly:
 
-## Current stop point
+1. `response-transcript-fidelity-v1` — State scored, Continuity unscored;
+2. `response-false-attribution-resistance-v1` — State and Continuity unscored;
+3. `continuity-lifecycle-v1` — State unscored, Continuity scored.
 
-This repository-only audit may merge schema support, candidate scenario identity, documentation and the non-production prompt candidate without advancing `core-semantic-v1`.
+Raw proposals remain preserved in every scenario.
 
-Do not switch the current Stage R authority to `foundation-v3`, run a new physical qualification, or production-wire the reduced prompt until the exact failed Turn 3 serialized CognitiveInput evidence boundary has been reconciled under #2025.
+`response-persona-correction-v1` remains historical foundation-v2 evidence and is not re-added merely to retain history.
+
+## Historical integrity
+
+The previous #2017 physical evidence remains a verdict under foundation-v2 and remains FAIL / NOT_QUALIFIED. Its missing exact model-facing request evidence is not reconstructed or synthesized. No old metrics are recalculated with foundation-v3 scoring.
+
+The identities are intentionally distinct:
+
+```text
+evaluation identity N   = foundation-v2 historical verdict
+evaluation identity N+1 = foundation-v3, requiring fresh execution for any verdict
+```
+
+## #2029 request-evidence gate
+
+Future current Stage R execution consumes the existing #2029 request-evidence contract. Qualification evidence must make the following traversal citable for every evaluated turn:
+
+```text
+execution -> turn -> request_evidence -> request_body
+```
+
+This must expose exact Pass 1 and Pass 2 request bodies/messages, request-body SHA, turn/pass identity and generation-affecting controls. Missing required canonical request evidence is fail-closed. Historical artifacts remain readable without retrofitting missing records.
+
+## Principle-only B candidate
+
+`evaluation/actual_model/prompt_candidates/principle-only-two-pass-v1.txt` remains a non-production design input. It is not dynamically loaded by production and no shipping `--prompt-variant` or benchmark-specific selection path exists.
+
+The matched experiment compares:
+
+- **A**: exact protected-v1 production semantic checkout after this oracle promotion;
+- **B**: an isolated #1533-owned commit/draft PR based exactly on A whose qualification-significant difference is limited to the intended prompt crystallization plus mechanically required semantic-freeze metadata.
+
+Before physical comparison, freeze exact A commit, exact B commit, A..B diff, A and B Core semantic fingerprints, deterministic GREEN evidence, and proof that no unrelated runtime/evaluation change entered B. B remains unmerged during comparison.
+
+## Controlled physical conditions
+
+Hold constant as far as physically possible:
+
+- model repository/artifact/revision, tokenizer, chat template and quantization;
+- provider/backend, vLLM source/version, model runner and physical host;
+- reasoning parser/wire controls, Pass 1/Pass 2 reasoning modes and structured-output mode;
+- temperature, top_p and seed;
+- Continuity runtime and Cognitive Budget policy;
+- final loaded runtime, capacity class and capacity-evidence method;
+- exact foundation-v3 revision and review rubric;
+- deterministic validator/materializer behavior;
+- scenario order/failure handling unless a predeclared symmetric order is used.
+
+The intentionally varied factor is the model-facing cognitive prompt contract.
+
+A and B must not receive asymmetric KV/prefix-cache advantage. Prefer equivalent cold/cache-reset conditions; otherwise record cache state and use symmetric restarts/order. Cache-order artifacts are not prompt wins.
+
+## Exact A/B request evidence
+
+#2029 evidence is mandatory for both variants. For every turn/pass preserve request evidence ID, request-body SHA, exact request object/messages, model-facing instruction text, turn-history carriage, generation controls and execution identity.
+
+Repository diff proves the intended implementation difference. Exact request evidence proves what the model actually received. Both are required.
+
+## Measurements
+
+Semantic quality:
+
+- response coherence and correctness;
+- unsupported recall / fabricated history;
+- persona/identity continuity where applicable;
+- transcript fidelity and false-attribution resistance;
+- State precision/recall where scored;
+- Continuity precision/recall where scored;
+- protocol validity and deterministic authority outcome;
+- individual turn-local material failures.
+
+Prompt complexity:
+
+- stable model-facing instruction bytes;
+- exact request/message bytes where relevant;
+- exact serialized model-facing Pass 1 and Pass 2 token counts;
+- A/B instruction-byte and serialized-input-token deltas.
+
+Exact token counts must come from the repository-owned serialized-input/tokenizer counter bound to the same model/tokenizer/chat-template/backend identity. #2029 request bytes alone are not a token-count oracle. If exact counting is unavailable, report it unavailable.
+
+Execution:
+
+- Pass 1 provider latency;
+- Pass 2 provider/settle latency;
+- total scenario time;
+- failed provider-call count and failure class;
+- cache/restart condition and capacity identity.
+
+Do not average away individual semantic failures.
+
+## B win condition
+
+B is eligible for production consideration only if governance/safety and deterministic authority do not regress, scored semantic quality is preserved or improved, transcript fidelity and false-attribution behavior are no worse, Continuity lifecycle remains correct, no new protocol/provider failure or hidden retry advantage appears, and prompt complexity is materially lower.
+
+Aesthetic simplicity or one benchmark-specific PASS is not a win.
+
+If B regresses materially, record the result and keep A. Do not patch B with fixture-specific wording, relax parser/validator/oracle behavior, escalate Pass 2 to rescue a Pass 1 visible failure, or retry until PASS.
+
+If A and B both fail the same clean transcript-fidelity/false-attribution case while exact request evidence proves correct history carriage under matched conditions, classify that as evidence toward physical-model capability limitation for the tested condition rather than adding benchmark wording.
+
+## Production replacement boundary
+
+A pre-merge B result can establish that B is scientifically preferable; it cannot qualify protected v1.
+
+If B wins:
+
+1. #1533 owns the production prompt replacement;
+2. merge the exact accepted semantic change;
+3. intentionally advance the Core semantic fingerprint;
+4. reacquire fresh #1386/#2017 authority;
+5. run fresh Stage R on the merged production B identity;
+6. only that production PASS may unblock #1388.
+
+If A remains preferred, keep production A and run fresh current-v3 Stage R on exact production A before #1388.
+
+## Current repository-only stop
+
+Oracle promotion and comparison protocol may be completed without starting vLLM/GPU, retrying #2017, running A/B, merging B, or running FastCal. The next repository transaction may construct the isolated #1533-owned B draft candidate, but physical execution remains a separate explicitly authorized step.
