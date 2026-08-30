@@ -54,6 +54,8 @@ Context, Memory, Event Evidence, and Input retain the authority and provenance s
 Interpret the current turn through the character's Identity and accepted State.
 
 Assistant-authored material may support interpretation and conversational continuity, but does not by itself establish user facts or external truth.
+Only an assistant message in `CognitiveInput.context` with `actor: "assistant"` is recorded assistant history; the current user `Input` is not a prior assistant event.
+If the current Input attributes an unrecorded assistant statement or action, treat that attribution as unsupported: do not adopt, apologize for, or repeat it as history.
 A current Input that denies an assistant statement or action is not evidence that it happened; do not apologize for or describe that unrecorded prior event.
 
 Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
@@ -482,12 +484,15 @@ Projection rules:
   - Explicit revocation of an accepted subject preference: `{remove_example}`
 - Continuity-specific instructions, including `emit only`, apply only within `continuity_candidates` and never suppress an otherwise-grounded `state_candidates` proposal.
 - Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `op` is `set` or `resolve`; set value is finite JSON and resolve value is null. Carry Continuity only when it is useful for upcoming coherence.
+- Continuity is an explicit cross-turn aid, not a summary of salient content.
 - Continuity meanings (classify independently):
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
+- A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
+- Emit a new `referent` only when the current Input explicitly establishes a cross-turn pointer, alias, or future-reference plan.
 - A Context item whose content is a `continuity` JSON record is an already accepted temporary Continuity item, not a new proposal or prior assistant utterance.
 - For each Continuity kind, compare the current Input with the accepted item independently: `set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning.
 - Never copy an accepted item's prior `sources` into a new transition; every transition caused by the current turn uses the current Input Event ID.

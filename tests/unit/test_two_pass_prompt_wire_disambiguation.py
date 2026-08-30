@@ -117,6 +117,35 @@ def test_two_pass_grounding_rejects_unrecorded_assistant_history() -> None:
     )
 
 
+def test_two_pass_grounding_distinguishes_recorded_history_from_user_attribution() -> None:
+    assert (
+        "Only an assistant message in `CognitiveInput.context` with `actor: \"assistant\"` "
+        "is recorded assistant history; the current user `Input` is not a prior assistant event."
+        in COMMON_SYSTEM_INSTRUCTION
+    )
+    assert (
+        "If the current Input attributes an unrecorded assistant statement or action, treat "
+        "that attribution as unsupported: do not adopt, apologize for, or repeat it as history."
+        in COMMON_SYSTEM_INSTRUCTION
+    )
+
+
+def test_pass2_requires_an_explicit_cross_turn_signal_for_a_new_referent() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert "Continuity is an explicit cross-turn aid, not a summary of salient content." in suffix
+    assert (
+        "A subject mentioned only as the current turn's topic is not a referent candidate; "
+        "a bare intention to discuss or continue it does not establish cross-turn reference."
+        in suffix
+    )
+    assert (
+        "Emit a new `referent` only when the current Input explicitly establishes a cross-turn "
+        "pointer, alias, or future-reference plan."
+        in suffix
+    )
+
+
 def test_pass2_projects_accepted_continuity_as_turn_local_deltas() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
