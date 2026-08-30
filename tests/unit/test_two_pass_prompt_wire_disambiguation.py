@@ -31,137 +31,84 @@ def _extraction_input() -> CognitionExtractionInput:
     )
 
 
+def test_pass1_prompt_uses_general_authority_and_provenance_principles() -> None:
+    assert "Context, Memory, Knowledge, Event Evidence, and Input retain the authority" in (
+        COMMON_SYSTEM_INSTRUCTION
+    )
+    assert (
+        "Do not treat inference, conversational implication, or model output as evidence"
+        in COMMON_SYSTEM_INSTRUCTION
+    )
+    assert "Do not invent history, evidence, motives, shared experiences" in (
+        COMMON_SYSTEM_INSTRUCTION
+    )
+
+
+def test_pass1_prompt_removes_failure_specific_history_wording() -> None:
+    assert "apologize" not in COMMON_SYSTEM_INSTRUCTION
+    assert "unrecorded assistant" not in COMMON_SYSTEM_INSTRUCTION
+    assert "actor: \"assistant\"" not in COMMON_SYSTEM_INSTRUCTION
+
+
 def test_pass2_prompt_projects_directly_to_candidate_records() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert "Emit `state_candidates`, then `continuity_candidates`." in suffix
+    assert '`{"state_candidates":[],"continuity_candidates":[]}`' in suffix
     assert "turn_interpretation" not in suffix
     assert "continuity_signals" not in suffix
 
 
-def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() -> None:
+def test_pass2_prompt_preserves_durable_state_principle_and_wire() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert (
-        "Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or "
-        "`active_task`." in suffix
-    )
-    assert (
-        "Resolve only when the current turn actually resolves or completes an existing item"
-        in suffix
-    )
-    assert "set value is finite JSON and resolve value is null" in suffix
+    assert "State represents durable accepted current understanding." in suffix
+    assert "Tentative, hypothetical, guessed, hedged, merely possible" in suffix
+    assert "New durable meaning -> `set`." in suffix
+    assert "Unchanged accepted State -> no candidate." in suffix
+    assert "State wire is `{state_class,key,op,value,sources}`." in suffix
+    assert "degree_hint is semantic intensity, not confidence" in suffix
 
 
-def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> None:
+def test_pass2_prompt_preserves_independent_continuity_lifecycle() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
+    assert "Evaluate these meanings independently" in suffix
+    assert "`referent` is a specific cross-turn reference target" in suffix
+    assert "`unresolved` is an open question or unknown value" in suffix
+    assert "`active_task` is unfinished work" in suffix
+    assert "New useful meaning -> `set`." in suffix
+    assert "Unchanged accepted meaning -> no candidate." in suffix
+    assert "Resolution of one Continuity kind does not automatically resolve another." in suffix
+
+
+def test_pass2_prompt_preserves_continuity_wire_axes() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert "Continuity wire is `{kind,key,op,value,sources,epistemic_role}`." in suffix
+    assert "`kind` is exactly `referent`, `unresolved`, or `active_task`" in suffix
+    assert "`kind` and `epistemic_role` are separate axes." in suffix
     assert (
-        "`kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` "
-        "only and must never be used as `epistemic_role`." in suffix
-    )
-    assert (
-        "`epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or "
+        "`epistemic_role` is exactly `user_assertion`, `assistant_inference`, or "
         "`assistant_commitment`." in suffix
     )
-    assert (
-        "`unresolved`: an explicit open question or unknown value that remains to be resolved."
-        in suffix
-    )
-    assert "which blue box" not in suffix
 
 
-def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_continuity() -> None:
+def test_pass2_prompt_preserves_source_authority() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert (
-        "Unchanged accepted `referent` or `active_task` meanings do not suppress a "
-        "distinct newly established `unresolved` meaning." in suffix
-    )
-    assert (
-        "If related accepted referent/task meanings are unchanged and the current Event "
-        "newly establishes an unknown value with no accepted unresolved item, emit only "
-        "the new `unresolved` set as applicable." in suffix
-    )
-    assert "Unresolved transition example" in suffix
-    assert '"kind":"unresolved"' in suffix
-    assert '"sources":["evt-now"]' in suffix
-    assert "blue_box" not in suffix
-    assert "box_contents_question" not in suffix
+    assert "Pass 1 response is interpretive context only." in suffix
+    assert "Candidate `sources` must be non-empty Event IDs present in CognitiveInput" in suffix
+    assert "current Input Event ID `evt-now`" in suffix
+    assert "Do not promote model inference into higher authority" in suffix
 
 
-def test_pass2_prompt_keeps_durable_state_independent_of_continuity_guidance() -> None:
+def test_pass2_prompt_removes_fixture_driven_continuity_rules_and_examples() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert (
-        "Evaluate newly established durable State independently before Continuity proposals."
-        in suffix
-    )
-    assert (
-        "First-introduction durable State does not require a pre-existing accepted State record."
-        in suffix
-    )
-    assert (
-        "Continuity-specific instructions, including `emit only`, apply only within "
-        "`continuity_candidates` and never suppress an otherwise-grounded "
-        "`state_candidates` proposal."
-        in suffix
-    )
-
-
-def test_two_pass_grounding_rejects_unrecorded_assistant_history() -> None:
-    assert (
-        "A current Input that denies an assistant statement or action is not evidence "
-        "that it happened; do not apologize for or describe that unrecorded prior event."
-        in COMMON_SYSTEM_INSTRUCTION
-    )
-
-
-def test_two_pass_grounding_distinguishes_recorded_history_from_user_attribution() -> None:
-    assert (
-        "Only an assistant message in `CognitiveInput.context` with `actor: \"assistant\"` "
-        "is recorded assistant history; the current user `Input` is not a prior assistant event."
-        in COMMON_SYSTEM_INSTRUCTION
-    )
-    assert (
-        "If the current Input attributes an unrecorded assistant statement or action, treat "
-        "that attribution as unsupported: do not adopt, apologize for, or repeat it as history."
-        in COMMON_SYSTEM_INSTRUCTION
-    )
-
-
-def test_pass2_requires_an_explicit_cross_turn_signal_for_a_new_referent() -> None:
-    suffix = _extraction_pass_suffix(_extraction_input())
-
-    assert "Continuity is an explicit cross-turn aid, not a summary of salient content." in suffix
-    assert (
-        "A subject mentioned only as the current turn's topic is not a referent candidate; "
-        "a bare intention to discuss or continue it does not establish cross-turn reference."
-        in suffix
-    )
-    assert (
-        "Emit a new `referent` only when the current Input explicitly establishes a cross-turn "
-        "pointer, alias, or future-reference plan."
-        in suffix
-    )
-
-
-def test_pass2_projects_accepted_continuity_as_turn_local_deltas() -> None:
-    suffix = _extraction_pass_suffix(_extraction_input())
-
-    assert (
-        "A Context item whose content is a `continuity` JSON record is an already "
-        "accepted temporary Continuity item, not a new proposal or prior assistant utterance."
-        in suffix
-    )
-    assert (
-        "For each Continuity kind, compare the current Input with the accepted item "
-        "independently: `set` for a new meaning, `resolve` for a current resolution, "
-        "and no candidate for an unchanged meaning."
-        in suffix
-    )
-    assert (
-        "Never copy an accepted item's prior `sources` into a new transition; every "
-        "transition caused by the current turn uses the current Input Event ID."
-        in suffix
-    )
+    assert "bare intention to discuss or continue" not in suffix
+    assert "future-reference plan" not in suffix
+    assert "Before concluding there are no Continuity candidates" not in suffix
+    assert "Unresolved transition example" not in suffix
+    assert '"current_document"' not in suffix
+    assert '"document_author"' not in suffix
+    assert '"verify_document_author"' not in suffix
