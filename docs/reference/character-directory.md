@@ -15,6 +15,7 @@ machines/medical-soap/
 <CognitivePackage>/
 ├─ SOUL.md
 ├─ config.yaml
+├─ knowledge/         # optional package-authored read-only reference text
 └─ memory/
    ├─ events.jsonl
    ├─ state.json
@@ -53,6 +54,7 @@ Default paths are convention-based. Runtime loading does not require a root to l
 ## Current file behavior
 
 - `SOUL.md` is required by the current runtime and must contain non-empty stable identity or role authority. For a machine-like package this may be role-oriented rather than human-persona-oriented content.
+- `knowledge/` is optional package-authored read-only reference material. KNOWLEDGE is distinct from SOUL, State, Event provenance, and lived `memory/MEMORY.md`; supported v0 assets and bounds are defined in `docs/reference/knowledge.md`.
 - `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed. Event IDs must be unique within the journal; a later duplicate ID fails closed with that record's line context.
 - once an Event Journal append write and close succeed, failure to refresh the process-local derived file signature does not retroactively fail that durable append; cached Event/discovery data is invalidated and the next read revalidates `memory/events.jsonl`.
 - a missing `memory/state.json` file is read as an empty version-1 State;
@@ -93,7 +95,7 @@ When real Character features require them, a Character Package may grow toward:
 Meanings:
 
 - `memory/` — lived continuity and readable crystallized synthesis;
-- `knowledge/` — package-associated reference/world knowledge;
+- `knowledge/` — package-authored read-only reference/world knowledge; Core 1.0 v0 supports the bounded text form in `docs/reference/knowledge.md`;
 - `examples/` — behavioral/calibration examples;
 - `settings/` — portable package-specific behavior/presentation configuration when such semantics are owned;
 - `assets/` — portable voice/avatar/image assets when relevant to the package specialization;

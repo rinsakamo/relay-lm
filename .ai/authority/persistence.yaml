@@ -26,4 +26,5 @@ tests:
 - tests/unit/test_state_json_value_domain.py
 depends_on:
 - core_architecture
+- knowledge
 - state_and_validation

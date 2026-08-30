@@ -1,0 +1,39 @@
+schema_version: 1
+id: knowledge
+summary: >-
+  Core 1.0 package-authored read-only reference KNOWLEDGE, including strict
+  package loading, deterministic whole-file projection, model-facing separation
+  from Identity/State/Event/MEMORY authority, and its independent Cognitive
+  Budget envelope.
+owner_issue: 2003
+canonical_surfaces:
+- docs/reference/knowledge.md
+references:
+- docs/reference/character-directory.md
+- docs/architecture/cognitive-runtime.md
+- docs/architecture/core.md
+implementation:
+- src/relaylm/knowledge.py
+- src/relaylm/cognitive.py
+- src/relaylm/storage/cognitive_package.py
+- src/relaylm/budget.py
+- src/relaylm/budget_controls.py
+- src/relaylm/turn.py
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/runtime_config_loader.py
+qualification_inputs:
+- docs/reference/knowledge.md
+- src/relaylm/knowledge.py
+- src/relaylm/cognitive.py
+- src/relaylm/storage/cognitive_package.py
+- src/relaylm/budget.py
+- src/relaylm/budget_controls.py
+- src/relaylm/turn.py
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/runtime_config_loader.py
+tests:
+- tests/unit/test_knowledge_v0.py
+- tests/unit/test_cognitive_budget_plan.py
+- tests/unit/test_evaluation_budget_degradation_plan.py
+depends_on:
+- core_architecture

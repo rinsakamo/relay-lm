@@ -45,6 +45,7 @@ def test_budget_plan_maps_only_existing_owner_control_layers() -> None:
         "working_context",
         "retrieved_memory",
         "event_evidence",
+        "package_knowledge",
     }
     assert "continuity" not in fields
 

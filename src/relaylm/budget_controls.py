@@ -25,6 +25,14 @@ class RetrievalBudgetControls:
 
 
 @dataclass(frozen=True, slots=True)
+class KnowledgeBudgetControls:
+    """Budget-owned envelope for deterministic whole-file package knowledge."""
+
+    max_items: int
+    max_chars: int
+
+
+@dataclass(frozen=True, slots=True)
 class BudgetOwnerControls:
     """Content-free translation from a BudgetPlan into existing owner controls.
 
@@ -34,6 +42,7 @@ class BudgetOwnerControls:
 
     context_compiler: ContextCompilerBudgetControls
     retrieval: RetrievalBudgetControls
+    knowledge: KnowledgeBudgetControls
 
 
 def owner_controls_for_budget_plan(plan: BudgetPlan) -> BudgetOwnerControls:
@@ -50,5 +59,9 @@ def owner_controls_for_budget_plan(plan: BudgetPlan) -> BudgetOwnerControls:
             memory_max_chars=plan.retrieved_memory.max_chars,
             event_max_events=plan.event_evidence.max_items,
             event_max_chars=plan.event_evidence.max_chars,
+        ),
+        knowledge=KnowledgeBudgetControls(
+            max_items=plan.package_knowledge.max_items,
+            max_chars=plan.package_knowledge.max_chars,
         ),
     )

@@ -37,6 +37,20 @@ class ContextItem:
 
 
 @dataclass(frozen=True, slots=True)
+class KnowledgeItem:
+    """Package-authored read-only reference material with a document locator."""
+
+    content: str
+    location: str
+
+    def __post_init__(self) -> None:
+        if not self.content.strip():
+            raise ValueError("knowledge content must not be empty")
+        if not self.location.strip():
+            raise ValueError("knowledge location must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
 class RetrievedMemoryItem:
     """Selected crystallized synthesis with a non-authoritative document locator."""
 
@@ -80,6 +94,7 @@ class CognitiveInput:
     state: tuple[StateRecord, ...]
     context: tuple[ContextItem, ...]
     input: Event
+    knowledge: tuple[KnowledgeItem, ...] = field(default_factory=tuple)
     memory: tuple[RetrievedMemoryItem, ...] = field(default_factory=tuple)
     event_evidence: tuple[EventEvidenceItem, ...] = field(default_factory=tuple)
 

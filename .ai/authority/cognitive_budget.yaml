@@ -38,4 +38,5 @@ tests:
 - tests/unit/test_two_pass_cognitive_budget_authority.py
 depends_on:
 - context_compiler
+- knowledge
 - provider_and_api

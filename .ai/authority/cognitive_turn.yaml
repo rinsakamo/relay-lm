@@ -84,6 +84,7 @@ depends_on:
 - context_compiler
 - continuity_context
 - core_architecture
+- knowledge
 - provider_and_api
 - state_and_validation
 annotations:
