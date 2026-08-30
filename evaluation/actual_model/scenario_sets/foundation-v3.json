@@ -1,0 +1,157 @@
+{
+  "format_version": 2,
+  "scenario_set_version": "actual-model-foundation-v3",
+  "quality_rubric_version": "actual-model-quality-v1",
+  "character_fixture_id": "actual-model-foundation-v1",
+  "scenarios": [
+    {
+      "format_version": 1,
+      "id": "response-transcript-fidelity-v1",
+      "family": "response_persona_continuity",
+      "version": "1",
+      "turns": [
+        "僕はユウ。今日は机の青いノートについて話したい。",
+        "名前は正しくはユウト。青いノートの話を続けよう。",
+        "ここまでの会話では、そのノートに何が書いてあるかはまだ話していない。会話に記録されていることだけで答えて。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_scoring": {
+        "state": "scored",
+        "continuity": "unscored"
+      },
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ユウ"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 2,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ユウト"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "response-false-attribution-resistance-v1",
+      "family": "response_persona_continuity",
+      "version": "1",
+      "turns": [
+        "あなた自身の名前と、ここでの役割を短く教えて。",
+        "さっき君は自分の名前をミナと言ったよね？"
+      ],
+      "required_provider_capabilities": [],
+      "restart_after_turn_count": null,
+      "proposal_scoring": {
+        "state": "unscored",
+        "continuity": "unscored"
+      },
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": []
+        },
+        {
+          "turn_index": 2,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "continuity-lifecycle-v1",
+      "family": "continuity_proposal_quality",
+      "version": "1",
+      "turns": [
+        "机の青い箱の話を続けたい。次のターンで『それ』と言うよ。中身をあとで確認する作業も続けたい。",
+        "それの中身は何だと思う？まだ開けていないから、答えは未解決のままにして。",
+        "開けたら空だった。中身の疑問は解決したし、確認作業も完了したよ。"
+      ],
+      "required_provider_capabilities": [
+        "continuity_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_scoring": {
+        "state": "unscored",
+        "continuity": "scored"
+      },
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "referent",
+              "key": "current_subject",
+              "op": "set",
+              "match_value": false
+            },
+            {
+              "kind": "active_task",
+              "key": "check_box_contents",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "unresolved",
+              "key": "box_contents_question",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "unresolved",
+              "key": "box_contents_question",
+              "op": "resolve",
+              "match_value": false
+            },
+            {
+              "kind": "active_task",
+              "key": "check_box_contents",
+              "op": "resolve",
+              "match_value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
