@@ -20,12 +20,12 @@ from relaylm.actual_model_quality import (
     TurnProposalLabels,
 )
 
-LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 1
-ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 2
+ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 1
+EXPLICIT_PROPOSAL_SCORING_SCENARIO_SET_FORMAT_VERSION = 2
 _SUPPORTED_SCENARIO_SET_FORMAT_VERSIONS = frozenset(
     {
-        LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION,
         ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION,
+        EXPLICIT_PROPOSAL_SCORING_SCENARIO_SET_FORMAT_VERSION,
     }
 )
 
@@ -164,7 +164,7 @@ class ActualModelScenarioSet:
         scenario_ids = tuple(item.scenario.scenario_id for item in self.scenarios)
         if len(set(scenario_ids)) != len(scenario_ids):
             raise ValueError("scenario ids must be unique within a scenario set")
-        if self.format_version == LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+        if self.format_version == ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
             if any(item.proposal_scoring is not None for item in self.scenarios):
                 raise ValueError(
                     "legacy scenario sets must not declare proposal_scoring"
@@ -285,7 +285,10 @@ def _parse_scenario(
         "restart_after_turn_count",
         "proposal_labels",
     }
-    if scenario_set_format_version == ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+    if (
+        scenario_set_format_version
+        == EXPLICIT_PROPOSAL_SCORING_SCENARIO_SET_FORMAT_VERSION
+    ):
         expected_keys.add("proposal_scoring")
     _require_exact_keys(mapping, expected_keys, label)
 
@@ -307,7 +310,10 @@ def _parse_scenario(
         )
 
     proposal_scoring = None
-    if scenario_set_format_version == ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+    if (
+        scenario_set_format_version
+        == EXPLICIT_PROPOSAL_SCORING_SCENARIO_SET_FORMAT_VERSION
+    ):
         proposal_scoring = _parse_proposal_scoring(
             mapping["proposal_scoring"],
             label=f"{label}.proposal_scoring",
