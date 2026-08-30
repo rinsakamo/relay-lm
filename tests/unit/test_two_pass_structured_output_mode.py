@@ -131,16 +131,19 @@ def test_auto_pass2_stays_plain_without_affirmative_native_capability() -> None:
     assert "response_format" not in body
 
 
-def test_pass2_prompt_contains_semantics_and_examples_without_scaffold() -> None:
+def test_pass2_prompt_contains_principles_without_examples_or_scaffold() -> None:
     body = _run_extraction(CognitionStructuredOutputMode.NATIVE)
     prompt = body["messages"][1]["content"]
 
-    assert '"state_class":"user.preference","key":"coffee","op":"set","value":"likes"' in prompt
-    assert '"state_class":"user.preference","key":"preferred_beverage","op":"set","value":"coffee"' in prompt
-    assert '"state_class":"user.preference","key":"coffee","op":"remove","value":null' in prompt
-    assert '"sources":["evt-now"]' in prompt
-    assert "examples demonstrate representation only" in prompt
-    assert "never copy example values" in prompt
+    assert "State represents durable accepted current understanding." in prompt
+    assert "State wire is `{state_class,key,op,value,sources}`." in prompt
+    assert "Continuity represents temporary cross-turn coherence" in prompt
+    assert "Continuity wire is `{kind,key,op,value,sources,epistemic_role}`." in prompt
+    assert "current Input Event ID `evt-now`" in prompt
+    assert "Pass 1 response is interpretive context only." in prompt
+    assert '"state_class":"user.preference","key":"coffee"' not in prompt
+    assert '"current_document"' not in prompt
+    assert "examples demonstrate representation only" not in prompt
     assert "turn_interpretation" not in prompt
     for removed_field in (
         "`user_meaning`",

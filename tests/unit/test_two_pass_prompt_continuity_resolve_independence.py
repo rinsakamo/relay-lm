@@ -8,7 +8,7 @@ from relaylm.providers.openai_compatible_two_pass import _extraction_request_bod
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
-def test_pass2_prompt_keeps_continuity_resolve_kind_local() -> None:
+def test_pass2_prompt_keeps_continuity_resolution_kind_local() -> None:
     cognitive_input = CognitiveInput(
         identity=Identity("# ReLM\nBe kind."),
         state_classes=STATE_CLASS_DEFINITIONS,
@@ -36,20 +36,13 @@ def test_pass2_prompt_keeps_continuity_resolve_kind_local() -> None:
     content = messages[1]["content"]
     assert isinstance(content, str)
 
-    assert "Evaluate resolution or completion independently for each Continuity kind." in content
+    assert "Evaluate these meanings independently" in content
     assert (
-        "Resolving an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`."
+        "A meaning explicitly resolved, completed, replaced, dismissed, or invalidated -> `resolve`."
         in content
     )
-    assert (
-        "If that referent meaning is unchanged, emit no referent candidate."
-        in content
-    )
-    assert (
-        "Completion or resolution of work about a referent, discovery of new facts about it, or an expectation that it may not be mentioned next does not end the referent."
-        in content
-    )
-    assert (
-        "Resolve a `referent` only when the current Input explicitly replaces, dismisses, or invalidates the reference target itself; do not infer referent resolution from completion of related `unresolved` or `active_task` meanings."
-        in content
-    )
+    assert "Reuse the accepted lifecycle key" in content
+    assert "Resolution of one Continuity kind does not automatically resolve another." in content
+    assert "`referent` is a specific cross-turn reference target" in content
+    assert "`unresolved` is an open question or unknown value" in content
+    assert "`active_task` is unfinished work" in content

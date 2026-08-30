@@ -54,18 +54,18 @@ def test_preference_class_keeps_intensity_semantics_but_not_language_examples() 
 def test_global_state_durability_gate_is_model_facing_and_language_independent() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
+    assert "State represents durable accepted current understanding." in suffix
     assert (
-        "Durable State gate: emit State only when the current Input presents the candidate "
-        "meaning as sufficiently asserted, committed, or otherwise established" in suffix
+        "Emit a State transition only when the current Input establishes a durable meaning "
+        "strongly enough to become current accepted understanding." in suffix
     )
     assert (
-        "Tentative, hypothetical, merely possible, guessed, hedged, or explicitly "
-        "self-uncertain meaning stays uncommitted" in suffix
+        "Tentative, hypothetical, guessed, hedged, merely possible, or explicitly uncertain "
+        "meaning is not durable State." in suffix
     )
-    assert "Apply this gate by meaning regardless of language or state_class" in suffix
-    assert "do not use surface keywords or grammatical patterns as the gate" in suffix
-    assert "Epistemic uncertainty is not degree_hint" in suffix
-    assert "A later resolved assertion may establish State normally" in suffix
+    assert "State transitions must be grounded in current evidence from CognitiveInput." in suffix
+    assert "degree_hint is semantic intensity, not confidence" in suffix
+    assert "might prefer tea" not in suffix
     assert "たぶん紅茶のほうが好きかも" not in suffix
 
 
