@@ -1,6 +1,6 @@
 # Actual-model vLLM functional acceptance
 
-Status: launch/runtime qualification is owned by #1959; post-freeze semantic qualification is owned by #1960 under #1386 actual-model product-quality authority.
+Status: launch/runtime qualification is owned by completed #1959 capability authority; current post-freeze semantic qualification is owned by #2017 under #1386 actual-model product-quality authority.
 
 Stage R exists first to answer a product question:
 
