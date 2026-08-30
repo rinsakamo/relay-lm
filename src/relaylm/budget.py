@@ -183,7 +183,6 @@ class BudgetLayer(str, Enum):
 
 
 LayerEnvelope = CountEnvelope | CountCharacterEnvelope
-LayerEnvelope = CountEnvelope | CountCharacterEnvelope
 
 
 @dataclass(frozen=True, slots=True)
