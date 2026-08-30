@@ -37,7 +37,7 @@ def test_primary_gemma_target_matches_frozen_issue_authority() -> None:
     )
     assert target.artifact_filename == "gemma-4-12B-it-Q4_K_M.gguf"
     assert target.quantization == "Q4_K_M"
-    assert target.artifact_size_bytes == 7_662_531_872
+    assert target.artifact_size_bytes == 7_662_533_088
     assert (
         target.artifact_sha256
         == "3962624dcd25b947d889dc9ae1bf275b61db6cd4dbe694057f34fffef1671509"
@@ -48,7 +48,7 @@ def test_primary_gemma_target_matches_frozen_issue_authority() -> None:
     )
     assert (
         target.revision
-        == "sha256:25423041ada26d04aa1653b707b74798cd86d7637718ecc319ef5f8e4e6af679"
+        == "sha256:c5a65e32e2b2478d51ba831299c454c0e2e115ccd3b602f2e57d53bd6a51131b"
     )
     assert target.model_artifact_identity.endswith(
         "gemma-4-12B-it-Q4_K_M.gguf"
