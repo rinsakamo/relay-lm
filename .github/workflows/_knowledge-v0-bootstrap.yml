@@ -1,0 +1,51 @@
+name: KNOWLEDGE v0 patch bootstrap
+
+on:
+  push:
+    branches:
+      - work/2003-knowledge-v0
+    paths:
+      - .github/workflows/_knowledge-v0-bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out transaction branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: work/2003-knowledge-v0
+          fetch-depth: 0
+
+      - name: Verify bootstrap event head
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+
+      - name: Apply exact bounded production patch
+        run: python tools/_knowledge_v0_patch.py
+
+      - name: Remove bootstrap-only files from product diff
+        run: |
+          rm tools/_knowledge_v0_patch.py
+          rm .github/workflows/_knowledge-v0-bootstrap.yml
+
+      - name: Install and run full deterministic suite
+        run: |
+          python -m pip install -e ".[test]"
+          python -m pytest -q
+
+      - name: Commit verified product diff
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          test -n "$(git status --porcelain)"
+          git commit -m "feat: implement read-only Cognitive Package KNOWLEDGE v0"
+          git push origin HEAD:work/2003-knowledge-v0
