@@ -6,7 +6,7 @@
   "artifact_repository_revision": "2ae7d41be21ca62de00a2d320ee9cec50daa3aa6",
   "artifact_filename": "gemma-4-12B-it-Q4_K_M.gguf",
   "quantization": "Q4_K_M",
-  "artifact_size_bytes": 7662531872,
+  "artifact_size_bytes": 7662533088,
   "artifact_sha256": "3962624dcd25b947d889dc9ae1bf275b61db6cd4dbe694057f34fffef1671509",
   "upstream_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f"
 }
