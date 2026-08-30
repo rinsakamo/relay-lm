@@ -33,9 +33,9 @@ _STARTERS = (
         summary="Non-personal general fact summarization role.",
     ),
     StarterPackage(
-        name="medical-soap",
+        name="relaylm-faq",
         family="machines",
-        summary="Domain-specific SOAP documentation structuring role.",
+        summary="Source-bounded RelayLM onboarding and reference role.",
     ),
 )
 _STARTERS_BY_NAME = {starter.name: starter for starter in _STARTERS}
