@@ -5,6 +5,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import httpx
 import pytest
 
 from relaylm.actual_model_artifacts import character_fixture_revision
@@ -31,8 +32,6 @@ from relaylm.actual_model_fast_screening import (
     instrument_screening_provider,
 )
 from relaylm.cognition_execution import (
-    CognitionConversationOutput,
-    CognitionExtractionOutput,
     CognitionPassRequest,
     CognitionReasoningMode,
 )
@@ -122,7 +121,27 @@ def _capability():
 
 
 def _provider(capability):
-    return OpenAICompatibleTwoPassProvider(
+    response_content = json.dumps(
+        {"state_candidates": [], "continuity_candidates": []},
+        separators=(",", ":"),
+    )
+
+    def mock_transport(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {"content": response_content},
+                        "finish_reason": "stop",
+                    }
+                ]
+            },
+            request=request,
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(mock_transport))
+    provider = OpenAICompatibleTwoPassProvider(
         base_url="http://127.0.0.1:8000/v1",
         model="gemma-4-12B-it-qat-w4a16",
         decoding_config=OpenAICompatibleDecodingConfig(temperature=0, top_p=1),
@@ -130,7 +149,11 @@ def _provider(capability):
             supported_controls=frozenset({"temperature", "top_p"})
         ),
         vllm_reasoning_capability=capability,
+        http_client=client,
     )
+    # The test-created client belongs to this test-created provider.
+    provider._owns_client = True
+    return provider
 
 
 def _prepared():
@@ -226,46 +249,10 @@ def _prepared():
     )
 
 
-async def _stub_conversation(
-    self,
-    cognitive_input,
-    *,
-    pass_request=None,
-    reasoning_request=None,
-    vllm_reasoning_capability=None,
-):
-    del self, cognitive_input, pass_request, reasoning_request, vllm_reasoning_capability
-    return CognitionConversationOutput(response="stub response")
-
-
-async def _stub_extraction(
-    self,
-    extraction_input,
-    *,
-    pass_request=None,
-    reasoning_request=None,
-    vllm_reasoning_capability=None,
-):
-    del self, extraction_input, pass_request, reasoning_request, vllm_reasoning_capability
-    return CognitionExtractionOutput()
-
-
 def test_host_timing_wrapper_uses_precomputed_vllm_binding(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     prepared, binding = _prepared()
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_conversation",
-        _stub_conversation,
-    )
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_extraction",
-        _stub_extraction,
-    )
-
     results = asyncio.run(
         vllm_host.execute_vllm_host_run(
             prepared=prepared,
@@ -306,20 +293,8 @@ def test_timing_wrapper_remains_rejected_by_binding_gate() -> None:
 
 def test_direct_vllm_execution_still_binds_original_provider(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     prepared, binding = _prepared()
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_conversation",
-        _stub_conversation,
-    )
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_extraction",
-        _stub_extraction,
-    )
-
     result = asyncio.run(
         run_vllm_actual_model_scenario_definition(
             target=prepared.target,
@@ -342,22 +317,10 @@ def test_direct_vllm_execution_still_binds_original_provider(
 
 def test_prebound_execution_preserves_binding_and_records_both_passes(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     prepared, binding = _prepared()
     recorder = ScreeningTimingRecorder()
     wrapped = instrument_screening_provider(prepared.provider, recorder=recorder)
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_conversation",
-        _stub_conversation,
-    )
-    monkeypatch.setattr(
-        OpenAICompatibleTwoPassProvider,
-        "generate_extraction",
-        _stub_extraction,
-    )
-
     result = asyncio.run(
         run_bound_vllm_actual_model_scenario_definition(
             binding=binding,

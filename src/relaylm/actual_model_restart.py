@@ -116,6 +116,8 @@ async def run_actual_model_restart_scenario(
     provider: CognitiveProvider,
     manifest: ActualModelRestartRunManifest,
     scenario: ActualModelScenario,
+    execution_id: str | None = None,
+    scenario_revision: str | None = None,
 ) -> ActualModelRestartEvidence:
     """Run one semantic fixture across a real persistent-Character process restart.
 
@@ -146,6 +148,8 @@ async def run_actual_model_restart_scenario(
         manifest=manifest.base,
         scenario=before_scenario,
         continuity_runtime=continuity_runtime,
+        execution_id=execution_id,
+        scenario_revision=scenario_revision,
     )
 
     state_before = character.load_state()
@@ -179,6 +183,8 @@ async def run_actual_model_restart_scenario(
         manifest=manifest.base,
         scenario=after_scenario,
         continuity_runtime=restarted_continuity,
+        execution_id=execution_id,
+        scenario_revision=scenario_revision,
     )
 
     return ActualModelRestartEvidence(

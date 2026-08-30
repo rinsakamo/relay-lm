@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from pathlib import Path
 
+import httpx
 import pytest
 
 from relaylm.actual_model_artifacts import character_fixture_revision
@@ -31,7 +33,6 @@ from relaylm.cognition_execution_evidence import (
     BUFFERED_EXECUTION_PATH,
     CognitionExecutionEvidenceIdentity,
 )
-from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
@@ -116,7 +117,31 @@ def _capability():
 
 
 def _provider(capability) -> OpenAICompatibleProvider:
-    return OpenAICompatibleProvider(
+    response_content = json.dumps(
+        {
+            "utterance": "grounded response",
+            "state_candidates": [],
+            "continuity_candidates": [],
+        },
+        separators=(",", ":"),
+    )
+
+    def mock_transport(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {"content": response_content},
+                        "finish_reason": "stop",
+                    }
+                ]
+            },
+            request=request,
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(mock_transport))
+    provider = OpenAICompatibleProvider(
         base_url="http://127.0.0.1:8000/v1",
         model="gemma-4-12B-it-qat-w4a16",
         decoding_config=OpenAICompatibleDecodingConfig(temperature=0, top_p=1),
@@ -124,7 +149,11 @@ def _provider(capability) -> OpenAICompatibleProvider:
             supported_controls=frozenset({"temperature", "top_p"})
         ),
         vllm_reasoning_capability=capability,
+        http_client=client,
     )
+    # The test-created client belongs to this test-created provider.
+    provider._owns_client = True
+    return provider
 
 
 def _verification() -> ActualModelRepositorySnapshotVerification:
@@ -182,20 +211,9 @@ def _manifest(
 
 def _production_result(
     tmp_path: Path,
-    monkeypatch,
     *,
     replicate_id: str = "0",
 ):
-    async def fake_generate(
-        self,
-        cognitive_input: CognitiveInput,
-        *,
-        pass_request: CognitionPassRequest | None = None,
-    ) -> CognitiveOutput:
-        del self, cognitive_input, pass_request
-        return CognitiveOutput(response="grounded response")
-
-    monkeypatch.setattr(OpenAICompatibleProvider, "generate", fake_generate)
     capability = _capability()
     provider = _provider(capability)
     manifest = _manifest(provider, replicate_id=replicate_id)
@@ -228,9 +246,8 @@ def _outer_id(*, binding_id: str, scenario_execution_id: str) -> str:
 
 def test_vllm_writer_rejects_forged_binding_id_with_recomputed_outer_id(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    result = _production_result(tmp_path, monkeypatch)
+    result = _production_result(tmp_path)
     forged_binding = replace(result.binding, binding_id="amvb-" + "f" * 64)
     forged = replace(
         result,
@@ -256,9 +273,8 @@ def test_vllm_writer_rejects_forged_binding_id_with_recomputed_outer_id(
 
 def test_vllm_writer_rejects_forged_nested_execution_id_with_recomputed_outer_id(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    result = _production_result(tmp_path, monkeypatch)
+    result = _production_result(tmp_path)
     forged_execution = replace(
         result.execution,
         execution_id="amx-" + "f" * 64,
@@ -287,9 +303,8 @@ def test_vllm_writer_rejects_forged_nested_execution_id_with_recomputed_outer_id
 
 def test_vllm_writer_rejects_forged_outer_execution_id(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    result = _production_result(tmp_path, monkeypatch)
+    result = _production_result(tmp_path)
     forged = replace(result, execution_id="amvx-" + "f" * 64)
     artifact_root = tmp_path / "artifacts"
 
@@ -307,9 +322,8 @@ def test_vllm_writer_rejects_forged_outer_execution_id(
 
 def test_vllm_writer_rejects_forged_nested_plan_with_recomputed_ids(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    result = _production_result(tmp_path, monkeypatch)
+    result = _production_result(tmp_path)
     forged_plan = replace(result.execution.plan, plan_id="amp-" + "f" * 64)
     forged_execution = replace(
         result.execution,
@@ -343,18 +357,9 @@ def test_vllm_writer_rejects_forged_nested_plan_with_recomputed_ids(
 
 def test_vllm_writer_rejects_execution_from_another_valid_binding_manifest(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    first = _production_result(
-        tmp_path / "first",
-        monkeypatch,
-        replicate_id="0",
-    )
-    second = _production_result(
-        tmp_path / "second",
-        monkeypatch,
-        replicate_id="1",
-    )
+    first = _production_result(tmp_path / "first", replicate_id="0")
+    second = _production_result(tmp_path / "second", replicate_id="1")
     mixed = replace(
         first,
         execution=second.execution,

@@ -31,6 +31,7 @@ implementation:
 - src/relaylm/actual_model_scenarios.py
 - src/relaylm/actual_model_execution.py
 - src/relaylm/actual_model_execution_artifacts.py
+- src/relaylm/actual_model_request_evidence.py
 - src/relaylm/actual_model_review.py
 - src/relaylm/actual_model_cohort.py
 - src/relaylm/actual_model_boundary.py
@@ -80,6 +81,7 @@ tests:
 - tests/unit/test_actual_model_scenarios.py
 - tests/unit/test_actual_model_execution.py
 - tests/unit/test_actual_model_execution_artifacts.py
+- tests/unit/test_actual_model_request_evidence.py
 - tests/unit/test_actual_model_execution_plan_metadata.py
 - tests/unit/test_actual_model_review.py
 - tests/unit/test_actual_model_review_claim_scope.py

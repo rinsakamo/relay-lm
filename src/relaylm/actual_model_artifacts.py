@@ -93,6 +93,8 @@ async def run_actual_model_fixture(
     manifest: ActualModelRunManifest,
     scenario: ActualModelScenario,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    execution_id: str | None = None,
+    scenario_revision: str | None = None,
 ) -> ActualModelEvidence:
     """Run one verified fixture snapshot in a fresh workspace.
 
@@ -119,6 +121,8 @@ async def run_actual_model_fixture(
         scenario=scenario,
         continuity_runtime=None,
         cognitive_budget=cognitive_budget,
+        execution_id=execution_id,
+        scenario_revision=scenario_revision,
     )
 
 
