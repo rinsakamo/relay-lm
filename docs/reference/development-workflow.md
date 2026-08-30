@@ -176,7 +176,7 @@ Do not review from an earlier checkout, implementation summary, or remembered pa
 Ask:
 
 1. Does the change express the intended contract or preservation goal?
-2. Did it add more semantics or machinery than required?
+2. Did it add more semantics or machinery than required? Before completion, can necessary additions be integrated into existing principles, deduplicated, or expressed more generally without weakening the intended behavior or authority boundaries?
 3. Are material failure modes or authority boundaries under-tested?
 4. Do current-authority docs match the code and distinguish current from deferred behavior?
 5. Does the diff preserve an obsolete bridge, wrapper, dual authority, or implementation-history artifact instead of converging directly?
@@ -316,4 +316,5 @@ fresh authority
 7. **Review and CI evidence belong to the exact current head.**
 8. **Parallel work requires disjoint semantic ownership.**
 9. **Current authority never presents deferred behavior as implemented.**
-10. **A completed transaction reconciles its owning Issue.**
+10. **Necessary additions are allowed; before completion, crystallize them by checking for integration into existing principles, deduplication, and generalization without weakening required behavior or authority boundaries.**
+11. **A completed transaction reconciles its owning Issue.**
