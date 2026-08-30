@@ -3,7 +3,7 @@ id: starter_packages
 summary: >-
   First-party Starter Cognitive Package catalog, bundled semantic assets, and
   installed-artifact-safe materialization semantics.
-owner_issue: 1891
+owner_issue: 1996
 canonical_surfaces:
 - docs/reference/starter-packages.md
 implementation:
@@ -14,10 +14,13 @@ implementation:
 - src/relaylm/starters/characters/relm/SOUL.md
 - src/relaylm/starters/machines/fact-summarizer/config.yaml
 - src/relaylm/starters/machines/fact-summarizer/SOUL.md
-- src/relaylm/starters/machines/medical-soap/config.yaml
-- src/relaylm/starters/machines/medical-soap/SOUL.md
+- src/relaylm/starters/machines/relaylm-faq/config.yaml
+- src/relaylm/starters/machines/relaylm-faq/SOUL.md
+- src/relaylm/starters/machines/relaylm-faq/knowledge/core-concepts.md
+- src/relaylm/starters/machines/relaylm-faq/knowledge/operator-basics.md
 tests:
 - tests/unit/test_starter_packages.py
 - .github/workflows/v1-starter-package-smoke.yml
 depends_on:
+- knowledge
 - persistence
