@@ -142,13 +142,17 @@ Unsupported or ineffective parameter combinations are not screening conditions.
 
 LM Studio and vLLM evidence runs remain serial backend executions.
 
-## Provider application remains separate authority
+## Provider application and exact transport evidence
 
 Recording a `CognitionPassRequest` proves what RelayLM requested at the provider-neutral boundary. It does not prove that the backend applied the control or that the control had semantic effect.
 
 For Pass 2, recording `structured_output_mode=native` proves the native transport was requested. Recording `auto` proves the capability-gated policy was requested; provider capability evidence and the actual external request remain the authority for whether `auto` resolved to native or plain.
 
-Provider owners retain exact request serialization and capability truth.
+The #2029 request-evidence bridge additionally records the exact model-facing JSON object at the provider boundary. For the OpenAI-compatible adapters, capture occurs immediately before the existing `post(..., json=body)` or streaming `stream(..., json=body)` call, after all provider-owned serialization, decoding, reasoning, structured-output, and chat-template request fields have been resolved. The captured `messages` therefore contain the exact serialized/model-facing `CognitiveInput` used for that generation; the semantic `CognitiveInput` and any rendered chat-template/token bytes remain distinct artifacts.
+
+`ActualModelRequestEvidence` format version 1 is nested under the corresponding execution evidence turn as `request_evidence`. Each entry carries a stable `amreq-...` ID, execution/run/scenario binding, turn index, `single_pass`/`pass1`/`pass2` identity, provider/adapter identity, the canonical request body, and its canonical SHA-256. The existing immutable execution writer persists this nested evidence atomically with the execution artifact, so a reviewer can traverse `execution_id -> evidence -> turn -> request_evidence -> request_body` without filename discovery. A request that crossed the transport boundary remains citable when the provider later returns a protocol or HTTP failure; no completion or proposal is fabricated.
+
+Request evidence is semantic transport evidence, not packet capture. It excludes headers, Authorization/API keys, cookies, environment/session data, and raw exceptions. It proves the exact request object presented to the provider transport, not backend application or semantic effect. Provider owners retain capability truth and the serialization implementation; #2029 observes that implementation at its generation boundary.
 
 For vLLM, citable reasoning comparisons require the current provider-owned attestation/realization for the exact model/backend. No `low`/`medium`/`high` label is treated as equivalent to a numeric bounded budget without explicit owner authority.
 
@@ -162,7 +166,7 @@ Deterministic evidence records what RelayLM accepted or rejected.
 
 A Pass 2 provider/protocol failure records no fabricated proposal output and cannot reuse a previous turn's extraction.
 
-Per-pass request identity contains no prompt, model response, State, Continuity, Event, MEMORY or secret content.
+The provider-neutral per-pass request identity contains no prompt or model response. The separate #2029 transport artifact intentionally contains the exact request `messages`, including serialized CognitiveInput and Pass 1 response projection where that body carries them, but contains no transport secret or raw exception.
 
 ## Failure / stale evidence
 
@@ -180,9 +184,9 @@ Rapid-next-turn/pending extraction behavior is a required current #1386 product-
 
 ## Streaming boundary
 
-Resolved per-pass evidence may only claim streaming carriage after the runtime path actually carries the same Pass 1/Pass 2 semantics.
+Resolved per-pass evidence may only claim streaming carriage after the runtime path actually carries the same Pass 1/Pass 2 semantics. The current OpenAI-compatible two-pass path captures streaming Pass 1 at its streaming transport boundary and captures the buffered Pass 2 request at its extraction transport boundary; request evidence records the actual `stream` value in each body.
 
-Until that implementation is complete, a streaming manifest must fail closed rather than claim requests were applied when Turn-level carriage omitted them.
+Other providers or paths that cannot expose the exact request at their transport boundary must fail closed rather than claim request evidence that was never captured. The canonical `openai_compatible` execution admission rejects a completed turn without its canonical transport request evidence; unsupported test/provider doubles remain useful for non-citable harness tests but cannot be presented as a citable Stage R execution.
 
 ## Cognitive Budget boundary
 
@@ -234,6 +238,8 @@ A persisted multi-model cohort is citable only when its `cohort_id` matches the 
 ## Ownership
 
 #1533 owns topology/pass semantics and provider-neutral request semantics, including Pass 2 structured-output transport semantics.
+
+#2029 owns exact model-facing request observability at the provider boundary and its secret-free immutable evidence contract.
 
 #1386 owns:
 

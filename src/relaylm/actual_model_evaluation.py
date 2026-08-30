@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Awaitable, Callable, Mapping
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
@@ -11,6 +12,12 @@ from relaylm.actual_model_cognitive_budget import (
     ActualModelCognitiveBudgetDiagnostics,
     ExplicitCognitiveBudgetConfiguration,
     validate_cognitive_budget_runtime_identity,
+)
+from relaylm.actual_model_request_evidence import (
+    ActualModelRequestEvidence,
+    ActualModelRequestEvidenceRecorder,
+    RequestPassIdentity,
+    install_model_facing_request_capture,
 )
 from relaylm.budget_diagnostics import CognitiveBudgetExceededWithDiagnostics
 from relaylm.budget_runtime import (
@@ -559,6 +566,7 @@ class ActualModelTurnEvidence:
     product_quality: tuple[ProductQualityObservation, ...] = field(default_factory=tuple)
     cognitive_budget: ActualModelCognitiveBudgetDiagnostics | None = None
     cognition_execution: ActualModelCognitionExecutionObservation | None = None
+    request_evidence: tuple[ActualModelRequestEvidence, ...] = field(default_factory=tuple)
 
     def to_mapping(self) -> dict[str, object]:
         mapping: dict[str, object] = {
@@ -575,7 +583,54 @@ class ActualModelTurnEvidence:
         }
         if self.cognition_execution is not None:
             mapping["cognition_execution"] = self.cognition_execution.to_mapping()
+        if self.request_evidence:
+            mapping["request_evidence"] = [
+                item.to_mapping() for item in self.request_evidence
+            ]
         return mapping
+
+
+@dataclass(frozen=True, slots=True)
+class ActualModelRequestAttemptFailureEvidence:
+    """A request crossed transport but produced no usable provider completion."""
+
+    turn_index: int
+    input: str
+    pass_identity: RequestPassIdentity
+    request_evidence: tuple[ActualModelRequestEvidence, ...]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
+            raise TypeError("request failure turn_index must be an integer")
+        if self.turn_index <= 0:
+            raise ValueError("request failure turn_index must be positive")
+        if not isinstance(self.input, str) or not self.input.strip():
+            raise ValueError("request failure input must be non-empty")
+        if self.pass_identity not in {"single_pass", "pass1", "pass2"}:
+            raise ValueError("request failure pass_identity is unsupported")
+        if not self.request_evidence:
+            raise ValueError("request failure requires attempted request evidence")
+        if any(
+            not isinstance(item, ActualModelRequestEvidence)
+            for item in self.request_evidence
+        ):
+            raise TypeError(
+                "request failure evidence must contain ActualModelRequestEvidence"
+            )
+        if any(item.turn_index != self.turn_index for item in self.request_evidence):
+            raise ValueError("request failure request evidence does not match turn")
+        if not any(
+            item.pass_identity == self.pass_identity for item in self.request_evidence
+        ):
+            raise ValueError("request failure has no evidence for failing pass")
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "turn_index": self.turn_index,
+            "input": self.input,
+            "pass": self.pass_identity,
+            "request_evidence": [item.to_mapping() for item in self.request_evidence],
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -585,9 +640,10 @@ class ActualModelEvidence:
     scenario: ActualModelScenario
     turns: tuple[ActualModelTurnEvidence, ...]
     bounded_failure: ActualModelBoundedBudgetFailureEvidence | None = None
+    request_failure: ActualModelRequestAttemptFailureEvidence | None = None
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "format_version": ACTUAL_MODEL_EVIDENCE_FORMAT_VERSION,
             "run_id": self.run_id,
             "manifest": self.manifest.to_mapping(),
@@ -599,6 +655,9 @@ class ActualModelEvidence:
                 else None
             ),
         }
+        if self.request_failure is not None:
+            mapping["request_failure"] = self.request_failure.to_mapping()
+        return mapping
 
     def to_json(self) -> str:
         return json.dumps(
@@ -610,11 +669,43 @@ class ActualModelEvidence:
 
 
 class _RecordingProvider:
-    def __init__(self, delegate: CognitiveProvider) -> None:
+    def __init__(
+        self,
+        delegate: CognitiveProvider,
+        *,
+        request_evidence: ActualModelRequestEvidenceRecorder | None = None,
+    ) -> None:
         self.delegate = delegate
+        install_model_facing_request_capture(delegate)
         self.outputs: list[CognitiveOutput] = []
         self.conversation_outputs: list[CognitionConversationOutput] = []
         self.extraction_outputs: list[CognitionExtractionOutput] = []
+        self.request_evidence = request_evidence
+        self.turn_index: int | None = None
+        self.last_pass_identity: RequestPassIdentity | None = None
+        self.last_request_attempt_failed = False
+
+    def set_turn_index(self, turn_index: int) -> None:
+        self.turn_index = turn_index
+
+    @contextmanager
+    def _request_scope(self, pass_identity: RequestPassIdentity):
+        self.last_pass_identity = pass_identity
+        self.last_request_attempt_failed = False
+        capture = (
+            nullcontext()
+            if self.request_evidence is None or self.turn_index is None
+            else self.request_evidence.capture(
+                turn_index=self.turn_index,
+                pass_identity=pass_identity,
+            )
+        )
+        try:
+            with capture:
+                yield
+        except Exception:
+            self.last_request_attempt_failed = True
+            raise
 
     async def generate(
         self,
@@ -622,15 +713,16 @@ class _RecordingProvider:
         *,
         pass_request: CognitionPassRequest | None = None,
     ) -> CognitiveOutput:
-        if pass_request is None:
-            output = await self.delegate.generate(cognitive_input)
-        else:
-            output = await self.delegate.generate(
-                cognitive_input,
-                pass_request=pass_request,
-            )
-        if not isinstance(output, CognitiveOutput):
-            raise TypeError("provider generate must return CognitiveOutput")
+        with self._request_scope("single_pass"):
+            if pass_request is None:
+                output = await self.delegate.generate(cognitive_input)
+            else:
+                output = await self.delegate.generate(
+                    cognitive_input,
+                    pass_request=pass_request,
+                )
+            if not isinstance(output, CognitiveOutput):
+                raise TypeError("provider generate must return CognitiveOutput")
         self.outputs.append(output)
         return output
 
@@ -642,9 +734,10 @@ class _RecordingProvider:
         stream_generate = getattr(self.delegate, "stream_generate", None)
         if stream_generate is None:
             raise TypeError("provider does not support cognitive streaming")
-        output = await stream_generate(cognitive_input, emit_response_delta)
-        if not isinstance(output, CognitiveOutput):
-            raise TypeError("provider stream_generate must return CognitiveOutput")
+        with self._request_scope("single_pass"):
+            output = await stream_generate(cognitive_input, emit_response_delta)
+            if not isinstance(output, CognitiveOutput):
+                raise TypeError("provider stream_generate must return CognitiveOutput")
         self.outputs.append(output)
         return output
 
@@ -657,17 +750,18 @@ class _RecordingProvider:
         generate_conversation = getattr(self.delegate, "generate_conversation", None)
         if not callable(generate_conversation):
             raise TypeError("provider does not support two-pass conversation generation")
-        if pass_request is None:
-            output = await generate_conversation(cognitive_input)
-        else:
-            output = await generate_conversation(
-                cognitive_input,
-                pass_request=pass_request,
-            )
-        if not isinstance(output, CognitionConversationOutput):
-            raise TypeError(
-                "provider generate_conversation must return CognitionConversationOutput"
-            )
+        with self._request_scope("pass1"):
+            if pass_request is None:
+                output = await generate_conversation(cognitive_input)
+            else:
+                output = await generate_conversation(
+                    cognitive_input,
+                    pass_request=pass_request,
+                )
+            if not isinstance(output, CognitionConversationOutput):
+                raise TypeError(
+                    "provider generate_conversation must return CognitionConversationOutput"
+                )
         self.conversation_outputs.append(output)
         return output
 
@@ -685,21 +779,22 @@ class _RecordingProvider:
         )
         if not callable(stream_generate_conversation):
             raise TypeError("provider does not support two-pass conversation streaming")
-        if pass_request is None:
-            output = await stream_generate_conversation(
-                cognitive_input,
-                emit_response_delta,
-            )
-        else:
-            output = await stream_generate_conversation(
-                cognitive_input,
-                emit_response_delta,
-                pass_request=pass_request,
-            )
-        if not isinstance(output, CognitionConversationOutput):
-            raise TypeError(
-                "provider stream_generate_conversation must return CognitionConversationOutput"
-            )
+        with self._request_scope("pass1"):
+            if pass_request is None:
+                output = await stream_generate_conversation(
+                    cognitive_input,
+                    emit_response_delta,
+                )
+            else:
+                output = await stream_generate_conversation(
+                    cognitive_input,
+                    emit_response_delta,
+                    pass_request=pass_request,
+                )
+            if not isinstance(output, CognitionConversationOutput):
+                raise TypeError(
+                    "provider stream_generate_conversation must return CognitionConversationOutput"
+                )
         self.conversation_outputs.append(output)
         return output
 
@@ -712,15 +807,16 @@ class _RecordingProvider:
         generate_extraction = getattr(self.delegate, "generate_extraction", None)
         if not callable(generate_extraction):
             raise TypeError("provider does not support structured extraction")
-        if pass_request is None:
-            output = await generate_extraction(extraction_input)
-        else:
-            output = await generate_extraction(
-                extraction_input,
-                pass_request=pass_request,
-            )
-        if not isinstance(output, CognitionExtractionOutput):
-            raise TypeError("provider generate_extraction must return CognitionExtractionOutput")
+        with self._request_scope("pass2"):
+            if pass_request is None:
+                output = await generate_extraction(extraction_input)
+            else:
+                output = await generate_extraction(
+                    extraction_input,
+                    pass_request=pass_request,
+                )
+            if not isinstance(output, CognitionExtractionOutput):
+                raise TypeError("provider generate_extraction must return CognitionExtractionOutput")
         self.extraction_outputs.append(output)
         return output
 
@@ -733,6 +829,8 @@ async def run_actual_model_scenario(
     scenario: ActualModelScenario,
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig | None = None,
+    execution_id: str | None = None,
+    scenario_revision: str | None = None,
 ) -> ActualModelEvidence:
     """Execute a semantic fixture through the resolved real ordinary-turn path.
 
@@ -755,14 +853,33 @@ async def run_actual_model_scenario(
             "cognitive-budget diagnostics"
         )
 
-    recording_provider = _RecordingProvider(provider)
     evidence: list[ActualModelTurnEvidence] = []
     bounded_failure: ActualModelBoundedBudgetFailureEvidence | None = None
+    request_failure: ActualModelRequestAttemptFailureEvidence | None = None
     memory_budget = None if cognitive_budget is not None else _memory_budget(manifest.budgets)
     event_budget = None if cognitive_budget is not None else _event_budget(manifest.budgets)
     manifest, continuity_runtime = _materialize_continuity_runtime(
         manifest=manifest,
         runtime=continuity_runtime,
+    )
+    run_id = stable_actual_model_run_id(manifest=manifest, scenario=scenario)
+    request_recorder = ActualModelRequestEvidenceRecorder(
+        execution_id=(
+            execution_id
+            if execution_id is not None
+            else _fallback_request_execution_id(run_id)
+        ),
+        run_id=run_id,
+        scenario_id=scenario.scenario_id,
+        scenario_revision=(
+            scenario_revision if scenario_revision is not None else scenario.version
+        ),
+        provider_identity=manifest.provider_identity,
+        adapter_identity=manifest.adapter_identity,
+    )
+    recording_provider = _RecordingProvider(
+        provider,
+        request_evidence=request_recorder,
     )
     two_pass_runtime = CognitionExecutionRuntime() if execution_mode == "two_pass" else None
 
@@ -770,6 +887,7 @@ async def run_actual_model_scenario(
         character = CharacterDirectory(character.root)
 
     for turn_index, content in enumerate(scenario.turns, start=1):
+        recording_provider.set_turn_index(turn_index)
         budget_observation: ActualModelCognitiveBudgetDiagnostics | None = None
         execution_observation: ActualModelCognitionExecutionObservation | None = None
         extraction_output_count = len(recording_provider.extraction_outputs)
@@ -921,7 +1039,23 @@ async def run_actual_model_scenario(
                 ),
             )
             break
+        except Exception:
+            request_evidence = request_recorder.records_for_turn(turn_index)
+            if (
+                not request_evidence
+                or recording_provider.last_pass_identity is None
+                or not recording_provider.last_request_attempt_failed
+            ):
+                raise
+            request_failure = ActualModelRequestAttemptFailureEvidence(
+                turn_index=turn_index,
+                input=content,
+                pass_identity=recording_provider.last_pass_identity,
+                request_evidence=request_evidence,
+            )
+            break
 
+        request_evidence = request_recorder.records_for_turn(turn_index)
         evidence.append(
             ActualModelTurnEvidence(
                 turn_index=turn_index,
@@ -930,15 +1064,17 @@ async def run_actual_model_scenario(
                 deterministic=deterministic,
                 cognitive_budget=budget_observation,
                 cognition_execution=execution_observation,
+                request_evidence=request_evidence,
             )
         )
 
     return ActualModelEvidence(
-        run_id=stable_actual_model_run_id(manifest=manifest, scenario=scenario),
+        run_id=run_id,
         manifest=manifest,
         scenario=scenario,
         turns=tuple(evidence),
         bounded_failure=bounded_failure,
+        request_failure=request_failure,
     )
 
 
@@ -958,6 +1094,14 @@ def stable_actual_model_run_id(
 
 async def _discard_delta(_: str) -> None:
     return None
+
+
+def _fallback_request_execution_id(run_id: str) -> str:
+    """Give direct scenario callers a stable binding until an execution plan exists."""
+
+    if run_id.startswith("amr-"):
+        return "amx-" + run_id[4:]
+    return "amx-" + hashlib.sha256(run_id.encode("utf-8")).hexdigest()
 
 
 def _execution_mode(manifest: ActualModelRunManifest) -> str:

@@ -8,6 +8,13 @@ from relaylm.actual_model_evaluation import (
     ActualModelEvidence,
     stable_actual_model_run_id,
 )
+from relaylm.actual_model_request_evidence import (
+    ActualModelRequestEvidence,
+    ActualModelRequestEvidenceError,
+)
+from relaylm.providers.openai_compatible_identity import (
+    OPENAI_COMPATIBLE_ADAPTER_IDENTITY,
+)
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionPlan,
     ActualModelScenarioExecutionResult,
@@ -162,6 +169,12 @@ def _validate_execution_plan_evidence_binding(
             raise ActualModelExecutionArtifactError(
                 "execution evidence does not match execution plan"
             )
+        _validate_ordinary_request_evidence(
+            evidence=evidence,
+            execution_id=result.execution_id,
+            scenario_revision=plan.scenario_set_revision,
+            manifest=plan.manifest,
+        )
         return
 
     if isinstance(evidence, ActualModelRestartEvidence):
@@ -182,10 +195,142 @@ def _validate_execution_plan_evidence_binding(
                 "execution evidence does not match execution plan"
             )
         _validate_restart_phase_evidence(evidence)
+        _validate_ordinary_request_evidence(
+            evidence=evidence.before_restart,
+            execution_id=result.execution_id,
+            scenario_revision=plan.scenario_set_revision,
+            manifest=plan.manifest,
+        )
+        _validate_ordinary_request_evidence(
+            evidence=evidence.after_restart,
+            execution_id=result.execution_id,
+            scenario_revision=plan.scenario_set_revision,
+            manifest=plan.manifest,
+        )
         return
 
     raise TypeError(
         "execution evidence must be ActualModelEvidence or ActualModelRestartEvidence"
+    )
+
+
+def _validate_ordinary_request_evidence(
+    *,
+    evidence: ActualModelEvidence,
+    execution_id: str,
+    scenario_revision: str,
+    manifest: object,
+) -> None:
+    """Validate request objects against the already-admitted execution envelope."""
+
+    allowed_passes = _allowed_request_passes(manifest)
+    requests = [
+        item
+        for turn in evidence.turns
+        for item in turn.request_evidence
+    ]
+    if evidence.request_failure is not None:
+        requests.extend(evidence.request_failure.request_evidence)
+    seen: set[tuple[int, str, int]] = set()
+    for request in requests:
+        if not isinstance(request, ActualModelRequestEvidence):
+            raise ActualModelExecutionArtifactError(
+                "execution request evidence must contain ActualModelRequestEvidence"
+            )
+        try:
+            request.validate_identity()
+        except (ActualModelRequestEvidenceError, TypeError, ValueError) as exc:
+            raise ActualModelExecutionArtifactError(
+                f"execution request evidence is not citable: {exc}"
+            ) from exc
+        if (
+            request.execution_id != execution_id
+            or request.run_id != evidence.run_id
+            or request.scenario_id != evidence.scenario.scenario_id
+            or request.scenario_revision != scenario_revision
+            or request.provider_identity != evidence.manifest.provider_identity
+            or request.adapter_identity != evidence.manifest.adapter_identity
+        ):
+            raise ActualModelExecutionArtifactError(
+                "execution request evidence does not match execution binding"
+            )
+        if request.pass_identity not in allowed_passes:
+            raise ActualModelExecutionArtifactError(
+                "execution request evidence pass does not match cognition topology"
+            )
+        if not 0 < request.turn_index <= len(evidence.scenario.turns):
+            raise ActualModelExecutionArtifactError(
+                "execution request evidence turn is outside the scenario"
+            )
+        key = (request.turn_index, request.pass_identity, request.request_ordinal)
+        if key in seen:
+            raise ActualModelExecutionArtifactError(
+                "execution request evidence contains a duplicate request ordinal"
+            )
+        seen.add(key)
+
+    for turn in evidence.turns:
+        for request in turn.request_evidence:
+            if request.turn_index != turn.turn_index:
+                raise ActualModelExecutionArtifactError(
+                    "turn request evidence does not match its turn"
+                )
+        if request_evidence_is_required(manifest):
+            expected_pass = _canonical_request_pass(manifest)
+            if not any(
+                request.pass_identity == expected_pass
+                for request in turn.request_evidence
+            ):
+                raise ActualModelExecutionArtifactError(
+                    "execution is missing the exact canonical provider request evidence"
+                )
+    if evidence.request_failure is not None:
+        if (
+            evidence.request_failure.turn_index != len(evidence.turns) + 1
+            or evidence.request_failure.turn_index > len(evidence.scenario.turns)
+        ):
+            raise ActualModelExecutionArtifactError(
+                "request failure turn does not follow the completed execution turns"
+            )
+        expected_pass = _canonical_request_pass(manifest)
+        if not any(
+            request.pass_identity == expected_pass
+            for request in evidence.request_failure.request_evidence
+        ):
+            raise ActualModelExecutionArtifactError(
+                "request failure is missing the exact canonical provider request evidence"
+            )
+
+
+def _allowed_request_passes(manifest: object) -> frozenset[str]:
+    cognition_execution = getattr(manifest, "cognition_execution", None)
+    if cognition_execution is None or cognition_execution.mode == "single_pass":
+        return frozenset({"single_pass"})
+    if cognition_execution.mode == "two_pass":
+        return frozenset({"pass1", "pass2"})
+    if cognition_execution.mode == "shadow_two_pass":
+        return frozenset({"single_pass", "pass2"})
+    raise ActualModelExecutionArtifactError(
+        "execution request evidence has unsupported cognition topology"
+    )
+
+
+def request_evidence_is_required(manifest: object) -> bool:
+    """Require transport evidence for the canonical OpenAI-compatible adapter."""
+
+    return getattr(manifest, "adapter_identity", None) == OPENAI_COMPATIBLE_ADAPTER_IDENTITY
+
+
+def _canonical_request_pass(manifest: object) -> str:
+    cognition_execution = getattr(manifest, "cognition_execution", None)
+    if cognition_execution is None or cognition_execution.mode == "single_pass":
+        return "single_pass"
+    if cognition_execution.mode == "two_pass":
+        return "pass1"
+    if cognition_execution.mode == "shadow_two_pass":
+        return "single_pass"
+    raise ActualModelExecutionArtifactError(
+        "execution request evidence has unsupported cognition topology"
     )
 
 

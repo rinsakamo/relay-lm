@@ -15,11 +15,16 @@ from relaylm.actual_model_artifacts import (
 from relaylm.actual_model_cognitive_budget import (
     validate_cognitive_budget_runtime_identity,
 )
-from relaylm.actual_model_evaluation import ActualModelEvidence, ActualModelRunManifest
+from relaylm.actual_model_evaluation import (
+    ActualModelEvidence,
+    ActualModelRunManifest,
+    stable_actual_model_run_id,
+)
 from relaylm.actual_model_restart import (
     ActualModelRestartEvidence,
     ActualModelRestartRunManifest,
     run_actual_model_restart_scenario,
+    stable_actual_model_restart_run_id,
 )
 from relaylm.actual_model_scenarios import (
     ActualModelScenarioDefinition,
@@ -242,6 +247,17 @@ async def run_actual_model_scenario_definition(
         split = definition.restart_after_turn_count
         assert continuity is not None
         assert split is not None
+        restart_manifest = ActualModelRestartRunManifest(
+            base=manifest,
+            restart_after_turn_count=split,
+            continuity_max_items=continuity.max_items,
+            continuity_lifetime_revisions=continuity.lifetime_revisions,
+        )
+        restart_run_id = stable_actual_model_restart_run_id(
+            manifest=restart_manifest,
+            scenario=definition.scenario,
+        )
+        execution_id = _stable_execution_id(plan=plan, run_id=restart_run_id)
         character = prepare_character_fixture_workspace(
             fixture_root=fixture_root,
             workspace_root=workspace_root,
@@ -250,15 +266,17 @@ async def run_actual_model_scenario_definition(
         evidence: ActualModelExecutedEvidence = await run_actual_model_restart_scenario(
             character=character,
             provider=provider,
-            manifest=ActualModelRestartRunManifest(
-                base=manifest,
-                restart_after_turn_count=split,
-                continuity_max_items=continuity.max_items,
-                continuity_lifetime_revisions=continuity.lifetime_revisions,
-            ),
+            manifest=restart_manifest,
             scenario=definition.scenario,
+            execution_id=execution_id,
+            scenario_revision=plan.scenario_set_revision,
         )
     else:
+        run_id = stable_actual_model_run_id(
+            manifest=manifest,
+            scenario=definition.scenario,
+        )
+        execution_id = _stable_execution_id(plan=plan, run_id=run_id)
         evidence = await run_actual_model_fixture(
             fixture_root=fixture_root,
             workspace_root=workspace_root,
@@ -266,6 +284,8 @@ async def run_actual_model_scenario_definition(
             manifest=manifest,
             scenario=definition.scenario,
             cognitive_budget=cognitive_budget,
+            execution_id=execution_id,
+            scenario_revision=plan.scenario_set_revision,
         )
 
     return ActualModelScenarioExecutionResult(
