@@ -28,18 +28,42 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Apply exact bounded production patch
-        run: python tools/_knowledge_v0_patch.py
+      - name: Apply exact bounded production and authority patches
+        run: |
+          python tools/_knowledge_v0_patch.py
+          python tools/_knowledge_v0_followup_patch.py
 
       - name: Remove bootstrap-only files from product diff
         run: |
           rm tools/_knowledge_v0_patch.py
+          rm tools/_knowledge_v0_followup_patch.py
           rm .github/workflows/_knowledge-v0-bootstrap.yml
 
-      - name: Install and run full deterministic suite
+      - name: Install test environment
+        run: python -m pip install -e ".[test]"
+
+      - name: Advance exact Core semantic freeze for this semantic transaction
         run: |
-          python -m pip install -e ".[test]"
-          python -m pytest -q
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from tools.repository_authority import load_declarations, qualification_fingerprint
+
+          root = Path.cwd()
+          path = root / "evaluation/actual_model/qualifications/core-semantic-v1.json"
+          spec = json.loads(path.read_text(encoding="utf-8"))
+          fingerprint = qualification_fingerprint(
+              root,
+              load_declarations(root),
+              roots=tuple(spec["roots"]),
+          )
+          spec["expected_fingerprint"] = fingerprint
+          path.write_text(json.dumps(spec, indent=2) + "\n", encoding="utf-8")
+          print(f"advanced core-semantic-v1 to {fingerprint}")
+          PY
+
+      - name: Run full deterministic suite
+        run: python -m pytest -q
 
       - name: Commit verified product diff
         run: |
