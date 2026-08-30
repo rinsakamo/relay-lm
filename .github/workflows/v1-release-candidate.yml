@@ -95,22 +95,27 @@ jobs:
             python -m pip freeze
           } > candidate/build-environment.txt
 
-      - name: Create checkout-external operator fixture
+      - name: Validate exact wheel through installed operator and deterministic paths
         run: |
-          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
-          CHARACTER="$SMOKE_ROOT/character"
-          mkdir -p "$CHARACTER"
-          cat > "$CHARACTER/config.yaml" <<'YAML'
+          ENV_ROOT="$RUNNER_TEMP/relaylm-candidate-wheel-env"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-wheel-smoke"
+          PACKAGE_ROOT="$SMOKE_ROOT/relm"
+          RUNTIME_CONFIG="$SMOKE_ROOT/runtime.yaml"
+          mkdir -p "$SMOKE_ROOT"
+          python -m venv "$ENV_ROOT"
+          "$ENV_ROOT/bin/python" -m pip install candidate/relaylm-*.whl
+          "$ENV_ROOT/bin/python" -m pip check
+          "$ENV_ROOT/bin/python" - "$PACKAGE_ROOT" <<'PY'
+          import sys
+          from relaylm.starters import materialize_starter_package
+
+          materialize_starter_package("relm", sys.argv[1])
+          PY
+          cat > "$RUNTIME_CONFIG" <<YAML
           format_version: 1
-          character:
-            id: release-candidate-smoke
-            name: Release Candidate Smoke
-          YAML
-          printf '%s\n' 'A valid release candidate smoke identity.' > "$CHARACTER/SOUL.md"
-          cat > "$SMOKE_ROOT/runtime.yaml" <<YAML
-          format_version: 1
-          character:
-            directory: $CHARACTER
+          profiles:
+            - name: relm
+              root: $PACKAGE_ROOT
           provider:
             adapter: openai_compatible
             base_url: http://127.0.0.1:1234/v1
@@ -119,22 +124,14 @@ jobs:
             host: 127.0.0.1
             port: 18090
           YAML
-
-      - name: Validate exact wheel through installed operator and deterministic paths
-        run: |
-          ENV_ROOT="$RUNNER_TEMP/relaylm-candidate-wheel-env"
-          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
-          python -m venv "$ENV_ROOT"
-          "$ENV_ROOT/bin/python" -m pip install candidate/relaylm-*.whl
-          "$ENV_ROOT/bin/python" -m pip check
           test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
-          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/wheel-doctor.json")
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$RUNTIME_CONFIG" --json > "$GITHUB_WORKSPACE/candidate/wheel-doctor.json")
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/wheel-evaluation.json")
           python -m tools.release_candidate verify-runtime \
             --doctor candidate/wheel-doctor.json \
             --evaluation candidate/wheel-evaluation.json
           pushd "$RUNNER_TEMP" >/dev/null
-          "$ENV_ROOT/bin/relaylm" serve --config "$SMOKE_ROOT/runtime.yaml" > "$GITHUB_WORKSPACE/candidate/wheel-serve.log" 2>&1 &
+          "$ENV_ROOT/bin/relaylm" serve --config "$RUNTIME_CONFIG" > "$GITHUB_WORKSPACE/candidate/wheel-serve.log" 2>&1 &
           SERVER_PID=$!
           popd >/dev/null
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
@@ -158,16 +155,59 @@ jobs:
       - name: Validate exact sdist through a second fresh installed environment
         run: |
           ENV_ROOT="$RUNNER_TEMP/relaylm-candidate-sdist-env"
-          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-sdist-smoke"
+          PACKAGE_ROOT="$SMOKE_ROOT/fact-summarizer"
+          RUNTIME_CONFIG="$SMOKE_ROOT/runtime.yaml"
+          mkdir -p "$SMOKE_ROOT"
           python -m venv "$ENV_ROOT"
           "$ENV_ROOT/bin/python" -m pip install candidate/relaylm-*.tar.gz
           "$ENV_ROOT/bin/python" -m pip check
+          "$ENV_ROOT/bin/python" - "$PACKAGE_ROOT" <<'PY'
+          import sys
+          from relaylm.starters import materialize_starter_package
+
+          materialize_starter_package("fact-summarizer", sys.argv[1])
+          PY
+          cat > "$RUNTIME_CONFIG" <<YAML
+          format_version: 1
+          profiles:
+            - name: fact-summarizer
+              root: $PACKAGE_ROOT
+          provider:
+            adapter: openai_compatible
+            base_url: http://127.0.0.1:1234/v1
+            model: release-candidate-smoke-model
+          server:
+            host: 127.0.0.1
+            port: 18091
+          YAML
           test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
-          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/sdist-doctor.json")
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$RUNTIME_CONFIG" --json > "$GITHUB_WORKSPACE/candidate/sdist-doctor.json")
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/sdist-evaluation.json")
           python -m tools.release_candidate verify-runtime \
             --doctor candidate/sdist-doctor.json \
             --evaluation candidate/sdist-evaluation.json
+          pushd "$RUNNER_TEMP" >/dev/null
+          "$ENV_ROOT/bin/relaylm" serve --config "$RUNTIME_CONFIG" > "$GITHUB_WORKSPACE/candidate/sdist-serve.log" 2>&1 &
+          SERVER_PID=$!
+          popd >/dev/null
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          HEALTH_OK=0
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18091/health > candidate/sdist-health.json; then
+              HEALTH_OK=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat candidate/sdist-serve.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$HEALTH_OK" -eq 1
+          kill "$SERVER_PID" 2>/dev/null || true
+          wait "$SERVER_PID" || true
+          trap - EXIT
 
       - name: Reverify immutable candidate bytes after execution
         run: |
