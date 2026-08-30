@@ -15,11 +15,19 @@ from relaylm.actual_model_evaluation import (
 from relaylm.actual_model_quality import (
     QUALITY_RUBRIC_VERSION,
     ContinuityProposalLabel,
+    ProposalScoring,
     StateProposalLabel,
     TurnProposalLabels,
 )
 
-ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 1
+LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 1
+ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION = 2
+_SUPPORTED_SCENARIO_SET_FORMAT_VERSIONS = frozenset(
+    {
+        LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION,
+        ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION,
+    }
+)
 
 
 class ActualModelScenarioSetError(ValueError):
@@ -34,6 +42,7 @@ class ActualModelScenarioDefinition:
     proposal_labels: tuple[TurnProposalLabels, ...]
     required_provider_capabilities: tuple[str, ...]
     restart_after_turn_count: int | None = None
+    proposal_scoring: ProposalScoring | None = None
 
     def __post_init__(self) -> None:
         if len(set(self.required_provider_capabilities)) != len(
@@ -49,12 +58,42 @@ class ActualModelScenarioDefinition:
             raise ValueError(
                 "required_provider_capabilities must contain non-empty strings"
             )
+        if self.proposal_scoring is not None and not isinstance(
+            self.proposal_scoring, ProposalScoring
+        ):
+            raise TypeError("proposal_scoring must be ProposalScoring or None")
 
         turn_indexes = tuple(item.turn_index for item in self.proposal_labels)
         if len(set(turn_indexes)) != len(turn_indexes):
             raise ValueError("proposal labels must not duplicate turn_index")
         if any(index > len(self.scenario.turns) for index in turn_indexes):
             raise ValueError("proposal labels reference a turn outside the scenario")
+
+        if self.proposal_scoring is not None:
+            if self.proposal_scoring.state == "unscored" and any(
+                item.state for item in self.proposal_labels
+            ):
+                raise ValueError("unscored state channel must not carry proposal labels")
+            if self.proposal_scoring.continuity == "unscored" and any(
+                item.continuity for item in self.proposal_labels
+            ):
+                raise ValueError(
+                    "unscored continuity channel must not carry proposal labels"
+                )
+            if (
+                self.proposal_scoring.state == "scored"
+                and "state_candidates" not in self.required_provider_capabilities
+            ):
+                raise ValueError(
+                    "scored state channel requires state_candidates provider capability"
+                )
+            if (
+                self.proposal_scoring.continuity == "scored"
+                and "continuity_candidates" not in self.required_provider_capabilities
+            ):
+                raise ValueError(
+                    "scored continuity channel requires continuity_candidates provider capability"
+                )
 
         if self.scenario.family == "restart_quality":
             if self.restart_after_turn_count is None:
@@ -74,8 +113,14 @@ class ActualModelScenarioDefinition:
                 "restart_after_turn_count is only valid for restart_quality scenarios"
             )
 
+    @property
+    def effective_proposal_scoring(self) -> ProposalScoring:
+        """Legacy sets score both channels; current sets declare scope explicitly."""
+
+        return self.proposal_scoring or ProposalScoring()
+
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             **self.scenario.to_mapping(),
             "required_provider_capabilities": list(
                 self.required_provider_capabilities
@@ -85,6 +130,9 @@ class ActualModelScenarioDefinition:
                 _turn_labels_to_mapping(item) for item in self.proposal_labels
             ],
         }
+        if self.proposal_scoring is not None:
+            mapping["proposal_scoring"] = self.proposal_scoring.to_mapping()
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +146,7 @@ class ActualModelScenarioSet:
     format_version: int = ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION
 
     def __post_init__(self) -> None:
-        if self.format_version != ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+        if self.format_version not in _SUPPORTED_SCENARIO_SET_FORMAT_VERSIONS:
             raise ValueError(
                 "unsupported actual-model scenario-set format_version: "
                 f"{self.format_version}"
@@ -116,6 +164,15 @@ class ActualModelScenarioSet:
         scenario_ids = tuple(item.scenario.scenario_id for item in self.scenarios)
         if len(set(scenario_ids)) != len(scenario_ids):
             raise ValueError("scenario ids must be unique within a scenario set")
+        if self.format_version == LEGACY_ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+            if any(item.proposal_scoring is not None for item in self.scenarios):
+                raise ValueError(
+                    "legacy scenario sets must not declare proposal_scoring"
+                )
+        elif any(item.proposal_scoring is None for item in self.scenarios):
+            raise ValueError(
+                "current scenario sets require explicit proposal_scoring for every scenario"
+            )
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -178,7 +235,7 @@ def load_actual_model_scenario_set(path: str | Path) -> ActualModelScenarioSet:
     )
 
     format_version = _require_int(mapping["format_version"], "format_version")
-    if format_version != ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+    if format_version not in _SUPPORTED_SCENARIO_SET_FORMAT_VERSIONS:
         raise ActualModelScenarioSetError(
             f"unsupported actual-model scenario-set format_version: {format_version}"
         )
@@ -196,7 +253,11 @@ def load_actual_model_scenario_set(path: str | Path) -> ActualModelScenarioSet:
                 mapping["character_fixture_id"], "character_fixture_id"
             ),
             scenarios=tuple(
-                _parse_scenario(item, index=index)
+                _parse_scenario(
+                    item,
+                    index=index,
+                    scenario_set_format_version=format_version,
+                )
                 for index, item in enumerate(scenarios_raw, start=1)
             ),
         )
@@ -206,55 +267,59 @@ def load_actual_model_scenario_set(path: str | Path) -> ActualModelScenarioSet:
         raise ActualModelScenarioSetError(str(exc)) from exc
 
 
-def _parse_scenario(raw: object, *, index: int) -> ActualModelScenarioDefinition:
-    mapping = _require_mapping(raw, f"scenarios[{index}]")
-    _require_exact_keys(
-        mapping,
-        {
-            "format_version",
-            "id",
-            "family",
-            "version",
-            "turns",
-            "required_provider_capabilities",
-            "restart_after_turn_count",
-            "proposal_labels",
-        },
-        f"scenarios[{index}]",
-    )
-    family = _require_string(mapping["family"], f"scenarios[{index}].family")
-    turns_raw = _require_list(mapping["turns"], f"scenarios[{index}].turns")
+def _parse_scenario(
+    raw: object,
+    *,
+    index: int,
+    scenario_set_format_version: int,
+) -> ActualModelScenarioDefinition:
+    label = f"scenarios[{index}]"
+    mapping = _require_mapping(raw, label)
+    expected_keys = {
+        "format_version",
+        "id",
+        "family",
+        "version",
+        "turns",
+        "required_provider_capabilities",
+        "restart_after_turn_count",
+        "proposal_labels",
+    }
+    if scenario_set_format_version == ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+        expected_keys.add("proposal_scoring")
+    _require_exact_keys(mapping, expected_keys, label)
+
+    family = _require_string(mapping["family"], f"{label}.family")
+    turns_raw = _require_list(mapping["turns"], f"{label}.turns")
     capabilities_raw = _require_list(
         mapping["required_provider_capabilities"],
-        f"scenarios[{index}].required_provider_capabilities",
+        f"{label}.required_provider_capabilities",
     )
-    labels_raw = _require_list(
-        mapping["proposal_labels"], f"scenarios[{index}].proposal_labels"
-    )
+    labels_raw = _require_list(mapping["proposal_labels"], f"{label}.proposal_labels")
     restart_after = mapping["restart_after_turn_count"]
     if restart_after is not None:
-        restart_after = _require_int(
-            restart_after, f"scenarios[{index}].restart_after_turn_count"
-        )
+        restart_after = _require_int(restart_after, f"{label}.restart_after_turn_count")
 
-    scenario_format = _require_int(
-        mapping["format_version"], f"scenarios[{index}].format_version"
-    )
+    scenario_format = _require_int(mapping["format_version"], f"{label}.format_version")
     if scenario_format != ACTUAL_MODEL_SCENARIO_FORMAT_VERSION:
         raise ActualModelScenarioSetError(
-            f"scenarios[{index}] has unsupported scenario format_version: "
-            f"{scenario_format}"
+            f"{label} has unsupported scenario format_version: {scenario_format}"
+        )
+
+    proposal_scoring = None
+    if scenario_set_format_version == ACTUAL_MODEL_SCENARIO_SET_FORMAT_VERSION:
+        proposal_scoring = _parse_proposal_scoring(
+            mapping["proposal_scoring"],
+            label=f"{label}.proposal_scoring",
         )
 
     return ActualModelScenarioDefinition(
         scenario=ActualModelScenario(
-            scenario_id=_require_string(mapping["id"], f"scenarios[{index}].id"),
+            scenario_id=_require_string(mapping["id"], f"{label}.id"),
             family=cast(ScenarioFamily, family),
-            version=_require_string(
-                mapping["version"], f"scenarios[{index}].version"
-            ),
+            version=_require_string(mapping["version"], f"{label}.version"),
             turns=tuple(
-                _require_string(turn, f"scenarios[{index}].turns[{turn_index}]")
+                _require_string(turn, f"{label}.turns[{turn_index}]")
                 for turn_index, turn in enumerate(turns_raw, start=1)
             ),
             format_version=scenario_format,
@@ -262,8 +327,7 @@ def _parse_scenario(raw: object, *, index: int) -> ActualModelScenarioDefinition
         required_provider_capabilities=tuple(
             _require_string(
                 item,
-                f"scenarios[{index}].required_provider_capabilities"
-                f"[{capability_index}]",
+                f"{label}.required_provider_capabilities[{capability_index}]",
             )
             for capability_index, item in enumerate(capabilities_raw, start=1)
         ),
@@ -271,6 +335,19 @@ def _parse_scenario(raw: object, *, index: int) -> ActualModelScenarioDefinition
         proposal_labels=tuple(
             _parse_turn_labels(item, scenario_index=index, label_index=label_index)
             for label_index, item in enumerate(labels_raw, start=1)
+        ),
+        proposal_scoring=proposal_scoring,
+    )
+
+
+def _parse_proposal_scoring(raw: object, *, label: str) -> ProposalScoring:
+    mapping = _require_mapping(raw, label)
+    _require_exact_keys(mapping, {"state", "continuity"}, label)
+    return ProposalScoring(
+        state=cast(Any, _require_string(mapping["state"], f"{label}.state")),
+        continuity=cast(
+            Any,
+            _require_string(mapping["continuity"], f"{label}.continuity"),
         ),
     )
 
@@ -282,9 +359,7 @@ def _parse_turn_labels(
     mapping = _require_mapping(raw, label)
     _require_exact_keys(mapping, {"turn_index", "state", "continuity"}, label)
     state_raw = _require_list(mapping["state"], f"{label}.state")
-    continuity_raw = _require_list(
-        mapping["continuity"], f"{label}.continuity"
-    )
+    continuity_raw = _require_list(mapping["continuity"], f"{label}.continuity")
     return TurnProposalLabels(
         turn_index=_require_int(mapping["turn_index"], f"{label}.turn_index"),
         state=tuple(
@@ -292,9 +367,7 @@ def _parse_turn_labels(
             for index, item in enumerate(state_raw, start=1)
         ),
         continuity=tuple(
-            _parse_continuity_label(
-                item, label=f"{label}.continuity[{index}]"
-            )
+            _parse_continuity_label(item, label=f"{label}.continuity[{index}]")
             for index, item in enumerate(continuity_raw, start=1)
         ),
     )
@@ -303,9 +376,7 @@ def _parse_turn_labels(
 def _parse_state_label(raw: object, *, label: str) -> StateProposalLabel:
     mapping = _require_mapping(raw, label)
     _require_label_keys(mapping, label)
-    match_value = _require_bool(
-        mapping.get("match_value", False), f"{label}.match_value"
-    )
+    match_value = _require_bool(mapping.get("match_value", False), f"{label}.match_value")
     _validate_label_value_shape(mapping, match_value=match_value, label=label)
     return StateProposalLabel(
         state_class=_require_string(mapping["state_class"], f"{label}.state_class"),
@@ -321,9 +392,7 @@ def _parse_continuity_label(
 ) -> ContinuityProposalLabel:
     mapping = _require_mapping(raw, label)
     _require_label_keys(mapping, label, continuity=True)
-    match_value = _require_bool(
-        mapping.get("match_value", False), f"{label}.match_value"
-    )
+    match_value = _require_bool(mapping.get("match_value", False), f"{label}.match_value")
     _validate_label_value_shape(mapping, match_value=match_value, label=label)
     return ContinuityProposalLabel(
         kind=_require_string(mapping["kind"], f"{label}.kind"),
