@@ -1,18 +1,22 @@
 # Actual-model vLLM functional acceptance
 
-Status: launch/runtime qualification is owned by completed #1959 capability authority; current post-freeze semantic qualification is owned by #2017 under #1386 actual-model product-quality authority.
+Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386, with the current production semantic qualification transaction owned by #2017. Numeric Cognitive Budget selection remains #1388 authority.
 
 Stage R exists first to answer a product question:
 
 > Does the exact current two-pass RelayLM path work end-to-end with a real model?
 
-Capacity, token usage, latency, KV reuse and numeric profile selection are supporting observations. They must not become prerequisites that delay or replace the functional-quality question. Numeric/default selection remains downstream #1388 work.
+Capacity, token usage, latency and KV observations support that question. Transient free VRAM must not redefine the semantic/evaluation window or force RelayLM to maximize whatever memory happens to be free at one instant.
 
 ## Functional acceptance identity
 
-Functional acceptance uses the current canonical Stage R semantic plan and the exact live vLLM capacity discovered for the test machine.
+Functional acceptance uses:
 
-There is no repository-owned fixed functional-test context window.
+- the current canonical Stage R semantic plan;
+- one exact target/runtime/runner launch class;
+- one explicitly selected execution token window from the applicable current evaluation/calibration authority;
+- stable same-launch-class memory geometry sufficient to carry that window;
+- fresh host free-memory evidence only as a final feasibility check.
 
 Keep fixed:
 
@@ -21,38 +25,112 @@ Keep fixed:
 - execution: buffered two-pass;
 - `reference_baseline`: Pass 1 reasoning OFF / Pass 2 reasoning OFF;
 - decoding: `temperature=0`, `top_p=1`, `seed=null`;
-- scenarios: existing `response-persona-correction-v1` and `continuity-lifecycle-v1` only;
+- current foundation-v3 scenarios selected by the current Stage R template;
 - current prompt/wire and State/Continuity/Event semantics.
 
-The canonical vLLM runtime is the runtime bound by the current frozen reasoning proof, not whichever vLLM package happens to be installed globally. The local `0.27.1` runtime is not an interchangeable substitute for the frozen Google W4A16 target: prior provider evidence found that target fails to start on that runtime, while the exact `70b84f0bc...` source runtime has already reproduced model-load/server readiness with runner v2 on the current host.
+The canonical vLLM runtime is the runtime bound by the frozen target/runtime proof, not whichever vLLM package happens to be installed globally.
 
-The execution window is bound from fresh external capacity evidence whose `observed_max_model_len` is the exact live value for the same checkout/canonical runtime.
+The execution token window is **not** selected from the current free-VRAM ratio and is **not** automatically the largest window the host can fit. #1388 owns release Cognitive Budget selection. A bounded comparison/evaluation owner may bind an explicit experiment window where current authority permits that use, but must not silently promote it to a release default.
 
-## Hardware capability discovery
+If current authority supplies no legal target window, stop on that authority gap. Do not replace it with `--max-model-len auto` merely to consume available VRAM.
 
-Do not treat a guessed `gpu_memory_utilization` fraction or a repository-chosen context size as hardware capability.
+## Token-capacity-based physical admission
 
-For one #1959 launch transaction, acquire fresh CUDA `free_bytes` and `total_bytes` immediately before the profiler launch and construct one `VLLMLaunchMemoryAdmission` from those bytes. The admission quantizes the fresh free-memory ratio downward to an exact three-decimal value:
+For an already-qualified launch class, ordinary Stage R launch admission is based on the memory required to carry the selected token window.
+
+Fresh `free_bytes` is a feasibility observation only:
 
 ```text
-utilization_millis = floor(1000 * free_bytes / total_bytes)
-gpu_memory_utilization = utilization_millis / 1000
+fresh_free_bytes >= required_total_bytes
 ```
 
-The quantized value must be strictly between `0.000` and `1.000` or preparation fails closed. It is transaction-scoped startup admission, not a release/default fraction. The same immutable admission must render both profiler and final-runtime memory arguments so the final launch cannot silently fall back to a vLLM default.
+Changing free VRAM above that boundary must not change:
 
-Use the exact canonical vLLM runtime's own memory profiler in bounded steps:
+- selected `max_model_len`;
+- explicit KV-cache bytes;
+- requested runtime memory envelope;
+- A/B comparison semantics.
 
-1. **Probe.** Start the exact target on source `70b84f0bc...` with the transaction admission's explicit `--gpu-memory-utilization=<fresh-derived-value>`, normal profiling enabled, `--max-model-len auto`, and no explicit KV override. This probe exists only to obtain runtime memory facts; the admission fraction is not the capability result.
-2. **Resolve KV capacity from free VRAM.** Retain the profiler output for startup free GPU memory, weights/model memory, peak activation memory, non-Torch memory and CUDA-graph memory. The pinned runtime intentionally emits two distinct explicit-KV recommendation roles in the same profiling message: one value to fit into the currently requested memory envelope and another value to fully utilize currently available GPU memory. **Stage R authority is the fully-utilize GPU-memory role only.** The requested-memory-limit value is legitimate backend output but is not the final-runtime KV authority and must not be treated as a conflicting Stage R recommendation. The pinned runtime may present either role in surrounding log prose or Markdown-like backticks and may spell the evidence token as either `--kv-cache-memory=<bytes>` or `--kv-cache-memory-bytes=<bytes>`. Parse the raw profiler log with `python -m relaylm.actual_model_vllm_profiler --log <profiler-log>`; the command prints the exact positive integer only when the fully-utilize role is unambiguous, ignores the requested-limit role for this Stage R purpose, and fails closed when the fully-utilize role is missing or internally conflicting. Do not hand-parse this value with whitespace-sensitive `rg`/shell extraction. The canonical source contract defines explicit KV bytes as overriding `gpu_memory_utilization` for KV sizing.
-3. **Final capability run.** Restart the exact same target/runtime using `VLLMLaunchMemoryAdmission.final_memory_args(...)`: the final launch must carry the exact same transaction `--gpu-memory-utilization` value, the fresh parsed `--kv-cache-memory-bytes=<bytes>` value, and `--max-model-len auto`. Explicit KV remains the KV-sizing authority; repeating the admission value preserves pinned-vLLM startup admission parity rather than sizing KV a second time. Auto-fit then resolves the maximum model length supported by the profiled KV capacity.
-4. Attest the final live `/version` and `/v1/models` identity, `max_model_len`, runner v2, model root and GPU KV-cache token capacity, and retain the exact final launch arguments/startup log.
+### Stable launch-class geometry
 
-Do not invent or reuse a fallback fraction such as 0.9, 0.92, or a prior transaction's derived value. If the canonical runtime does not expose enough fresh memory-profile evidence to derive a valid admission or an unambiguous explicit KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
+Bind a citable successful launch-capability observation for the same target/runtime/runner/host capability class containing at least:
 
-If unrelated GPU processes or display load materially change between probe and final launch, repeat the probe rather than reusing stale transaction admission or KV evidence.
+- startup free GPU bytes from the successful launch;
+- explicit KV-cache bytes used by that successful launch;
+- resulting GPU KV-cache token capacity;
+- target/runtime/runner identity.
 
-The discovered maximum is a hardware/backend capability fact for this exact machine/runtime state. It is not a release/default recommendation.
+A conservative reusable non-KV envelope is:
+
+```text
+reference_non_kv_bytes =
+    successful_startup_free_bytes
+    - successful_explicit_kv_cache_bytes
+```
+
+This is deliberately an upper-bound carriage envelope, not a claim that every byte in the difference was consumed by the model.
+
+For a selected `target_model_len`, derive a conservative KV requirement without extrapolating beyond the attested token capacity:
+
+```text
+kv_bytes_per_token_upper =
+    ceil(reference_kv_cache_bytes / reference_kv_cache_capacity_tokens)
+
+required_kv_cache_bytes =
+    target_model_len * kv_bytes_per_token_upper
+
+required_total_bytes =
+    reference_non_kv_bytes + required_kv_cache_bytes
+```
+
+`target_model_len` must be positive and must not exceed the attested KV token capacity. A larger target requires fresh launch-capability evidence rather than extrapolation.
+
+The repository helper `VLLMTokenCapacityReference` owns this deterministic conversion. `VLLMLaunchMemoryAdmission.for_token_window(...)` combines it with fresh `free_bytes` / `total_bytes`.
+
+### Pinned-vLLM startup guard
+
+The pinned vLLM runtime applies `gpu_memory_utilization` as an early startup guard even when explicit `kv_cache_memory_bytes` later owns KV allocation.
+
+Therefore RelayLM still renders an explicit `--gpu-memory-utilization`, but it is derived from `required_total_bytes / total_bytes`, **not** from `free_bytes / total_bytes`.
+
+Its only purpose in this path is to keep pinned-vLLM's startup guard at or below the already-proven required envelope. It does not size KV and it does not expand when more VRAM happens to be free.
+
+The final launch uses:
+
+```text
+--gpu-memory-utilization <required-envelope-derived value>
+--kv-cache-memory-bytes <required_kv_cache_bytes>
+--max-model-len <selected target_model_len>
+```
+
+No `auto` is used for the Stage R target window.
+
+Explicit KV bytes remain the KV-sizing authority.
+
+If fresh free memory is below `required_total_bytes`, fail closed before launch. Do not shrink the target silently, rerun Calibration, or reinterpret the failure as a semantic defect.
+
+### Relationship to capability profiling
+
+The existing profiler parser remains valid for **launch-capability acquisition** when the launch-significant target/runtime/runner class changes and new memory geometry must be attested.
+
+`python -m relaylm.actual_model_vllm_profiler --log <profiler-log>` still parses the pinned runtime's unambiguous “fully utilize GPU memory” KV recommendation for that capability transaction.
+
+Ordinary Stage R does not repeat that maximize-free-VRAM profiler merely because desktop/WSL/driver VRAM occupancy changed.
+
+Historical #1959 evidence remains immutable under its historical launch contract. #2033 changes how later Stage R consumes a qualified launch class; it does not rewrite the historical PASS.
+
+## Matched comparison rule
+
+For matched A/B execution on one host:
+
+- use the same launch-class geometry reference;
+- use the same selected target token window;
+- use the same resulting explicit KV bytes;
+- use the same target/runtime/runner/decoding/reasoning controls.
+
+If fresh free VRAM differs between A and B but remains at or above the same `required_total_bytes`, the launch memory arguments remain identical.
+
+If either side falls below the requirement, the comparison is physically inadmissible. Do not reinterpret the free-memory difference as a prompt-quality result.
 
 ## Primary acceptance question
 
@@ -66,7 +144,7 @@ Run the current product path and review, in this order:
 6. assistant-authored material does not self-certify user facts or fabricated history.
 7. deterministic validation, failure and stale-result behavior preserve canonical authority.
 
-A provider-capacity failure can prevent these questions from being observed, but minimizing context capacity is not itself a functional acceptance goal.
+A provider-capacity failure can prevent these questions from being observed, but maximizing context capacity is not itself a functional acceptance goal.
 
 ## Focused State durability regression
 
@@ -98,9 +176,18 @@ This fixture exists to detect durability/epistemic-strength regression after mod
 
 ## Execution
 
-Use one clean exact RelayLM checkout throughout final capability attestation, capacity acquisition and functional screening. Use an isolated environment for the canonical vLLM source runtime; do not downgrade or otherwise mutate the user's global vLLM installation merely to satisfy the evidence identity.
+Use one clean exact RelayLM checkout and an isolated environment for the canonical vLLM source runtime. Do not downgrade or otherwise mutate the user's global vLLM installation merely to satisfy the evidence identity.
 
-After the final capability run is serving, acquire fresh external capacity evidence with the canonical Stage R plan. Capacity acquisition already binds to the live attested `max_model_len`; the canonical plan's historical pilot window does not select the acquisition runtime.
+Before launch:
+
+1. bind the current legal target token window;
+2. bind citable same-launch-class token/KV geometry;
+3. acquire fresh host `free_bytes` / `total_bytes`;
+4. build `VLLMLaunchMemoryAdmission.for_token_window(...)`;
+5. fail closed if the required envelope does not fit;
+6. launch the final runtime with `final_memory_args()`.
+
+After that runtime is serving, acquire current external capacity evidence with the canonical Stage R plan:
 
 ```text
 python -m relaylm.actual_model_host \
@@ -111,9 +198,9 @@ python -m relaylm.actual_model_host \
   --artifact-root "$EVIDENCE_ROOT"
 ```
 
-The resulting capacity artifact records the exact live `observed_max_model_len`.
+The capacity artifact records the live `observed_max_model_len`, which on this fixed-window path must reflect the explicitly selected runtime window.
 
-Without changing the checkout or final vLLM runtime, run functional screening and explicitly bind the screening context window to that same external evidence:
+Then run functional screening and bind it to that exact external evidence:
 
 ```text
 python -m relaylm.actual_model_host \
@@ -126,9 +213,7 @@ python -m relaylm.actual_model_host \
   --capacity-evidence-root "$EVIDENCE_ROOT"
 ```
 
-The normal target/runtime/counter/scenario/coverage checks still apply. The flag does not weaken capacity validation; it only replaces the canonical pilot window with the exact `observed_max_model_len` from the supplied fresh evidence before the normal screening preflight runs.
-
-The capacity artifact is an execution admission artifact. Passing it does not qualify product behavior; the completed semantic/functional run does.
+The normal target/runtime/counter/scenario/coverage checks still apply. The capacity artifact proves execution admission for the selected window; it does not select a release default and does not qualify product behavior by itself.
 
 ## Functional evidence first
 
@@ -147,22 +232,23 @@ Pass 2 reasoning escalation remains conditional on completed OFF/OFF semantic ev
 
 During the same run, retain token/timing observations when already available:
 
-- startup free GPU memory and profiled non-KV memory components;
-- the resolved explicit KV-cache byte budget used for the final capability run;
-- final GPU KV-cache token capacity and live `max_model_len`;
+- fresh startup free GPU memory as environment evidence;
+- launch-class non-KV reference envelope and its evidence identity;
+- selected target token window;
+- derived explicit KV-cache byte requirement;
 - production serialized-input token count;
 - provider `prompt_tokens`, `completion_tokens`, `total_tokens` and `finish_reason`;
 - counter/provider delta;
 - explicit reasoning-token metadata when provided;
 - Pass 1 / Pass 2 / settle timing.
 
-These measurements are useful inputs to #1388 after the product path is functionally acceptable. They are not the reason to run Stage R.
+These measurements are useful to #1388 when their model-facing identity is eligible. Transient free-memory changes are not themselves recalibration triggers.
 
 ## Calibration handoff
 
-Only after functional qualification should #1388 decide the release capacity/output reserve, reasoning policy and other numeric defaults from successful evidence.
+#1388 selects Cognitive Budget/output-reserve/reasoning/default values from eligible token-demand and quality evidence.
 
-A large discovered hardware capability does not imply a large release default. Conversely, Stage R should not repeatedly squeeze the prompt into the historical 1616 pilot window merely to perform calibration before product behavior is known.
+The runtime/admission layer consumes a supplied selected token window and determines only whether the current host can carry it. A larger amount of free VRAM does not increase that token window. A smaller amount of free VRAM does not change Calibration identity; it is a host-carriage failure only if it falls below the required envelope.
 
 ## Deliberate boundaries
 
@@ -173,14 +259,12 @@ This acceptance contract does not change:
 - provider parsing or `finish_reason != stop` rejection;
 - primary Stage R scenario selection;
 - reasoning escalation policy;
-- release/runtime defaults.
+- release/runtime numeric selection ownership.
 
 The current Pass 2 wire projects directly to `state_candidates` / `continuity_candidates`; functional acceptance must bind and review that exact current prompt/wire identity rather than reusing evidence from the retired six-field scaffold.
 
 The focused durability fixture extends regression coverage for model-facing State projection semantics only. It does not introduce a language-specific deterministic parser, confidence field, fixed intermediate cognition axes, or new State lifecycle rule.
 
-The capacity correction remains: **use the canonical frozen-proof vLLM runtime, derive one fresh transaction startup admission, carry that same admission through profiler and final launch, profile actual free VRAM and non-KV footprint, let the runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
-
 ## Principle
 
-> Qualify launch admission and live capacity without inventing defaults, then prove the exact frozen semantic product on that separately qualified runtime before Calibration.
+> Select token demand by cognitive/evaluation authority, convert that demand to a stable physical memory requirement, and use fresh free VRAM only to answer whether the host can carry it.

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import math
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from relaylm.actual_model_vllm_profiler import VLLMLaunchMemoryAdmission
+from relaylm.actual_model_vllm_profiler import (
+    VLLMLaunchMemoryAdmission,
+    VLLMTokenCapacityReference,
+)
 
 
 def _run_parser(tmp_path: Path, log_text: str) -> subprocess.CompletedProcess[str]:
@@ -23,6 +27,14 @@ def _run_parser(tmp_path: Path, log_text: str) -> subprocess.CompletedProcess[st
         check=False,
         capture_output=True,
         text=True,
+    )
+
+
+def _reference() -> VLLMTokenCapacityReference:
+    return VLLMTokenCapacityReference(
+        non_kv_memory_bytes=5_000_000,
+        kv_cache_memory_bytes=4_000_001,
+        kv_cache_capacity_tokens=4_000,
     )
 
 
@@ -117,87 +129,186 @@ def test_profiler_cli_rejects_missing_recommendation(tmp_path: Path) -> None:
     assert "not found" in result.stderr
 
 
-def test_launch_admission_floors_fresh_free_ratio_to_three_decimals() -> None:
-    admission = VLLMLaunchMemoryAdmission.from_fresh_bytes(
-        free_bytes=9_149,
-        total_bytes=10_000,
+def test_successful_launch_envelope_becomes_stable_non_kv_reference() -> None:
+    reference = VLLMTokenCapacityReference.from_successful_launch_envelope(
+        startup_free_bytes=11_789_139_968,
+        kv_cache_memory_bytes=1_539_740_672,
+        kv_cache_capacity_tokens=4_457,
     )
 
-    assert admission.gpu_memory_utilization == "0.914"
+    assert reference.non_kv_memory_bytes == 10_249_399_296
+    assert reference.kv_cache_memory_bytes == 1_539_740_672
+    assert reference.kv_cache_capacity_tokens == 4_457
 
 
-def test_profiler_and_final_runtime_share_one_explicit_admission() -> None:
-    admission = VLLMLaunchMemoryAdmission.from_fresh_bytes(
-        free_bytes=7_509,
-        total_bytes=10_000,
+def test_token_capacity_reference_uses_conservative_byte_per_token_ceiling() -> None:
+    reference = _reference()
+
+    assert reference.kv_bytes_per_token_upper_bound == 1001
+    assert reference.required_kv_cache_memory_bytes(target_model_len=1) == 1001
+    assert (
+        reference.required_kv_cache_memory_bytes(target_model_len=3_000)
+        == 3_003_000
+    )
+    assert (
+        reference.required_total_memory_bytes(target_model_len=3_000)
+        == 8_003_000
     )
 
-    assert admission.profiler_memory_args() == (
+
+def test_token_capacity_reference_is_monotonic() -> None:
+    reference = _reference()
+
+    smaller = reference.required_kv_cache_memory_bytes(target_model_len=2_000)
+    larger = reference.required_kv_cache_memory_bytes(target_model_len=3_000)
+
+    assert smaller < larger
+    assert larger <= (
+        reference.kv_bytes_per_token_upper_bound
+        * reference.kv_cache_capacity_tokens
+    )
+
+
+def test_token_capacity_reference_refuses_extrapolation_beyond_attested_capacity() -> None:
+    with pytest.raises(ValueError, match="attested KV token capacity"):
+        _reference().required_kv_cache_memory_bytes(target_model_len=4_001)
+
+
+def test_free_vram_jitter_above_requirement_does_not_change_launch_args() -> None:
+    reference = _reference()
+    low_free = VLLMLaunchMemoryAdmission.for_token_window(
+        free_bytes=8_100_000,
+        total_bytes=10_000_000,
+        target_model_len=3_000,
+        reference=reference,
+    )
+    high_free = VLLMLaunchMemoryAdmission.for_token_window(
+        free_bytes=9_900_000,
+        total_bytes=10_000_000,
+        target_model_len=3_000,
+        reference=reference,
+    )
+
+    assert low_free.required_memory_bytes == 8_003_000
+    assert high_free.required_memory_bytes == 8_003_000
+    assert low_free.gpu_memory_utilization == high_free.gpu_memory_utilization
+    assert low_free.final_memory_args() == high_free.final_memory_args()
+
+
+def test_final_runtime_uses_required_envelope_explicit_kv_and_selected_window() -> None:
+    admission = VLLMLaunchMemoryAdmission.for_token_window(
+        free_bytes=9_000_000,
+        total_bytes=10_000_000,
+        target_model_len=3_000,
+        reference=_reference(),
+    )
+
+    assert admission.kv_cache_memory_bytes == 3_003_000
+    assert admission.final_memory_args() == (
         "--gpu-memory-utilization",
-        "0.750",
-        "--max-model-len",
-        "auto",
-    )
-    assert admission.final_memory_args(kv_cache_memory_bytes=123_456_789) == (
-        "--gpu-memory-utilization",
-        "0.750",
+        admission.gpu_memory_utilization,
         "--kv-cache-memory-bytes",
-        "123456789",
+        "3003000",
         "--max-model-len",
-        "auto",
+        "3000",
     )
+    assert "auto" not in admission.final_memory_args()
+
+
+def test_startup_utilization_is_derived_from_required_memory_not_free_memory() -> None:
+    admission = VLLMLaunchMemoryAdmission.for_token_window(
+        free_bytes=9_000_000,
+        total_bytes=10_000_000,
+        target_model_len=3_000,
+        reference=_reference(),
+    )
+
+    rendered = float(admission.gpu_memory_utilization)
+    requested_by_pinned_vllm = math.ceil(admission.total_bytes * rendered)
+
+    assert requested_by_pinned_vllm <= admission.required_memory_bytes
+    assert admission.gpu_memory_utilization.startswith("0.800")
+
+
+def test_launch_admission_accepts_exactly_required_free_memory() -> None:
+    admission = VLLMLaunchMemoryAdmission.for_token_window(
+        free_bytes=8_003_000,
+        total_bytes=10_000_000,
+        target_model_len=3_000,
+        reference=_reference(),
+    )
+
+    assert admission.required_memory_bytes == admission.free_bytes
+
+
+def test_launch_admission_fails_only_when_fresh_free_memory_is_below_requirement() -> None:
+    with pytest.raises(ValueError, match="below the token-derived required memory"):
+        VLLMLaunchMemoryAdmission.for_token_window(
+            free_bytes=8_002_999,
+            total_bytes=10_000_000,
+            target_model_len=3_000,
+            reference=_reference(),
+        )
 
 
 @pytest.mark.parametrize(
-    ("free_bytes", "total_bytes"),
+    ("non_kv_memory_bytes", "kv_cache_memory_bytes", "kv_cache_capacity_tokens"),
     [
-        (0, 10_000),
-        (10_001, 10_000),
-        (1, 10_000),
-        (10_000, 10_000),
+        (0, 1, 1),
+        (1, 0, 1),
+        (1, 1, 0),
+        (True, 1, 1),
+        (1, 1.5, 1),
     ],
 )
-def test_launch_admission_rejects_invalid_or_unusable_fresh_capacity(
-    free_bytes: int,
-    total_bytes: int,
+def test_token_capacity_reference_requires_positive_integer_evidence(
+    non_kv_memory_bytes: object,
+    kv_cache_memory_bytes: object,
+    kv_cache_capacity_tokens: object,
 ) -> None:
-    with pytest.raises(ValueError):
-        VLLMLaunchMemoryAdmission.from_fresh_bytes(
-            free_bytes=free_bytes,
-            total_bytes=total_bytes,
+    expected = (
+        TypeError
+        if any(
+            isinstance(value, (bool, float))
+            for value in (
+                non_kv_memory_bytes,
+                kv_cache_memory_bytes,
+                kv_cache_capacity_tokens,
+            )
+        )
+        else ValueError
+    )
+    with pytest.raises(expected):
+        VLLMTokenCapacityReference(  # type: ignore[arg-type]
+            non_kv_memory_bytes=non_kv_memory_bytes,
+            kv_cache_memory_bytes=kv_cache_memory_bytes,
+            kv_cache_capacity_tokens=kv_cache_capacity_tokens,
         )
 
 
 @pytest.mark.parametrize(
     ("free_bytes", "total_bytes"),
     [
-        (True, 10_000),
-        (9_000, False),
-        (9_000.0, 10_000),
+        (0, 10_000_000),
+        (10_000_001, 10_000_000),
+        (True, 10_000_000),
+        (9_000_000.0, 10_000_000),
     ],
 )
-def test_launch_admission_requires_integer_byte_evidence(
+def test_launch_admission_requires_valid_fresh_capacity_evidence(
     free_bytes: object,
     total_bytes: object,
 ) -> None:
-    with pytest.raises(TypeError):
-        VLLMLaunchMemoryAdmission.from_fresh_bytes(  # type: ignore[arg-type]
+    expected = (
+        TypeError
+        if isinstance(free_bytes, (bool, float))
+        or isinstance(total_bytes, (bool, float))
+        else ValueError
+    )
+    with pytest.raises(expected):
+        VLLMLaunchMemoryAdmission.for_token_window(  # type: ignore[arg-type]
             free_bytes=free_bytes,
             total_bytes=total_bytes,
-        )
-
-
-@pytest.mark.parametrize("kv_cache_memory_bytes", [0, -1, True, 1.5])
-def test_final_launch_requires_positive_integer_explicit_kv(
-    kv_cache_memory_bytes: object,
-) -> None:
-    admission = VLLMLaunchMemoryAdmission.from_fresh_bytes(
-        free_bytes=7_509,
-        total_bytes=10_000,
-    )
-
-    expected = TypeError if isinstance(kv_cache_memory_bytes, (bool, float)) else ValueError
-    with pytest.raises(expected):
-        admission.final_memory_args(  # type: ignore[arg-type]
-            kv_cache_memory_bytes=kv_cache_memory_bytes,
+            target_model_len=3_000,
+            reference=_reference(),
         )
