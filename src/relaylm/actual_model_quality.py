@@ -128,17 +128,12 @@ class TurnProposalLabels:
     turn_index: int
     state: tuple[StateProposalLabel, ...] = ()
     continuity: tuple[ContinuityProposalLabel, ...] = ()
-    proposal_scoring: ProposalScoring | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
             raise TypeError("turn_index must be an integer")
         if self.turn_index <= 0:
             raise ValueError("turn_index must be positive")
-        if self.proposal_scoring is not None and not isinstance(
-            self.proposal_scoring, ProposalScoring
-        ):
-            raise TypeError("proposal_scoring must be ProposalScoring or None")
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,16 +237,14 @@ def evaluate_labeled_proposals(
     labels: tuple[TurnProposalLabels, ...],
     scoring: ProposalScoring | None = None,
 ) -> LabeledProposalMetrics:
-    """Score only scenario-declared proposal channels against raw model output.
+    """Score only the declared proposal channels against raw model output.
 
     ``scored`` with an empty label collection means exactly zero proposals are
     expected and observed proposals are false positives. ``unscored`` preserves
     the raw execution evidence but excludes that channel from proposal metrics.
 
-    Format-2 scenario loaders carry the explicit scenario scoring declaration as
-    non-serialized in-memory label metadata so existing review callers cannot
-    silently revert the scenario to scored/scored. Legacy/manually-constructed
-    labels without that metadata retain the historical scored/scored behavior.
+    The scenario definition owns explicit scoring scope. Legacy/direct callers
+    without an explicit declaration retain historical scored/scored behavior.
 
     State labels retain exact canonical class/key matching. A Continuity label key is
     fixture-local lifecycle identity: its first expected ``set`` may bind to a
@@ -260,7 +253,9 @@ def evaluate_labeled_proposals(
     reuse the bound model key exactly.
     """
 
-    effective_scoring = _resolve_proposal_scoring(labels=labels, scoring=scoring)
+    effective_scoring = ProposalScoring() if scoring is None else scoring
+    if not isinstance(effective_scoring, ProposalScoring):
+        raise TypeError("scoring must be ProposalScoring or None")
     by_turn = {item.turn_index: item for item in labels}
     if len(by_turn) != len(labels):
         raise ValueError("proposal labels must not duplicate turn_index")
@@ -303,33 +298,6 @@ def evaluate_labeled_proposals(
             scored=effective_scoring.continuity == "scored",
         ),
     )
-
-
-def _resolve_proposal_scoring(
-    *,
-    labels: tuple[TurnProposalLabels, ...],
-    scoring: ProposalScoring | None,
-) -> ProposalScoring:
-    if scoring is not None:
-        if not isinstance(scoring, ProposalScoring):
-            raise TypeError("scoring must be ProposalScoring or None")
-        carried = {
-            item.proposal_scoring
-            for item in labels
-            if item.proposal_scoring is not None
-        }
-        if carried and carried != {scoring}:
-            raise ValueError("explicit scoring conflicts with scenario-carried scoring")
-        return scoring
-
-    carried = {
-        item.proposal_scoring for item in labels if item.proposal_scoring is not None
-    }
-    if len(carried) > 1:
-        raise ValueError("proposal labels carry conflicting scenario scoring")
-    if carried:
-        return next(iter(carried))
-    return ProposalScoring()
 
 
 def _aggregate_channel_metrics(
