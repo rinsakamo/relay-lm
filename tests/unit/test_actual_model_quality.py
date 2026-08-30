@@ -13,6 +13,7 @@ from relaylm.actual_model_evaluation import (
 )
 from relaylm.actual_model_quality import (
     ContinuityProposalLabel,
+    ProposalScoring,
     StateProposalLabel,
     TurnProposalLabels,
     TurnQualityRating,
@@ -203,6 +204,7 @@ def test_labeled_proposal_metrics_measure_raw_precision_recall(tmp_path: Path) -
     evidence = _evidence(tmp_path)
     metrics = evaluate_labeled_proposals(
         evidence=evidence,
+        scoring=ProposalScoring(),
         labels=(
             TurnProposalLabels(
                 turn_index=1,
@@ -251,6 +253,7 @@ def test_labeled_metrics_keep_missing_required_and_unnecessary_proposals_distinc
     evidence = _evidence(tmp_path)
     metrics = evaluate_labeled_proposals(
         evidence=evidence,
+        scoring=ProposalScoring(),
         labels=(
             TurnProposalLabels(
                 turn_index=1,

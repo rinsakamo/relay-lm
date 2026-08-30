@@ -10,6 +10,7 @@ from relaylm.actual_model_evaluation import (
 )
 from relaylm.actual_model_quality import (
     ContinuityProposalLabel,
+    ProposalScoring,
     TurnProposalLabels,
     evaluate_labeled_proposals,
 )
@@ -147,6 +148,7 @@ def test_first_introduction_binds_reasonable_accepted_key_then_scores_strict_reu
     metrics = evaluate_labeled_proposals(
         evidence=_evidence(resolve_key=_ACCEPTED_KEY),
         labels=_labels(),
+        scoring=ProposalScoring(state="unscored", continuity="scored"),
     )
 
     assert metrics.continuity.expected_count == 2
@@ -162,6 +164,7 @@ def test_later_lifecycle_transition_must_reuse_the_key_accepted_on_introduction(
     metrics = evaluate_labeled_proposals(
         evidence=_evidence(resolve_key="inspect_box_contents_invented_later"),
         labels=_labels(),
+        scoring=ProposalScoring(state="unscored", continuity="scored"),
     )
 
     assert metrics.continuity.true_positive_count == 1

@@ -10,7 +10,7 @@ from relaylm.actual_model_evaluation import (
 )
 
 QUALITY_RUBRIC_VERSION = "actual-model-quality-v1"
-PROPOSAL_EVALUATOR_VERSION = "actual-model-proposal-evaluator-v2"
+PROPOSAL_EVALUATOR_VERSION = "actual-model-proposal-evaluator-v3"
 QualityAxis = Literal[
     "response_coherence",
     "persona_continuity",
@@ -20,6 +20,7 @@ QualityAxis = Literal[
     "state_proposal_quality",
     "continuity_proposal_quality",
 ]
+ProposalChannelScoring = Literal["scored", "unscored"]
 
 _FAMILY_AXES: dict[str, tuple[QualityAxis, ...]] = {
     "response_persona_continuity": (
@@ -52,6 +53,23 @@ _FAMILY_AXES: dict[str, tuple[QualityAxis, ...]] = {
         "continuity_usefulness",
     ),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalScoring:
+    """Scenario-owned declaration of which proposal channels are evaluated."""
+
+    state: ProposalChannelScoring = "scored"
+    continuity: ProposalChannelScoring = "scored"
+
+    def __post_init__(self) -> None:
+        for name in ("state", "continuity"):
+            value = getattr(self, name)
+            if value not in {"scored", "unscored"}:
+                raise ValueError(f"unsupported {name} proposal scoring mode: {value}")
+
+    def to_mapping(self) -> dict[str, str]:
+        return {"state": self.state, "continuity": self.continuity}
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,9 +145,25 @@ class ProposalChannelMetrics:
     false_negative_count: int
     precision: float | None
     recall: float | None
+    scored: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.scored and any(
+            (
+                self.expected_count,
+                self.observed_count,
+                self.true_positive_count,
+                self.false_positive_count,
+                self.false_negative_count,
+            )
+        ):
+            raise ValueError("unscored proposal metrics cannot carry scored counts")
+        if not self.scored and (self.precision is not None or self.recall is not None):
+            raise ValueError("unscored proposal metrics cannot carry precision/recall")
 
     def to_mapping(self) -> dict[str, object]:
         return {
+            "scored": self.scored,
             "expected_count": self.expected_count,
             "observed_count": self.observed_count,
             "true_positive_count": self.true_positive_count,
@@ -201,8 +235,16 @@ def evaluate_labeled_proposals(
     *,
     evidence: ActualModelEvidence,
     labels: tuple[TurnProposalLabels, ...],
+    scoring: ProposalScoring | None = None,
 ) -> LabeledProposalMetrics:
-    """Score raw proposals while binding Continuity labels to accepted lifecycle keys.
+    """Score only the declared proposal channels against raw model output.
+
+    ``scored`` with an empty label collection means exactly zero proposals are
+    expected and observed proposals are false positives. ``unscored`` preserves
+    the raw execution evidence but excludes that channel from proposal metrics.
+
+    The scenario definition owns explicit scoring scope. Legacy/direct callers
+    without an explicit declaration retain historical scored/scored behavior.
 
     State labels retain exact canonical class/key matching. A Continuity label key is
     fixture-local lifecycle identity: its first expected ``set`` may bind to a
@@ -211,6 +253,9 @@ def evaluate_labeled_proposals(
     reuse the bound model key exactly.
     """
 
+    effective_scoring = ProposalScoring() if scoring is None else scoring
+    if not isinstance(effective_scoring, ProposalScoring):
+        raise TypeError("scoring must be ProposalScoring or None")
     by_turn = {item.turn_index: item for item in labels}
     if len(by_turn) != len(labels):
         raise ValueError("proposal labels must not duplicate turn_index")
@@ -225,46 +270,59 @@ def evaluate_labeled_proposals(
         turn_labels = by_turn.get(turn.turn_index)
         if turn_labels is None:
             continue
-        state_turn_metrics.append(
-            _match_channel(
-                expected=list(turn_labels.state),
-                observed=list(turn.raw_model.state_candidates),
-                matcher=_state_matches,
+        if effective_scoring.state == "scored":
+            state_turn_metrics.append(
+                _match_channel(
+                    expected=list(turn_labels.state),
+                    observed=list(turn.raw_model.state_candidates),
+                    matcher=_state_matches,
+                )
             )
-        )
-        continuity_turn_metrics.append(
-            _match_continuity_channel(
-                expected=list(turn_labels.continuity),
-                observed=list(turn.raw_model.continuity_candidates),
-                decisions=list(turn.deterministic.continuity_decisions),
-                key_bindings=continuity_key_bindings,
+        if effective_scoring.continuity == "scored":
+            continuity_turn_metrics.append(
+                _match_continuity_channel(
+                    expected=list(turn_labels.continuity),
+                    observed=list(turn.raw_model.continuity_candidates),
+                    decisions=list(turn.deterministic.continuity_decisions),
+                    key_bindings=continuity_key_bindings,
+                )
             )
-        )
 
     return LabeledProposalMetrics(
-        state=_aggregate_channel_metrics(state_turn_metrics),
-        continuity=_aggregate_channel_metrics(continuity_turn_metrics),
+        state=_aggregate_channel_metrics(
+            state_turn_metrics,
+            scored=effective_scoring.state == "scored",
+        ),
+        continuity=_aggregate_channel_metrics(
+            continuity_turn_metrics,
+            scored=effective_scoring.continuity == "scored",
+        ),
     )
 
 
 def _aggregate_channel_metrics(
     metrics: list[ProposalChannelMetrics],
+    *,
+    scored: bool,
 ) -> ProposalChannelMetrics:
+    if not scored:
+        return ProposalChannelMetrics(
+            expected_count=0,
+            observed_count=0,
+            true_positive_count=0,
+            false_positive_count=0,
+            false_negative_count=0,
+            precision=None,
+            recall=None,
+            scored=False,
+        )
     expected_count = sum(item.expected_count for item in metrics)
     observed_count = sum(item.observed_count for item in metrics)
     true_positive_count = sum(item.true_positive_count for item in metrics)
     false_positive_count = sum(item.false_positive_count for item in metrics)
     false_negative_count = sum(item.false_negative_count for item in metrics)
-    precision = (
-        true_positive_count / observed_count
-        if observed_count
-        else None
-    )
-    recall = (
-        true_positive_count / expected_count
-        if expected_count
-        else None
-    )
+    precision = true_positive_count / observed_count if observed_count else None
+    recall = true_positive_count / expected_count if expected_count else None
     return ProposalChannelMetrics(
         expected_count=expected_count,
         observed_count=observed_count,
@@ -273,6 +331,7 @@ def _aggregate_channel_metrics(
         false_negative_count=false_negative_count,
         precision=precision,
         recall=recall,
+        scored=True,
     )
 
 
@@ -366,16 +425,8 @@ def _channel_metrics(
     false_positive_count: int,
 ) -> ProposalChannelMetrics:
     false_negative_count = expected_count - true_positive_count
-    precision = (
-        true_positive_count / observed_count
-        if observed_count
-        else None
-    )
-    recall = (
-        true_positive_count / expected_count
-        if expected_count
-        else None
-    )
+    precision = true_positive_count / observed_count if observed_count else None
+    recall = true_positive_count / expected_count if expected_count else None
     return ProposalChannelMetrics(
         expected_count=expected_count,
         observed_count=observed_count,
