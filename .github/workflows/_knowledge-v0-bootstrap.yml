@@ -32,11 +32,13 @@ jobs:
         run: |
           python tools/_knowledge_v0_patch.py
           python tools/_knowledge_v0_followup_patch.py
+          python tools/_knowledge_v0_authority_fix.py
 
       - name: Remove bootstrap-only files from product diff
         run: |
           rm tools/_knowledge_v0_patch.py
           rm tools/_knowledge_v0_followup_patch.py
+          rm tools/_knowledge_v0_authority_fix.py
           rm .github/workflows/_knowledge-v0-bootstrap.yml
 
       - name: Install test environment
