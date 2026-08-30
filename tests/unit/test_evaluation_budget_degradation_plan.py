@@ -24,9 +24,9 @@ def test_budget_degradation_plan_component() -> None:
     }
     assert {check.boundary for check in result.checks} == {"cognitive_budget"}
     assert result.metrics == {
-        "managed_layer_count": 4,
-        "full_plan_step_count": 4,
-        "tier3_order_variant_count": 2,
+        "managed_layer_count": 5,
+        "full_plan_step_count": 5,
+        "tier3_order_variant_count": 3,
         "policy_rejection_count": 6,
         "input_validation_rejection_count": 7,
     }

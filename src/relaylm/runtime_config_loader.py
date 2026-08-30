@@ -864,11 +864,16 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
 
     plan_path = f"{path}.initial_plan"
     plan_raw = _mapping(mapping["initial_plan"], plan_path)
-    _require_exact_keys(
-        plan_raw,
-        plan_path,
-        {"canonical_state", "working_context", "retrieved_memory", "event_evidence"},
-    )
+    required_layers = {
+        "canonical_state",
+        "working_context",
+        "retrieved_memory",
+        "event_evidence",
+    }
+    _reject_unknown(plan_raw, plan_path, required_layers | {"package_knowledge"})
+    for required in required_layers:
+        if required not in plan_raw:
+            _missing(f"{plan_path}.{required}")
     try:
         canonical_state = _parse_count_envelope(
             plan_raw["canonical_state"],
@@ -886,6 +891,14 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
             plan_raw["event_evidence"],
             f"{plan_path}.event_evidence",
         )
+        package_knowledge = (
+            _parse_count_character_envelope(
+                plan_raw["package_knowledge"],
+                f"{plan_path}.package_knowledge",
+            )
+            if "package_knowledge" in plan_raw
+            else CountCharacterEnvelope(0, 0, 0, 0)
+        )
     except RuntimeConfigResolutionError as exc:
         if exc.code is RuntimeConfigErrorCode.INVALID_VALUE:
             _invalid_value(path, "invalid owner-defined budget envelope")
@@ -896,6 +909,7 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
         working_context=working_context,
         retrieved_memory=retrieved_memory,
         event_evidence=event_evidence,
+        package_knowledge=package_knowledge,
     )
 
     steps_raw = mapping["steps"]

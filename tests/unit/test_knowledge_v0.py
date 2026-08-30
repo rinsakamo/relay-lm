@@ -15,7 +15,14 @@ from relaylm.budget import (
     CountEnvelope,
 )
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.crystallization import CrystallizationOutput, run_crystallization
 from relaylm.events import Event
+from relaylm.memory_provenance import (
+    MemoryProvenanceSource,
+    MemoryProvenanceSourceKind,
+    MemoryTemporalScope,
+    MemoryUnit,
+)
 from relaylm.identity import Identity
 from relaylm.providers.openai_compatible import (
     ProviderProtocolError,
@@ -123,6 +130,78 @@ def test_package_knowledge_rejects_symlink_instead_of_following_it(tmp_path: Pat
 
     with pytest.raises(CognitivePackageDataError, match="symlink"):
         package.load_knowledge()
+
+
+def test_package_knowledge_enforces_file_count_size_and_total_bounds(tmp_path: Path) -> None:
+    count_root = tmp_path / "count"
+    count_package = _write_package(count_root)
+    (count_root / "knowledge").mkdir()
+    for index in range(33):
+        (count_root / "knowledge" / f"{index:02d}.txt").write_text("x", encoding="utf-8")
+    with pytest.raises(CognitivePackageDataError, match="file count"):
+        count_package.load_knowledge()
+
+    size_root = tmp_path / "size"
+    size_package = _write_package(size_root)
+    (size_root / "knowledge").mkdir()
+    (size_root / "knowledge" / "large.txt").write_bytes(b"x" * (64 * 1024 + 1))
+    with pytest.raises(CognitivePackageDataError, match="per-file"):
+        size_package.load_knowledge()
+
+    total_root = tmp_path / "total"
+    total_package = _write_package(total_root)
+    (total_root / "knowledge").mkdir()
+    for index in range(5):
+        (total_root / "knowledge" / f"{index}.txt").write_bytes(b"x" * (60 * 1024))
+    with pytest.raises(CognitivePackageDataError, match="total byte"):
+        total_package.load_knowledge()
+
+
+class _KnowledgeReadOnlyCrystallizer:
+    async def generate(self, crystallization_input):
+        event = crystallization_input.events[-1]
+        return CrystallizationOutput(
+            memory_units=(
+                MemoryUnit(
+                    heading="Observed",
+                    content="A governed lived event.",
+                    temporal_scope=MemoryTemporalScope.CURRENT,
+                    sources=(
+                        MemoryProvenanceSource(
+                            kind=MemoryProvenanceSourceKind.EVENT,
+                            reference_id=event.id,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+
+def test_ordinary_turn_and_crystallization_do_not_rewrite_package_knowledge(
+    tmp_path: Path,
+) -> None:
+    package = _write_package(tmp_path)
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    asset = knowledge / "reference.md"
+    original = b"Package-authored reference.\n"
+    asset.write_bytes(original)
+
+    provider = _CaptureProvider()
+    asyncio.run(run_user_turn(character=package, provider=provider, content="hello"))
+    assert asset.read_bytes() == original
+
+    package.append_event(
+        Event.create(type="message", actor="user", payload={"content": "lived event"})
+    )
+    asyncio.run(
+        run_crystallization(
+            character=package,
+            crystallizer=_KnowledgeReadOnlyCrystallizer(),
+            max_events=1,
+        )
+    )
+    assert asset.read_bytes() == original
 
 
 def test_knowledge_selector_is_deterministic_whole_file_and_bounded() -> None:

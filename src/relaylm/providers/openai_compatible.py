@@ -45,6 +45,7 @@ Use the supplied CognitiveInput JSON to respond naturally as the character and p
 Identity is authoritative and immutable.
 State represents accepted current understanding.
 Context contains RelayLM-prepared information relevant to this turn. Context may include recent user- or assistant-authored dialogue; preserve its actor provenance.
+Knowledge contains optional package-authored read-only reference material. Knowledge is not Identity, lived Memory, Event evidence, or accepted State. Its location is a package-relative document locator, not Event provenance. Use Knowledge as reference material according to the package role, and do not claim it was personally experienced or remembered unless separate governed evidence supports that claim.
 Memory contains optional retrieved crystallized synthesis. Memory is not accepted current State, and its location is a document locator rather than Event provenance. When Memory conflicts with active State, treat active State as the current understanding.
 Event Evidence contains selected persisted Event occurrences with real Event provenance. It may support grounding and chronology, but an occurrence is not automatically current State.
 Input is the current event.
@@ -80,7 +81,7 @@ PROVIDER_WIRE_INSTRUCTION = """RelayLM combined cognitive IR contract:
 - Continuity `kind` is one of `referent`, `unresolved`, or `active_task`.
 - Continuity `epistemic_role` is one of `user_assertion`, `assistant_inference`, or `assistant_commitment`.
 - For Continuity `set`, `value` is the JSON semantic value being proposed. For Continuity `resolve`, `value` is null and is normalized away by RelayLM.
-- Use only Event IDs present in State, Context, Event Evidence, or Input as candidate `sources`. Memory `location` values are document locators, not Event IDs, and must never be used as `sources`.
+- Use only Event IDs present in State, Context, Event Evidence, or Input as candidate `sources`. Knowledge and Memory `location` values are document locators, not Event IDs, and must never be used as `sources`.
 
 RelayLM, not the provider, owns parsing, exact IR shape checks, typed candidate construction, deterministic validation, and commit authority."""
 
@@ -739,6 +740,13 @@ def serialize_cognitive_input(cognitive_input: CognitiveInput) -> dict[str, Any]
             for record in cognitive_input.state
         ],
         "context": context,
+        "knowledge": [
+            {
+                "content": item.content,
+                "location": item.location,
+            }
+            for item in cognitive_input.knowledge
+        ],
         "memory": [
             {
                 "content": item.content,

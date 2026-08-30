@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from relaylm.budget import BudgetPlan
 from relaylm.budget_controls import owner_controls_for_budget_plan
@@ -16,7 +16,12 @@ from relaylm.budget_enforcement import (
     enforce_total_cognitive_budget,
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
-from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
+from relaylm.cognitive import (
+    CognitiveInput,
+    CognitiveOutput,
+    CognitiveProvider,
+    KnowledgeItem,
+)
 from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.context import compile_cognitive_input
 from relaylm.continuity import ContinuityContext
@@ -31,6 +36,7 @@ from relaylm.event_retrieval import (
 )
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.knowledge import select_knowledge_items
 from relaylm.memory_retrieval import (
     MemoryRetrievalDiagnostics,
     select_memory_chunks,
@@ -544,6 +550,14 @@ def _compile_budget_plan_cognitive_input(
 
     controls = owner_controls_for_budget_plan(plan)
 
+    package_knowledge = ()
+    if controls.knowledge.max_items > 0 and controls.knowledge.max_chars > 0:
+        package_knowledge = select_knowledge_items(
+            _load_package_knowledge(character),
+            max_items=controls.knowledge.max_items,
+            max_chars=controls.knowledge.max_chars,
+        )
+
     retrieved_memory = ()
     if (
         controls.retrieval.memory_max_chunks > 0
@@ -569,7 +583,7 @@ def _compile_budget_plan_cognitive_input(
             exclude_event_ids=(user_event.id,),
         )
 
-    return compile_cognitive_input(
+    cognitive_input = compile_cognitive_input(
         identity=identity,
         state=state,
         current_event=user_event,
@@ -583,6 +597,7 @@ def _compile_budget_plan_cognitive_input(
         max_working_context_chars=controls.context_compiler.max_working_context_chars,
         max_state_records=controls.context_compiler.max_state_records,
     )
+    return replace(cognitive_input, knowledge=package_knowledge)
 
 
 def _prepare_user_turn(
@@ -695,6 +710,10 @@ def _compile_turn_cognitive_input(
         retrieved_memory=retrieved_memory,
         event_evidence=event_evidence,
     )
+    cognitive_input = replace(
+        cognitive_input,
+        knowledge=_load_package_knowledge(character),
+    )
     if not include_retrieval_diagnostics:
         return cognitive_input, None
     return cognitive_input, TurnRetrievalDiagnostics(
@@ -705,6 +724,22 @@ def _compile_turn_cognitive_input(
             event=event_diagnostics,
         ),
     )
+
+
+def _load_package_knowledge(
+    character: CharacterDirectory,
+) -> tuple[KnowledgeItem, ...]:
+    loader = getattr(character, "load_knowledge", None)
+    if loader is None:
+        return ()
+    if not callable(loader):
+        raise TypeError("package load_knowledge must be callable")
+    items = loader()
+    if not isinstance(items, tuple) or not all(
+        isinstance(item, KnowledgeItem) for item in items
+    ):
+        raise TypeError("package load_knowledge must return KnowledgeItem values")
+    return items
 
 
 def _aggregate_retrieval_diagnostics(

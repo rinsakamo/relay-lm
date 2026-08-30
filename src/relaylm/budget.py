@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -163,6 +163,7 @@ class CountCharacterEnvelope:
 class BudgetLayer(str, Enum):
     """Budget-managed layers whose semantic selectors already expose owner controls."""
 
+    PACKAGE_KNOWLEDGE = "package_knowledge"
     RETRIEVED_MEMORY = "retrieved_memory"
     EVENT_EVIDENCE = "event_evidence"
     WORKING_CONTEXT = "working_context"
@@ -170,13 +171,18 @@ class BudgetLayer(str, Enum):
 
     @property
     def tier(self) -> int:
-        if self in {self.RETRIEVED_MEMORY, self.EVENT_EVIDENCE}:
+        if self in {
+            self.PACKAGE_KNOWLEDGE,
+            self.RETRIEVED_MEMORY,
+            self.EVENT_EVIDENCE,
+        }:
             return 3
         if self is self.WORKING_CONTEXT:
             return 2
         return 1
 
 
+LayerEnvelope = CountEnvelope | CountCharacterEnvelope
 LayerEnvelope = CountEnvelope | CountCharacterEnvelope
 
 
@@ -185,13 +191,18 @@ class BudgetPlan:
     """Explicit layer envelopes without cross-layer semantic ranking.
 
     Accepted Continuity is intentionally absent until its semantic owner exposes a
-    deterministic pressure-selection control. The budget lane must not invent one.
+    deterministic pressure-selection control. Package KNOWLEDGE is an independent
+    optional Tier-3 reference layer with a zero compatibility floor unless the
+    caller explicitly allocates it room.
     """
 
     canonical_state: CountEnvelope
     working_context: CountCharacterEnvelope
     retrieved_memory: CountCharacterEnvelope
     event_evidence: CountCharacterEnvelope
+    package_knowledge: CountCharacterEnvelope = field(
+        default_factory=lambda: CountCharacterEnvelope(0, 0, 0, 0)
+    )
 
     def envelope_for(self, layer: BudgetLayer) -> LayerEnvelope:
         if layer is BudgetLayer.CANONICAL_STATE:
@@ -200,39 +211,32 @@ class BudgetPlan:
             return self.working_context
         if layer is BudgetLayer.RETRIEVED_MEMORY:
             return self.retrieved_memory
+        if layer is BudgetLayer.PACKAGE_KNOWLEDGE:
+            return self.package_knowledge
         return self.event_evidence
 
     def with_envelope(self, layer: BudgetLayer, envelope: LayerEnvelope) -> BudgetPlan:
         expected_type = type(self.envelope_for(layer))
         if type(envelope) is not expected_type:
             raise TypeError(f"{layer.value} requires {expected_type.__name__}")
+        values = {
+            "canonical_state": self.canonical_state,
+            "working_context": self.working_context,
+            "retrieved_memory": self.retrieved_memory,
+            "event_evidence": self.event_evidence,
+            "package_knowledge": self.package_knowledge,
+        }
         if layer is BudgetLayer.CANONICAL_STATE:
-            return BudgetPlan(
-                canonical_state=envelope,
-                working_context=self.working_context,
-                retrieved_memory=self.retrieved_memory,
-                event_evidence=self.event_evidence,
-            )
-        if layer is BudgetLayer.WORKING_CONTEXT:
-            return BudgetPlan(
-                canonical_state=self.canonical_state,
-                working_context=envelope,
-                retrieved_memory=self.retrieved_memory,
-                event_evidence=self.event_evidence,
-            )
-        if layer is BudgetLayer.RETRIEVED_MEMORY:
-            return BudgetPlan(
-                canonical_state=self.canonical_state,
-                working_context=self.working_context,
-                retrieved_memory=envelope,
-                event_evidence=self.event_evidence,
-            )
-        return BudgetPlan(
-            canonical_state=self.canonical_state,
-            working_context=self.working_context,
-            retrieved_memory=self.retrieved_memory,
-            event_evidence=envelope,
-        )
+            values["canonical_state"] = envelope
+        elif layer is BudgetLayer.WORKING_CONTEXT:
+            values["working_context"] = envelope
+        elif layer is BudgetLayer.RETRIEVED_MEMORY:
+            values["retrieved_memory"] = envelope
+        elif layer is BudgetLayer.PACKAGE_KNOWLEDGE:
+            values["package_knowledge"] = envelope
+        else:
+            values["event_evidence"] = envelope
+        return BudgetPlan(**values)  # type: ignore[arg-type]
 
     def lower_protection_tiers_at_floor(self, *, before_tier: int) -> bool:
         return all(

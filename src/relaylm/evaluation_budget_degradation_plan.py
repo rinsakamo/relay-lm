@@ -45,6 +45,12 @@ def _plan() -> BudgetPlan:
             max_chars=600,
             floor_chars=0,
         ),
+        package_knowledge=CountCharacterEnvelope(
+            max_items=2,
+            floor_items=0,
+            max_chars=400,
+            floor_chars=0,
+        ),
     )
 
 
@@ -63,6 +69,10 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
                 CountCharacterEnvelope(0, 0, 0, 0),
             ),
             BudgetDegradationStep(
+                BudgetLayer.PACKAGE_KNOWLEDGE,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
+            BudgetDegradationStep(
                 BudgetLayer.WORKING_CONTEXT,
                 CountCharacterEnvelope(1, 1, 200, 200),
             ),
@@ -72,8 +82,8 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
             ),
         ),
     )
-    after_two = full_policy.plan_after_steps(2)
     after_three = full_policy.plan_after_steps(3)
+    after_four = full_policy.plan_after_steps(4)
     final = full_policy.final_plan
 
     memory_first = BudgetDegradationPolicy(
@@ -87,6 +97,10 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
                 BudgetLayer.EVENT_EVIDENCE,
                 CountCharacterEnvelope(0, 0, 0, 0),
             ),
+            BudgetDegradationStep(
+                BudgetLayer.PACKAGE_KNOWLEDGE,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
         ),
     )
     event_first = BudgetDegradationPolicy(
@@ -98,6 +112,27 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
             ),
             BudgetDegradationStep(
                 BudgetLayer.RETRIEVED_MEMORY,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
+            BudgetDegradationStep(
+                BudgetLayer.PACKAGE_KNOWLEDGE,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
+        ),
+    )
+    knowledge_first = BudgetDegradationPolicy(
+        initial_plan=initial,
+        steps=(
+            BudgetDegradationStep(
+                BudgetLayer.PACKAGE_KNOWLEDGE,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
+            BudgetDegradationStep(
+                BudgetLayer.RETRIEVED_MEMORY,
+                CountCharacterEnvelope(0, 0, 0, 0),
+            ),
+            BudgetDegradationStep(
+                BudgetLayer.EVENT_EVIDENCE,
                 CountCharacterEnvelope(0, 0, 0, 0),
             ),
         ),
@@ -232,10 +267,11 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
                     "working_context",
                     "retrieved_memory",
                     "event_evidence",
+                    "package_knowledge",
                 }
                 and "continuity" not in managed_fields
             ),
-            expected=4,
+            expected=5,
             observed=len(managed_fields),
         ),
         EvaluationCheck(
@@ -243,9 +279,10 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
             boundary="cognitive_budget",
             passed=(
                 full_policy.plan_after_steps(0) == initial
-                and after_two.retrieved_memory.at_floor
-                and after_two.event_evidence.at_floor
-                and after_three.working_context.at_floor
+                and after_three.retrieved_memory.at_floor
+                and after_three.event_evidence.at_floor
+                and after_three.package_knowledge.at_floor
+                and after_four.working_context.at_floor
                 and final.canonical_state.at_floor
             ),
             expected=True,
@@ -257,12 +294,21 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
             passed=(
                 memory_first.plan_after_steps(1).retrieved_memory.at_floor
                 and not memory_first.plan_after_steps(1).event_evidence.at_floor
+                and not memory_first.plan_after_steps(1).package_knowledge.at_floor
                 and event_first.plan_after_steps(1).event_evidence.at_floor
                 and not event_first.plan_after_steps(1).retrieved_memory.at_floor
+                and not event_first.plan_after_steps(1).package_knowledge.at_floor
+                and knowledge_first.plan_after_steps(1).package_knowledge.at_floor
+                and not knowledge_first.plan_after_steps(1).retrieved_memory.at_floor
+                and not knowledge_first.plan_after_steps(1).event_evidence.at_floor
                 and memory_first.final_plan == event_first.final_plan
+                and event_first.final_plan == knowledge_first.final_plan
             ),
             expected=True,
-            observed=memory_first.final_plan == event_first.final_plan,
+            observed=(
+                memory_first.final_plan == event_first.final_plan
+                and event_first.final_plan == knowledge_first.final_plan
+            ),
         ),
         EvaluationCheck(
             check_id="tier2_before_tier3_floor_is_rejected",
@@ -306,7 +352,7 @@ async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
         metrics={
             "managed_layer_count": len(managed_fields),
             "full_plan_step_count": len(full_policy.steps),
-            "tier3_order_variant_count": 2,
+            "tier3_order_variant_count": 3,
             "policy_rejection_count": sum(policy_rejections),
             "input_validation_rejection_count": sum(input_validation_rejections),
         },
