@@ -128,12 +128,17 @@ class TurnProposalLabels:
     turn_index: int
     state: tuple[StateProposalLabel, ...] = ()
     continuity: tuple[ContinuityProposalLabel, ...] = ()
+    proposal_scoring: ProposalScoring | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
             raise TypeError("turn_index must be an integer")
         if self.turn_index <= 0:
             raise ValueError("turn_index must be positive")
+        if self.proposal_scoring is not None and not isinstance(
+            self.proposal_scoring, ProposalScoring
+        ):
+            raise TypeError("proposal_scoring must be ProposalScoring or None")
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,13 +240,18 @@ def evaluate_labeled_proposals(
     *,
     evidence: ActualModelEvidence,
     labels: tuple[TurnProposalLabels, ...],
-    scoring: ProposalScoring,
+    scoring: ProposalScoring | None = None,
 ) -> LabeledProposalMetrics:
     """Score only scenario-declared proposal channels against raw model output.
 
     ``scored`` with an empty label collection means exactly zero proposals are
     expected and observed proposals are false positives. ``unscored`` preserves
     the raw execution evidence but excludes that channel from proposal metrics.
+
+    Format-2 scenario loaders carry the explicit scenario scoring declaration as
+    non-serialized in-memory label metadata so existing review callers cannot
+    silently revert the scenario to scored/scored. Legacy/manually-constructed
+    labels without that metadata retain the historical scored/scored behavior.
 
     State labels retain exact canonical class/key matching. A Continuity label key is
     fixture-local lifecycle identity: its first expected ``set`` may bind to a
@@ -250,8 +260,7 @@ def evaluate_labeled_proposals(
     reuse the bound model key exactly.
     """
 
-    if not isinstance(scoring, ProposalScoring):
-        raise TypeError("scoring must be ProposalScoring")
+    effective_scoring = _resolve_proposal_scoring(labels=labels, scoring=scoring)
     by_turn = {item.turn_index: item for item in labels}
     if len(by_turn) != len(labels):
         raise ValueError("proposal labels must not duplicate turn_index")
@@ -266,7 +275,7 @@ def evaluate_labeled_proposals(
         turn_labels = by_turn.get(turn.turn_index)
         if turn_labels is None:
             continue
-        if scoring.state == "scored":
+        if effective_scoring.state == "scored":
             state_turn_metrics.append(
                 _match_channel(
                     expected=list(turn_labels.state),
@@ -274,7 +283,7 @@ def evaluate_labeled_proposals(
                     matcher=_state_matches,
                 )
             )
-        if scoring.continuity == "scored":
+        if effective_scoring.continuity == "scored":
             continuity_turn_metrics.append(
                 _match_continuity_channel(
                     expected=list(turn_labels.continuity),
@@ -287,13 +296,40 @@ def evaluate_labeled_proposals(
     return LabeledProposalMetrics(
         state=_aggregate_channel_metrics(
             state_turn_metrics,
-            scored=scoring.state == "scored",
+            scored=effective_scoring.state == "scored",
         ),
         continuity=_aggregate_channel_metrics(
             continuity_turn_metrics,
-            scored=scoring.continuity == "scored",
+            scored=effective_scoring.continuity == "scored",
         ),
     )
+
+
+def _resolve_proposal_scoring(
+    *,
+    labels: tuple[TurnProposalLabels, ...],
+    scoring: ProposalScoring | None,
+) -> ProposalScoring:
+    if scoring is not None:
+        if not isinstance(scoring, ProposalScoring):
+            raise TypeError("scoring must be ProposalScoring or None")
+        carried = {
+            item.proposal_scoring
+            for item in labels
+            if item.proposal_scoring is not None
+        }
+        if carried and carried != {scoring}:
+            raise ValueError("explicit scoring conflicts with scenario-carried scoring")
+        return scoring
+
+    carried = {
+        item.proposal_scoring for item in labels if item.proposal_scoring is not None
+    }
+    if len(carried) > 1:
+        raise ValueError("proposal labels carry conflicting scenario scoring")
+    if carried:
+        return next(iter(carried))
+    return ProposalScoring()
 
 
 def _aggregate_channel_metrics(
