@@ -4,7 +4,10 @@ from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import CognitionExtractionInput
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.providers.openai_compatible_two_pass import _extraction_pass_suffix
+from relaylm.providers.openai_compatible_two_pass import (
+    COMMON_SYSTEM_INSTRUCTION,
+    _extraction_pass_suffix,
+)
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
@@ -102,5 +105,34 @@ def test_pass2_prompt_keeps_durable_state_independent_of_continuity_guidance() -
         "Continuity-specific instructions, including `emit only`, apply only within "
         "`continuity_candidates` and never suppress an otherwise-grounded "
         "`state_candidates` proposal."
+        in suffix
+    )
+
+
+def test_two_pass_grounding_rejects_unrecorded_assistant_history() -> None:
+    assert (
+        "A current Input that denies an assistant statement or action is not evidence "
+        "that it happened; do not apologize for or describe that unrecorded prior event."
+        in COMMON_SYSTEM_INSTRUCTION
+    )
+
+
+def test_pass2_projects_accepted_continuity_as_turn_local_deltas() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert (
+        "A Context item whose content is a `continuity` JSON record is an already "
+        "accepted temporary Continuity item, not a new proposal or prior assistant utterance."
+        in suffix
+    )
+    assert (
+        "For each Continuity kind, compare the current Input with the accepted item "
+        "independently: `set` for a new meaning, `resolve` for a current resolution, "
+        "and no candidate for an unchanged meaning."
+        in suffix
+    )
+    assert (
+        "Never copy an accepted item's prior `sources` into a new transition; every "
+        "transition caused by the current turn uses the current Input Event ID."
         in suffix
     )
