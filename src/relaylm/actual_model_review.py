@@ -376,6 +376,7 @@ def review_actual_model_execution(
     proposal_metrics = evaluate_labeled_proposals(
         evidence=evidence,
         labels=result.plan.definition.proposal_labels,
+        scoring=result.plan.definition.effective_proposal_scoring,
     )
     normalized_stage_r = normalize_stage_r_review_observations(
         _unrated_stage_r_review_observations()
