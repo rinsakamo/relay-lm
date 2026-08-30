@@ -200,13 +200,13 @@ def test_manifest_provider_identity_is_exact_llama_cpp_runtime_identity() -> Non
     identity = llama_cpp_manifest_provider_identity(_runtime_identity())
 
     assert identity.startswith("actual-model-llama-cpp-v1:")
-    assert '\"implementation\":\"llama_cpp\"' in identity
-    assert f'\"upstream_revision\":\"{UPSTREAM_REVISION}\"' in identity
-    assert f'\"build_info\":\"{BUILD_INFO}\"' in identity
-    assert f'\"model_alias\":\"{MODEL_ALIAS}\"' in identity
-    assert '\"context_limit\":4096' in identity
-    assert '\"context_shift_enabled\":false' in identity
-    assert '\"chat_template_sha256\":\"' in identity
+    assert '"implementation":"llama_cpp"' in identity
+    assert f'"upstream_revision":"{UPSTREAM_REVISION}"' in identity
+    assert f'"build_info":"{BUILD_INFO}"' in identity
+    assert f'"model_alias":"{MODEL_ALIAS}"' in identity
+    assert '"context_limit":4096' in identity
+    assert '"context_shift_enabled":false' in identity
+    assert '"chat_template_sha256":"' in identity
 
 
 def test_binding_matches_runtime_target_provider_and_manifest() -> None:
@@ -248,7 +248,7 @@ def test_binding_accepts_q4_k_medium_runtime_dialect_for_q4_k_m_target() -> None
     )
 
     assert binding.runtime_identity.model_ftype == "Q4_K - Medium"
-    assert '\"model_ftype\":\"Q4_K - Medium\"' in binding.manifest.provider_identity
+    assert '"model_ftype":"Q4_K - Medium"' in binding.manifest.provider_identity
 
 
 def test_binding_rejects_unmapped_runtime_ftype() -> None:
