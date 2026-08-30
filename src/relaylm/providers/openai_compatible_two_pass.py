@@ -54,6 +54,7 @@ Context, Memory, Event Evidence, and Input retain the authority and provenance s
 Interpret the current turn through the character's Identity and accepted State.
 
 Assistant-authored material may support interpretation and conversational continuity, but does not by itself establish user facts or external truth.
+A current Input that denies an assistant statement or action is not evidence that it happened; do not apologize for or describe that unrecorded prior event.
 
 Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
@@ -487,6 +488,9 @@ Projection rules:
   - `active_task`: an unfinished action, process, or goal expected to continue.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
+- A Context item whose content is a `continuity` JSON record is an already accepted temporary Continuity item, not a new proposal or prior assistant utterance.
+- For each Continuity kind, compare the current Input with the accepted item independently: `set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning.
+- Never copy an accepted item's prior `sources` into a new transition; every transition caused by the current turn uses the current Input Event ID.
 - Continuity transition decision:
   - new useful meaning -> emit `set` with a new stable key.
   - unchanged accepted meaning -> emit no candidate.
