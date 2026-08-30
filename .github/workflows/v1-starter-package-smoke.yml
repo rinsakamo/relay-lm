@@ -57,6 +57,12 @@ jobs:
               "relaylm/starters/characters/relm/config.yaml",
               "relaylm/starters/machines/fact-summarizer/SOUL.md",
               "relaylm/starters/machines/fact-summarizer/config.yaml",
+              "relaylm/starters/machines/relaylm-faq/SOUL.md",
+              "relaylm/starters/machines/relaylm-faq/config.yaml",
+              "relaylm/starters/machines/relaylm-faq/knowledge/core-concepts.md",
+              "relaylm/starters/machines/relaylm-faq/knowledge/operator-basics.md",
+          }
+          forbidden = {
               "relaylm/starters/machines/medical-soap/SOUL.md",
               "relaylm/starters/machines/medical-soap/config.yaml",
           }
@@ -66,6 +72,7 @@ jobs:
               wheel_names = set(archive.namelist())
           missing_wheel = expected - wheel_names
           assert not missing_wheel, sorted(missing_wheel)
+          assert not (forbidden & wheel_names), sorted(forbidden & wheel_names)
 
           with tarfile.open(sdist, "r:gz") as archive:
               sdist_names = set(archive.getnames())
@@ -75,6 +82,12 @@ jobs:
               if not any(name.endswith(f"/src/{relative}") for name in sdist_names)
           }
           assert not missing_sdist, sorted(missing_sdist)
+          leaked_sdist = {
+              relative
+              for relative in forbidden
+              if any(name.endswith(f"/src/{relative}") for name in sdist_names)
+          }
+          assert not leaked_sdist, sorted(leaked_sdist)
           PY
 
       - name: Create installed-artifact Starter smoke program
@@ -93,7 +106,7 @@ jobs:
           from relaylm.starters import list_starter_packages, materialize_starter_package
           from relaylm.storage.cognitive_package import CognitivePackageDirectory
 
-          expected = ["blank", "relm", "fact-summarizer", "medical-soap"]
+          expected = ["blank", "relm", "fact-summarizer", "relaylm-faq"]
           assert [starter.name for starter in list_starter_packages()] == expected
 
           workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
@@ -111,6 +124,14 @@ jobs:
               package = CognitivePackageDirectory(package_root)
               assert package.load_config().package_id == name
               assert package.load_identity().content.strip()
+              if name == "relaylm-faq":
+                  knowledge = package.load_knowledge()
+                  assert len(knowledge) == 2
+                  assert [item.location for item in knowledge] == [
+                      "knowledge/core-concepts.md",
+                      "knowledge/operator-basics.md",
+                  ]
+                  assert not (package_root / "memory" / "MEMORY.md").exists()
 
               config = root / f"{name}.yaml"
               config.write_text(
@@ -143,7 +164,7 @@ jobs:
               assert result.returncode == 0, result.stderr
               assert json.loads(result.stdout)["status"] == "ok"
 
-          for name in ("relm", "fact-summarizer"):
+          for name in ("relm", "relaylm-faq"):
               stdout = StringIO()
               stderr = StringIO()
               calls: list[tuple[object, str, int]] = []

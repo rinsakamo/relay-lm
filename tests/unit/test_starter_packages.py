@@ -16,7 +16,7 @@ _EXPECTED_STARTERS = {
     "blank": "characters",
     "relm": "characters",
     "fact-summarizer": "machines",
-    "medical-soap": "machines",
+    "relaylm-faq": "machines",
 }
 
 
@@ -82,7 +82,7 @@ def test_character_starters_preserve_character_specialization(tmp_path: Path) ->
 def test_machine_starters_use_general_package_identity_without_character_metadata(
     tmp_path: Path,
 ) -> None:
-    for name in ("fact-summarizer", "medical-soap"):
+    for name in ("fact-summarizer", "relaylm-faq"):
         root = _materialize(name, tmp_path / name)
         config = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
 
@@ -109,7 +109,7 @@ def test_each_starter_passes_production_doctor(name: str, tmp_path: Path) -> Non
     assert stderr.getvalue() == ""
 
 
-@pytest.mark.parametrize("name", ("relm", "fact-summarizer"))
+@pytest.mark.parametrize("name", ("relm", "relaylm-faq"))
 def test_character_and_machine_starters_reach_serve_startup(
     name: str, tmp_path: Path
 ) -> None:
@@ -160,14 +160,42 @@ def test_starters_exclude_runtime_provider_and_secret_configuration(tmp_path: Pa
             assert fragment not in text, (name, fragment)
 
 
-def test_medical_soap_starter_is_documentation_only(tmp_path: Path) -> None:
-    root = _materialize("medical-soap", tmp_path / "medical-soap")
-    soul = (root / "SOUL.md").read_text(encoding="utf-8").lower()
+def test_relaylm_faq_uses_bounded_package_knowledge_not_fake_memory(tmp_path: Path) -> None:
+    root = _materialize("relaylm-faq", tmp_path / "relaylm-faq")
+    package = CognitivePackageDirectory(root)
 
-    assert "soap" in soul
-    assert "do not invent" in soul
-    assert "not clinical decision" in soul
-    assert "diagnosis" in soul
+    knowledge = package.load_knowledge()
+    assert 1 <= len(knowledge) <= 4
+    assert all(item.location.startswith("knowledge/") for item in knowledge)
+    assert tuple(item.location for item in knowledge) == tuple(
+        sorted(item.location for item in knowledge)
+    )
+
+    combined = "\n".join(item.content for item in knowledge)
+    for required in (
+        "RelayLM",
+        "Pass 1",
+        "Pass 2",
+        "SOUL.md",
+        "Cognitive Profile",
+        "MEMORY",
+        "Continuity",
+        "Starter",
+    ):
+        assert required in combined
+
+    soul = (root / "SOUL.md").read_text(encoding="utf-8").lower()
+    assert "only" in soul and "knowledge" in soul
+    assert "model prior" in soul
+    assert "not supported" in soul
+    assert not (root / "memory" / "MEMORY.md").exists()
+
+
+def test_removed_medical_soap_is_not_materializable(tmp_path: Path) -> None:
+    from relaylm.starters import materialize_starter_package
+
+    with pytest.raises(ValueError, match="unknown starter package"):
+        materialize_starter_package("medical-soap", tmp_path / "medical-soap")
 
 
 def test_materialization_rejects_unknown_or_existing_destination(tmp_path: Path) -> None:
