@@ -37,6 +37,9 @@ from relaylm.providers.openai_compatible_identity import (
 
 ACTUAL_MODEL_LLAMA_CPP_BINDING_FORMAT_VERSION = 1
 LLAMA_CPP_MANIFEST_PROVIDER_IDENTITY_PREFIX = "actual-model-llama-cpp-v1:"
+_LLAMA_CPP_FTYPE_TARGET_QUANTIZATION_EQUIVALENCE = {
+    "Q4_K - Medium": "Q4_K_M",
+}
 
 
 class ActualModelLlamaCppBindingError(ValueError):
@@ -160,7 +163,10 @@ def bind_llama_cpp_execution_condition(
         raise ActualModelLlamaCppBindingError(
             "runtime artifact_sha256 does not match the frozen GGUF target"
         )
-    if runtime_identity.model_ftype != target.quantization:
+    if not _llama_cpp_ftype_matches_target_quantization(
+        model_ftype=runtime_identity.model_ftype,
+        target_quantization=target.quantization,
+    ):
         raise ActualModelLlamaCppBindingError(
             "runtime model_ftype does not match the frozen GGUF quantization"
         )
@@ -351,6 +357,19 @@ def write_llama_cpp_actual_model_execution_result(
         except OSError:
             pass
     return path
+
+
+def _llama_cpp_ftype_matches_target_quantization(
+    *,
+    model_ftype: str,
+    target_quantization: str,
+) -> bool:
+    if model_ftype == target_quantization:
+        return True
+    return (
+        _LLAMA_CPP_FTYPE_TARGET_QUANTIZATION_EQUIVALENCE.get(model_ftype)
+        == target_quantization
+    )
 
 
 def _runtime_identity_mapping(
