@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, a small current Stage R authority/launcher with fresh live-capacity binding, historical screening plans retained only at evidence/template boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, a small current Stage R authority/launcher with fresh live-capacity binding, historical screening plans retained only at evidence/template boundaries, explicit scored-vs-unscored proposal-channel oracle semantics for new evaluation identities, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -19,6 +19,7 @@ canonical_surfaces:
 - docs/reference/actual-model-vllm-functional-acceptance.md
 - docs/reference/actual-model-stage-r-coverage.md
 - docs/reference/actual-model-stage-r-current.md
+- docs/reference/actual-model-stage-r-oracle.md
 - evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
 - evaluation/actual_model/qualifications/core-semantic-v1.json
 implementation:
@@ -72,6 +73,8 @@ tests:
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
 - tests/unit/test_actual_model_quality.py
+- tests/unit/test_actual_model_oracle_scoring.py
+- tests/unit/test_actual_model_stage_r_oracle.py
 - tests/unit/test_actual_model_proposal_turn_locality.py
 - tests/unit/test_actual_model_continuity_runtime_identity.py
 - tests/unit/test_actual_model_scenarios.py
@@ -136,6 +139,15 @@ evidence:
     Frozen foundation-v2 scenario set carrying controlled pressure conditions.
   surfaces:
   - evaluation/actual_model/scenario_sets/foundation-v2.json
+- id: actual-model-foundation-scenarios-v3-candidate
+  summary: >-
+    #2025 oracle-audit candidate with explicit scored/unscored proposal channels,
+    neutral transcript fidelity, adversarial false-attribution resistance, and
+    the existing Continuity lifecycle. It is not current Stage R authority until
+    the failed Turn-3 serialized-input evidence boundary is reconciled.
+  surfaces:
+  - evaluation/actual_model/scenario_sets/foundation-v3.json
+  - evaluation/actual_model/prompt_candidates/principle-only-two-pass-v1.txt
 - id: actual-model-gemma-target-v1
   summary: >-
     Frozen Gemma target artifact identity for reproducible actual-model runs.
