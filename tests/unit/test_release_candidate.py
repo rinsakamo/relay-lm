@@ -107,6 +107,16 @@ def test_runtime_evidence_requires_doctor_ok_and_native_eval_pass(tmp_path: Path
         verify_runtime_evidence(doctor_path=doctor, evaluation_path=evaluation)
 
 
+def test_candidate_workflow_uses_current_profile_and_starter_operator_path() -> None:
+    workflow = Path(".github/workflows/v1-release-candidate.yml").read_text(encoding="utf-8")
+
+    assert "profiles:" in workflow
+    assert "materialize_starter_package" in workflow
+    assert 'materialize_starter_package("relm"' in workflow
+    assert 'materialize_starter_package("fact-summarizer"' in workflow
+    assert "character:\n            directory:" not in workflow
+
+
 def _metadata(version: str) -> bytes:
     return (
         "Metadata-Version: 2.4\n"

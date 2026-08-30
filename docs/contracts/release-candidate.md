@@ -28,16 +28,19 @@ From that point forward every installed-artifact check consumes the exact files 
 1. wheel/sdist metadata and required-file inspection;
 2. REL2 manifest generation binding version, expected tag, exact commit, filenames, and SHA-256;
 3. fresh non-editable wheel installation outside the repository checkout;
-4. installed `relaylm --version`;
-5. installed non-generative `relaylm doctor --json`;
-6. installed `relaylm-eval` with `relaylm-native` status `pass`;
-7. installed `relaylm serve` startup plus `/health` response from the wheel path;
-8. a second fresh non-editable install from the exact sdist, with version/doctor/evaluation checks;
-9. manifest/hash verification again after all execution, proving the tested bytes did not change.
+4. materialization of the bundled Character-like `relm` Starter from that installed wheel and binding it through the current `profiles[]` runtime configuration;
+5. installed `relaylm --version`;
+6. installed non-generative `relaylm doctor --json`;
+7. installed `relaylm-eval` with `relaylm-native` status `pass`;
+8. installed `relaylm serve` startup plus `/health` response from the wheel path;
+9. a second fresh non-editable install from the exact sdist;
+10. materialization of the bundled machine-like `fact-summarizer` Starter from that installed sdist and binding it through the same current `profiles[]` operator path;
+11. version/doctor/evaluation plus `relaylm serve` and `/health` checks from that second installed environment;
+12. manifest/hash verification again after all execution, proving the tested bytes did not change.
 
 `relaylm-eval` is the deterministic RelayLM-native artifact-level gate. Ordinary source CI remains a prerequisite for merging the candidate commit, but source pytest is not substituted for the installed candidate validation above.
 
-The scratch Character and runtime configuration are generated in the runner temporary directory. They are not packaged data and do not become Character semantic authority.
+The Starter roots and runtime configurations are generated in runner temporary directories from the exact installed candidate artifacts. They do not become Cognitive Package semantic authority. The smoke omits numeric cognition/calibration controls intentionally: it consumes the then-current #1446 canonical topology/operator defaults and does not invent #1388 release values.
 
 ## Candidate evidence bundle
 
@@ -47,15 +50,17 @@ A successful run preserves one GitHub Actions artifact named with exact package 
 - the exact candidate sdist;
 - `release-identity.json` with SHA-256 artifact provenance;
 - recorded build-environment versions;
-- content-free installed `doctor` evidence;
+- content-free installed `doctor` evidence for Character-like and machine-like Profile paths;
 - deterministic evaluation reports;
-- wheel `serve` log and `/health` response.
+- wheel and sdist `serve` logs and `/health` responses.
 
 The Actions artifact is CI evidence, not a public release channel. REL4 remains responsible for any later GitHub Release, PyPI, or other publication target and must publish only an approved exact candidate artifact.
 
 ## Relationship to runtime/default owners
 
-REL3 consumes #1446 operator semantics and does not redefine them. RCFG6 already consumes REL1 installed-artifact evidence. Current #1446 still has RCFG5 blocked on #1388 canonical calibrated profile/default authority.
+REL3 consumes #1446 operator semantics and does not redefine them. Its installed smoke follows the current Cognitive Profile registry and first-party Starter materialization surfaces rather than preserving a superseded Character-only runtime schema.
+
+REL3 does not select a calibration profile, pass reasoning/decoding controls, output limits, Cognitive Budget, or other #1388-owned numeric policy. When those values become required release authority, an actual candidate run must consume the then-current #1446/#1388 configuration rather than embedding release-specific values in this mechanical gate.
 
 Accordingly, implementing this workflow does **not** authorize `1.0.0rc1` or declare REL3 acceptance complete. An actual candidate run must use the then-current #1446 path and applicable #1388 defaults/profile authority before #1449 can consume the evidence for final readiness.
 
