@@ -47,7 +47,7 @@ def test_current_stage_r_authority_has_no_numeric_context_window() -> None:
         "format_version": 1,
         "authority_id": "stage-r0-vllm-current-v1",
         "execution_template_path": (
-            "evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json"
+            "evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json"
         ),
         "context_window_source": "fresh_external_capacity_evidence",
         "hardware_capability_source": "fresh_vllm_profiler_auto_kv",
@@ -90,7 +90,7 @@ def test_current_stage_r_screening_always_binds_context_from_capacity(
     assert args[args.index("--capacity-evidence-id") + 1] == "amcap-current"
     assert args[args.index("--capacity-evidence-root") + 1] == "/tmp/capacity"
     assert args[args.index("--screening-plan") + 1] == (
-        "evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json"
+        "evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json"
     )
 
 

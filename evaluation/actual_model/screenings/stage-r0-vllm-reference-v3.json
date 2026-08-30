@@ -1,0 +1,75 @@
+{
+  "format_version": 2,
+  "screening_id": "stage-r0-vllm-reference-v3",
+  "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
+  "scenario_set_path": "evaluation/actual_model/scenario_sets/foundation-v3.json",
+  "scenario_set_revision": "sha256:ad9e1940f9c6c8ae77ef71271ca1fad98a3b0b8b36dda9da6ea69cdf12846cd6",
+  "effective_context_window": 1616,
+  "decoding": {
+    "temperature": 0,
+    "top_p": 1,
+    "seed": null
+  },
+  "supported_decoding_controls": [
+    "temperature",
+    "top_p"
+  ],
+  "execution_path": "buffered",
+  "continuity_runtime": {
+    "max_items": 8,
+    "lifetime_revisions": 4
+  },
+  "scenario_ids": [
+    "response-transcript-fidelity-v1",
+    "response-false-attribution-resistance-v1",
+    "continuity-lifecycle-v1"
+  ],
+  "conditions": {
+    "reference_baseline": {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "cognition_execution": "two_pass",
+      "pass_requests": {
+        "single_pass": null,
+        "pass1": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null,
+          "structured_output_mode": null
+        },
+        "pass2": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null,
+          "structured_output_mode": "native"
+        }
+      }
+    },
+    "pass2_reasoning_escalation": {
+      "condition_id": "stage-r0-vllm-c-two-pass-off-bounded16",
+      "cognition_execution": "two_pass",
+      "pass_requests": {
+        "single_pass": null,
+        "pass1": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null,
+          "structured_output_mode": null
+        },
+        "pass2": {
+          "reasoning_mode": "bounded",
+          "reasoning_budget": 16,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null,
+          "structured_output_mode": "native"
+        }
+      }
+    }
+  }
+}

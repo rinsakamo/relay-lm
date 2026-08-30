@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, a small current Stage R authority/launcher with fresh live-capacity binding, historical screening plans retained only at evidence/template boundaries, explicit scored-vs-unscored proposal-channel oracle semantics for new evaluation identities, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, a small current Stage R authority/launcher with fresh live-capacity binding, a v3 execution template that binds the exact current scenario-set path/revision while historical plans remain loadable evidence, explicit scored-vs-unscored proposal-channel oracle semantics for new evaluation identities, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -138,17 +138,24 @@ evidence:
   - evaluation/actual_model/characters/foundation-v1/memory/state.json
 - id: actual-model-foundation-scenarios-v2
   summary: >-
-    Frozen foundation-v2 scenario set carrying controlled pressure conditions.
+    Immutable historical foundation-v2 scenario set carrying the previous
+    mixed persona/correction oracle and controlled pressure conditions.
   surfaces:
   - evaluation/actual_model/scenario_sets/foundation-v2.json
-- id: actual-model-foundation-scenarios-v3-candidate
+- id: actual-model-foundation-scenarios-v3
   summary: >-
-    #2025 oracle-audit candidate with explicit scored/unscored proposal channels,
-    neutral transcript fidelity, adversarial false-attribution resistance, and
-    the existing Continuity lifecycle. It is not current Stage R authority until
-    the failed Turn-3 serialized-input evidence boundary is reconciled.
+    Current #2025-promoted Stage R oracle with explicit scored/unscored proposal
+    channels, neutral transcript fidelity, adversarial false-attribution
+    resistance, and the existing Continuity lifecycle. Fresh execution is
+    required for any verdict under this evaluation identity.
   surfaces:
   - evaluation/actual_model/scenario_sets/foundation-v3.json
+- id: actual-model-principle-only-prompt-v1
+  summary: >-
+    Non-production #2025 prompt-crystallization design input. Production wiring,
+    if accepted after matched physical comparison, belongs to a separate #1533
+    semantic transaction and intentionally advances Core semantic identity.
+  surfaces:
   - evaluation/actual_model/prompt_candidates/principle-only-two-pass-v1.txt
 - id: actual-model-gemma-target-v1
   summary: >-
@@ -193,19 +200,26 @@ evidence:
   summary: >-
     Immutable historical plan containing A single-pass OFF, B two-pass OFF/OFF,
     and C two-pass Pass-2 escalation. Current Core 1.0 policy uses semantic
-    `reference_baseline` and optional `pass2_reasoning_escalation` plan keys;
+    reference_baseline and optional pass2_reasoning_escalation plan keys;
     historical A/B/C names remain only inside this immutable evidence plan and
     do not define current execution structure or order.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
 - id: actual-model-stage-r-v2-execution-template
   summary: >-
-    Historical/current-compatible v2 execution template retained for topology,
-    pass-request and scenario identity. Its numeric effective context window is
-    not current hardware/runtime authority; the current Stage R launcher always
-    binds screening capacity from fresh external evidence.
+    Immutable historical v2 execution template retained for the previous Stage R
+    evaluation identity. Its numeric effective context window is historical
+    template data and never current hardware/runtime authority.
   surfaces:
   - evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
+- id: actual-model-stage-r-v3-execution-template
+  summary: >-
+    Current Stage R execution template. It binds the exact foundation-v3
+    repository path and semantic revision, the exact v3 scenario IDs, and the
+    current two-pass reference/escalation topology. Its numeric context window
+    remains template data; current screening binds fresh external capacity.
+  surfaces:
+  - evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json
 - id: actual-model-crystallization-quality-v1
   summary: >-
     Frozen Character fixture and revision identity for off-turn crystallization
