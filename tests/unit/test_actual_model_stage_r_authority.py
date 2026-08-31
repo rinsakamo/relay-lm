@@ -82,6 +82,29 @@ def test_current_stage_r_rejects_stale_profiler_hardware_source(
         stage_r.load_current_stage_r_authority(path)
 
 
+def test_current_stage_r_rejects_origin_only_provider_base_url_before_delegation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    touched = False
+
+    def forbidden(_: list[str]) -> int:
+        nonlocal touched
+        touched = True
+        return 0
+
+    monkeypatch.setattr(stage_r, "_host_main", forbidden)
+    args = _common_args("capacity")
+    args[args.index("--provider-base-url") + 1] = "http://127.0.0.1:8000"
+
+    with pytest.raises(
+        StageRAuthorityError,
+        match=r"provider base URL.*/v1",
+    ):
+        stage_r.main(args)
+
+    assert touched is False
+
+
 def test_current_stage_r_screening_requires_external_capacity_evidence() -> None:
     with pytest.raises(
         StageRAuthorityError,
