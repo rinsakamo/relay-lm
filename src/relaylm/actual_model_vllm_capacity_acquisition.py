@@ -427,7 +427,19 @@ def prepare_vllm_capacity_acquisition(
         raise VLLMCapacityAcquisitionError(
             "live vLLM capacity acquisition requires a positive max_model_len"
         )
-    scenario_set = load_actual_model_scenario_set(root / CANONICAL_SCENARIO_SET_PATH)
+    scenario_set_path = (
+        root / plan.scenario_set_path
+        if plan.scenario_set_path is not None
+        else root / CANONICAL_SCENARIO_SET_PATH
+    )
+    scenario_set = load_actual_model_scenario_set(scenario_set_path)
+    if (
+        plan.scenario_set_revision is not None
+        and scenario_set.revision != plan.scenario_set_revision
+    ):
+        raise VLLMCapacityAcquisitionError(
+            "capacity scenario-set revision does not match the execution template"
+        )
     fixture_root = root / CANONICAL_FIXTURE_PATH
     fixture_revision = character_fixture_revision(fixture_root)
     _validate_scenarios(plan=plan, scenario_set=scenario_set)
