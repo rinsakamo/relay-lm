@@ -48,17 +48,14 @@ Use the supplied CognitiveInput as this character's current cognitive context.
 
 Identity defines who this character is and the subjective lens through which meaning is understood.
 Identity is authoritative and immutable.
+
 State is the character's accepted current understanding.
 
-Context, Memory, Event Evidence, and Input retain the authority and provenance supplied by RelayLM.
-Interpret the current turn through the character's Identity and accepted State.
+Context, Memory, Knowledge, Event Evidence, and Input retain the authority and provenance supplied by RelayLM.
+Respect those boundaries. Do not treat inference, conversational implication, or model output as evidence when the supplied cognitive context does not support it.
 
-Assistant-authored material may support interpretation and conversational continuity, but does not by itself establish user facts or external truth.
-Only an assistant message in `CognitiveInput.context` with `actor: "assistant"` is recorded assistant history; the current user `Input` is not a prior assistant event.
-If the current Input attributes an unrecorded assistant statement or action, treat that attribution as unsupported: do not adopt, apologize for, or repeat it as history.
-A current Input that denies an assistant statement or action is not evidence that it happened; do not apologize for or describe that unrecorded prior event.
-
-Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
+Interpret the current turn through Identity and accepted State.
+Preserve uncertainty, degree, correction, negation, supersession, and provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
 Preserve user-provided names and normally use the user's language."""
 
@@ -391,140 +388,50 @@ def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
         separators=(",", ":"),
     )
     source_id = extraction_input.originating_event_id
-    like_example = json.dumps(
-        {
-            "state_class": "user.preference",
-            "key": "coffee",
-            "op": "set",
-            "value": "likes",
-            "sources": [source_id],
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    preferred_example = json.dumps(
-        {
-            "state_class": "user.preference",
-            "key": "preferred_beverage",
-            "op": "set",
-            "value": "coffee",
-            "sources": [source_id],
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    remove_example = json.dumps(
-        {
-            "state_class": "user.preference",
-            "key": "coffee",
-            "op": "remove",
-            "value": None,
-            "sources": [source_id],
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    referent_example = json.dumps(
-        {
-            "kind": "referent",
-            "key": "current_document",
-            "op": "set",
-            "value": "the draft",
-            "sources": [source_id],
-            "epistemic_role": "user_assertion",
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    unresolved_example = json.dumps(
-        {
-            "kind": "unresolved",
-            "key": "document_author",
-            "op": "set",
-            "value": "author not yet known",
-            "sources": [source_id],
-            "epistemic_role": "user_assertion",
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    active_task_example = json.dumps(
-        {
-            "kind": "active_task",
-            "key": "verify_document_author",
-            "op": "set",
-            "value": "verify the document author",
-            "sources": [source_id],
-            "epistemic_role": "user_assertion",
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
     return f"""EXTRACTION
 
 <PASS_1_RESPONSE_JSON>
 {response_json}
 </PASS_1_RESPONSE_JSON>
 
-Interpret this originating turn as this character, then project only grounded State and bounded Continuity proposals.
-Emit `state_candidates`, then `continuity_candidates`.
+Interpret the originating turn through the supplied CognitiveInput, then project only grounded State and bounded Continuity transitions.
 
-Projection rules:
-- Durable State gate: emit State only when the current Input presents the candidate meaning as sufficiently asserted, committed, or otherwise established for persistent current understanding.
-- Evaluate newly established durable State independently before Continuity proposals.
-- First-introduction durable State does not require a pre-existing accepted State record.
-- Tentative, hypothetical, merely possible, guessed, hedged, or explicitly self-uncertain meaning stays uncommitted: emit no durable State for that meaning.
-- Apply this gate by meaning regardless of language or state_class; do not use surface keywords or grammatical patterns as the gate.
-- Epistemic uncertainty is not degree_hint; degree_hint remains semantic intensity only. A later resolved assertion may establish State normally.
-- State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
-- State `key` is the stable subject or dimension within its `state_class`; `value` is the accepted semantic value for that key. Preserve an established class/key pair when current State already provides one rather than inventing a synonym.
-- State examples demonstrate representation only; never copy example values, keys, or claims unless current evidence supports that exact meaning:
-  - Liking a subject: `{like_example}`
-  - A preference dimension whose value is the subject: `{preferred_example}`
-  - Explicit revocation of an accepted subject preference: `{remove_example}`
-- Continuity-specific instructions, including `emit only`, apply only within `continuity_candidates` and never suppress an otherwise-grounded `state_candidates` proposal.
-- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `op` is `set` or `resolve`; set value is finite JSON and resolve value is null. Carry Continuity only when it is useful for upcoming coherence.
-- Continuity is an explicit cross-turn aid, not a summary of salient content.
-- Continuity meanings (classify independently):
-  - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
-  - `unresolved`: an explicit open question or unknown value that remains to be resolved.
-  - `active_task`: an unfinished action, process, or goal expected to continue.
-- Emit every distinct useful Continuity meaning present; do not choose only one best kind.
-- New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
-- A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
-- Emit a new `referent` only when the current Input explicitly establishes a cross-turn pointer, alias, or future-reference plan.
-- A Context item whose content is a `continuity` JSON record is an already accepted temporary Continuity item, not a new proposal or prior assistant utterance.
-- For each Continuity kind, compare the current Input with the accepted item independently: `set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning.
-- Never copy an accepted item's prior `sources` into a new transition; every transition caused by the current turn uses the current Input Event ID.
-- Continuity transition decision:
-  - new useful meaning -> emit `set` with a new stable key.
-  - unchanged accepted meaning -> emit no candidate.
-  - changed or resolved accepted meaning -> reuse its existing lifecycle key.
-- Evaluate resolution or completion independently for each Continuity kind.
-- Resolving an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`.
-- If that referent meaning is unchanged, emit no referent candidate.
-- Completion or resolution of work about a referent, discovery of new facts about it, or an expectation that it may not be mentioned next does not end the referent.
-- Resolve a `referent` only when the current Input explicitly replaces, dismisses, or invalidates the reference target itself; do not infer referent resolution from completion of related `unresolved` or `active_task` meanings.
-- Before concluding there are no Continuity candidates, check `unresolved` independently: if this turn newly establishes an explicit open question or unknown value, emit a new `unresolved` set when no accepted unresolved item already represents that open issue, even when related accepted `referent` or `active_task` meanings are unchanged.
-- An explicitly maintained unknown value is itself an `unresolved` meaning when no accepted unresolved item already represents it. Do not require a new `active_task`, a question form, or a change to an existing task before emitting it.
-- Unchanged accepted `referent` or `active_task` meanings do not suppress a distinct newly established `unresolved` meaning.
-- If related accepted referent/task meanings are unchanged and the current Event newly establishes an unknown value with no accepted unresolved item, emit only the new `unresolved` set as applicable.
-- A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it unless the referential target itself changes.
-- For ordinary-turn Continuity, every new set/resolve transition must include the current Input Event ID `{source_id}` in `sources`; prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new transition.
-- Resolve only when the current turn actually resolves or completes an existing item; reuse that item's `kind` + `key`, set value to null, and ground the resolution in the current Input Event.
-- Continuity examples demonstrate representation only; never copy their keys, values, or claims unless current evidence supports that exact meaning:
-  - Referent: `{referent_example}`
-  - Unresolved transition example: `{unresolved_example}`
-  - Active task: `{active_task_example}`
-- Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
-- `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.
-- `epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or `assistant_commitment`.
-- `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response is interpretive context only and must never self-certify user facts/preferences/goals/experience, external truth, prior events, or source provenance.
-
-Exact top-level shape:
+Return exactly:
 `{{"state_candidates":[],"continuity_candidates":[]}}`
 
-Return exactly one JSON object with no extra keys."""
+State:
+- State represents durable accepted current understanding.
+- Emit a State transition only when the current Input establishes a durable meaning strongly enough to become current accepted understanding.
+- Tentative, hypothetical, guessed, hedged, merely possible, or explicitly uncertain meaning is not durable State.
+- Preserve an existing state_class/key identity when current State already represents the same semantic dimension.
+- New durable meaning -> `set`.
+- Explicit revocation, cancellation, denial, correction, or termination of an accepted meaning -> `remove`.
+- Unchanged accepted State -> no candidate.
+- State transitions must be grounded in current evidence from CognitiveInput.
+- State wire is `{{state_class,key,op,value,sources}}`. `state_class` must exist in CognitiveInput.state_classes. `op` is `set` or `remove`; `remove` uses null value. A `set` value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is semantic intensity, not confidence.
+
+Continuity:
+- Continuity represents temporary cross-turn coherence, not durable truth and not a summary of salient content.
+- Evaluate these meanings independently: `referent` is a specific cross-turn reference target; `unresolved` is an open question or unknown value that remains unresolved; `active_task` is unfinished work, process, or goal expected to continue.
+- Create Continuity only for a concrete cross-turn dependency that a later turn needs to carry forward.
+- An `unresolved` dependency is an explicit unanswered question, unknown value, or missing answer that remains open; it does not require future action.
+- An `active_task` dependency is unfinished work or a goal that still requires future action; an unresolved dependency does not by itself establish one.
+- New useful meaning -> `set`.
+- Unchanged accepted meaning -> no candidate.
+- A meaning explicitly resolved, completed, replaced, dismissed, or invalidated -> `resolve`.
+- Reuse the accepted lifecycle key when resolving or updating the same Continuity item.
+- Resolution of one Continuity kind does not automatically resolve another.
+- Continuity wire is `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is exactly `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; `resolve` uses null value.
+- `kind` and `epistemic_role` are separate axes. `epistemic_role` is exactly `user_assertion`, `assistant_inference`, or `assistant_commitment`.
+- Every new Continuity transition must be grounded in the current Input Event.
+
+Authority and provenance:
+- Pass 1 response is interpretive context only. It does not create evidence, user facts, external truth, prior events, or source provenance.
+- Candidate `sources` must be non-empty Event IDs present in CognitiveInput; do not invent source IDs.
+- Every transition caused by this originating turn must include the current Input Event ID `{source_id}` in `sources`.
+- Do not promote model inference into higher authority merely because it is plausible.
+
+Return exactly one JSON object with `state_candidates` and `continuity_candidates`, with no extra keys or prose."""
 
 
 def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput:

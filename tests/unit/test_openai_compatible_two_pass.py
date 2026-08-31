@@ -127,7 +127,10 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
     assert "response_format" not in seen[1]
     assert "turn_interpretation" not in extraction_prompt
     assert "interpretive context only" in extraction_prompt
-    assert "must never self-certify" in extraction_prompt
+    assert (
+        "It does not create evidence, user facts, external truth, prior events, or source provenance."
+        in extraction_prompt
+    )
     assert "state_candidates" in extraction_prompt
     assert "continuity_candidates" in extraction_prompt
     assert '"content":"最近はコーヒーを飲んでるんだね。"' in extraction_prompt
