@@ -40,6 +40,8 @@ stage-r0-vllm-current-v1
 
 Historical v2 plans remain loadable evidence/templates and are not rewritten as v3.
 
+`--provider-base-url` is the OpenAI-compatible API base, not the bare vLLM server origin. For the canonical local vLLM server it must therefore be shaped like `http://127.0.0.1:8000/v1` (a trailing slash is harmless). Current Stage R rejects an origin-only value such as `http://127.0.0.1:8000` before delegating to the host, because the production provider appends `/chat/completions` to this API base while vLLM serves that route under `/v1/chat/completions`.
+
 ## Physical admission bootstrap
 
 Before capacity acquisition or semantic screening:
