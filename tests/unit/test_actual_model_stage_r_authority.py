@@ -98,7 +98,7 @@ def test_current_stage_r_rejects_origin_only_provider_base_url_before_delegation
 
     with pytest.raises(
         StageRAuthorityError,
-        match="provider base URL.*\/v1",
+        match=r"provider base URL.*/v1",
     ):
         stage_r.main(args)
 
