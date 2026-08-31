@@ -132,10 +132,12 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
         "New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical."
         in extraction_content
     )
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
+    assert "new useful meaning -> emit `set`" in extraction_content
+    assert "unchanged meaning -> emit no candidate" in extraction_content
+    assert "current resolution or completion -> emit `resolve`" in extraction_content
     assert (
-        "every new set/resolve transition must include the current Input Event ID `evt-now` in `sources`"
+        "every emitted `set` or `resolve` must include the current Input Event ID `evt-now` in "
+        "`sources`"
         in extraction_content
     )
 
@@ -168,45 +170,72 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
     for example in expected_examples:
         assert json.dumps(example, ensure_ascii=False, separators=(",", ":")) in extraction_content
 
-    assert "which blue box" not in extraction_content
 
-
-def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
+def test_pass2_prompt_requires_a_complete_independent_continuity_decision_procedure() -> None:
     _, extraction = _request_bodies()
     extraction_messages = extraction["messages"]
     assert isinstance(extraction_messages, list)
     extraction_content = extraction_messages[1]["content"]
     assert isinstance(extraction_content, str)
 
-    assert "Continuity transition decision:" in extraction_content
-    assert "new useful meaning -> emit `set` with a new stable key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
+    procedure = "Before emitting `continuity_candidates`, complete this independent decision procedure:"
+    procedure_start = extraction_content.index(procedure)
+    scan_markers = (
+        "1. Scan `referent`.",
+        "2. Scan `unresolved`.",
+        "3. Scan `active_task`.",
+    )
+    scan_positions = [extraction_content.index(marker, procedure_start) for marker in scan_markers]
+    assert scan_positions == sorted(scan_positions)
+    assert all(position > procedure_start for position in scan_positions)
+
+    for marker in (
+        "new useful meaning -> emit `set`",
+        "unchanged meaning -> emit no candidate",
+        "current resolution or completion -> emit `resolve`",
+    ):
+        assert marker in extraction_content
+
+    completion_marker = (
+        "Complete all three kind decisions before concluding that `continuity_candidates` is empty"
+    )
+    assert extraction_content.index(completion_marker) > max(scan_positions)
     assert (
-        "Before concluding there are no Continuity candidates, check `unresolved` independently"
+        "a no-op for one kind never suppresses a `set` or `resolve` for another."
         in extraction_content
     )
     assert (
-        "newly establishes an explicit open question or unknown value" in extraction_content
-    )
-    assert (
-        "emit a new `unresolved` set when no accepted unresolved item already represents that open issue"
+        "use a new stable key unless updating or replacing an accepted item, then reuse its "
+        "existing `kind` + `key`."
         in extraction_content
     )
     assert (
-        "even when related accepted `referent` or `active_task` meanings are unchanged"
+        "reuse the accepted `kind` + `key` and set `value` to null."
         in extraction_content
     )
     assert (
-        "An explicitly maintained unknown value is itself an `unresolved` meaning"
+        "For `unresolved`, an explicit currently-open question or unknown value is an `unresolved` "
+        "meaning when no accepted `unresolved` item already represents it."
         in extraction_content
     )
     assert (
-        "Do not require a new `active_task`, a question form, or a change to an existing task before emitting it."
+        "Its creation is independent of unchanged related `referent`/`active_task` items and does "
+        "not require a new task, interrogative form, or task change."
         in extraction_content
     )
     assert (
-        "A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it"
+        "every emitted `set` or `resolve` must include the current Input Event ID `evt-now` in "
+        "`sources`"
+        in extraction_content
+    )
+    assert (
+        "new descriptive facts about it, or an expectation that it may not be mentioned next does "
+        "not end the referent."
+        in extraction_content
+    )
+    assert (
+        "Resolve a `referent` only when the current Input explicitly replaces, dismisses, or "
+        "invalidates the reference target itself."
         in extraction_content
     )
 

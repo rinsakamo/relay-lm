@@ -20,14 +20,14 @@ def _extraction_input() -> CognitionExtractionInput:
         input=Event.create(
             type="message",
             actor="user",
-            payload={"content": "机の上の青い箱を確認しよう"},
+            payload={"content": "Let's continue with the document."},
             event_id="evt-now",
             timestamp="2026-08-25T00:00:00+00:00",
         ),
     )
     return CognitionExtractionInput(
         cognitive_input=cognitive_input,
-        assistant_response="うん、青い箱を順番に確認しよう。",
+        assistant_response="Understood; let's continue with the document.",
     )
 
 
@@ -47,7 +47,7 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() ->
         "`active_task`." in suffix
     )
     assert (
-        "Resolve only when the current turn actually resolves or completes an existing item"
+        "current resolution or completion -> emit `resolve`; reuse the accepted `kind` + `key`"
         in suffix
     )
     assert "set value is finite JSON and resolve value is null" in suffix
@@ -68,26 +68,28 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> No
         "`unresolved`: an explicit open question or unknown value that remains to be resolved."
         in suffix
     )
-    assert "which blue box" not in suffix
 
 
-def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_continuity() -> None:
+def test_pass2_prompt_keeps_unresolved_general_and_fixture_independent() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
     assert (
-        "Unchanged accepted `referent` or `active_task` meanings do not suppress a "
-        "distinct newly established `unresolved` meaning." in suffix
+        "Before emitting `continuity_candidates`, complete this independent decision procedure:"
+        in suffix
     )
     assert (
-        "If related accepted referent/task meanings are unchanged and the current Event "
-        "newly establishes an unknown value with no accepted unresolved item, emit only "
-        "the new `unresolved` set as applicable." in suffix
+        "For `unresolved`, an explicit currently-open question or unknown value is an `unresolved` "
+        "meaning when no accepted `unresolved` item already represents it."
+        in suffix
     )
-    assert "Unresolved transition example" in suffix
-    assert '"kind":"unresolved"' in suffix
-    assert '"sources":["evt-now"]' in suffix
-    assert "blue_box" not in suffix
-    assert "box_contents_question" not in suffix
+    assert (
+        "Its creation is independent of unchanged related `referent`/`active_task` items and does "
+        "not require a new task, interrogative form, or task change."
+        in suffix
+    )
+    instruction_content = suffix.split("</PASS_1_RESPONSE_JSON>\n", 1)[1]
+    assert "fixture" not in instruction_content.lower()
+    assert "benchmark" not in instruction_content.lower()
 
 
 def test_pass2_prompt_keeps_durable_state_independent_of_continuity_guidance() -> None:
@@ -155,13 +157,16 @@ def test_pass2_projects_accepted_continuity_as_turn_local_deltas() -> None:
         in suffix
     )
     assert (
-        "For each Continuity kind, compare the current Input with the accepted item "
-        "independently: `set` for a new meaning, `resolve` for a current resolution, "
-        "and no candidate for an unchanged meaning."
+        "For each kind, compare the current Input with accepted items of that kind and decide "
+        "independently:"
         in suffix
     )
     assert (
-        "Never copy an accepted item's prior `sources` into a new transition; every "
-        "transition caused by the current turn uses the current Input Event ID."
+        "Complete all three kind decisions before concluding"
+        in suffix
+    )
+    assert (
+        "every emitted `set` or `resolve` must include the current Input Event ID `evt-now` in "
+        "`sources`"
         in suffix
     )
