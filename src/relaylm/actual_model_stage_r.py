@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
+from urllib.parse import urlsplit
 
 from relaylm.actual_model_fast_screening import SCREENING_CONDITION_ROLES
 from relaylm.actual_model_host import main as _host_main
@@ -130,6 +131,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--capacity-evidence-root")
     args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
 
+    _require_vllm_openai_api_base_url(args.provider_base_url)
     repo_root = Path(args.repo_root).resolve()
     authority = load_current_stage_r_authority(
         repo_root / CURRENT_STAGE_R_AUTHORITY_PATH
@@ -208,6 +210,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             ]
         )
     return _host_main(delegated)
+
+
+def _require_vllm_openai_api_base_url(base_url: str) -> None:
+    if not isinstance(base_url, str) or not base_url.strip():
+        raise StageRAuthorityError(
+            "current Stage R vLLM provider base URL must be a non-empty HTTP(S) URL ending in /v1"
+        )
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise StageRAuthorityError(
+            "current Stage R vLLM provider base URL must be an HTTP(S) URL ending in /v1"
+        )
+    if parsed.query or parsed.fragment or parsed.path.rstrip("/") != "/v1":
+        raise StageRAuthorityError(
+            "current Stage R vLLM provider base URL must use the OpenAI API base path /v1"
+        )
 
 
 def _string(value: object, label: str) -> str:
