@@ -21,7 +21,7 @@ evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
 It deliberately contains no numeric context window. It points to one current execution template and declares:
 
 - `context_window_source = fresh_external_capacity_evidence`;
-- `hardware_capability_source = fresh_vllm_profiler_auto_kv`.
+- `hardware_capability_source = qualified_vllm_token_capacity_reference`.
 
 The current template is:
 
@@ -40,25 +40,31 @@ stage-r0-vllm-current-v1
 
 Historical v2 plans remain loadable evidence/templates and are not rewritten as v3.
 
-## Hardware capability bootstrap
+## Physical admission bootstrap
 
 Before capacity acquisition or semantic screening:
 
 1. use the exact canonical vLLM source/runtime and frozen target;
-2. start a fresh profiler probe with `--max-model-len auto`;
-3. retain the runtime memory-profile facts and its recommended explicit `--kv-cache-memory-bytes=<bytes>`;
-4. stop the probe;
-5. restart the same target/runtime with that exact fresh KV byte recommendation plus `--max-model-len auto`;
-6. attest the final live backend/model/root/runner/max-model-length identity;
-7. keep this final runtime unchanged through capacity acquisition and screening.
+2. bind one legal target token window from the current bounded evaluation/calibration owner; if no owner has selected a legal window, stop;
+3. bind citable compatible `VLLMTokenCapacityReference` evidence from a successful launch of the same target/runtime/runner/host capability class;
+4. acquire fresh GPU `free_bytes` and `total_bytes`;
+5. construct `VLLMLaunchMemoryAdmission.for_token_window(...)` from the fixed target window, the qualified token-capacity reference, and the fresh GPU bytes;
+6. fail closed before launch if fresh free memory is below the token-derived required envelope;
+7. launch the final runtime with `final_memory_args()`, which renders an envelope-derived `--gpu-memory-utilization`, explicit `--kv-cache-memory-bytes`, and explicit `--max-model-len`;
+8. attest the final live backend/model/root/runner/max-model-length identity;
+9. keep this final runtime unchanged through capacity acquisition and screening.
 
-Historical context-window or KV values are evidence for their original runs only. They are not current launch controls.
+Ordinary Stage R does not choose its token window by maximizing transient free VRAM and does not use `--max-model-len auto` as a substitute for a missing evaluation/calibration-owned target.
+
+The existing vLLM profiler/parser remains available only for a separate launch-capability acquisition transaction when launch-significant target/runtime/runner/host identity changes or compatible token-capacity geometry is otherwise unavailable. Historical profiler values are evidence for their original runs only and are not ordinary Stage R launch controls.
+
+The physical-admission contract is defined in `docs/reference/actual-model-vllm-functional-acceptance.md`. A bounded comparison may use an explicitly authorized experiment-only token window without making that value a #1388 release default.
 
 ## Capacity
 
-Run `actual_model_stage_r --operation capacity` first. The launcher delegates to the existing production capacity path and rejects caller-supplied prior capacity evidence. Capacity acquisition therefore observes the final live `max_model_len` directly.
+After the fixed-window final runtime is serving, run `actual_model_stage_r --operation capacity` first. The launcher delegates to the existing production capacity path and rejects caller-supplied prior capacity evidence. Capacity acquisition therefore observes the live explicit `max_model_len` directly.
 
-The resulting external immutable capacity artifact must be complete for the selected current condition and exact current scenario-set revision.
+The resulting external immutable capacity artifact must be complete for the selected current condition and exact current scenario-set revision. On this path it attests the already-selected physical window; it does not choose that window.
 
 ## Screening
 
@@ -92,8 +98,8 @@ The #2029 request-evidence contract applies to the same canonical two-pass execu
 
 ## Evidence boundaries
 
-A capacity admission failure before screening is not semantic evidence. A deterministic-boundary PASS is not a semantic-quality PASS. Keep raw model output, request evidence, typed proposals, deterministic decisions, semantic review, capacity and timing evidence separately citable.
+A physical admission failure before screening is not semantic evidence. A deterministic-boundary PASS is not a semantic-quality PASS. Keep raw model output, request evidence, typed proposals, deterministic decisions, semantic review, capacity and timing evidence separately citable.
 
 ## Principle
 
-> Current execution starts from a small current authority surface; historical plans and comments remain evidence, never implicit runtime defaults.
+> Current execution starts from a small current authority surface; token demand comes from cognitive/evaluation authority, qualified launch geometry carries it physically, and transient free VRAM answers only whether the host can carry it.
