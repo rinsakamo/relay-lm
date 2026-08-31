@@ -414,8 +414,10 @@ Continuity:
 - Continuity represents temporary cross-turn coherence, not durable truth and not a summary of salient content.
 - Evaluate these meanings independently: `referent` is a specific cross-turn reference target; `unresolved` is an open question or unknown value that remains unresolved; `active_task` is unfinished work, process, or goal expected to continue.
 - Create Continuity only for a concrete cross-turn dependency that a later turn needs to carry forward.
+- Treat accepted Continuity in Context as existing lifecycle state, not a new proposal; emit only current-turn changes.
 - An `unresolved` dependency is an explicit unanswered question, unknown value, or missing answer that remains open; it does not require future action.
 - An `active_task` dependency is unfinished work or a goal that still requires future action; an unresolved dependency does not by itself establish one.
+- Evaluate each dependency on its own lifecycle; an unchanged related dependency does not suppress a newly established one.
 - New useful meaning -> `set`.
 - Unchanged accepted meaning -> no candidate.
 - A meaning explicitly resolved, completed, replaced, dismissed, or invalidated -> `resolve`.
