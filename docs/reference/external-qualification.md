@@ -152,6 +152,66 @@ Classification is evidence, not mutation authorization. A `generalizable_core_de
 
 The runner does not import RelayLM cognition, State, Continuity, MEMORY, Context, provider routing, or Stage R execution types. A serious comparator adapter can be added or replaced without adding a comparator-specific subsystem to RelayLM.
 
+## MemConflict RelayLM adapter boundary (#2047)
+
+The shared MemConflict harness has two different provider operations: it ingests
+the session dialogue, then recalls for each independent evaluation question. The
+RelayLM adapter preserves that distinction at the external boundary.
+
+For each benchmark session, the adapter:
+
+1. appends the shared harness's flattened `user`/`assistant` dialogue as normal
+   `message` Events through `CognitivePackageDirectory.append_event`;
+2. freezes the package immediately after that session's dialogue and before its
+   questions; and
+3. uses that frozen package as the sole question substrate. A later session gets
+   a new snapshot after its own dialogue has been ingested.
+
+Each evaluation question is executed exactly once by copying the frozen package
+to a disposable per-question clone and calling the ordinary declared
+`run_user_turn` or `run_user_turn_two_pass` path on that clone. The clone may
+receive the normal question Event and normal answer-time State/Continuity
+proposal processing required by that product path, but it is discarded after
+the turn (including awaited Pass 2). The live package and the frozen snapshot
+are never given the question or answer; the mechanics record that no question
+or answer is ingested into either durable package. The adapter has no semantic retry,
+fallback, question-specific prompt, retrieval rule, State rule, MEMORY rule,
+Continuity rule, or benchmark answer/reference input.
+
+`tools/memconflict_adapter.py` exposes the clone mechanics alongside each
+`RelayLMQueryResult`. Its `AnswerTimeEvidence` is captured from the actual
+`CognitiveInput` supplied to the provider: `context` remains the ordinary
+product context, while the explicit `memory`, targeted `event`, and selected
+canonical `state` layers remain separately identifiable. The optional
+`retrieved_memories_projection()` contains only those three selected layers and
+labels each item with `source_role` (`memory`, `event`, or `state`). It never
+projects package KNOWLEDGE as lived memory. The projection is diagnostic
+evidence, not a replacement for the ordinary provider input.
+
+The adapter bridges the completed #1871 bounded failure contract at the same
+external evidence boundary. It retains the failed provider-call class name and
+retains message text only for the already-sanitized `ProviderProtocolError`
+surface, bounded to 512 characters. An untrusted exception message is omitted.
+Pass 2 still reports the ordinary bounded `pass2_failed` result; a Pass 1
+failure is surfaced as `RelayLMReadOnlyQueryExecutionError` with the bounded
+diagnostic available for external evidence. No raw response, request body,
+traceback, API key, or semantic payload is added.
+
+The adapter does not own long-run durability. A caller begins the corresponding
+question in `DurableQuestionRun` before invoking the snapshot, appends the
+adapter's model/request and failure evidence, and commits the result only after
+the isolated turn is complete. `exact_infrastructure_resume` still requires
+the complete frozen identity and question list; completed questions remain
+skipped and semantic regeneration remains forbidden. A durable partial or
+in-flight tail is retained exactly as required by #2045.
+
+The deterministic acceptance for this boundary is in
+`tests/unit/test_memconflict_adapter.py`: a synthetic two-pass persona proves
+that Q1's answer, Event, State, and Continuity proposal cannot enter Q2; the
+ingested dialogue remains available; Q2 after Q1 has the same answer-time
+evidence as Q2 alone from the same frozen snapshot; source-role projection
+excludes KNOWLEDGE; and bounded provider failures remain exportable.
+
 Stable run identity hashes the full manifest and case before observations. `replicate_id` is part of that manifest identity. Repeating a stochastic condition therefore requires a distinct replicate id; attempting to write different results under the same run id fails closed.
 
 ## Detached long-run durability
