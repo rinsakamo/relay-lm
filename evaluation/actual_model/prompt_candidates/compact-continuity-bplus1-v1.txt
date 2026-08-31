@@ -1,0 +1,19 @@
+RelayLM #2041 research candidate: compact-continuity-bplus1-v1
+
+Status: research-only; not production authority; do not merge to v1.
+Base: principle-only-two-pass-v1
+Failure hypothesis: principle-only B lacked an explicit enough cross-turn dependency/lifecycle boundary to preserve unresolved creation and to distinguish unresolved unknowns from future work.
+
+Exact added model-facing Continuity scaffold:
+- Create Continuity only for a concrete cross-turn dependency that a later turn needs to carry forward.
+- Treat accepted Continuity in Context as existing lifecycle state, not a new proposal; emit only current-turn changes.
+- An `unresolved` dependency is an explicit unanswered question, unknown value, or missing answer that remains open; it does not require future action.
+- An `active_task` dependency is unfinished work or a goal that still requires future action; an unresolved dependency does not by itself establish one.
+- Evaluate each dependency on its own lifecycle; an unchanged related dependency does not suppress a newly established one.
+
+Static accounting for the five added lines only:
+- UTF-8 bytes: 652
+- whitespace-delimited words: 101
+- serving-tokenizer tokens: intentionally not asserted here; measure with the exact qualified serving tokenizer under fresh execution authority.
+
+The candidate intentionally does not restore A's benchmark/failure-specific examples, special-case prose, parser rescue, validator relaxation, oracle changes, reasoning escalation, or runtime/model/tokenizer/template changes.
