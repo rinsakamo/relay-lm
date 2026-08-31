@@ -4,7 +4,9 @@ import hashlib
 import json
 import os
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Sequence
 
 from tools.release_identity import ReleaseIdentityError, expected_release_tag, parse_release_version
 
@@ -26,9 +28,798 @@ CLASSIFICATIONS = {
     "comparison_condition_mismatch",
 }
 
+DURABLE_RUN_FORMAT_VERSION = 1
+FROZEN_EXPERIMENT_IDENTITY_FIELDS = (
+    "repository",
+    "candidate",
+    "prompt_core",
+    "benchmark",
+    "dataset",
+    "harness",
+    "adapter",
+    "model",
+    "artifact",
+    "tokenizer",
+    "template",
+    "backend",
+    "runtime",
+    "decoding",
+    "reasoning",
+    "structured_output",
+    "context_capacity",
+    "capacity_evidence",
+    "hardware",
+    "execution_order",
+    "retry_policy",
+    "authority",
+)
+
 
 class ExternalQualificationError(ValueError):
     """External qualification input or evidence violates the frozen contract."""
+
+
+class ExactResumeError(ExternalQualificationError):
+    """A durable run cannot be resumed under the supplied frozen identity."""
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenExperimentIdentity:
+    """The complete identity that a durable semantic run is allowed to resume."""
+
+    payload: dict[str, object] = field(repr=False, compare=False)
+    fingerprint: str
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, object]) -> "FrozenExperimentIdentity":
+        if not isinstance(raw, Mapping):
+            raise ExternalQualificationError("frozen experiment identity must be an object")
+        _keys(set(raw), set(FROZEN_EXPERIMENT_IDENTITY_FIELDS), "frozen experiment identity")
+        normalized = _json_copy(dict(raw), "frozen experiment identity")
+        for name in FROZEN_EXPERIMENT_IDENTITY_FIELDS:
+            if normalized[name] is None:
+                raise ExternalQualificationError(
+                    f"frozen experiment identity {name} must not be null"
+                )
+        if (
+            isinstance(normalized["context_capacity"], bool)
+            or not isinstance(normalized["context_capacity"], int)
+            or normalized["context_capacity"] <= 0
+        ):
+            raise ExternalQualificationError(
+                "frozen experiment identity context_capacity must be a positive integer"
+            )
+        authority = normalized["authority"]
+        if not isinstance(authority, Mapping) or authority.get("status") != "CURRENT_AUTHORITY_CONFIRMED":
+            raise ExternalQualificationError(
+                "frozen experiment identity requires CURRENT_AUTHORITY_CONFIRMED authority"
+            )
+        encoded = _canonical_json(normalized).encode("utf-8")
+        return cls(
+            payload=normalized,
+            fingerprint=f"sha256:{hashlib.sha256(encoded).hexdigest()}",
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        return _json_copy(self.payload, "frozen experiment identity")
+
+
+@dataclass(frozen=True, slots=True)
+class DurableQuestion:
+    """Stable question/session identity used by append-only durable evidence."""
+
+    question_id: str
+    content_fingerprint: str
+    session_id: str = "default"
+
+    def __post_init__(self) -> None:
+        for name in ("question_id", "content_fingerprint", "session_id"):
+            if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
+                raise ExternalQualificationError(f"question {name} must be non-empty")
+
+    @classmethod
+    def from_content(
+        cls,
+        question_id: str,
+        content: object,
+        *,
+        session_id: str = "default",
+    ) -> "DurableQuestion":
+        encoded = _canonical_json(content).encode("utf-8")
+        return cls(
+            question_id=question_id,
+            content_fingerprint=f"sha256:{hashlib.sha256(encoded).hexdigest()}",
+            session_id=session_id,
+        )
+
+    def to_mapping(self, *, order: int) -> dict[str, object]:
+        return {
+            "order": order,
+            "question_id": self.question_id,
+            "content_fingerprint": self.content_fingerprint,
+            "session_id": self.session_id,
+        }
+
+
+class DurableQuestionRun:
+    """Detached, question-level persistence for long external/actual-model runs.
+
+    The store owns only execution durability. It never invokes a model or
+    interprets a semantic answer, so an adapter can keep its existing product
+    and benchmark contracts while using exact infrastructure resume.
+    """
+
+    _MANIFEST_KEYS = {
+        "format_version",
+        "run_id",
+        "identity",
+        "identity_fingerprint",
+        "questions",
+    }
+    _CHECKPOINT_KEYS = {
+        "format_version",
+        "run_id",
+        "identity_fingerprint",
+        "completed_questions",
+        "next_order",
+    }
+
+    def __init__(
+        self,
+        *,
+        artifact_root: str | Path,
+        identity: FrozenExperimentIdentity,
+        questions: tuple[DurableQuestion, ...],
+        run_id: str,
+        run_mode: str,
+        partial_tail_detected: bool = False,
+    ) -> None:
+        self.root = Path(artifact_root)
+        self.identity = identity
+        self.questions = questions
+        self.run_id = run_id
+        self.run_mode = run_mode
+        self._question_by_id = {item.question_id: item for item in questions}
+        self._order_by_id = {
+            item.question_id: order for order, item in enumerate(questions)
+        }
+        self._completed: dict[str, dict[str, object]] = {}
+        self._in_flight: dict[str, int] = {}
+        self._partial_tail_detected = partial_tail_detected
+        self._status = "RUNNING"
+
+    @classmethod
+    def start(
+        cls,
+        *,
+        artifact_root: str | Path,
+        identity: FrozenExperimentIdentity | Mapping[str, object],
+        questions: Sequence[DurableQuestion],
+        run_id: str | None = None,
+        run_mode: str = "fresh_run",
+    ) -> "DurableQuestionRun":
+        if run_mode == "semantic_retry":
+            raise ExternalQualificationError(
+                "semantic retry is not a supported durable run mode"
+            )
+        if run_mode != "fresh_run":
+            raise ExternalQualificationError("new durable runs must use fresh_run mode")
+        normalized_identity = _coerce_frozen_identity(identity)
+        normalized_questions = _normalize_questions(questions)
+        root = Path(artifact_root)
+        root.mkdir(parents=True, exist_ok=True)
+        if any(root.iterdir()):
+            raise ExternalQualificationError(
+                "fresh durable run artifact root must be empty"
+            )
+        resolved_run_id = run_id or _stable_durable_run_id(
+            identity=normalized_identity,
+            questions=normalized_questions,
+        )
+        run = cls(
+            artifact_root=root,
+            identity=normalized_identity,
+            questions=normalized_questions,
+            run_id=resolved_run_id,
+            run_mode="fresh_run",
+        )
+        run._write_manifest()
+        run._write_checkpoint()
+        run._write_state()
+        return run
+
+    @classmethod
+    def resume(
+        cls,
+        *,
+        artifact_root: str | Path,
+        identity: FrozenExperimentIdentity | Mapping[str, object],
+        questions: Sequence[DurableQuestion],
+    ) -> "DurableQuestionRun":
+        normalized_identity = _coerce_frozen_identity(identity)
+        normalized_questions = _normalize_questions(questions)
+        root = Path(artifact_root)
+        manifest = _load_json_object(root / "run-manifest.json", "durable run manifest")
+        _keys(manifest, cls._MANIFEST_KEYS, "durable run manifest")
+        if manifest["format_version"] != DURABLE_RUN_FORMAT_VERSION:
+            raise ExactResumeError("unsupported durable run format_version")
+        run_id = _text(manifest["run_id"], "durable run_id")
+        if manifest["identity_fingerprint"] != normalized_identity.fingerprint:
+            raise ExactResumeError(
+                "exact resume requires an identical frozen experiment identity"
+            )
+        try:
+            manifest_identity = FrozenExperimentIdentity.from_mapping(
+                _mapping(manifest["identity"], "durable run identity")
+            )
+        except ExternalQualificationError as exc:
+            raise ExactResumeError(
+                f"durable manifest frozen experiment identity is invalid: {exc}"
+            ) from exc
+        if manifest_identity.fingerprint != normalized_identity.fingerprint:
+            raise ExactResumeError(
+                "exact resume requires an identical frozen experiment identity"
+            )
+        if manifest["questions"] != [
+            item.to_mapping(order=order)
+            for order, item in enumerate(normalized_questions)
+        ]:
+            raise ExactResumeError(
+                "exact resume requires identical question order or fingerprint"
+            )
+        run = cls(
+            artifact_root=root,
+            identity=normalized_identity,
+            questions=normalized_questions,
+            run_id=run_id,
+            run_mode="exact_infrastructure_resume",
+        )
+        run._load_observations()
+        run._load_request_evidence()
+        run._validate_or_rebuild_checkpoint()
+        run._status = "RUNNING"
+        run._write_state()
+        return run
+
+    @classmethod
+    def open(
+        cls,
+        *,
+        artifact_root: str | Path,
+        identity: FrozenExperimentIdentity | Mapping[str, object],
+        questions: Sequence[DurableQuestion],
+        mode: str,
+    ) -> "DurableQuestionRun":
+        if mode == "fresh_run":
+            return cls.start(
+                artifact_root=artifact_root,
+                identity=identity,
+                questions=questions,
+            )
+        if mode == "exact_infrastructure_resume":
+            return cls.resume(
+                artifact_root=artifact_root,
+                identity=identity,
+                questions=questions,
+            )
+        if mode == "semantic_retry":
+            raise ExternalQualificationError(
+                "semantic retry is not a supported durable run mode"
+            )
+        raise ExternalQualificationError(f"unsupported durable run mode: {mode}")
+
+    @property
+    def partial_tail_detected(self) -> bool:
+        return self._partial_tail_detected
+
+    def next_question(self) -> DurableQuestion | None:
+        for question in self.questions:
+            if question.question_id not in self._completed:
+                return question
+        return None
+
+    def begin_question(self, question_id: str) -> DurableQuestion:
+        question = self._question_by_id.get(question_id)
+        if question is None:
+            raise ExternalQualificationError(f"unknown durable question: {question_id}")
+        if question_id in self._completed:
+            raise ExternalQualificationError(
+                "question already durably completed; semantic regeneration is forbidden"
+            )
+        expected = self.next_question()
+        if expected is None or expected.question_id != question_id:
+            raise ExternalQualificationError(
+                "durable questions must execute in the frozen execution order"
+            )
+        if question_id in self._in_flight and self.run_mode == "fresh_run":
+            raise ExternalQualificationError("question is already in flight")
+        attempt = self._in_flight.get(question_id, 0) + 1
+        self._append_observation(
+            {
+                "format_version": DURABLE_RUN_FORMAT_VERSION,
+                "run_id": self.run_id,
+                "identity_fingerprint": self.identity.fingerprint,
+                "event": "in_flight",
+                "order": self._order_by_id[question_id],
+                "question_id": question.question_id,
+                "content_fingerprint": question.content_fingerprint,
+                "session_id": question.session_id,
+                "attempt": attempt,
+            }
+        )
+        self._in_flight[question_id] = attempt
+        self._write_state()
+        return question
+
+    def append_request_evidence(
+        self,
+        *,
+        question_id: str,
+        evidence: Mapping[str, object],
+    ) -> None:
+        question = self._require_in_flight(question_id)
+        normalized = _json_copy(dict(evidence), "request evidence")
+        self._append_line(
+            self.root / "request-evidence.jsonl",
+            {
+                "format_version": DURABLE_RUN_FORMAT_VERSION,
+                "run_id": self.run_id,
+                "identity_fingerprint": self.identity.fingerprint,
+                "order": self._order_by_id[question_id],
+                "question_id": question.question_id,
+                "content_fingerprint": question.content_fingerprint,
+                "session_id": question.session_id,
+                "attempt": self._in_flight[question_id],
+                "evidence": normalized,
+            },
+        )
+        self._write_state()
+
+    def commit_question(
+        self,
+        *,
+        question_id: str,
+        result: Mapping[str, object],
+        request_evidence: Sequence[Mapping[str, object]] = (),
+    ) -> None:
+        question = self._require_in_flight(question_id)
+        for evidence in request_evidence:
+            self.append_request_evidence(question_id=question_id, evidence=evidence)
+        normalized_result = _json_copy(dict(result), "question result")
+        record = {
+            "format_version": DURABLE_RUN_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity_fingerprint": self.identity.fingerprint,
+            "event": "completed",
+            "order": self._order_by_id[question_id],
+            "question_id": question.question_id,
+            "content_fingerprint": question.content_fingerprint,
+            "session_id": question.session_id,
+            "attempt": self._in_flight[question_id],
+            "result": normalized_result,
+        }
+        self._append_observation(record)
+        self._completed[question_id] = record
+        del self._in_flight[question_id]
+        self._write_checkpoint()
+        self._write_state()
+
+    def mark_process_exited(self) -> None:
+        self._status = "PROCESS_EXITED"
+        self._write_state()
+
+    def mark_stopped(self) -> None:
+        self._status = "INCOMPLETE"
+        self._write_state()
+
+    def mark_completed(self) -> None:
+        if self.next_question() is not None:
+            raise ExternalQualificationError(
+                "cannot mark durable run completed while questions remain"
+            )
+        self._status = "COMPLETED"
+        self._write_state()
+
+    def heartbeat(
+        self,
+        *,
+        status: str = "RUNNING",
+        resource_observations: Mapping[str, object] | None = None,
+    ) -> None:
+        if status not in {"RUNNING", "STALLED", "PROCESS_EXITED", "INCOMPLETE", "COMPLETED"}:
+            raise ExternalQualificationError(f"unsupported durable run status: {status}")
+        self._status = status
+        self._write_state(resource_observations=resource_observations)
+
+    def health(self) -> dict[str, object]:
+        return self._state_mapping()
+
+    def rebuild_completed_results(self) -> list[dict[str, object]]:
+        return [
+            {
+                "order": self._order_by_id[question.question_id],
+                "question_id": question.question_id,
+                "content_fingerprint": question.content_fingerprint,
+                "session_id": question.session_id,
+                "attempt": self._completed[question.question_id]["attempt"],
+                "result": _json_copy(
+                    _mapping(
+                        self._completed[question.question_id]["result"],
+                        "durable question result",
+                    ),
+                    "durable question result",
+                ),
+            }
+            for question in self.questions
+            if question.question_id in self._completed
+        ]
+
+    def rebuild_aggregate(self) -> dict[str, object]:
+        sessions: dict[str, list[dict[str, object]]] = {}
+        for result in self.rebuild_completed_results():
+            session = str(result["session_id"])
+            sessions.setdefault(session, []).append(result)
+        return {
+            "format_version": DURABLE_RUN_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity_fingerprint": self.identity.fingerprint,
+            "completed_count": len(self._completed),
+            "total_count": len(self.questions),
+            "sessions": sessions,
+        }
+
+    def _write_manifest(self) -> None:
+        payload = {
+            "format_version": DURABLE_RUN_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity": self.identity.to_mapping(),
+            "identity_fingerprint": self.identity.fingerprint,
+            "questions": [
+                item.to_mapping(order=order)
+                for order, item in enumerate(self.questions)
+            ],
+        }
+        _write_json_atomically(self.root / "run-manifest.json", payload)
+
+    def _write_checkpoint(self) -> None:
+        completed = [
+            {
+                "order": self._order_by_id[question.question_id],
+                "question_id": question.question_id,
+                "content_fingerprint": question.content_fingerprint,
+            }
+            for question in self.questions
+            if question.question_id in self._completed
+        ]
+        next_order = next(
+            (
+                order
+                for order, question in enumerate(self.questions)
+                if question.question_id not in self._completed
+            ),
+            len(self.questions),
+        )
+        _write_json_atomically(
+            self.root / "checkpoint.json",
+            {
+                "format_version": DURABLE_RUN_FORMAT_VERSION,
+                "run_id": self.run_id,
+                "identity_fingerprint": self.identity.fingerprint,
+                "completed_questions": completed,
+                "next_order": next_order,
+            },
+        )
+
+    def _write_state(
+        self,
+        *,
+        resource_observations: Mapping[str, object] | None = None,
+    ) -> None:
+        payload = self._state_mapping()
+        payload["last_heartbeat"] = time_now()
+        if resource_observations is not None:
+            payload["resource_observations"] = _json_copy(
+                dict(resource_observations), "resource observations"
+            )
+        _write_json_atomically(self.root / "run-state.json", payload)
+
+    def _state_mapping(self) -> dict[str, object]:
+        return {
+            "format_version": DURABLE_RUN_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity_fingerprint": self.identity.fingerprint,
+            "status": self._status,
+            "run_mode": self.run_mode,
+            "control_plane": "detached_durable",
+            "question_count": len(self.questions),
+            "completed_question_count": len(self._completed),
+            "in_flight_questions": [
+                question.question_id
+                for question in self.questions
+                if question.question_id in self._in_flight
+            ],
+            "next_question": (
+                self.next_question().question_id if self.next_question() is not None else None
+            ),
+            "pass1_calls": self._count_request_evidence("pass1"),
+            "pass2_calls": self._count_request_evidence("pass2"),
+            "last_heartbeat": None,
+        }
+
+    def _append_observation(self, record: Mapping[str, object]) -> None:
+        self._append_line(self.root / "question-observations.jsonl", record)
+
+    def _append_line(self, path: Path, record: Mapping[str, object]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = _canonical_json(dict(record)) + "\n"
+        try:
+            with path.open("a", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as exc:
+            raise ExternalQualificationError(
+                f"cannot persist durable question evidence: {exc}"
+            ) from exc
+
+    def _load_observations(self) -> None:
+        for record in self._read_jsonl(self.root / "question-observations.jsonl"):
+            event = record.get("event")
+            question_id = self._validate_record_identity(record, "question observation")
+            attempt = record.get("attempt")
+            if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt <= 0:
+                raise ExactResumeError("durable question observation attempt is invalid")
+            if event == "in_flight":
+                if question_id in self._completed:
+                    raise ExactResumeError(
+                        "durable question has in-flight evidence after completion"
+                    )
+                self._in_flight[question_id] = max(
+                    attempt, self._in_flight.get(question_id, 0)
+                )
+            elif event == "completed":
+                if question_id in self._completed:
+                    raise ExactResumeError(
+                        "durable question has more than one completion record"
+                    )
+                if not isinstance(record.get("result"), Mapping):
+                    raise ExactResumeError("completed durable question result is invalid")
+                self._completed[question_id] = dict(record)
+                self._in_flight.pop(question_id, None)
+            else:
+                raise ExactResumeError("durable question observation event is invalid")
+
+    def _load_request_evidence(self) -> None:
+        for record in self._read_jsonl(self.root / "request-evidence.jsonl"):
+            self._validate_record_identity(record, "request evidence")
+            attempt = record.get("attempt")
+            if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt <= 0:
+                raise ExactResumeError("request evidence attempt is invalid")
+            if not isinstance(record.get("evidence"), Mapping):
+                raise ExactResumeError("request evidence payload is invalid")
+
+    def _read_jsonl(self, path: Path) -> list[dict[str, object]]:
+        if not path.exists():
+            return []
+        try:
+            raw_lines = path.read_bytes().splitlines(keepends=True)
+        except OSError as exc:
+            raise ExactResumeError(f"cannot read durable evidence: {exc}") from exc
+        records: list[dict[str, object]] = []
+        for index, raw_line in enumerate(raw_lines):
+            if not raw_line.endswith(b"\n"):
+                try:
+                    decoded = json.loads(raw_line.decode("utf-8"))
+                except (UnicodeError, json.JSONDecodeError):
+                    if index == len(raw_lines) - 1:
+                        self._partial_tail_detected = True
+                        break
+                    raise ExactResumeError("non-final durable evidence record is torn")
+            else:
+                try:
+                    decoded = json.loads(raw_line.decode("utf-8"))
+                except (UnicodeError, json.JSONDecodeError) as exc:
+                    if index == len(raw_lines) - 1:
+                        self._partial_tail_detected = True
+                        break
+                    raise ExactResumeError("durable evidence record is malformed") from exc
+            if not isinstance(decoded, dict):
+                raise ExactResumeError("durable evidence record must be an object")
+            records.append(decoded)
+        return records
+
+    def _validate_or_rebuild_checkpoint(self) -> None:
+        path = self.root / "checkpoint.json"
+        if not path.exists():
+            self._write_checkpoint()
+            return
+        checkpoint = _load_json_object(path, "durable checkpoint")
+        _keys(checkpoint, self._CHECKPOINT_KEYS, "durable checkpoint")
+        if (
+            checkpoint["format_version"] != DURABLE_RUN_FORMAT_VERSION
+            or checkpoint["run_id"] != self.run_id
+            or checkpoint["identity_fingerprint"] != self.identity.fingerprint
+        ):
+            raise ExactResumeError("durable checkpoint identity does not match frozen run")
+        expected = [
+            {
+                "order": self._order_by_id[question.question_id],
+                "question_id": question.question_id,
+                "content_fingerprint": question.content_fingerprint,
+            }
+            for question in self.questions
+            if question.question_id in self._completed
+        ]
+        if checkpoint["completed_questions"] != expected:
+            self._write_checkpoint()
+        expected_next = next(
+            (
+                order
+                for order, question in enumerate(self.questions)
+                if question.question_id not in self._completed
+            ),
+            len(self.questions),
+        )
+        if checkpoint["next_order"] != expected_next:
+            self._write_checkpoint()
+
+    def _validate_record_identity(
+        self,
+        record: Mapping[str, object],
+        label: str,
+    ) -> str:
+        if record.get("format_version") != DURABLE_RUN_FORMAT_VERSION:
+            raise ExactResumeError(f"{label} format_version does not match durable run")
+        if record.get("run_id") != self.run_id:
+            raise ExactResumeError(f"{label} run_id does not match durable run")
+        if record.get("identity_fingerprint") != self.identity.fingerprint:
+            raise ExactResumeError(f"{label} identity does not match frozen run")
+        question_id = record.get("question_id")
+        if not isinstance(question_id, str) or question_id not in self._question_by_id:
+            raise ExactResumeError(f"{label} question identity is unknown")
+        question = self._question_by_id[question_id]
+        if (
+            record.get("order") != self._order_by_id[question_id]
+            or record.get("content_fingerprint") != question.content_fingerprint
+            or record.get("session_id") != question.session_id
+        ):
+            raise ExactResumeError(f"{label} question order or fingerprint does not match")
+        return question_id
+
+    def _require_in_flight(self, question_id: str) -> DurableQuestion:
+        question = self._question_by_id.get(question_id)
+        if question is None:
+            raise ExternalQualificationError(f"unknown durable question: {question_id}")
+        if question_id in self._completed:
+            raise ExternalQualificationError(
+                "question already durably completed; semantic regeneration is forbidden"
+            )
+        if question_id not in self._in_flight:
+            raise ExternalQualificationError(
+                "question must be marked in-flight before evidence or completion"
+            )
+        return question
+
+    def _count_request_evidence(self, pass_name: str) -> int:
+        path = self.root / "request-evidence.jsonl"
+        if not path.exists():
+            return 0
+        count = 0
+        for record in self._read_jsonl(path):
+            evidence = record.get("evidence")
+            if isinstance(evidence, Mapping) and evidence.get("pass") == pass_name:
+                count += 1
+        return count
+
+
+def _coerce_frozen_identity(
+    value: FrozenExperimentIdentity | Mapping[str, object],
+) -> FrozenExperimentIdentity:
+    if isinstance(value, FrozenExperimentIdentity):
+        return value
+    return FrozenExperimentIdentity.from_mapping(value)
+
+
+def _normalize_questions(
+    questions: Sequence[DurableQuestion],
+) -> tuple[DurableQuestion, ...]:
+    if isinstance(questions, (str, bytes)) or not isinstance(questions, Sequence):
+        raise ExternalQualificationError("durable questions must be a non-empty sequence")
+    normalized = tuple(questions)
+    if not normalized:
+        raise ExternalQualificationError("durable questions must not be empty")
+    if any(not isinstance(item, DurableQuestion) for item in normalized):
+        raise ExternalQualificationError("durable questions must contain DurableQuestion values")
+    ids = [item.question_id for item in normalized]
+    if len(set(ids)) != len(ids):
+        raise ExternalQualificationError("durable question IDs must be unique")
+    return normalized
+
+
+def _stable_durable_run_id(
+    *,
+    identity: FrozenExperimentIdentity,
+    questions: tuple[DurableQuestion, ...],
+) -> str:
+    encoded = _canonical_json(
+        {
+            "identity": identity.to_mapping(),
+            "identity_fingerprint": identity.fingerprint,
+            "questions": [
+                item.to_mapping(order=order)
+                for order, item in enumerate(questions)
+            ],
+        }
+    ).encode("utf-8")
+    return f"durable-question-run-{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _canonical_json(value: object) -> str:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ExternalQualificationError("durable evidence must be JSON-serializable") from exc
+
+
+def _json_copy(value: object, label: str) -> dict[str, object]:
+    try:
+        copied = json.loads(_canonical_json(value))
+    except ExternalQualificationError as exc:
+        raise ExternalQualificationError(f"{label} must be JSON-serializable") from exc
+    if not isinstance(copied, dict):
+        raise ExternalQualificationError(f"{label} must be an object")
+    return copied
+
+
+def _load_json_object(path: Path, label: str) -> dict[str, object]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ExactResumeError(f"cannot load {label}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ExactResumeError(f"{label} must be an object")
+    return raw
+
+
+def _write_json_atomically(path: Path, value: Mapping[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _canonical_json(dict(value)) + "\n"
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            directory_fd = None
+        if directory_fd is not None:
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    except OSError as exc:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise ExternalQualificationError(f"cannot persist durable run state: {exc}") from exc
+
+
+def time_now() -> int:
+    """Return a content-free heartbeat timestamp without affecting run identity."""
+
+    import time
+
+    return time.time_ns()
 
 
 def validate_release_identity(raw: Mapping[str, object]) -> dict[str, object]:

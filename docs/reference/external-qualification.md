@@ -154,6 +154,30 @@ The runner does not import RelayLM cognition, State, Continuity, MEMORY, Context
 
 Stable run identity hashes the full manifest and case before observations. `replicate_id` is part of that manifest identity. Repeating a stochastic condition therefore requires a distinct replicate id; attempting to write different results under the same run id fails closed.
 
+## Detached long-run durability
+
+`DurableQuestionRun` provides the question-level persistence boundary for a long
+external or actual-model run. It is a detached control plane and does not depend on
+the lifetime of a Codex UI, terminal session, or model process. A fresh run creates
+an immutable manifest containing the complete frozen experiment identity and ordered
+question fingerprints, an atomic `checkpoint.json`, an atomic `run-state.json`, and
+append-only `question-observations.jsonl` / `request-evidence.jsonl` files.
+
+Each question is recorded as `in_flight` before model-facing work and as `completed`
+only after its request evidence and result have been durably flushed. A process exit
+therefore preserves the in-flight tail and any partial final JSONL record without
+claiming semantic completion. Aggregates are rebuilt from completed question records,
+not treated as the source of truth.
+
+`exact_infrastructure_resume` is admitted only when the full frozen identity,
+authority status, ordered question IDs, content fingerprints, and session IDs match
+the manifest exactly. Completed questions are skipped and attempting to begin one is
+rejected; semantic retry is not a supported mode. A fresh run uses a separate empty
+artifact root, so an old shakedown cannot be silently continued or overwritten.
+
+The 122-question MemConflict shakedown discussed in #2045 is historical evidence
+only. This durability surface does not authorize rerunning or resuming that artifact.
+
 ## Preparation acceptance
 
 The deterministic tests cover:
