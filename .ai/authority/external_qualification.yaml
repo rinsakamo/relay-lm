@@ -11,5 +11,6 @@ implementation:
 - tools/external_qualification.py
 tests:
 - tests/unit/test_external_qualification.py
+- tests/unit/test_external_qualification_durable.py
 depends_on:
 - release_engineering

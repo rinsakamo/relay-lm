@@ -217,6 +217,45 @@ One invocation executes exactly one explicitly selected semantic role over the f
 
 Generated summaries/evidence must not expose API-key material.
 
+### Preflight/startup and semantic freeze
+
+The launch boundary is implemented by `relaylm.actual_model_vllm_launch_preflight`.
+It is an infrastructure gate before any semantic request:
+
+```text
+PREFLIGHT
+  -> AUTHORITY_READY
+  -> ADMISSION
+  -> STARTUP_READY
+  -> EXECUTION_FROZEN
+  -> SEMANTIC_EXECUTION
+```
+
+Before `EXECUTION_FROZEN`, the host may make only bounded mechanical corrections
+that preserve the declared condition. `negotiate_vllm_launch(...)` derives supported
+flags from the live vLLM help surface and omits only an explicitly classified,
+non-semantic legacy observability flag; an unsupported model, tokenizer, template,
+context, decoding, reasoning or structured-output flag fails closed. The final argv
+and omitted flag list are evidence.
+
+vLLM RPC/IPC and temporary paths are created under a fresh native Linux run path.
+Drvfs paths such as `/mnt/c/...` are never used for vLLM process IPC; evidence may
+remain in a separately selected evidence root. GPU admission consumes fresh free/total
+memory and a fresh capacity recheck for the unchanged declared context. A lower GPU
+reservation is allowed only when that same condition is re-attested; reducing context,
+truncating input, changing model/quantization or changing output semantics is not a
+preflight correction.
+
+Authority acquisition accepts only a successful live source consensus. Transport
+unavailability or contradictory live sources cannot promote a remembered ref, Issue,
+manifest or handoff. The freeze identity records the exact candidate and all
+model/runtime/decoding/capacity/hardware/authority inputs. Once frozen, corrections
+are rejected and semantic requests can only proceed through the frozen identity.
+
+This module does not own model generation and does not retry or reinterpret semantic
+failures. It is the explicit boundary between recoverable startup work and immutable
+execution.
+
 ## Performance / timing relationship
 
 Provider-call timing and scenario/turn-settle timing may be bound to the same execution as separate evidence axes.
