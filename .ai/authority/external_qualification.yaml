@@ -9,8 +9,10 @@ references:
 - docs/reference/actual-model-cognition-execution-evidence.md
 implementation:
 - tools/external_qualification.py
+- tools/memconflict_adapter.py
 tests:
 - tests/unit/test_external_qualification.py
 - tests/unit/test_external_qualification_durable.py
+- tests/unit/test_memconflict_adapter.py
 depends_on:
 - release_engineering
