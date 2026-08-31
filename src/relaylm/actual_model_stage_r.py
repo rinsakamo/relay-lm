@@ -17,7 +17,7 @@ CURRENT_STAGE_R_AUTHORITY_PATH = Path(
 CURRENT_STAGE_R_AUTHORITY_FORMAT_VERSION = 1
 CURRENT_STAGE_R_AUTHORITY_ID = "stage-r0-vllm-current-v1"
 CURRENT_CONTEXT_WINDOW_SOURCE = "fresh_external_capacity_evidence"
-CURRENT_HARDWARE_CAPABILITY_SOURCE = "fresh_vllm_profiler_auto_kv"
+CURRENT_HARDWARE_CAPABILITY_SOURCE = "qualified_vllm_token_capacity_reference"
 
 
 class StageRAuthorityError(ValueError):
@@ -43,7 +43,8 @@ class CurrentStageRAuthority:
             )
         if self.hardware_capability_source != CURRENT_HARDWARE_CAPABILITY_SOURCE:
             raise StageRAuthorityError(
-                "current Stage R hardware capability must come from fresh vLLM profiling"
+                "current Stage R hardware capability must come from a qualified "
+                "vLLM token-capacity reference"
             )
         template = Path(self.execution_template_path)
         if template.is_absolute() or ".." in template.parts:

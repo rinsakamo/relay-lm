@@ -50,9 +50,36 @@ def test_current_stage_r_authority_has_no_numeric_context_window() -> None:
             "evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json"
         ),
         "context_window_source": "fresh_external_capacity_evidence",
-        "hardware_capability_source": "fresh_vllm_profiler_auto_kv",
+        "hardware_capability_source": "qualified_vllm_token_capacity_reference",
     }
     assert "effective_context_window" not in raw
+
+
+def test_current_stage_r_rejects_stale_profiler_hardware_source(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "authority.json"
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "authority_id": "stage-r0-vllm-current-v1",
+                "execution_template_path": (
+                    "evaluation/actual_model/screenings/"
+                    "stage-r0-vllm-reference-v3.json"
+                ),
+                "context_window_source": "fresh_external_capacity_evidence",
+                "hardware_capability_source": "fresh_vllm_profiler_auto_kv",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        StageRAuthorityError,
+        match="qualified vLLM token-capacity reference",
+    ):
+        stage_r.load_current_stage_r_authority(path)
 
 
 def test_current_stage_r_screening_requires_external_capacity_evidence() -> None:
