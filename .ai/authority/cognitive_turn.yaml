@@ -10,6 +10,9 @@ summary: >-
   Pass 2 extraction transport is selectable between RelayLM-owned ordinary-message
   JSON and provider-native JSON Schema constrained output, while RelayLM retains
   exact IR parsing/type construction plus deterministic State/Continuity authority.
+  Fixed transcript turn replay preserves caller-supplied user/assistant Events,
+  skips Pass 1 generation, and reuses the ordinary originating snapshot, Pass 2,
+  stale guards, and deterministic State/Continuity commit boundary.
   single_pass remains compatibility/future optimization rather than a Core 1.0
   quality gate.
 owner_issue: 1533
@@ -56,6 +59,7 @@ tests:
 - tests/unit/test_openai_compatible_single_pass_structure_ownership.py
 - tests/unit/test_openai_compatible_shadow_two_pass.py
 - tests/unit/test_cognition_two_pass_turn.py
+- tests/unit/test_transcript_replay_turn.py
 - tests/unit/test_two_pass_stale_disposition.py
 - tests/unit/test_two_pass_provider_single_flight.py
 - tests/unit/test_cognition_two_pass_guards.py

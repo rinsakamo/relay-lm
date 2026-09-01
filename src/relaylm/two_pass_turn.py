@@ -34,7 +34,9 @@ from relaylm.turn import (
     EventRetrievalBudget,
     MemoryRetrievalBudget,
     _prepare_budgeted_user_turn,
+    _prepare_budgeted_user_turn_from_event,
     _prepare_user_turn,
+    _prepare_user_turn_from_event,
     _reject_overlapping_budget_configuration,
     _StreamingResponseDelivery,
 )
@@ -86,6 +88,15 @@ class TwoPassTurnResult:
     conversation_completion: CognitionCompletionMetadata = field(
         default_factory=CognitionCompletionMetadata
     )
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptReplayTurnResult:
+    """One fixed transcript turn after its governed Pass 2 disposition is known."""
+
+    user_event: Event
+    assistant_event: Event
+    extraction: TwoPassExtractionResult
 
 
 @dataclass(slots=True)
@@ -250,6 +261,90 @@ async def run_user_turn_two_pass(
     )
 
 
+async def replay_transcript_turn_two_pass(
+    *,
+    character: CharacterDirectory,
+    provider: TwoPassCognitiveProvider,
+    user_event: Event,
+    assistant_event: Event,
+    execution_runtime: CognitionExecutionRuntime,
+    memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
+    continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None = None,
+    pass1_request: CognitionPassRequest | None = None,
+    pass2_request: CognitionPassRequest | None = None,
+) -> TranscriptReplayTurnResult:
+    """Replay one supplied user/assistant turn and run only governed Pass 2."""
+
+    _require_extraction_provider(provider)
+    _require_execution_runtime(execution_runtime)
+    _require_two_pass_budget(cognitive_budget)
+    if pass1_request is not None and not isinstance(pass1_request, CognitionPassRequest):
+        raise TypeError("pass1_request must be CognitionPassRequest or None")
+    if pass2_request is not None and not isinstance(pass2_request, CognitionPassRequest):
+        raise TypeError("pass2_request must be CognitionPassRequest or None")
+    _validate_transcript_message_event(user_event, label="user_event", actor="user")
+    assistant_response = _validate_transcript_message_event(
+        assistant_event,
+        label="assistant_event",
+        actor="assistant",
+    )
+    if user_event.id == assistant_event.id:
+        raise ValueError("user_event and assistant_event ids must be distinct")
+
+    async with execution_runtime._conversation_lock:
+        _reject_existing_transcript_event_ids(
+            character=character,
+            user_event=user_event,
+            assistant_event=assistant_event,
+        )
+        async with execution_runtime._authority_lock:
+            execution_revision = execution_runtime._reserve_turn()
+        await execution_runtime._cancel_superseded_extractions()
+        origin_user_event, state, cognitive_input = (
+            _prepare_two_pass_transcript_user_turn(
+                character=character,
+                user_event=user_event,
+                memory_budget=memory_budget,
+                event_budget=event_budget,
+                continuity_runtime=continuity_runtime,
+                cognitive_budget=cognitive_budget,
+                pass1_request=pass1_request,
+            )
+        )
+        async with execution_runtime._authority_lock:
+            execution_runtime._bind_turn(
+                revision=execution_revision,
+                event_id=origin_user_event.id,
+            )
+        character.append_event(assistant_event)
+        async with execution_runtime._authority_lock:
+            origin_continuity = _advance_continuity_after_conversation(
+                continuity_runtime
+            )
+        extraction_task = _schedule_extraction(
+            character=character,
+            provider=provider,
+            cognitive_input=cognitive_input,
+            assistant_response=assistant_response,
+            origin_state=state,
+            origin_continuity=origin_continuity,
+            continuity_runtime=continuity_runtime,
+            execution_runtime=execution_runtime,
+            execution_revision=execution_revision,
+            cognitive_budget=cognitive_budget,
+            pass_request=pass2_request,
+        )
+
+    extraction = await extraction_task
+    return TranscriptReplayTurnResult(
+        user_event=origin_user_event,
+        assistant_event=assistant_event,
+        extraction=extraction,
+    )
+
+
 async def run_user_turn_two_pass_streaming(
     *,
     character: CharacterDirectory,
@@ -379,6 +474,47 @@ def _prepare_two_pass_user_turn(
     return _prepare_budgeted_user_turn(
         character=character,
         content=content,
+        continuity_runtime=continuity_runtime,
+        cognitive_budget=pass1_budget,
+    )
+
+
+def _prepare_two_pass_transcript_user_turn(
+    *,
+    character: CharacterDirectory,
+    user_event: Event,
+    memory_budget: MemoryRetrievalBudget | None,
+    event_budget: EventRetrievalBudget | None,
+    continuity_runtime: ContinuityRuntime | None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None,
+    pass1_request: CognitionPassRequest | None,
+):
+    if cognitive_budget is None:
+        user_event, state, cognitive_input, _ = _prepare_user_turn_from_event(
+            character=character,
+            user_event=user_event,
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+            continuity_runtime=continuity_runtime,
+            include_retrieval_diagnostics=False,
+        )
+        return user_event, state, cognitive_input
+
+    _reject_overlapping_budget_configuration(
+        memory_budget=memory_budget,
+        event_budget=event_budget,
+    )
+    pass1_budget = CognitiveBudgetRuntimeConfig(
+        total=cognitive_budget.pass1_total,
+        policy=cognitive_budget.policy,
+        token_counter=_ConversationBudgetTokenCounter(
+            token_counter=cognitive_budget.token_counter,
+            pass_request=pass1_request,
+        ),
+    )
+    return _prepare_budgeted_user_turn_from_event(
+        character=character,
+        user_event=user_event,
         continuity_runtime=continuity_runtime,
         cognitive_budget=pass1_budget,
     )
@@ -586,8 +722,7 @@ async def _complete_extraction(
 
 
 def _require_two_pass_provider(provider: object, *, streaming: bool):
-    if not callable(getattr(provider, "generate_extraction", None)):
-        raise TypeError("provider does not support two-pass structured extraction")
+    _require_extraction_provider(provider)
     if not streaming:
         method = getattr(provider, "generate_conversation", None)
         if not callable(method):
@@ -597,6 +732,43 @@ def _require_two_pass_provider(provider: object, *, streaming: bool):
     if not callable(stream_method):
         raise TypeError("provider does not support two-pass conversation streaming")
     return stream_method
+
+
+def _require_extraction_provider(provider: object) -> None:
+    if not callable(getattr(provider, "generate_extraction", None)):
+        raise TypeError("provider does not support two-pass structured extraction")
+
+
+def _validate_transcript_message_event(
+    event: object,
+    *,
+    label: str,
+    actor: str,
+) -> str:
+    if not isinstance(event, Event):
+        raise TypeError(f"{label} must be Event")
+    if event.type != "message":
+        raise ValueError(f"{label} type must be message")
+    if event.actor != actor:
+        raise ValueError(f"{label} actor must be {actor}")
+    if not isinstance(event.payload, dict):
+        raise TypeError(f"{label} payload must be a dictionary")
+    content = event.payload.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError(f"{label} content must be a non-empty string")
+    return content
+
+
+def _reject_existing_transcript_event_ids(
+    *,
+    character: CharacterDirectory,
+    user_event: Event,
+    assistant_event: Event,
+) -> None:
+    existing_ids = {event.id for event in character.iter_events()}
+    duplicates = existing_ids.intersection((user_event.id, assistant_event.id))
+    if duplicates:
+        raise ValueError("transcript event ids must not already exist")
 
 
 def _require_execution_runtime(runtime: object) -> None:
