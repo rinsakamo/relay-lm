@@ -1520,14 +1520,21 @@ def _read_runtime_process_identity(
     observed_nonce = _read_runtime_owner_nonce(entry)
     if owner_nonce is not None and observed_nonce != owner_nonce:
         return None
-    return RuntimeProcessIdentity(
-        pid=pid,
-        ppid=ppid,
-        pgid=pgid,
-        session_id=session_id,
-        start_time_ticks=start_time_ticks,
-        owner_nonce=observed_nonce,
-    )
+    try:
+        return RuntimeProcessIdentity(
+            pid=pid,
+            ppid=ppid,
+            pgid=pgid,
+            session_id=session_id,
+            start_time_ticks=start_time_ticks,
+            owner_nonce=observed_nonce,
+        )
+    except RuntimeOwnershipError:
+        # Kernel/system entries such as PID 1/2 can expose zero process-group
+        # fields in a container namespace.  They are not runtime evidence;
+        # an owned entry that cannot be represented simply disappears from
+        # the snapshot and therefore fails closed at attestation/cleanup.
+        return None
 
 
 def _read_runtime_owner_nonce(entry: Path) -> str | None:
