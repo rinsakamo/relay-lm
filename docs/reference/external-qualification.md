@@ -152,7 +152,7 @@ Classification is evidence, not mutation authorization. A `generalizable_core_de
 
 The runner does not import RelayLM cognition, State, Continuity, MEMORY, Context, provider routing, or Stage R execution types. A serious comparator adapter can be added or replaced without adding a comparator-specific subsystem to RelayLM.
 
-## MemConflict RelayLM adapter boundary (#2047, #2068)
+## MemConflict RelayLM adapter boundary (#2047, #2068, #2075)
 
 The shared MemConflict harness has two different provider operations: it ingests
 the session dialogue, then recalls for each independent evaluation question. The
@@ -160,14 +160,16 @@ RelayLM adapter preserves that distinction at the external boundary.
 
 For each benchmark session in the two-pass condition, the adapter:
 
-1. validates the flattened supplied transcript as complete ordered `user` / `assistant` turn pairs and constructs the supplied messages as exact historical `message` Events, preserving role, content, timestamp, deterministic Event identity, and caller-provided provenance;
-2. replays each completed turn through the public `replay_transcript_turn_two_pass(...)` product boundary from #2066, with zero Pass 1 calls and one ordinary governed Pass 2 attempt per imported turn, carrying the same execution and Continuity runtime sequentially so accepted State/Continuity from turn N is available to turn N+1;
-3. records bounded content-free ingestion evidence for each Pass 2 attempt, including status, existing bounded diagnostics, completion usage when available, and elapsed time, without adding semantic retry or regenerating supplied assistant content;
-4. leaves MEMORY unchanged unless existing explicit crystallization authority is separately invoked;
-5. freezes the package immediately after that session's dialogue and before its questions; and
-6. uses that frozen package as the sole question substrate. A later session gets a new snapshot after its own dialogue has been ingested.
+1. validates every supplied `user` / `assistant` message and constructs it exactly once as a historical `message` Event, preserving role, content, order, timestamp, deterministic Event identity, and caller-provided provenance;
+2. scans the supplied role stream in order without searching ahead: only an adjacent `user` followed immediately by `assistant` is a completed historical turn, while every message not consumed by such a pair is a standalone historical Event;
+3. replays each completed turn through the public `replay_transcript_turn_two_pass(...)` product boundary from #2066, with zero Pass 1 calls and one ordinary governed Pass 2 attempt per completed imported turn, carrying the same execution and Continuity runtime sequentially so accepted State/Continuity from turn N is available to the next replayed turn;
+4. persists each standalone historical message through ordinary Event storage only, with zero generated counterpart, zero Pass 1 call, zero Pass 2 call, and no synthetic State/Continuity transition; a standalone message remains historical evidence that later ordinary Context/Event selection may use according to existing product rules;
+5. records truthful mechanics for total supplied messages, completed replay turns, standalone user/assistant counts, and bounded content-free ingestion evidence for each actual Pass 2 attempt, including status, existing bounded diagnostics, completion usage when available, and elapsed time;
+6. leaves MEMORY unchanged unless existing explicit crystallization authority is separately invoked;
+7. freezes the package immediately after that session's dialogue and before its questions; and
+8. uses that frozen package as the sole question substrate. A later session gets a new snapshot after its own dialogue has been ingested.
 
-Single-pass compatibility retains ordinary Event ingestion because no two-pass post-turn extraction exists in that declared condition. The governed two-pass adapter never implements a replay-specific State/Continuity parser, validator, lifecycle, or benchmark rule; it consumes the public Core boundary and existing authority.
+The segmentation rule never drops a supplied message, synthesizes a missing counterpart, reorders history, or pairs across an intervening message. In particular, a standalone assistant message has no originating user turn, so applying replay Pass 2 to it would fabricate cognition that did not occur. Single-pass compatibility retains ordinary Event ingestion because no two-pass post-turn extraction exists in that declared condition. The governed two-pass adapter never implements a replay-specific State/Continuity parser, validator, lifecycle, or benchmark rule; it consumes the public Core turn boundary and existing Event authority.
 
 Each evaluation question is executed exactly once by copying the frozen package
 to a disposable per-question clone and calling the ordinary declared
@@ -181,18 +183,7 @@ fallback, question-specific prompt, retrieval rule, State rule, MEMORY rule,
 Continuity rule, or benchmark answer/reference input.
 
 `tools/memconflict_adapter.py` exposes the clone mechanics alongside each
-`RelayLMQueryResult`. In two-pass mode the mechanics truthfully identify governed
-transcript replay and include bounded ingestion Pass1/Pass2 counts and token totals.
-The per-turn `dialogue_ingestion_evidence` surface retains the bounded ingestion
-status/diagnostic/usage/latency observations without persisting transcript content a
-second time. Its `AnswerTimeEvidence` is captured from the actual `CognitiveInput`
-supplied to the answer provider: `context` remains the ordinary product context,
-while the explicit `memory`, targeted `event`, and selected canonical `state` layers
-remain separately identifiable. The optional `retrieved_memories_projection()`
-contains only those three selected layers and labels each item with `source_role`
-(`memory`, `event`, or `state`). It never projects package KNOWLEDGE as lived memory.
-The projection is diagnostic evidence, not a replacement for the ordinary provider
-input.
+`RelayLMQueryResult`. In two-pass mode the mechanics truthfully identify role-aware governed transcript replay plus standalone Event persistence and include total message/completed-turn/standalone-role counts together with bounded ingestion Pass1/Pass2 counts and token totals. The per-turn `dialogue_ingestion_evidence` surface retains bounded observations only for actual completed-turn Pass 2 attempts; standalone messages have no fabricated provider-call evidence. Its `AnswerTimeEvidence` is captured from the actual `CognitiveInput` supplied to the answer provider: `context` remains the ordinary product context, while the explicit `memory`, targeted `event`, and selected canonical `state` layers remain separately identifiable. The optional `retrieved_memories_projection()` contains only those three selected layers and labels each item with `source_role` (`memory`, `event`, or `state`). It never projects package KNOWLEDGE as lived memory. The projection is diagnostic evidence, not a replacement for the ordinary provider input.
 
 The adapter bridges the completed #1871 bounded failure contract at the same
 external evidence boundary. It retains the failed provider-call class name and
@@ -257,11 +248,14 @@ The deterministic acceptance for this boundary is in
 synthetic two-pass transcript proves zero imported Pass1 calls, exactly one governed
 Pass2 attempt per completed turn, transcript/provenance fidelity, Canonical State and
 Continuity formation through existing validators, sequential accepted-authority
-visibility, failure retention without retry, and MEMORY non-generation. The original
-#2047 isolation test still proves that ingested dialogue remains available; Q2 after
-Q1 has the same answer-time evidence as Q2 alone from the same frozen snapshot;
-source-role projection excludes KNOWLEDGE; and bounded provider failures remain
-exportable.
+visibility, failure retention without retry, and MEMORY non-generation. Irregular
+synthetic role streams additionally prove that standalone historical messages are
+preserved exactly once without generated counterparts or provider calls, while later
+completed turns continue to see prior Event history through ordinary cognitive input.
+The original #2047 isolation test still proves that ingested dialogue remains
+available; Q2 after Q1 has the same answer-time evidence as Q2 alone from the same
+frozen snapshot; source-role projection excludes KNOWLEDGE; and bounded provider
+failures remain exportable.
 
 Stable run identity hashes the full manifest and case before observations. `replicate_id` is part of that manifest identity. Repeating a stochastic condition therefore requires a distinct replicate id; attempting to write different results under the same run id fails closed.
 
