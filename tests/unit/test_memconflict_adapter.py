@@ -264,6 +264,9 @@ def test_questions_are_read_only_and_q2_matches_standalone_frozen_surface(
                 "fresh package clone per question, discarded after turn"
             )
             assert mechanics["dialogue_ingest"] == (
+                "role-aware governed replay plus standalone historical Event append"
+            )
+            assert mechanics["dialogue_ingest_completed_turn_path"] == (
                 "relaylm.two_pass_turn.replay_transcript_turn_two_pass"
             )
             assert mechanics["dialogue_ingest_pass1_calls"] == 0

@@ -101,6 +101,53 @@ def _dialogue() -> tuple[dict[str, object], ...]:
     )
 
 
+def _irregular_dialogue() -> tuple[dict[str, object], ...]:
+    return (
+        {
+            "role": "assistant",
+            "content": "Kyoto residence assistant-only historical note",
+            "timestamp": "2026-08-01T00:00:00+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 0},
+        },
+        {
+            "role": "user",
+            "content": "I moved to Kyoto and still need to choose a tea shop.",
+            "timestamp": "2026-08-01T00:00:10+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 1},
+        },
+        {
+            "role": "assistant",
+            "content": "Kyoto is current; the tea-shop choice remains open.",
+            "timestamp": "2026-08-01T00:00:20+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 2},
+        },
+        {
+            "role": "assistant",
+            "content": "second assistant-only historical note",
+            "timestamp": "2026-08-01T00:00:30+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 3},
+        },
+        {
+            "role": "user",
+            "content": "Please focus on shops near the station.",
+            "timestamp": "2026-08-01T00:00:40+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 4},
+        },
+        {
+            "role": "assistant",
+            "content": "I will keep the station constraint in mind.",
+            "timestamp": "2026-08-01T00:00:50+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 5},
+        },
+        {
+            "role": "user",
+            "content": "unfinished imported user message",
+            "timestamp": "2026-08-01T00:01:00+00:00",
+            "provenance": {"archive": "asymmetric", "ordinal": 6},
+        },
+    )
+
+
 def test_blank_package_transcript_replay_forms_state_and_continuity_then_freezes(
     tmp_path: Path,
 ) -> None:
@@ -166,8 +213,18 @@ def test_blank_package_transcript_replay_forms_state_and_continuity_then_freezes
         with adapter.freeze() as snapshot:
             mechanics = snapshot.mechanics
             assert mechanics["dialogue_ingest"] == (
+                "role-aware governed replay plus standalone historical Event append"
+            )
+            assert mechanics["dialogue_ingest_completed_turn_path"] == (
                 "relaylm.two_pass_turn.replay_transcript_turn_two_pass"
             )
+            assert mechanics["dialogue_ingest_standalone_path"] == (
+                "CognitivePackageDirectory.append_event"
+            )
+            assert mechanics["dialogue_ingest_message_count"] == 4
+            assert mechanics["dialogue_ingest_completed_turns"] == 2
+            assert mechanics["dialogue_ingest_standalone_user_messages"] == 0
+            assert mechanics["dialogue_ingest_standalone_assistant_messages"] == 0
             assert mechanics["dialogue_ingest_pass1_calls"] == 0
             assert mechanics["dialogue_ingest_pass2_attempts"] == 2
             assert mechanics["dialogue_ingest_pass2_committed"] == 2
@@ -180,6 +237,82 @@ def test_blank_package_transcript_replay_forms_state_and_continuity_then_freezes
     assert provider.conversation_calls == 1
     assert provider.extraction_calls == 3
     assert package.load_state().states == persisted.load_state().states
+
+
+def test_asymmetric_transcript_preserves_every_message_without_fabricated_cognition(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "blank"
+    _blank_package(root)
+    provider = _ReplayProvider()
+    adapter = RelayLMReadOnlyQueryAdapter(
+        package_root=root,
+        provider=provider,
+        mode="two_pass",
+        event_budget=EventRetrievalBudget(max_events=8, max_chars=4_000),
+        continuity_context=ContinuityContext(max_items=8),
+        continuity_lifetime_revisions=4,
+    )
+
+    dialogue = _irregular_dialogue()
+    events = adapter.ingest_session_dialogue(
+        dialogue,
+        session_id="asymmetric-session",
+        session_index=31,
+    )
+
+    assert provider.conversation_calls == 0
+    assert provider.extraction_calls == 2
+    assert [event.actor for event in events] == [
+        "assistant",
+        "user",
+        "assistant",
+        "assistant",
+        "user",
+        "assistant",
+        "user",
+    ]
+    assert [event.payload["content"] for event in events] == [
+        item["content"] for item in dialogue
+    ]
+    assert [event.payload["provenance"] for event in events] == [
+        item["provenance"] for item in dialogue
+    ]
+    assert [event.timestamp for event in events] == [
+        item["timestamp"] for item in dialogue
+    ]
+    assert tuple(CognitivePackageDirectory(root).iter_events()) == events
+
+    first_origin = provider.extraction_inputs[0].cognitive_input
+    assert all(events[0].id not in item.sources for item in first_origin.context)
+    assert any(
+        item.event_id == events[0].id
+        and item.actor == "assistant"
+        and "Kyoto residence assistant-only historical note" in item.content
+        for item in first_origin.event_evidence
+    )
+
+    state = CognitivePackageDirectory(root).load_state()
+    assert [(item.key, item.value, item.sources) for item in state.states] == [
+        ("residence", "Kyoto", (events[1].id,))
+    ]
+    assert events[0].id not in state.states[0].sources
+    assert events[3].id not in state.states[0].sources
+    assert not (root / "memory" / "MEMORY.md").exists()
+
+    ingestion = adapter.dialogue_ingestion_evidence
+    assert len(ingestion) == 2
+    assert [item["pass2_attempts"] for item in ingestion] == [1, 1]
+
+    with adapter:
+        with adapter.freeze() as snapshot:
+            mechanics = snapshot.mechanics
+            assert mechanics["dialogue_ingest_message_count"] == 7
+            assert mechanics["dialogue_ingest_completed_turns"] == 2
+            assert mechanics["dialogue_ingest_standalone_user_messages"] == 1
+            assert mechanics["dialogue_ingest_standalone_assistant_messages"] == 2
+            assert mechanics["dialogue_ingest_pass1_calls"] == 0
+            assert mechanics["dialogue_ingest_pass2_attempts"] == 2
 
 
 class _FailureThenSuccessProvider:
