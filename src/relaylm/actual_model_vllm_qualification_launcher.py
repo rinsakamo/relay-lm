@@ -21,6 +21,7 @@ from relaylm.actual_model_vllm_launch_preflight import (
 
 
 _GPU_MEMORY_FLAG = "--gpu-memory-utilization"
+_MAX_MODEL_LEN_FLAG = "--max-model-len"
 CapacityRecheck = Callable[[float, int], bool]
 
 
@@ -72,6 +73,10 @@ def prepare_vllm_qualification_launch(
     before any execution freeze.
     """
 
+    _validate_declared_context_window(
+        command=command,
+        required_context_window=required_context_window,
+    )
     if fallback_utilization is not None:
         if fallback_utilization == requested_utilization:
             raise VLLMHostPreflightError(
@@ -167,6 +172,44 @@ def launch_vllm_qualification_runtime(
     )
 
 
+def _validate_declared_context_window(
+    *,
+    command: Sequence[str],
+    required_context_window: int,
+) -> None:
+    if isinstance(command, (str, bytes)) or not command:
+        raise TypeError("vLLM command must be a non-empty sequence")
+    if isinstance(required_context_window, bool) or not isinstance(
+        required_context_window, int
+    ):
+        raise VLLMHostPreflightError("required context window must be an integer")
+    if required_context_window <= 0:
+        raise VLLMHostPreflightError("required context window must be positive")
+
+    values: list[int] = []
+    index = 0
+    while index < len(command):
+        token = command[index]
+        if token == _MAX_MODEL_LEN_FLAG:
+            if index + 1 >= len(command) or command[index + 1].startswith("--"):
+                raise VLLMHostPreflightError("--max-model-len requires one integer value")
+            values.append(_parse_context_window(command[index + 1]))
+            index += 2
+            continue
+        if token.startswith(f"{_MAX_MODEL_LEN_FLAG}="):
+            values.append(_parse_context_window(token.split("=", 1)[1]))
+        index += 1
+
+    if len(values) != 1:
+        raise VLLMHostPreflightError(
+            "qualification launch requires exactly one --max-model-len"
+        )
+    if values[0] != required_context_window:
+        raise VLLMHostPreflightError(
+            "command context window does not match required context window"
+        )
+
+
 def _rewrite_gpu_memory_utilization(
     *,
     command: Sequence[str],
@@ -214,6 +257,16 @@ def _rewrite_gpu_memory_utilization(
     else:
         rewritten[value_index] = rendered
     return tuple(rewritten)
+
+
+def _parse_context_window(value: str) -> int:
+    try:
+        parsed = int(value, 10)
+    except ValueError as exc:
+        raise VLLMHostPreflightError("--max-model-len must be an integer") from exc
+    if parsed <= 0:
+        raise VLLMHostPreflightError("--max-model-len must be positive")
+    return parsed
 
 
 def _parse_utilization(value: str) -> float:
