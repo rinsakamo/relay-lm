@@ -14,6 +14,7 @@ canonical_surfaces:
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
+- docs/reference/actual-model-vllm-qualification-launcher.md
 - docs/reference/actual-model-vllm-budget-facade.md
 - docs/reference/actual-model-vllm-capacity-acquisition.md
 - docs/reference/actual-model-vllm-functional-acceptance.md
@@ -50,6 +51,7 @@ implementation:
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
 - src/relaylm/actual_model_vllm_profiler.py
 - src/relaylm/actual_model_vllm_launch_preflight.py
+- src/relaylm/actual_model_vllm_qualification_launcher.py
 - src/relaylm/actual_model_host.py
 - src/relaylm/actual_model_stage_r.py
 - src/relaylm/actual_model_host_runner.py
@@ -114,6 +116,7 @@ tests:
 - tests/unit/test_actual_model_vllm_capacity_producer.py
 - tests/unit/test_actual_model_vllm_profiler.py
 - tests/unit/test_actual_model_vllm_launch_preflight.py
+- tests/unit/test_actual_model_vllm_qualification_launcher.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
 - tests/unit/test_actual_model_vllm_evidence_preflight.py
 - tests/unit/test_actual_model_vllm_budget_facade.py
@@ -176,54 +179,37 @@ evidence:
   - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json
 - id: actual-model-gemma-google-vllm-snapshot-target-v1
   summary: >-
-    Frozen Google official vLLM-native Gemma 4 W4A16 repository snapshot
-    identity with exact execution-file metadata, serving-tokenizer roles, and
-    chat-template role. This is a separate provenance target from the existing
-    Unsloth snapshot, even where model bytes are identical.
+    Frozen Google official vLLM-native Gemma 4 W4A16 repository snapshot identity with exact execution-file metadata, serving-tokenizer roles, and chat-template role. This is a separate provenance target from the existing Unsloth snapshot, even where model bytes are identical.
   surfaces:
   - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-google-vllm-v1.json
 - id: actual-model-vllm-reasoning-proof-v1
   summary: >-
-    Machine-readable projection of the already-attested effective OFF and
-    bounded vLLM reasoning controls, rebound to fresh live backend identity
-    before product-quality runs without repeating unsupported parameter search.
+    Machine-readable projection of the already-attested effective OFF and bounded vLLM reasoning controls, rebound to fresh live backend identity before product-quality runs without repeating unsupported parameter search.
   surfaces:
   - evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json
 - id: actual-model-google-vllm-reasoning-proof-v1
   summary: >-
-    Immutable configured-runtime vLLM reasoning attestation for the separate
-    Google official Gemma 4 W4A16 target. This does not rebind the current
-    Stage R0 target or replace the historical Unsloth proof.
+    Immutable configured-runtime vLLM reasoning attestation for the separate Google official Gemma 4 W4A16 target. This does not rebind the current Stage R0 target or replace the historical Unsloth proof.
   surfaces:
   - evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1.json
 - id: actual-model-cogp5-vllm-screening-v1
   summary: >-
-    Immutable historical plan containing A single-pass OFF, B two-pass OFF/OFF,
-    and C two-pass Pass-2 escalation. Current Core 1.0 policy uses semantic
-    reference_baseline and optional pass2_reasoning_escalation plan keys;
-    historical A/B/C names remain only inside this immutable evidence plan and
-    do not define current execution structure or order.
+    Immutable historical plan containing A single-pass OFF, B two-pass OFF/OFF, and C two-pass Pass-2 escalation. Current Core 1.0 policy uses semantic reference_baseline and optional pass2_reasoning_escalation plan keys; historical A/B/C names remain only inside this immutable evidence plan and do not define current execution structure or order.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
 - id: actual-model-stage-r-v2-execution-template
   summary: >-
-    Immutable historical v2 execution template retained for the previous Stage R
-    evaluation identity. Its numeric effective context window is historical
-    template data and never current hardware/runtime authority.
+    Immutable historical v2 execution template retained for the previous Stage R evaluation identity. Its numeric effective context window is historical template data and never current hardware/runtime authority.
   surfaces:
   - evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
 - id: actual-model-stage-r-v3-execution-template
   summary: >-
-    Current Stage R execution template. It binds the exact foundation-v3
-    repository path and semantic revision, the exact v3 scenario IDs, and the
-    current two-pass reference/escalation topology. Its numeric context window
-    remains template data; current screening binds fresh external capacity.
+    Current Stage R execution template. It binds the exact foundation-v3 repository path and semantic revision, the exact v3 scenario IDs, and the current two-pass reference/escalation topology. Its numeric context window remains template data; current screening binds fresh external capacity.
   surfaces:
   - evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json
 - id: actual-model-crystallization-quality-v1
   summary: >-
-    Frozen Character fixture and revision identity for off-turn crystallization
-    quality evidence.
+    Frozen Character fixture and revision identity for off-turn crystallization quality evidence.
   surfaces:
   - evaluation/actual_model/characters/crystallization-quality-v1.revision.txt
   - evaluation/actual_model/characters/crystallization-quality-v1/config.yaml
