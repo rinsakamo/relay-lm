@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -134,7 +135,7 @@ def test_replay_skips_pass1_calls_pass2_once_and_preserves_supplied_events(
         assert result.extraction.status is TwoPassExtractionStatus.COMMITTED
         assert result.user_event == user_event
         assert result.assistant_event == assistant_event
-        assert CharacterDirectory(tmp_path).iter_events() == (
+        assert tuple(CharacterDirectory(tmp_path).iter_events()) == (
             user_event,
             assistant_event,
         )
@@ -277,8 +278,11 @@ def test_sequential_replay_uses_prior_accepted_authority_and_no_future_turn(
             ("tea", "preferred")
         ]
         assert any(
-            item.content == "choose a tea shop" and first_user.id in item.sources
+            json.loads(item.content).get("continuity", {}).get("value")
+            == "choose a tea shop"
+            and first_user.id in item.sources
             for item in second_origin.context
+            if item.content.startswith("{")
         )
         assert all(second_assistant.id not in item.sources for item in second_origin.context)
         assert second.extraction.status is TwoPassExtractionStatus.COMMITTED
@@ -312,7 +316,7 @@ def test_pass2_failure_keeps_transcript_unchanged_without_retry_or_memory_write(
         assert result.extraction.failure_reason == "pass2_failed"
         assert provider.conversation_calls == 0
         assert provider.extraction_calls == 1
-        assert CharacterDirectory(tmp_path).iter_events() == (
+        assert tuple(CharacterDirectory(tmp_path).iter_events()) == (
             user_event,
             assistant_event,
         )
@@ -442,7 +446,36 @@ def test_invalid_supplied_events_fail_before_persistence_or_provider_call(
                 execution_runtime=CognitionExecutionRuntime(),
             )
 
-        assert CharacterDirectory(tmp_path).iter_events() == ()
+        assert tuple(CharacterDirectory(tmp_path).iter_events()) == ()
+        assert provider.conversation_calls == 0
+        assert provider.extraction_calls == 0
+
+    asyncio.run(run())
+
+
+def test_duplicate_assistant_id_rejects_the_pair_before_user_persistence(
+    tmp_path: Path,
+) -> None:
+    async def run() -> None:
+        character = _make_character(tmp_path)
+        user_event, assistant_event = _imported_pair(
+            suffix="1",
+            user_content="new imported user event",
+            assistant_content="already imported assistant event",
+        )
+        character.append_event(assistant_event)
+        provider = _RecordingProvider([CognitionExtractionOutput()])
+
+        with pytest.raises(ValueError, match="event ids must not already exist"):
+            await _replay(
+                character=character,
+                provider=provider,
+                user_event=user_event,
+                assistant_event=assistant_event,
+                execution_runtime=CognitionExecutionRuntime(),
+            )
+
+        assert tuple(CharacterDirectory(tmp_path).iter_events()) == (assistant_event,)
         assert provider.conversation_calls == 0
         assert provider.extraction_calls == 0
 
@@ -526,13 +559,16 @@ def test_synthetic_live_two_pass_and_replay_converge_semantically(
             continuity_runtime=replay_continuity,
         )
 
-        state_semantics = lambda state: tuple(
-            (item.state_class, item.key, item.value) for item in state.states
-        )
-        continuity_semantics = lambda context: tuple(
-            (item.kind, item.key, item.value, item.epistemic_role)
-            for item in context.items
-        )
+        def state_semantics(state):
+            return tuple(
+                (item.state_class, item.key, item.value) for item in state.states
+            )
+
+        def continuity_semantics(context):
+            return tuple(
+                (item.kind, item.key, item.value, item.epistemic_role)
+                for item in context.items
+            )
         assert live_extraction.status is TwoPassExtractionStatus.COMMITTED
         assert replay.extraction.status is TwoPassExtractionStatus.COMMITTED
         assert state_semantics(live_extraction.state) == state_semantics(

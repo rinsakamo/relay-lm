@@ -461,9 +461,31 @@ def _prepare_budgeted_user_turn(
     continuity_runtime: ContinuityRuntime | None,
     cognitive_budget: CognitiveBudgetRuntimeConfig,
 ) -> tuple[Event, CanonicalState, CognitiveInput]:
-    user_event, state, enforcement = _enforce_budgeted_user_turn(
+    if not content.strip():
+        raise ValueError("user content must not be empty")
+    user_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": content},
+    )
+    return _prepare_budgeted_user_turn_from_event(
         character=character,
-        content=content,
+        user_event=user_event,
+        continuity_runtime=continuity_runtime,
+        cognitive_budget=cognitive_budget,
+    )
+
+
+def _prepare_budgeted_user_turn_from_event(
+    *,
+    character: CharacterDirectory,
+    user_event: Event,
+    continuity_runtime: ContinuityRuntime | None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+) -> tuple[Event, CanonicalState, CognitiveInput]:
+    user_event, state, enforcement = _enforce_budgeted_user_turn_from_event(
+        character=character,
+        user_event=user_event,
         continuity_runtime=continuity_runtime,
         cognitive_budget=cognitive_budget,
     )
@@ -480,15 +502,31 @@ def _enforce_budgeted_user_turn(
     if not content.strip():
         raise ValueError("user content must not be empty")
 
-    character.load_config()
-    identity = character.load_identity()
-    state = character.load_state()
-
     user_event = Event.create(
         type="message",
         actor="user",
         payload={"content": content},
     )
+    return _enforce_budgeted_user_turn_from_event(
+        character=character,
+        user_event=user_event,
+        continuity_runtime=continuity_runtime,
+        cognitive_budget=cognitive_budget,
+    )
+
+
+def _enforce_budgeted_user_turn_from_event(
+    *,
+    character: CharacterDirectory,
+    user_event: Event,
+    continuity_runtime: ContinuityRuntime | None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+) -> tuple[Event, CanonicalState, BudgetEnforcementResult]:
+
+    character.load_config()
+    identity = character.load_identity()
+    state = character.load_state()
+
     character.append_event(user_event)
 
     continuity_context = (
@@ -612,15 +650,35 @@ def _prepare_user_turn(
     if not content.strip():
         raise ValueError("user content must not be empty")
 
-    character.load_config()
-    identity = character.load_identity()
-    state = character.load_state()
-
     user_event = Event.create(
         type="message",
         actor="user",
         payload={"content": content},
     )
+    return _prepare_user_turn_from_event(
+        character=character,
+        user_event=user_event,
+        memory_budget=memory_budget,
+        event_budget=event_budget,
+        continuity_runtime=continuity_runtime,
+        include_retrieval_diagnostics=include_retrieval_diagnostics,
+    )
+
+
+def _prepare_user_turn_from_event(
+    *,
+    character: CharacterDirectory,
+    user_event: Event,
+    memory_budget: MemoryRetrievalBudget | None,
+    event_budget: EventRetrievalBudget | None,
+    continuity_runtime: ContinuityRuntime | None,
+    include_retrieval_diagnostics: bool,
+) -> tuple[Event, CanonicalState, CognitiveInput, TurnRetrievalDiagnostics | None]:
+
+    character.load_config()
+    identity = character.load_identity()
+    state = character.load_state()
+
     character.append_event(user_event)
 
     continuity_context = (
