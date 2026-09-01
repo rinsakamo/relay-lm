@@ -291,6 +291,69 @@ Pass 2 inference does not hold the conversation lock. A later Pass 1 may therefo
 
 The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression remains intentionally deferred rather than silently changing either selector's semantics.
 
+## Fixed transcript turn replay
+
+RelayLM may replay one already-completed conversational turn when the caller
+supplies the original user and assistant message Events. Replay is a governed
+post-turn cognition path, not a conversation generation path:
+
+```text
+validate supplied user + assistant message Events
+        ↓
+persist the supplied User Event unchanged
+        ↓
+prepare the ordinary originating CognitiveInput
+from the pre-response State / Continuity snapshot
+        ↓
+persist the supplied Assistant Event unchanged
+        ↓
+advance the ordinary successful-conversation Continuity lifecycle once
+        ↓
+run the ordinary Pass 2 extraction, stale guards,
+State validation, and Continuity validation
+        ↓
+return only after that turn's Pass 2 disposition is known
+```
+
+The replay boundary accepts complete RelayLM-owned `Event` values so the
+caller-provided Event ID, type, actor, timestamp, payload content, and payload
+provenance are not reconstructed. The pair is closed to a non-empty `message`
+Event authored by `user`, followed by a distinct non-empty `message` Event
+authored by `assistant`. Both Events are validated before either is persisted.
+Their journal order is always the supplied user Event followed by the supplied
+assistant Event; their timestamps and payloads are preserved exactly.
+
+Replay performs zero Pass 1 provider calls and never regenerates, repairs, or
+falls back from the supplied assistant response. It still performs the same
+pre-response preparation that ordinary two-pass execution would have performed,
+including explicit retrieval, cognitive-budget degradation, and resolved Pass 1
+request identity when those controls are supplied. This preserves the exact
+originating cognitive snapshot even though provider conversation generation is
+skipped. Pass 2 receives that snapshot plus the supplied assistant content and
+uses the ordinary Pass 2 request, capacity check, provider extraction, origin
+binding, stale guards, and deterministic validators without a replay-specific
+proposal grammar or materializer.
+
+One replay call completes its bounded Pass 2 disposition before returning.
+Sequential replay therefore prepares turn N+1 only after accepted State and
+Continuity from turn N are current. The ordinary response-first failure contract
+still applies: a failed, rejected, or stale Pass 2 does not remove either
+transcript Event, does not commit invalid State or proposal-driven Continuity,
+does not retry extraction, and does not invoke Pass 1 as a fallback. The
+successful-conversation Continuity lifecycle advance remains exactly as it does
+for an ordinary two-pass turn.
+
+Replay reads crystallized MEMORY only when the ordinary explicit retrieval
+controls request it. It never creates or rewrites `MEMORY.md`; crystallization
+remains a separate explicitly invoked authority.
+
+For the same starting package and controls, if an ordinary Pass 1 returns the
+exact supplied assistant string and Pass 2 returns equivalent proposals, the
+ordinary and replay paths converge to the same accepted State and Continuity
+semantics. Caller-supplied import Event identity and timestamp metadata may
+differ from live-created Event metadata without changing that semantic
+equivalence.
+
 ## Semantic outputs
 
 ### Single-pass CognitiveOutput
