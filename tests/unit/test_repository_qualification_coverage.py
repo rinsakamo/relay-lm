@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from tools.repository_authority import Declaration
+import pytest
+
+from tools.repository_authority import AuthorityError, Declaration
 from tools.repository_qualification_coverage import (
     QualificationCoverageGap,
+    QualificationExclusion,
     qualification_coverage_gaps,
 )
 
@@ -97,3 +100,86 @@ def test_audit_is_empty_when_all_implementation_surfaces_are_selected() -> None:
         declarations,
         roots=("runtime_configuration",),
     ) == ()
+
+
+def test_reasoned_exclusion_resolves_an_unselected_implementation_surface() -> None:
+    declarations = (
+        _declaration(
+            "runtime_configuration",
+            implementation=("runtime.py", "operator.py"),
+            qualification_inputs=("runtime.py",),
+        ),
+    )
+
+    assert qualification_coverage_gaps(
+        declarations,
+        roots=("runtime_configuration",),
+        exclusions_by_owner={
+            "runtime_configuration": (
+                QualificationExclusion(
+                    path="operator.py",
+                    reason="Operator-only wrapper; semantic runtime inputs are selected separately.",
+                ),
+            )
+        },
+    ) == ()
+
+
+def test_exclusion_requires_a_non_empty_reason() -> None:
+    with pytest.raises(ValueError, match="reason must be non-empty"):
+        QualificationExclusion(path="operator.py", reason="  ")
+
+
+def test_exclusion_must_name_the_same_owners_implementation_surface() -> None:
+    declarations = (
+        _declaration("runtime_configuration", implementation=("runtime.py",)),
+    )
+
+    with pytest.raises(AuthorityError, match="is not an implementation surface"):
+        qualification_coverage_gaps(
+            declarations,
+            roots=("runtime_configuration",),
+            exclusions_by_owner={
+                "runtime_configuration": (
+                    QualificationExclusion(path="other.py", reason="Not selected."),
+                )
+            },
+        )
+
+
+def test_selected_input_cannot_also_be_excluded() -> None:
+    declarations = (
+        _declaration(
+            "runtime_configuration",
+            implementation=("runtime.py",),
+            qualification_inputs=("runtime.py",),
+        ),
+    )
+
+    with pytest.raises(AuthorityError, match="cannot also be excluded"):
+        qualification_coverage_gaps(
+            declarations,
+            roots=("runtime_configuration",),
+            exclusions_by_owner={
+                "runtime_configuration": (
+                    QualificationExclusion(path="runtime.py", reason="Contradiction."),
+                )
+            },
+        )
+
+
+def test_exclusion_owner_must_be_declared() -> None:
+    declarations = (
+        _declaration("runtime_configuration", implementation=("runtime.py",)),
+    )
+
+    with pytest.raises(AuthorityError, match="unknown owners: missing_owner"):
+        qualification_coverage_gaps(
+            declarations,
+            roots=("runtime_configuration",),
+            exclusions_by_owner={
+                "missing_owner": (
+                    QualificationExclusion(path="runtime.py", reason="Unknown owner."),
+                )
+            },
+        )
