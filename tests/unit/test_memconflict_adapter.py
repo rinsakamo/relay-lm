@@ -16,6 +16,13 @@ from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.state import CanonicalState, StateCandidate, StateRecord
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.turn import EventRetrievalBudget, MemoryRetrievalBudget
+from tools.external_qualification import (
+    DurableQuestion,
+    DurableQuestionRun,
+    FrozenExperimentIdentity,
+    commit_relaylm_query_result,
+    execute_relaylm_question,
+)
 from tools.memconflict_adapter import (
     RelayLMReadOnlyQueryAdapter,
     RelayLMReadOnlyQueryExecutionError,
@@ -140,6 +147,60 @@ def _adapter(root: Path, provider: object) -> RelayLMReadOnlyQueryAdapter:
     return adapter
 
 
+def _durable_identity() -> FrozenExperimentIdentity:
+    raw = {
+            "repository": "rinsakamo/relay-lm",
+            "candidate": "a" * 40,
+            "prompt_core": "sha256:" + "1" * 64,
+            "benchmark": "memconflict",
+            "dataset": "dataset-sha256:" + "2" * 64,
+            "harness": "harness-sha256:" + "3" * 64,
+            "adapter": "adapter-sha256:" + "4" * 64,
+            "model": "synthetic-model",
+            "artifact": "artifact-sha256:" + "5" * 64,
+            "tokenizer": "tokenizer-sha256:" + "6" * 64,
+            "template": "template-v1",
+            "backend": "synthetic-backend",
+            "runtime": "synthetic-runtime",
+            "decoding": {"temperature": 0},
+            "reasoning": {"mode": "off"},
+            "structured_output": "json-schema-v1",
+            "context_capacity": 3072,
+            "capacity_evidence": "synthetic-capacity-evidence",
+            "hardware": {"gpu": "synthetic-gpu", "vram": 12_288},
+            "execution_order": "dataset-order-v1",
+            "retry_policy": "no semantic retry",
+            "authority": {
+                "status": "CURRENT_AUTHORITY_CONFIRMED",
+                "source": "synthetic-live-authority",
+                "repository_head": "a" * 40,
+            },
+            "launch_admission": {
+                "backend": "synthetic-backend",
+                "runtime": "synthetic-runtime",
+                "model_runner": "synthetic-runner",
+                "effective_gpu_reservation": 0.73,
+                "admitted_context": 3072,
+                "capacity_evidence": "synthetic-capacity-evidence",
+                "launch_evidence_reference": "synthetic-launch-evidence",
+                "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
+            },
+    }
+    return FrozenExperimentIdentity.from_live_attestation(
+        raw,
+        {
+            "backend": "synthetic-backend",
+            "runtime": "synthetic-runtime",
+            "model_runner": "synthetic-runner",
+            "effective_gpu_reservation": 0.73,
+            "admitted_context": 3072,
+            "capacity_evidence": "synthetic-capacity-evidence",
+            "launch_evidence_reference": "synthetic-launch-evidence",
+            "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
+        },
+    )
+
+
 def test_questions_are_read_only_and_q2_matches_standalone_frozen_surface(
     tmp_path: Path,
 ) -> None:
@@ -238,6 +299,124 @@ def test_bounded_pass2_failure_identity_is_available_for_external_evidence(
             "phase": "pass2",
             "exception_type": "ProviderProtocolError",
             "exception_message": "provider extraction top-level shape is invalid",
+        }
+    ]
+
+
+def test_canonical_query_result_bridge_commits_public_adapter_evidence(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "persona"
+    _make_package(root)
+    adapter = _adapter(root, _SyntheticTwoPassProvider())
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path / "durable",
+        identity=_durable_identity(),
+        questions=(DurableQuestion.from_content("q1", Q1),),
+    )
+
+    with adapter:
+        with adapter.freeze() as snapshot:
+            evidence = asyncio.run(
+                execute_relaylm_question(
+                    snapshot=snapshot,
+                    durable_run=run,
+                    question_id="q1",
+                    question=Q1,
+                    question_index=1,
+                )
+            )
+
+    assert evidence is not None
+    assert evidence["answer"] == Q1_ANSWER
+    assert set(evidence["answer_time_evidence"]) == {
+        "context",
+        "memory",
+        "event",
+        "state",
+    }
+    assert evidence["pass1_completion"] is not None
+    assert evidence["pass2_completion"] is not None
+    assert evidence["pass2_status"] == "committed"
+    assert evidence["pass2_failure_reason"] is None
+    assert evidence["failure_diagnostics"] == []
+    assert evidence["adapter_mechanics"]["question_isolation"] == (
+        "fresh package clone per question, discarded after turn"
+    )
+
+    completed = json.loads(
+        (tmp_path / "durable" / "question-observations.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()[-1]
+    )
+    assert completed["event"] == "completed"
+    assert completed["result"] == evidence
+    assert run.next_question() is None
+
+
+def test_canonical_bridge_rejects_internal_pass_one_output(tmp_path: Path) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path / "durable",
+        identity=_durable_identity(),
+        questions=(DurableQuestion.from_content("q1", Q1),),
+    )
+    run.begin_question("q1")
+    with pytest.raises(TypeError, match="RelayLMQueryResult"):
+        commit_relaylm_query_result(
+            durable_run=run,
+            question_id="q1",
+            query_result=CognitionConversationOutput(response="internal"),
+        )
+
+
+def test_failed_isolated_query_is_bounded_and_not_completed(tmp_path: Path) -> None:
+    root = tmp_path / "persona"
+    _make_package(root)
+    adapter = _adapter(root, _UnsafePass1Provider())
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path / "durable",
+        identity=_durable_identity(),
+        questions=(DurableQuestion.from_content("q1", Q2),),
+    )
+
+    with adapter:
+        with adapter.freeze() as snapshot:
+            result = asyncio.run(
+                execute_relaylm_question(
+                    snapshot=snapshot,
+                    durable_run=run,
+                    question_id="q1",
+                    question=Q2,
+                    question_index=3,
+                )
+            )
+
+    assert result is None
+    assert run.health()["status"] == "INCOMPLETE"
+    assert run.health()["in_flight_questions"] == ["q1"]
+    observations = [
+        json.loads(line)
+        for line in (tmp_path / "durable" / "question-observations.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [item["event"] for item in observations] == ["in_flight"]
+    request_evidence = [
+        json.loads(line)
+        for line in (tmp_path / "durable" / "request-evidence.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert len(request_evidence) == 1
+    failure = request_evidence[0]["evidence"]
+    assert failure["status"] == "failed"
+    assert failure["pass"] == "pass1"
+    assert failure["failure_diagnostics"] == [
+        {
+            "turn_index": 3,
+            "phase": "pass1",
+            "exception_type": "RuntimeError",
+            "exception_message": None,
         }
     ]
 

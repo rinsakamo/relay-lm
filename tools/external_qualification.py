@@ -6,9 +6,16 @@ import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from tools.release_identity import ReleaseIdentityError, expected_release_tag, parse_release_version
+
+if TYPE_CHECKING:
+    from tools.memconflict_adapter import (
+        RelayLMFrozenQuerySnapshot,
+        RelayLMQueryResult,
+        RelayLMReadOnlyQueryExecutionError,
+    )
 
 FORMAT_VERSION = 1
 SLOTS = (
@@ -29,6 +36,16 @@ CLASSIFICATIONS = {
 }
 
 DURABLE_RUN_FORMAT_VERSION = 1
+LIVE_LAUNCH_ADMISSION_FIELDS = (
+    "backend",
+    "runtime",
+    "model_runner",
+    "effective_gpu_reservation",
+    "admitted_context",
+    "capacity_evidence",
+    "launch_evidence_reference",
+    "runtime_ownership_evidence_reference",
+)
 FROZEN_EXPERIMENT_IDENTITY_FIELDS = (
     "repository",
     "candidate",
@@ -52,6 +69,7 @@ FROZEN_EXPERIMENT_IDENTITY_FIELDS = (
     "execution_order",
     "retry_policy",
     "authority",
+    "launch_admission",
 )
 
 
@@ -64,11 +82,41 @@ class ExactResumeError(ExternalQualificationError):
 
 
 @dataclass(frozen=True, slots=True)
+class LiveLaunchAdmissionAttestation:
+    """Qualification-significant facts observed from the final live launch."""
+
+    payload: dict[str, object] = field(repr=False, compare=False)
+    fingerprint: str
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, object]) -> "LiveLaunchAdmissionAttestation":
+        normalized = _normalize_live_launch_admission(raw)
+        encoded = _canonical_json(normalized).encode("utf-8")
+        return cls(
+            payload=normalized,
+            fingerprint=f"sha256:{hashlib.sha256(encoded).hexdigest()}",
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        copied = json.loads(_canonical_json(self.payload))
+        if not isinstance(copied, dict):
+            raise ExternalQualificationError(
+                "live launch/admission attestation must be an object"
+            )
+        return copied
+
+
+@dataclass(frozen=True, slots=True)
 class FrozenExperimentIdentity:
     """The complete identity that a durable semantic run is allowed to resume."""
 
     payload: dict[str, object] = field(repr=False, compare=False)
     fingerprint: str
+    live_attestation_fingerprint: str | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, object]) -> "FrozenExperimentIdentity":
@@ -89,6 +137,9 @@ class FrozenExperimentIdentity:
             raise ExternalQualificationError(
                 "frozen experiment identity context_capacity must be a positive integer"
             )
+        normalized["launch_admission"] = _normalize_live_launch_admission(
+            _mapping(normalized["launch_admission"], "frozen identity launch_admission")
+        )
         authority = normalized["authority"]
         if not isinstance(authority, Mapping) or authority.get("status") != "CURRENT_AUTHORITY_CONFIRMED":
             raise ExternalQualificationError(
@@ -98,6 +149,19 @@ class FrozenExperimentIdentity:
         return cls(
             payload=normalized,
             fingerprint=f"sha256:{hashlib.sha256(encoded).hexdigest()}",
+        )
+
+    @classmethod
+    def from_live_attestation(
+        cls,
+        raw: Mapping[str, object],
+        live_attestation: LiveLaunchAdmissionAttestation | Mapping[str, object],
+    ) -> "FrozenExperimentIdentity":
+        """Construct an identity only after matching the final live condition."""
+
+        return freeze_experiment_identity(
+            identity=raw,
+            live_attestation=live_attestation,
         )
 
     def to_mapping(self) -> dict[str, object]:
@@ -205,6 +269,7 @@ class DurableQuestionRun:
         if run_mode != "fresh_run":
             raise ExternalQualificationError("new durable runs must use fresh_run mode")
         normalized_identity = _coerce_frozen_identity(identity)
+        _require_live_attested_identity(normalized_identity)
         normalized_questions = _normalize_questions(questions)
         root = Path(artifact_root)
         root.mkdir(parents=True, exist_ok=True)
@@ -720,6 +785,259 @@ def _coerce_frozen_identity(
     return FrozenExperimentIdentity.from_mapping(value)
 
 
+def _require_live_attested_identity(identity: FrozenExperimentIdentity) -> None:
+    if (
+        not isinstance(identity.live_attestation_fingerprint, str)
+        or not identity.live_attestation_fingerprint.strip()
+    ):
+        raise ExternalQualificationError(
+            "new durable runs require a live-attested frozen experiment identity"
+        )
+    try:
+        normalized = FrozenExperimentIdentity.from_mapping(identity.to_mapping())
+    except ExternalQualificationError as exc:
+        raise ExternalQualificationError(
+            "live-attested frozen experiment identity is invalid"
+        ) from exc
+    if normalized.fingerprint != identity.fingerprint:
+        raise ExternalQualificationError(
+            "live-attested frozen experiment identity fingerprint is invalid"
+        )
+
+
+def freeze_experiment_identity(
+    *,
+    identity: FrozenExperimentIdentity | Mapping[str, object],
+    live_attestation: LiveLaunchAdmissionAttestation | Mapping[str, object],
+) -> FrozenExperimentIdentity:
+    """Freeze an experiment identity only when it matches final live facts.
+
+    The caller may supply the semantic/benchmark portions of the identity, but
+    the launch/admission portions are never trusted merely because they are
+    present in a historical manifest.  Every qualification-significant fact is
+    compared with the final live attestation immediately before freeze.
+    """
+
+    if isinstance(live_attestation, LiveLaunchAdmissionAttestation):
+        live = LiveLaunchAdmissionAttestation.from_mapping(
+            live_attestation.to_mapping()
+        )
+    else:
+        live = LiveLaunchAdmissionAttestation.from_mapping(live_attestation)
+    if isinstance(identity, FrozenExperimentIdentity):
+        candidate = identity.to_mapping()
+    else:
+        candidate = identity
+    frozen = FrozenExperimentIdentity.from_mapping(candidate)
+    live_payload = live.payload
+
+    for identity_name, live_name in (
+        ("backend", "backend"),
+        ("runtime", "runtime"),
+        ("context_capacity", "admitted_context"),
+        ("capacity_evidence", "capacity_evidence"),
+    ):
+        if _canonical_json(frozen.payload[identity_name]) != _canonical_json(
+            live_payload[live_name]
+        ):
+            raise ExternalQualificationError(
+                f"frozen experiment identity {identity_name} does not match "
+                "live launch/admission attestation"
+            )
+
+    represented_launch = _mapping(
+        frozen.payload["launch_admission"],
+        "frozen identity launch_admission",
+    )
+    for name in LIVE_LAUNCH_ADMISSION_FIELDS:
+        if _canonical_json(represented_launch[name]) != _canonical_json(
+            live_payload[name]
+        ):
+            raise ExternalQualificationError(
+                f"frozen experiment identity launch_admission.{name} does not "
+                "match live launch/admission attestation"
+            )
+    return FrozenExperimentIdentity(
+        payload=frozen.payload,
+        fingerprint=frozen.fingerprint,
+        live_attestation_fingerprint=live.fingerprint,
+    )
+
+
+def commit_relaylm_query_result(
+    *,
+    durable_run: DurableQuestionRun,
+    question_id: str,
+    query_result: RelayLMQueryResult,
+    request_evidence: Sequence[Mapping[str, object]] = (),
+) -> dict[str, object]:
+    """Commit only the adapter's public typed result to a durable question.
+
+    This is the sole success bridge for the external controller.  In
+    particular, it never inspects a Pass 1/Pass 2 implementation object or
+    reconstructs semantic evidence from one.
+    """
+
+    if not isinstance(durable_run, DurableQuestionRun):
+        raise TypeError("durable_run must be DurableQuestionRun")
+    from tools.memconflict_adapter import RelayLMQueryResult as _RelayLMQueryResult
+
+    if not isinstance(query_result, _RelayLMQueryResult):
+        raise TypeError("query_result must be RelayLMQueryResult")
+    external_evidence = _json_copy(
+        query_result.to_external_evidence(),
+        "RelayLMQueryResult external evidence",
+    )
+    durable_run.commit_question(
+        question_id=question_id,
+        result=external_evidence,
+        request_evidence=request_evidence,
+    )
+    return external_evidence
+
+
+def record_relaylm_query_failure(
+    *,
+    durable_run: DurableQuestionRun,
+    question_id: str,
+    failure: RelayLMReadOnlyQueryExecutionError,
+    request_evidence: Sequence[Mapping[str, object]] = (),
+) -> dict[str, object]:
+    """Persist bounded adapter failure evidence without completing a question."""
+
+    if not isinstance(durable_run, DurableQuestionRun):
+        raise TypeError("durable_run must be DurableQuestionRun")
+    from tools.memconflict_adapter import (
+        RelayLMReadOnlyQueryExecutionError as _RelayLMReadOnlyQueryExecutionError,
+    )
+
+    if not isinstance(failure, _RelayLMReadOnlyQueryExecutionError):
+        raise TypeError(
+            "failure must be RelayLMReadOnlyQueryExecutionError"
+        )
+    external_evidence = _json_copy(
+        failure.to_external_evidence(),
+        "RelayLMReadOnlyQueryExecutionError external evidence",
+    )
+    for evidence in request_evidence:
+        durable_run.append_request_evidence(
+            question_id=question_id,
+            evidence=evidence,
+        )
+    durable_run.append_request_evidence(
+        question_id=question_id,
+        evidence=external_evidence,
+    )
+    durable_run.mark_stopped()
+    return external_evidence
+
+
+async def execute_relaylm_question(
+    *,
+    snapshot: RelayLMFrozenQuerySnapshot,
+    durable_run: DurableQuestionRun,
+    question_id: str,
+    question: str,
+    question_index: int,
+    request_evidence: Sequence[Mapping[str, object]] = (),
+) -> dict[str, object] | None:
+    """Run one frozen query and route it through the canonical durable bridge.
+
+    A provider failure remains an in-flight question with bounded request
+    evidence.  The function deliberately has no retry or alternate result
+    path; an incomplete question is left for the existing exact-resume
+    policy.
+    """
+
+    if not isinstance(durable_run, DurableQuestionRun):
+        raise TypeError("durable_run must be DurableQuestionRun")
+    from tools.memconflict_adapter import (
+        RelayLMFrozenQuerySnapshot as _RelayLMFrozenQuerySnapshot,
+        RelayLMReadOnlyQueryExecutionError as _RelayLMReadOnlyQueryExecutionError,
+    )
+
+    if not isinstance(snapshot, _RelayLMFrozenQuerySnapshot):
+        raise TypeError("snapshot must be RelayLMFrozenQuerySnapshot")
+    durable_run.begin_question(question_id)
+    try:
+        query_result = await snapshot.query(
+            question,
+            question_index=question_index,
+        )
+    except _RelayLMReadOnlyQueryExecutionError as failure:
+        record_relaylm_query_failure(
+            durable_run=durable_run,
+            question_id=question_id,
+            failure=failure,
+            request_evidence=request_evidence,
+        )
+        return None
+    return commit_relaylm_query_result(
+        durable_run=durable_run,
+        question_id=question_id,
+        query_result=query_result,
+        request_evidence=request_evidence,
+    )
+
+
+def _normalize_live_launch_admission(
+    raw: Mapping[str, object],
+) -> dict[str, object]:
+    if not isinstance(raw, Mapping):
+        raise ExternalQualificationError(
+            "live launch/admission attestation must be an object"
+        )
+    _keys(
+        raw,
+        set(LIVE_LAUNCH_ADMISSION_FIELDS),
+        "live launch/admission attestation",
+    )
+    reservation = raw["effective_gpu_reservation"]
+    if (
+        isinstance(reservation, bool)
+        or not isinstance(reservation, (int, float))
+        or not _finite(reservation)
+        or reservation <= 0
+        or reservation > 1
+    ):
+        raise ExternalQualificationError(
+            "live effective_gpu_reservation must be a finite number in (0, 1]"
+        )
+    admitted_context = raw["admitted_context"]
+    if (
+        isinstance(admitted_context, bool)
+        or not isinstance(admitted_context, int)
+        or admitted_context <= 0
+    ):
+        raise ExternalQualificationError(
+            "live admitted_context must be a positive integer"
+        )
+    capacity_evidence = _json_value_copy(
+        raw["capacity_evidence"],
+        "live capacity_evidence",
+    )
+    if capacity_evidence is None:
+        raise ExternalQualificationError(
+            "live capacity_evidence must not be null"
+        )
+    return {
+        "backend": _text(raw["backend"], "live backend"),
+        "runtime": _text(raw["runtime"], "live runtime"),
+        "model_runner": _text(raw["model_runner"], "live model_runner"),
+        "effective_gpu_reservation": reservation,
+        "admitted_context": admitted_context,
+        "capacity_evidence": capacity_evidence,
+        "launch_evidence_reference": _text(
+            raw["launch_evidence_reference"],
+            "live launch_evidence_reference",
+        ),
+        "runtime_ownership_evidence_reference": _text(
+            raw["runtime_ownership_evidence_reference"],
+            "live runtime_ownership_evidence_reference",
+        ),
+    }
+
+
 def _normalize_questions(
     questions: Sequence[DurableQuestion],
 ) -> tuple[DurableQuestion, ...]:
@@ -767,11 +1085,16 @@ def _canonical_json(value: object) -> str:
         raise ExternalQualificationError("durable evidence must be JSON-serializable") from exc
 
 
-def _json_copy(value: object, label: str) -> dict[str, object]:
+def _json_value_copy(value: object, label: str) -> object:
     try:
         copied = json.loads(_canonical_json(value))
     except ExternalQualificationError as exc:
         raise ExternalQualificationError(f"{label} must be JSON-serializable") from exc
+    return copied
+
+
+def _json_copy(value: object, label: str) -> dict[str, object]:
+    copied = _json_value_copy(value, label)
     if not isinstance(copied, dict):
         raise ExternalQualificationError(f"{label} must be an object")
     return copied

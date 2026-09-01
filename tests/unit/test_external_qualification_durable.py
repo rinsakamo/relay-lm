@@ -12,40 +12,51 @@ from tools.external_qualification import (
     ExactResumeError,
     ExternalQualificationError,
     FrozenExperimentIdentity,
+    LiveLaunchAdmissionAttestation,
+    freeze_experiment_identity,
 )
 
 
 def identity() -> FrozenExperimentIdentity:
-    return FrozenExperimentIdentity.from_mapping(
-        {
+    raw = {
             "repository": "rinsakamo/relay-lm",
-            "candidate": "40f7dde8ffa9693fd045e6d63b0e8a6bb4ea7e63",
+            "candidate": "b" * 40,
             "prompt_core": "sha256:" + "1" * 64,
             "benchmark": "memconflict",
             "dataset": "dataset-sha256:" + "2" * 64,
             "harness": "harness-sha256:" + "3" * 64,
             "adapter": "adapter-sha256:" + "4" * 64,
-            "model": "gemma-4-12b-it",
+            "model": "synthetic-model",
             "artifact": "artifact-sha256:" + "5" * 64,
             "tokenizer": "tokenizer-sha256:" + "6" * 64,
             "template": "template-v1",
-            "backend": "vllm",
-            "runtime": "vllm-runtime-v1",
+            "backend": "synthetic-backend",
+            "runtime": "synthetic-runtime",
             "decoding": {"temperature": 0},
             "reasoning": {"mode": "off"},
             "structured_output": "json-schema-v1",
-            "context_capacity": 4096,
-            "capacity_evidence": "amcap-sha256:" + "7" * 64,
-            "hardware": {"gpu": "RTX 3060", "vram": 12_288},
+            "context_capacity": 3072,
+            "capacity_evidence": "synthetic-capacity-evidence",
+            "hardware": {"gpu": "synthetic-gpu", "vram": 12_288},
             "execution_order": "dataset-order-v1",
             "retry_policy": "no semantic retry",
             "authority": {
                 "status": "CURRENT_AUTHORITY_CONFIRMED",
                 "source": "host-api",
-                "repository_head": "40f7dde8ffa9693fd045e6d63b0e8a6bb4ea7e63",
+                "repository_head": "b" * 40,
             },
-        }
-    )
+            "launch_admission": {
+                "backend": "synthetic-backend",
+                "runtime": "synthetic-runtime",
+                "model_runner": "synthetic-runner",
+                "effective_gpu_reservation": 0.73,
+                "admitted_context": 3072,
+                "capacity_evidence": "synthetic-capacity-evidence",
+                "launch_evidence_reference": "synthetic-launch-evidence",
+                "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
+            },
+    }
+    return FrozenExperimentIdentity.from_live_attestation(raw, live_attestation())
 
 
 def questions() -> tuple[DurableQuestion, ...]:
@@ -54,6 +65,116 @@ def questions() -> tuple[DurableQuestion, ...]:
         DurableQuestion.from_content("persona-0-q1", "second question", session_id="persona-0"),
         DurableQuestion.from_content("persona-1-q0", "third question", session_id="persona-1"),
     )
+
+
+def live_attestation() -> LiveLaunchAdmissionAttestation:
+    return LiveLaunchAdmissionAttestation.from_mapping(
+        {
+            "backend": "synthetic-backend",
+            "runtime": "synthetic-runtime",
+            "model_runner": "synthetic-runner",
+            "effective_gpu_reservation": 0.73,
+            "admitted_context": 3072,
+            "capacity_evidence": "synthetic-capacity-evidence",
+            "launch_evidence_reference": "synthetic-launch-evidence",
+            "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
+        }
+    )
+
+
+def test_freeze_identity_is_bound_to_final_live_launch_admission() -> None:
+    frozen = freeze_experiment_identity(
+        identity=identity(),
+        live_attestation=live_attestation(),
+    )
+    assert frozen.to_mapping()["launch_admission"] == live_attestation().to_mapping()
+    assert frozen.to_mapping()["context_capacity"] == 3072
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("model_runner", "other-runner"),
+        ("effective_gpu_reservation", 0.72),
+    ],
+)
+def test_freeze_identity_rejects_stale_live_runtime_facts(
+    field: str,
+    value: object,
+) -> None:
+    changed = identity().to_mapping()
+    changed["launch_admission"][field] = value
+    with pytest.raises(ExternalQualificationError, match=field):
+        freeze_experiment_identity(
+            identity=changed,
+            live_attestation=live_attestation(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("backend", "other-backend"),
+        ("runtime", "other-runtime"),
+        ("context_capacity", 3584),
+        ("capacity_evidence", "other-capacity-evidence"),
+    ],
+)
+def test_freeze_identity_rejects_mismatched_mirrored_live_facts(
+    field: str,
+    value: object,
+) -> None:
+    changed = identity().to_mapping()
+    changed[field] = value
+    with pytest.raises(ExternalQualificationError, match=field):
+        freeze_experiment_identity(
+            identity=changed,
+            live_attestation=live_attestation(),
+        )
+
+
+def test_freeze_identity_rejects_missing_effective_gpu_reservation() -> None:
+    changed = identity().to_mapping()
+    del changed["launch_admission"]["effective_gpu_reservation"]
+    with pytest.raises(ExternalQualificationError, match="effective_gpu_reservation"):
+        freeze_experiment_identity(
+            identity=changed,
+            live_attestation=live_attestation(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("admitted_context", 3584),
+        ("capacity_evidence", "other-capacity-evidence"),
+        ("launch_evidence_reference", "other-launch-evidence"),
+        (
+            "runtime_ownership_evidence_reference",
+            "other-runtime-ownership-evidence",
+        ),
+    ],
+)
+def test_freeze_identity_rejects_mismatched_nested_live_facts(
+    field: str,
+    value: object,
+) -> None:
+    changed = identity().to_mapping()
+    changed["launch_admission"][field] = value
+    with pytest.raises(ExternalQualificationError, match=field):
+        freeze_experiment_identity(
+            identity=changed,
+            live_attestation=live_attestation(),
+        )
+
+
+def test_new_durable_run_rejects_unattested_identity(tmp_path: Path) -> None:
+    with pytest.raises(ExternalQualificationError, match="live-attested"):
+        DurableQuestionRun.start(
+            artifact_root=tmp_path,
+            identity=FrozenExperimentIdentity.from_mapping(identity().to_mapping()),
+            questions=questions(),
+        )
 
 
 def test_fresh_run_persists_manifest_checkpoint_state_and_inflight_tail(tmp_path: Path) -> None:
