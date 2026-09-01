@@ -105,7 +105,7 @@ def _irregular_dialogue() -> tuple[dict[str, object], ...]:
     return (
         {
             "role": "assistant",
-            "content": "assistant-only historical note",
+            "content": "Kyoto residence assistant-only historical note",
             "timestamp": "2026-08-01T00:00:00+00:00",
             "provenance": {"archive": "asymmetric", "ordinal": 0},
         },
@@ -284,9 +284,12 @@ def test_asymmetric_transcript_preserves_every_message_without_fabricated_cognit
     assert tuple(CognitivePackageDirectory(root).iter_events()) == events
 
     first_origin = provider.extraction_inputs[0].cognitive_input
+    assert all(events[0].id not in item.sources for item in first_origin.context)
     assert any(
-        item.actor == "assistant" and "assistant-only historical note" in item.content
-        for item in first_origin.context
+        item.event_id == events[0].id
+        and item.actor == "assistant"
+        and "Kyoto residence assistant-only historical note" in item.content
+        for item in first_origin.event_evidence
     )
 
     state = CognitivePackageDirectory(root).load_state()
