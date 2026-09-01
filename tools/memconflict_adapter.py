@@ -4,8 +4,9 @@ The public benchmark supplies session dialogue for ingestion and independent
 questions for recall/answering. This module keeps those operations separate
 without adding a benchmark branch to RelayLM Core: completed supplied
 user/assistant turns are replayed through the public governed transcript
-boundary, while every evaluation question runs the ordinary RelayLM turn on a
-fresh clone of the frozen post-dialogue package.
+boundary, standalone supplied messages remain exact historical Events, and
+every evaluation question runs the ordinary RelayLM turn on a fresh clone of
+the frozen post-dialogue package.
 """
 
 from __future__ import annotations
@@ -296,6 +297,9 @@ class RelayLMFrozenQuerySnapshot:
         pass2_request: CognitionPassRequest | None,
         snapshot_fingerprint: str,
         dialogue_ingestion_evidence: tuple[DialogueIngestionEvidence, ...],
+        dialogue_message_count: int,
+        standalone_user_count: int,
+        standalone_assistant_count: int,
     ) -> None:
         self.root = snapshot_root
         self._temporary_directory = temporary_directory
@@ -311,6 +315,9 @@ class RelayLMFrozenQuerySnapshot:
         self._pass2_request = pass2_request
         self.snapshot_fingerprint = snapshot_fingerprint
         self._dialogue_ingestion_evidence = dialogue_ingestion_evidence
+        self._dialogue_message_count = dialogue_message_count
+        self._standalone_user_count = standalone_user_count
+        self._standalone_assistant_count = standalone_assistant_count
         self._closed = False
 
     @property
@@ -327,7 +334,7 @@ class RelayLMFrozenQuerySnapshot:
         }[self._mode]
         dialogue_ingest = {
             "single_pass": "ordinary message Event append_event",
-            "two_pass": "relaylm.two_pass_turn.replay_transcript_turn_two_pass",
+            "two_pass": "role-aware governed replay plus standalone historical Event append",
         }[self._mode]
         statuses = [item.pass2_status for item in self._dialogue_ingestion_evidence]
         prompt_tokens = sum(
@@ -342,6 +349,20 @@ class RelayLMFrozenQuerySnapshot:
         )
         return {
             "dialogue_ingest": dialogue_ingest,
+            "dialogue_ingest_completed_turn_path": (
+                "relaylm.two_pass_turn.replay_transcript_turn_two_pass"
+                if self._mode == "two_pass"
+                else None
+            ),
+            "dialogue_ingest_standalone_path": (
+                "CognitivePackageDirectory.append_event"
+                if self._mode == "two_pass"
+                else None
+            ),
+            "dialogue_ingest_message_count": self._dialogue_message_count,
+            "dialogue_ingest_completed_turns": len(statuses),
+            "dialogue_ingest_standalone_user_messages": self._standalone_user_count,
+            "dialogue_ingest_standalone_assistant_messages": self._standalone_assistant_count,
             "dialogue_ingest_pass1_calls": 0,
             "dialogue_ingest_pass2_attempts": len(statuses),
             "dialogue_ingest_pass2_committed": statuses.count("committed"),
@@ -518,6 +539,9 @@ class RelayLMReadOnlyQueryAdapter:
             )
         )
         self._dialogue_ingestion_evidence: list[DialogueIngestionEvidence] = []
+        self._dialogue_message_count = 0
+        self._standalone_user_count = 0
+        self._standalone_assistant_count = 0
         self._snapshots: list[RelayLMFrozenQuerySnapshot] = []
         self._closed = False
 
@@ -547,9 +571,10 @@ class RelayLMReadOnlyQueryAdapter:
     ) -> tuple[Event, ...]:
         """Synchronously ingest a supplied session transcript.
 
-        Two-pass mode uses the public governed transcript replay boundary. Async
-        callers must use ``ingest_session_dialogue_async`` rather than nesting
-        ``asyncio.run`` inside an existing event loop.
+        Two-pass mode uses governed replay for adjacent completed turns and
+        preserves any unmatched supplied message as exact historical Event
+        evidence. Async callers must use ``ingest_session_dialogue_async``
+        rather than nesting ``asyncio.run`` inside an existing event loop.
         """
 
         try:
@@ -574,7 +599,7 @@ class RelayLMReadOnlyQueryAdapter:
         session_id: str = "default",
         session_index: int = 0,
     ) -> tuple[Event, ...]:
-        """Ingest supplied transcript Events and govern completed turns."""
+        """Ingest supplied history without fabricating missing turns."""
 
         self._require_open()
         events = _dialogue_events(
@@ -582,53 +607,74 @@ class RelayLMReadOnlyQueryAdapter:
             session_id=session_id,
             session_index=session_index,
         )
+        self._dialogue_message_count += len(events)
         if self._mode == "single_pass":
             for event in events:
                 self._package.append_event(event)
             return events
 
-        pairs = _require_completed_turn_pairs(events)
-        for turn_index, (user_event, assistant_event) in enumerate(pairs, start=1):
-            observer = _ObservingProvider(self._provider, turn_index=turn_index)
-            started = time.monotonic()
-            replayed = await replay_transcript_turn_two_pass(
-                character=self._package,
-                provider=observer,
-                user_event=user_event,
-                assistant_event=assistant_event,
-                execution_runtime=self._ingest_execution_runtime,
-                memory_budget=self._memory_budget,
-                event_budget=self._event_budget,
-                continuity_runtime=self._ingest_continuity_runtime,
-                cognitive_budget=self._cognitive_budget,
-                pass1_request=self._pass1_request,
-                pass2_request=self._pass2_request,
-            )
-            elapsed = time.monotonic() - started
-            if observer.conversation_calls != 0:
-                raise MemConflictAdapterError(
-                    "governed transcript replay unexpectedly invoked Pass 1"
+        event_index = 0
+        turn_index = 1
+        while event_index < len(events):
+            event = events[event_index]
+            if _starts_completed_turn(events, event_index):
+                user_event = event
+                assistant_event = events[event_index + 1]
+                observer = _ObservingProvider(self._provider, turn_index=turn_index)
+                started = time.monotonic()
+                replayed = await replay_transcript_turn_two_pass(
+                    character=self._package,
+                    provider=observer,
+                    user_event=user_event,
+                    assistant_event=assistant_event,
+                    execution_runtime=self._ingest_execution_runtime,
+                    memory_budget=self._memory_budget,
+                    event_budget=self._event_budget,
+                    continuity_runtime=self._ingest_continuity_runtime,
+                    cognitive_budget=self._cognitive_budget,
+                    pass1_request=self._pass1_request,
+                    pass2_request=self._pass2_request,
                 )
-            if observer.extraction_calls != 1:
-                raise MemConflictAdapterError(
-                    "governed transcript replay must attempt Pass 2 exactly once per turn"
+                elapsed = time.monotonic() - started
+                if observer.conversation_calls != 0:
+                    raise MemConflictAdapterError(
+                        "governed transcript replay unexpectedly invoked Pass 1"
+                    )
+                if observer.extraction_calls != 1:
+                    raise MemConflictAdapterError(
+                        "governed transcript replay must attempt Pass 2 exactly once per turn"
+                    )
+                status = replayed.extraction.status
+                status_text = (
+                    status.value
+                    if isinstance(status, TwoPassExtractionStatus)
+                    else str(status)
                 )
-            status = replayed.extraction.status
-            status_text = status.value if isinstance(status, TwoPassExtractionStatus) else str(status)
-            self._dialogue_ingestion_evidence.append(
-                DialogueIngestionEvidence(
-                    turn_index=turn_index,
-                    user_event_id=replayed.user_event.id,
-                    assistant_event_id=replayed.assistant_event.id,
-                    pass2_status=status_text,
-                    pass2_failure_reason=replayed.extraction.failure_reason,
-                    pass2_completion=replayed.extraction.completion,
-                    failure_diagnostics=tuple(observer.failures),
-                    elapsed_seconds=elapsed,
+                self._dialogue_ingestion_evidence.append(
+                    DialogueIngestionEvidence(
+                        turn_index=turn_index,
+                        user_event_id=replayed.user_event.id,
+                        assistant_event_id=replayed.assistant_event.id,
+                        pass2_status=status_text,
+                        pass2_failure_reason=replayed.extraction.failure_reason,
+                        pass2_completion=replayed.extraction.completion,
+                        failure_diagnostics=tuple(observer.failures),
+                        elapsed_seconds=elapsed,
+                    )
                 )
-            )
-            if self._ingest_continuity_runtime is not None:
-                self._continuity_context = self._ingest_continuity_runtime.context
+                if self._ingest_continuity_runtime is not None:
+                    self._continuity_context = self._ingest_continuity_runtime.context
+                event_index += 2
+                turn_index += 1
+                continue
+
+            self._package.append_event(event)
+            if event.actor == "user":
+                self._standalone_user_count += 1
+            else:
+                self._standalone_assistant_count += 1
+            event_index += 1
+
         return events
 
     def freeze(self) -> RelayLMFrozenQuerySnapshot:
@@ -655,6 +701,9 @@ class RelayLMReadOnlyQueryAdapter:
                 pass2_request=self._pass2_request,
                 snapshot_fingerprint=_tree_fingerprint(snapshot_root),
                 dialogue_ingestion_evidence=tuple(self._dialogue_ingestion_evidence),
+                dialogue_message_count=self._dialogue_message_count,
+                standalone_user_count=self._standalone_user_count,
+                standalone_assistant_count=self._standalone_assistant_count,
             )
         except Exception:
             temporary_directory.cleanup()
@@ -798,21 +847,12 @@ def _dialogue_events(
     return tuple(events)
 
 
-def _require_completed_turn_pairs(events: tuple[Event, ...]) -> tuple[tuple[Event, Event], ...]:
-    if len(events) % 2:
-        raise MemConflictAdapterError(
-            "two_pass transcript ingestion requires complete user/assistant turn pairs"
-        )
-    pairs: list[tuple[Event, Event]] = []
-    for index in range(0, len(events), 2):
-        user_event = events[index]
-        assistant_event = events[index + 1]
-        if user_event.actor != "user" or assistant_event.actor != "assistant":
-            raise MemConflictAdapterError(
-                "two_pass transcript ingestion requires alternating user/assistant pairs"
-            )
-        pairs.append((user_event, assistant_event))
-    return tuple(pairs)
+def _starts_completed_turn(events: tuple[Event, ...], index: int) -> bool:
+    return (
+        events[index].actor == "user"
+        and index + 1 < len(events)
+        and events[index + 1].actor == "assistant"
+    )
 
 
 def _dialogue_event_id(
