@@ -546,7 +546,7 @@ def test_wrapper_exit_keeps_descendant_attributable_and_cleanup_owned(
         )
         assert runtime.boundary.root.pid not in {item.pid for item in attestation.processes}
         assert child_pid in {item.pid for item in attestation.processes}
-        receipt = runtime.cleanup()
+        receipt = runtime.cleanup(listener_snapshot=lambda: ())
         assert receipt.complete is True
         assert child_pid in receipt.graceful_signal_pids
         assert runtime.cleanup() == receipt
@@ -563,7 +563,7 @@ def test_cleanup_does_not_kill_unrelated_sibling() -> None:
     )
     sibling = subprocess.Popen((sys.executable, "-c", "import time; time.sleep(30)"))
     try:
-        receipt = runtime.cleanup()
+        receipt = runtime.cleanup(listener_snapshot=lambda: ())
         assert receipt.complete is True
         assert sibling.poll() is None
     finally:
@@ -579,8 +579,11 @@ def test_partial_cleanup_is_idempotent_and_content_free(tmp_path: Path) -> None:
         expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
         owner_nonce="owner-partial",
     )
-    receipt = runtime.cleanup(receipt_root=tmp_path)
-    repeated = runtime.cleanup(receipt_root=tmp_path)
+    receipt = runtime.cleanup(
+        listener_snapshot=lambda: (),
+        receipt_root=tmp_path,
+    )
+    repeated = runtime.cleanup(listener_snapshot=lambda: (), receipt_root=tmp_path)
 
     assert receipt.complete is True
     assert repeated == receipt
