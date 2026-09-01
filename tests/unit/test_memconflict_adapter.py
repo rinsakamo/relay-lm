@@ -132,14 +132,36 @@ def _adapter(root: Path, provider: object) -> RelayLMReadOnlyQueryAdapter:
                 "content": "I recorded the Kyoto residence.",
                 "timestamp": "2026-08-01T00:01:00+00:00",
             },
-            *(
-                {
-                    "role": "user",
-                    "content": f"unrelated dialogue note {index}",
-                    "timestamp": f"2026-08-01T00:{index + 2:02d}:00+00:00",
-                }
-                for index in range(6)
-            ),
+            {
+                "role": "user",
+                "content": "unrelated dialogue note 0",
+                "timestamp": "2026-08-01T00:02:00+00:00",
+            },
+            {
+                "role": "assistant",
+                "content": "unrelated acknowledgement 0",
+                "timestamp": "2026-08-01T00:03:00+00:00",
+            },
+            {
+                "role": "user",
+                "content": "unrelated dialogue note 1",
+                "timestamp": "2026-08-01T00:04:00+00:00",
+            },
+            {
+                "role": "assistant",
+                "content": "unrelated acknowledgement 1",
+                "timestamp": "2026-08-01T00:05:00+00:00",
+            },
+            {
+                "role": "user",
+                "content": "unrelated dialogue note 2",
+                "timestamp": "2026-08-01T00:06:00+00:00",
+            },
+            {
+                "role": "assistant",
+                "content": "unrelated acknowledgement 2",
+                "timestamp": "2026-08-01T00:07:00+00:00",
+            },
         ),
         session_id="session-0",
         session_index=0,
@@ -149,42 +171,42 @@ def _adapter(root: Path, provider: object) -> RelayLMReadOnlyQueryAdapter:
 
 def _durable_identity() -> FrozenExperimentIdentity:
     raw = {
-            "repository": "rinsakamo/relay-lm",
-            "candidate": "a" * 40,
-            "prompt_core": "sha256:" + "1" * 64,
-            "benchmark": "memconflict",
-            "dataset": "dataset-sha256:" + "2" * 64,
-            "harness": "harness-sha256:" + "3" * 64,
-            "adapter": "adapter-sha256:" + "4" * 64,
-            "model": "synthetic-model",
-            "artifact": "artifact-sha256:" + "5" * 64,
-            "tokenizer": "tokenizer-sha256:" + "6" * 64,
-            "template": "template-v1",
+        "repository": "rinsakamo/relay-lm",
+        "candidate": "a" * 40,
+        "prompt_core": "sha256:" + "1" * 64,
+        "benchmark": "memconflict",
+        "dataset": "dataset-sha256:" + "2" * 64,
+        "harness": "harness-sha256:" + "3" * 64,
+        "adapter": "adapter-sha256:" + "4" * 64,
+        "model": "synthetic-model",
+        "artifact": "artifact-sha256:" + "5" * 64,
+        "tokenizer": "tokenizer-sha256:" + "6" * 64,
+        "template": "template-v1",
+        "backend": "synthetic-backend",
+        "runtime": "synthetic-runtime",
+        "decoding": {"temperature": 0},
+        "reasoning": {"mode": "off"},
+        "structured_output": "json-schema-v1",
+        "context_capacity": 3072,
+        "capacity_evidence": "synthetic-capacity-evidence",
+        "hardware": {"gpu": "synthetic-gpu", "vram": 12_288},
+        "execution_order": "dataset-order-v1",
+        "retry_policy": "no semantic retry",
+        "authority": {
+            "status": "CURRENT_AUTHORITY_CONFIRMED",
+            "source": "synthetic-live-authority",
+            "repository_head": "a" * 40,
+        },
+        "launch_admission": {
             "backend": "synthetic-backend",
             "runtime": "synthetic-runtime",
-            "decoding": {"temperature": 0},
-            "reasoning": {"mode": "off"},
-            "structured_output": "json-schema-v1",
-            "context_capacity": 3072,
+            "model_runner": "synthetic-runner",
+            "effective_gpu_reservation": 0.73,
+            "admitted_context": 3072,
             "capacity_evidence": "synthetic-capacity-evidence",
-            "hardware": {"gpu": "synthetic-gpu", "vram": 12_288},
-            "execution_order": "dataset-order-v1",
-            "retry_policy": "no semantic retry",
-            "authority": {
-                "status": "CURRENT_AUTHORITY_CONFIRMED",
-                "source": "synthetic-live-authority",
-                "repository_head": "a" * 40,
-            },
-            "launch_admission": {
-                "backend": "synthetic-backend",
-                "runtime": "synthetic-runtime",
-                "model_runner": "synthetic-runner",
-                "effective_gpu_reservation": 0.73,
-                "admitted_context": 3072,
-                "capacity_evidence": "synthetic-capacity-evidence",
-                "launch_evidence_reference": "synthetic-launch-evidence",
-                "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
-            },
+            "launch_evidence_reference": "synthetic-launch-evidence",
+            "runtime_ownership_evidence_reference": "synthetic-runtime-ownership-evidence",
+        },
     }
     return FrozenExperimentIdentity.from_live_attestation(
         raw,
@@ -231,29 +253,33 @@ def test_questions_are_read_only_and_q2_matches_standalone_frozen_surface(
                 "event",
                 "state",
             }
-            assert all(
-                item.get("source_role") != "knowledge" for item in projected
-            )
+            assert all(item.get("source_role") != "knowledge" for item in projected)
             assert q1.to_external_evidence()["failure_diagnostics"] == []
 
             mechanics = snapshot.mechanics
             assert q1.to_external_evidence()["adapter_mechanics"] == mechanics
-            assert mechanics["question_ingest"] == (
-                "none into live or frozen package"
-            )
-            assert mechanics["answer_ingest"] == (
-                "none into live or frozen package"
-            )
+            assert mechanics["question_ingest"] == "none into live or frozen package"
+            assert mechanics["answer_ingest"] == "none into live or frozen package"
             assert mechanics["question_isolation"] == (
                 "fresh package clone per question, discarded after turn"
             )
+            assert mechanics["dialogue_ingest"] == (
+                "relaylm.two_pass_turn.replay_transcript_turn_two_pass"
+            )
+            assert mechanics["dialogue_ingest_pass1_calls"] == 0
+            assert mechanics["dialogue_ingest_pass2_attempts"] == 4
 
     persisted = CognitivePackageDirectory(root)
     persisted_events = tuple(persisted.iter_events())
     assert [event.actor for event in persisted_events] == [
         "user",
         "assistant",
-        *(["user"] * 6),
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "user",
+        "assistant",
     ]
     assert all(
         Q1 not in str(event.payload) and Q1_ANSWER not in str(event.payload)
@@ -446,12 +472,20 @@ def test_untrusted_provider_message_is_not_retained_and_query_clone_is_discarded
                     "phase": "pass1",
                     "exception_type": "RuntimeError",
                     "exception_message": None,
-                    }
-                ]
-            assert caught.value.to_external_evidence()["adapter_mechanics"] == snapshot.mechanics
+                }
+            ]
+            assert (
+                caught.value.to_external_evidence()["adapter_mechanics"]
+                == snapshot.mechanics
+            )
 
     assert [event.actor for event in CognitivePackageDirectory(root).iter_events()] == [
         "user",
         "assistant",
-        *(["user"] * 6),
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "user",
+        "assistant",
     ]
