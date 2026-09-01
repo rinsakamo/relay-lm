@@ -2,6 +2,8 @@ schema_version: 1
 id: cognitive_budget
 summary: Cognitive budget accounting, protection tiers, degradation order, and enforcement.
 owner_issue: 1387
+canonical_surfaces:
+- docs/contracts/cognitive-budget.md
 references:
 - docs/architecture/cognitive-runtime.md
 - docs/architecture/core.md

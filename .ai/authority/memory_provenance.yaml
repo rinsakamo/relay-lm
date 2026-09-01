@@ -1,6 +1,8 @@
 schema_version: 1
 id: memory_provenance
 summary: MEMORY temporal provenance, canonical identity derivation, deterministic projection, and its carriage into retrieval.
+canonical_surfaces:
+- docs/contracts/memory-provenance.md
 references:
 - docs/contracts/crystallization.md
 implementation:
