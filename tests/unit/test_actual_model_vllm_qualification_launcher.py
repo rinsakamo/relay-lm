@@ -203,6 +203,47 @@ def test_qualification_plan_rejects_command_reservation_identity_drift(
         )
 
 
+def test_qualification_plan_rejects_context_window_identity_drift(
+    tmp_path: Path,
+) -> None:
+    command = tuple("8192" if item == "4096" else item for item in _command())
+    rechecks: list[tuple[float, int]] = []
+
+    with pytest.raises(VLLMHostPreflightError, match="context window does not match"):
+        prepare_vllm_qualification_launch(
+            command=command,
+            supported_flags=SUPPORTED_FLAGS,
+            requested_utilization=0.92,
+            fallback_utilization=0.90,
+            fresh_free_memory_bytes=10_980,
+            total_memory_bytes=12_000,
+            required_context_window=4096,
+            capacity_recheck=lambda utilization, context: (
+                rechecks.append((utilization, context)) or True
+            ),
+            run_id="qualification-context-drift",
+            native_root=tmp_path,
+        )
+
+    assert rechecks == []
+
+
+def test_qualification_plan_rejects_duplicate_context_flags(tmp_path: Path) -> None:
+    with pytest.raises(VLLMHostPreflightError, match="exactly one --max-model-len"):
+        prepare_vllm_qualification_launch(
+            command=_command("--max-model-len=4096"),
+            supported_flags=SUPPORTED_FLAGS,
+            requested_utilization=0.92,
+            fallback_utilization=0.90,
+            fresh_free_memory_bytes=10_980,
+            total_memory_bytes=12_000,
+            required_context_window=4096,
+            capacity_recheck=lambda _utilization, _context: True,
+            run_id="qualification-context-duplicate",
+            native_root=tmp_path,
+        )
+
+
 def test_qualification_plan_preserves_other_semantic_launch_tokens(
     tmp_path: Path,
 ) -> None:
