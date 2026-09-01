@@ -28,6 +28,7 @@ implementation:
 tests:
 - tests/unit/test_repository_authority_contract.py
 - tests/unit/test_repository_authority.py
+- tests/unit/test_repository_canonical_authority_completeness.py
 - tests/unit/test_repository_qualification_fingerprint.py
 - tests/unit/test_repository_code_ownership_contract.py
 - tests/unit/test_repository_code_ownership.py
