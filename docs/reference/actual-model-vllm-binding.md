@@ -256,6 +256,43 @@ This module does not own model generation and does not retry or reinterpret sema
 failures. It is the explicit boundary between recoverable startup work and immutable
 execution.
 
+### Runtime process ownership
+
+When benchmark or actual-model tooling starts vLLM, it must use
+`launch_owned_vllm_runtime(...)` and retain the returned `OwnedVLLMRuntime` until
+cleanup. The launcher executes the requested command directly with a fresh
+transaction owner nonce and a distinct process/session boundary. The nonce is an
+attribution marker; it is not a substitute for the kernel process identity.
+
+`attest_vllm_runtime_ownership(...)` (or `wait_for_vllm_runtime_readiness(...)`)
+requires all of the following before startup readiness can be recorded:
+
+- the captured root PID still has the same start-time identity when present;
+- the controller PID/PGID/session and runtime-root PID/PGID/session are distinct;
+- every observed runtime descendant carries the current transaction nonce;
+- the expected listener endpoint has kernel-reported owner PIDs and every such PID
+  is one of the nonce-owned runtime processes.
+
+The process list retains PPID, PGID, session ID and start-time ticks. Therefore a
+wrapper may exit and reparent a vLLM/EngineCore descendant without making that
+descendant unidentifiable: the current nonce and process identity remain the
+ownership proof. A missing nonce, stale/unrelated listener, ambiguous socket
+owner, or unavailable process/listener snapshot raises `PROCESS_OWNERSHIP_UNPROVEN`
+or another explicit infrastructure code; it cannot satisfy readiness or spend a
+semantic request.
+
+Cleanup sends bounded graceful and escalation signals to individually revalidated
+nonce-owned PIDs only. It never uses a command-name sweep or a blanket process
+group kill, so an unrelated vLLM/Python process or sibling listener is preserved.
+`RuntimeCleanupReceipt.to_mapping()` records only content-free run/nonce, process
+boundary IDs, signal PID sets, listener disposition and completion/failure codes;
+it does not include argv, prompts, model output, environment contents or raw
+exceptions. Pass `receipt_root=...` to `OwnedVLLMRuntime.cleanup(...)` to atomically
+persist that mapping as a content-free receipt; repeated cleanup after a complete
+receipt returns the same receipt and does not signal a second time. The ownership
+contract is the auditable attribution and cleanup result, not the spelling of
+`setsid` or any other launcher utility.
+
 ## Performance / timing relationship
 
 Provider-call timing and scenario/turn-settle timing may be bound to the same execution as separate evidence axes.
