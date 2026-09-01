@@ -179,6 +179,8 @@ def _validate_declared_context_window(
 ) -> None:
     if isinstance(command, (str, bytes)) or not command:
         raise TypeError("vLLM command must be a non-empty sequence")
+    if not all(isinstance(item, str) and item for item in command):
+        raise VLLMHostPreflightError("vLLM command must contain non-empty strings")
     if isinstance(required_context_window, bool) or not isinstance(
         required_context_window, int
     ):
