@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import sys
 import subprocess
+import time
+from pathlib import Path
 
 import pytest
 
@@ -10,15 +14,25 @@ from relaylm.actual_model_vllm_launch_preflight import (
     ExecutionFreezeBoundary,
     FrozenExecutionIdentity,
     HostProcess,
+    RuntimeListenerEndpoint,
+    RuntimeListenerObservation,
+    RuntimeOwnershipAttestation,
+    RuntimeOwnershipBoundary,
+    RuntimeOwnershipError,
+    RuntimeProcessIdentity,
     acquire_current_authority,
     discover_vllm_supported_flags,
+    launch_owned_vllm_runtime,
     VLLMHostPreflightError,
     negotiate_gpu_memory_utilization,
     negotiate_vllm_launch,
     prepare_vllm_runtime_paths,
     find_stale_vllm_processes,
     parse_process_snapshot,
+    parse_listener_snapshot,
+    snapshot_runtime_processes,
     snapshot_vllm_processes,
+    wait_for_vllm_runtime_readiness,
 )
 
 
@@ -276,6 +290,39 @@ def test_execution_freezes_once_and_rejects_post_freeze_correction() -> None:
     boundary = ExecutionFreezeBoundary()
     boundary.confirm_authority(authority)
     boundary.mark_admission_ready()
+    ownership = RuntimeOwnershipAttestation(
+        boundary=RuntimeOwnershipBoundary(
+            run_id="run-1",
+            owner_nonce="nonce-1",
+            controller_pid=1,
+            controller_pgid=10,
+            controller_session_id=20,
+            root=RuntimeProcessIdentity(
+                pid=2,
+                ppid=1,
+                pgid=11,
+                session_id=21,
+                start_time_ticks=30,
+                owner_nonce="nonce-1",
+            ),
+            expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        ),
+        processes=(
+            RuntimeProcessIdentity(
+                pid=2,
+                ppid=1,
+                pgid=11,
+                session_id=21,
+                start_time_ticks=30,
+                owner_nonce="nonce-1",
+            ),
+        ),
+        listener=RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(2,),
+        ),
+    )
+    boundary.attest_runtime_ownership(ownership)
     boundary.mark_startup_ready()
     boundary.record_preflight_correction("omit_legacy_flag")
     identity = FrozenExecutionIdentity.from_mapping({"condition": "declared-v1"})
@@ -293,6 +340,7 @@ def test_execution_freezes_once_and_rejects_post_freeze_correction() -> None:
     assert marker["phase"] == "SEMANTIC_EXECUTION"
     assert marker["freeze_count"] == 1
     assert marker["authority"]["status"] == "CURRENT_AUTHORITY_CONFIRMED"
+    assert marker["runtime_ownership"]["status"] == "PROVEN"
 
 
 def test_authority_cannot_be_reconfirmed_after_startup() -> None:
@@ -302,7 +350,292 @@ def test_authority_cannot_be_reconfirmed_after_startup() -> None:
     boundary = ExecutionFreezeBoundary()
     boundary.confirm_authority(authority)
     boundary.mark_admission_ready()
+    ownership = RuntimeOwnershipAttestation(
+        boundary=RuntimeOwnershipBoundary(
+            run_id="reconfirm-run",
+            owner_nonce="reconfirm-owner",
+            controller_pid=1,
+            controller_pgid=10,
+            controller_session_id=20,
+            root=RuntimeProcessIdentity(
+                pid=2,
+                ppid=1,
+                pgid=11,
+                session_id=21,
+                start_time_ticks=30,
+                owner_nonce="reconfirm-owner",
+            ),
+            expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        ),
+        processes=(
+            RuntimeProcessIdentity(
+                pid=2,
+                ppid=1,
+                pgid=11,
+                session_id=21,
+                start_time_ticks=30,
+                owner_nonce="reconfirm-owner",
+            ),
+        ),
+        listener=RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(2,),
+        ),
+    )
+    boundary.attest_runtime_ownership(ownership)
     boundary.mark_startup_ready()
 
     with pytest.raises(VLLMHostPreflightError, match="only during PREFLIGHT"):
         boundary.confirm_authority(authority)
+
+
+def test_startup_readiness_requires_runtime_ownership_attestation() -> None:
+    authority = acquire_current_authority(
+        sources=(("host-api", lambda: {"repository_head": "current"}),)
+    )
+    boundary = ExecutionFreezeBoundary()
+    boundary.confirm_authority(authority)
+    boundary.mark_admission_ready()
+
+    with pytest.raises(RuntimeOwnershipError, match="PROCESS_OWNERSHIP_UNPROVEN"):
+        boundary.mark_startup_ready()
+
+
+def test_owned_runtime_gets_distinct_boundary_and_listener_is_owned() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="ownership-positive",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-positive",
+    )
+    try:
+        listener = RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(runtime.boundary.root.pid,),
+        )
+        attestation = runtime.attest_startup(
+            process_snapshot=snapshot_runtime_processes,
+            listener_snapshot=lambda: (listener,),
+        )
+        assert attestation.boundary.root.pgid != attestation.boundary.controller_pgid
+        assert (
+            attestation.boundary.root.session_id
+            != attestation.boundary.controller_session_id
+        )
+        assert attestation.listener.pids == (runtime.boundary.root.pid,)
+    finally:
+        runtime.cleanup()
+
+
+def test_non_isolated_child_is_rejected_and_cleaned_up() -> None:
+    with pytest.raises(RuntimeOwnershipError, match="PROCESS_OWNERSHIP_UNPROVEN"):
+        launch_owned_vllm_runtime(
+            (sys.executable, "-c", "import time; time.sleep(30)"),
+            run_id="ownership-negative",
+            expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            owner_nonce="owner-negative",
+            start_new_session=False,
+        )
+
+
+def test_stale_listener_cannot_satisfy_readiness() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="stale-listener",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-stale",
+    )
+    try:
+        stale = RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(runtime.boundary.controller_pid,),
+        )
+        with pytest.raises(RuntimeOwnershipError, match="PROCESS_OWNERSHIP_UNPROVEN"):
+            wait_for_vllm_runtime_readiness(
+                runtime,
+                timeout=0.01,
+                poll_interval=0,
+                process_snapshot=snapshot_runtime_processes,
+                listener_snapshot=lambda: (stale,),
+            )
+    finally:
+        runtime.cleanup()
+
+
+def test_listener_with_owned_and_unrelated_pids_is_ambiguous() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="mixed-listener",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-mixed",
+    )
+    try:
+        mixed = RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(runtime.boundary.root.pid, runtime.boundary.controller_pid),
+        )
+        with pytest.raises(RuntimeOwnershipError, match="PROCESS_OWNERSHIP_UNPROVEN"):
+            runtime.attest_startup(
+                process_snapshot=snapshot_runtime_processes,
+                listener_snapshot=lambda: (mixed,),
+            )
+    finally:
+        runtime.cleanup()
+
+
+def test_runtime_root_boundary_drift_cannot_satisfy_readiness() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="boundary-drift",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-drift",
+    )
+    try:
+        root = runtime.boundary.root
+        drifted = RuntimeProcessIdentity(
+            pid=root.pid,
+            ppid=root.ppid,
+            pgid=runtime.boundary.controller_pgid,
+            session_id=root.session_id,
+            start_time_ticks=root.start_time_ticks,
+            owner_nonce="owner-drift",
+        )
+        listener = RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(root.pid,),
+        )
+        with pytest.raises(RuntimeOwnershipError, match="PROCESS_OWNERSHIP_UNPROVEN"):
+            runtime.attest_startup(
+                process_snapshot=lambda: (drifted,),
+                listener_snapshot=lambda: (listener,),
+            )
+    finally:
+        runtime.cleanup()
+
+
+def test_wrapper_exit_keeps_descendant_attributable_and_cleanup_owned(
+    tmp_path: Path,
+) -> None:
+    child_pid_path = tmp_path / "child.pid"
+    code = (
+        "import os, time\n"
+        f"path = {str(child_pid_path)!r}\n"
+        "if os.fork(): os._exit(0)\n"
+        "with open(path, 'w', encoding='ascii') as handle: handle.write(str(os.getpid()))\n"
+        "time.sleep(30)\n"
+    )
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", code),
+        run_id="wrapper-exit",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-wrapper",
+    )
+    try:
+        deadline = time.monotonic() + 2
+        while not child_pid_path.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert child_pid_path.exists()
+        child_pid = int(child_pid_path.read_text(encoding="ascii"))
+        listener = RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(child_pid,),
+        )
+        attestation = runtime.attest_startup(
+            process_snapshot=snapshot_runtime_processes,
+            listener_snapshot=lambda: (listener,),
+        )
+        assert runtime.boundary.root.pid not in {item.pid for item in attestation.processes}
+        assert child_pid in {item.pid for item in attestation.processes}
+        receipt = runtime.cleanup(listener_snapshot=lambda: ())
+        assert receipt.complete is True
+        assert child_pid in receipt.graceful_signal_pids
+        assert runtime.cleanup() == receipt
+    finally:
+        runtime.cleanup()
+
+
+def test_cleanup_does_not_kill_unrelated_sibling() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="sibling-safe",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-sibling",
+    )
+    sibling = subprocess.Popen((sys.executable, "-c", "import time; time.sleep(30)"))
+    try:
+        receipt = runtime.cleanup(listener_snapshot=lambda: ())
+        assert receipt.complete is True
+        assert sibling.poll() is None
+    finally:
+        runtime.cleanup()
+        sibling.terminate()
+        sibling.wait(timeout=2)
+
+
+def test_partial_cleanup_is_idempotent_and_content_free(tmp_path: Path) -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="partial-startup",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-partial",
+    )
+    receipt = runtime.cleanup(
+        listener_snapshot=lambda: (),
+        receipt_root=tmp_path,
+    )
+    repeated = runtime.cleanup(listener_snapshot=lambda: (), receipt_root=tmp_path)
+
+    assert receipt.complete is True
+    assert repeated == receipt
+    encoded = json.dumps(receipt.to_mapping(), sort_keys=True)
+    assert "import time" not in encoded
+    assert "owner-partial" in encoded
+    assert set(receipt.to_mapping()["controller"]) == {"pid", "pgid", "session_id"}
+    receipt_files = tuple(tmp_path.glob("runtime-cleanup-*.json"))
+    assert len(receipt_files) == 1
+    assert json.loads(receipt_files[0].read_text(encoding="ascii")) == receipt.to_mapping()
+    assert not tuple(tmp_path.glob(".*.tmp-*"))
+
+
+def test_cleanup_skips_pid_reuse_instead_of_signalling_new_process() -> None:
+    runtime = launch_owned_vllm_runtime(
+        (sys.executable, "-c", "import time; time.sleep(30)"),
+        run_id="pid-reuse",
+        expected_listener=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+        owner_nonce="owner-reuse",
+    )
+    signals: list[tuple[int, int]] = []
+    original = runtime.boundary.root
+    reused = RuntimeProcessIdentity(
+        pid=original.pid,
+        ppid=original.ppid,
+        pgid=original.pgid,
+        session_id=original.session_id,
+        start_time_ticks=original.start_time_ticks + 1,
+        owner_nonce="owner-reuse",
+    )
+    try:
+        receipt = runtime.cleanup(
+            process_snapshot=lambda: (reused,),
+            listener_snapshot=lambda: (),
+            signal_process=lambda pid, signum: signals.append((pid, signum)),
+        )
+        assert signals == []
+        assert receipt.complete is False
+        assert receipt.failure_code == "PROCESS_OWNERSHIP_UNPROVEN"
+    finally:
+        runtime.process.kill()
+        runtime.process.wait(timeout=2)
+
+
+def test_listener_snapshot_parser_preserves_listener_pids() -> None:
+    listeners = parse_listener_snapshot(
+        'LISTEN 0 4096 127.0.0.1:8000 0.0.0.0:* users:(("python",pid=42,fd=3))\n'
+    )
+
+    assert listeners == (
+        RuntimeListenerObservation(
+            endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
+            pids=(42,),
+        ),
+    )
