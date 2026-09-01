@@ -205,6 +205,46 @@ the complete frozen identity and question list; completed questions remain
 skipped and semantic regeneration remains forbidden. A durable partial or
 in-flight tail is retained exactly as required by #2045.
 
+### Canonical typed query commit
+
+The repository-owned external controller uses
+`execute_relaylm_question(...)` from `tools.external_qualification` for each
+question. Its success path is deliberately fixed to:
+
+```text
+RelayLMFrozenQuerySnapshot.query(question)
+        -> RelayLMQueryResult
+        -> RelayLMQueryResult.to_external_evidence()
+        -> DurableQuestionRun.commit_question(...)
+```
+
+`commit_relaylm_query_result(...)` accepts only the public
+`RelayLMQueryResult` type and persists the complete mapping returned by its
+`to_external_evidence()` method. It does not inspect or reconstruct any
+internal Pass 1/Pass 2 object. A `RelayLMReadOnlyQueryExecutionError` is routed
+through `record_relaylm_query_failure(...)`: its existing bounded
+`to_external_evidence()` mapping is appended as request evidence, the question
+remains in flight, and no completion record is written. There is no semantic
+retry or alternate result path.
+
+### Live launch/admission identity
+
+Before a run reaches `EXECUTION_FROZEN`, construct its
+`FrozenExperimentIdentity` with `freeze_experiment_identity(...)` (or
+`FrozenExperimentIdentity.from_live_attestation(...)`). The identity must
+contain a `launch_admission` mapping with the final live backend, runtime,
+model-runner identity, effective GPU reservation, admitted context, capacity
+evidence, launch-evidence reference, and runtime-ownership-evidence
+reference. The helper compares every one of those facts, plus the mirrored
+backend/runtime/context/capacity fields, against the final
+`LiveLaunchAdmissionAttestation` and fails closed on omission or mismatch.
+
+Historical runtime literals cannot authorize a freeze. The live attestation is
+transaction-scoped and must be freshly supplied by the launch/admission owner;
+its evidence references are retained in the frozen identity for exact resume.
+`DurableQuestionRun.start(...)` rejects an identity that was parsed directly
+from a mapping without this live-attested construction step.
+
 The deterministic acceptance for this boundary is in
 `tests/unit/test_memconflict_adapter.py`: a synthetic two-pass persona proves
 that Q1's answer, Event, State, and Continuity proposal cannot enter Q2; the
