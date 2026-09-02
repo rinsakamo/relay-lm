@@ -99,7 +99,7 @@ The final launch uses:
 
 ```text
 --gpu-memory-utilization <required-envelope-derived value>
---kv-cache-memory-bytes <required_kv_cache_memory_bytes>
+--kv-cache-memory-bytes <required_kv_cache_bytes>
 --max-model-len <selected target_model_len>
 ```
 
