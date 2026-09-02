@@ -62,9 +62,12 @@ A clean-pass claim must come from a fresh-authority review of one declared lane 
 
 1. re-fetch current `v1` and relevant open competing work;
 2. inspect the supported realization path owned by the lane, not only declarations or schemas;
-3. apply the material-finding admission gate above;
-4. either admit one material finding as a bounded transaction or record that no new material finding was found;
-5. avoid expanding into another semantic owner merely to keep the audit active.
+3. inspect materially equivalent sibling supported paths far enough to test the lane's claimed invariant for material counterexamples;
+4. apply the material-finding admission gate above;
+5. either admit one material finding as a bounded transaction or record that no new material finding was found;
+6. avoid expanding mutation into another semantic owner merely to keep the audit active.
+
+Sibling-path discovery is not mutation-scope expansion. A material finding owned outside the current lane is routed to its current owner rather than ignored or repaired opportunistically by the auditing lane.
 
 A repair transaction resets the lane's clean-pass count. After the repair merges and authority is reconstructed, clean-pass counting begins again from zero.
 
