@@ -244,26 +244,22 @@ Retain only the material execution path:
 - candidate reusable lessons; and
 - volatile observations explicitly labeled historical.
 
-Do not turn the handoff into a raw log archive. Secrets, credentials, unbounded logs, prompt/request payloads, and transient process/GPU state remain outside it unless an existing evidence owner explicitly requires a bounded form.
+Do not turn the handoff into a raw log archive. Secrets, credentials, unbounded logs, prompt/request payloads, and transient process/GPU state remain outside it unless an existing evidence owner explicitly requires a bounded form. Prefer citable references to existing immutable evidence over copying its payload into the handoff.
 
-Then reconcile each material lesson according to what it became:
+Then classify each material lesson without widening mutation authority:
 
 ```text
-stable reusable procedure
-  → promote to the responsible owner's current canonical surface
-     or repository-native procedure
-
-stable enforceable invariant
-  → prefer deterministic validation / regression when justified
+reusable procedure or enforceable invariant
+  → if already inside this transaction's mutation responsibility,
+     converge it through the responsible owner / deterministic guard / regression
+  → otherwise route it to the current owner or successor work;
+     an execution-only transaction does not gain repository mutation authority
 
 immutable execution result
   → preserve under the existing producer-owned evidence boundary
 
 volatile / superseded observation
   → leave historical; do not copy into current authority
-
-reusable finding outside this mutation boundary
-  → route to its current owner / successor work without opportunistic mutation
 ```
 
 The shared handoff never replaces fresh repository authority, current upstream verification, live host/admission/capacity checks, or exact-head evidence required by the owning execution contract.
