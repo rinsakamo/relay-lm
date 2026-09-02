@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from relaylm.actual_model_vllm_profiler import (
+from relaylm.actual_model_vllm_reference import (
     VLLMTokenCapacityLaunchClass,
     VLLMTokenCapacityReferenceEvidence,
     VLLMTokenCapacityReferenceEvidenceError,
