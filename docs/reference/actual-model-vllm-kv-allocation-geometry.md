@@ -14,14 +14,18 @@ A reusable `VLLMTokenCapacityReference` binds one citable same-launch-class succ
 - KV allocation-unit bytes;
 - KV allocation-unit token capacity.
 
-The reference is consumable only through a compatible stable launch-class identity. Current `VLLMTokenCapacityLaunchClass` binds:
+The reference is consumable only through a compatible stable launch-class identity. Current `VLLMTokenCapacityLaunchClass` binds mechanically attestable fields:
 
 - exact target id;
-- immutable target revision/digest;
+- immutable target artifact revision;
+- exact target digest;
 - exact backend version;
 - exact pinned backend source revision;
 - model-runner trajectory (`v1` or `v2`);
-- owner-resolved host capability class.
+- GPU compute capability major/minor;
+- GPU total memory bytes.
+
+Compute capability and total memory describe the reusable hardware capability class without persisting a GPU UUID or inventing an opaque host-class label. Current free VRAM is deliberately excluded from compatibility and is reacquired for every admission.
 
 Allocation-unit geometry is launch-class evidence. It is not inferred from current free VRAM, a remembered PID, a transaction-local utilization fraction, or a historical absolute KV value.
 
@@ -43,9 +47,9 @@ One artifact is created from one successful owned launch observation by `VLLMTok
 
 `write_vllm_token_capacity_reference_evidence(...)` persists the artifact atomically. `load_vllm_token_capacity_reference_evidence(...)` strictly validates its schema, content-derived evidence id, filename, successful-launch envelope, and allocation geometry before returning it.
 
-A later consumer does not receive a `VLLMTokenCapacityReference` merely because an artifact parses. It supplies the current expected `VLLMTokenCapacityLaunchClass` to `require_compatible_reference(...)`; an exact mismatch in target, target revision, backend version/source, model runner, or host capability class fails closed.
+A later consumer does not receive a `VLLMTokenCapacityReference` merely because an artifact parses. It supplies the fresh expected `VLLMTokenCapacityLaunchClass` to `require_compatible_reference(...)`; an exact mismatch in target identity/revision/digest, backend version/source, model runner, compute capability, or total GPU memory fails closed.
 
-The successful launch's `startup_free_bytes` is immutable observation provenance used to derive the conservative non-KV envelope; it is not a later host-admission value or a compatibility selector by itself. PID, PGID, session, nonce, listener ownership, RPC/temp paths and later live GPU free memory are not stored as reusable process authority.
+The successful launch's `startup_free_bytes` is immutable observation provenance used to derive the conservative non-KV envelope; it is not a later host-admission value or a compatibility selector by itself. PID, PGID, session, nonce, listener ownership, GPU UUID, RPC/temp paths and later live GPU free memory are not stored as reusable process authority.
 
 A reference-acquisition transaction may emit this artifact only after a successful owned runtime and capacity attestation establish all required geometry. Source-level page information without a successful same-launch-class observation is insufficient. Conversely, a later qualification consumes the persisted stable geometry but still reacquires fresh host free/total memory and current process/listener authority.
 
