@@ -306,6 +306,7 @@ def test_launch_uses_selected_command_native_environment_and_owned_readiness(
         calls["wait_kwargs"] = kwargs
         return ownership
 
+    monkeypatch.setattr(launcher, "_validate_vllm_unix_ipc_path", lambda _paths: None)
     monkeypatch.setattr(launcher, "launch_owned_vllm_runtime", fake_launch)
     monkeypatch.setattr(launcher, "wait_for_vllm_runtime_readiness", fake_wait)
 
@@ -329,6 +330,24 @@ def test_launch_uses_selected_command_native_environment_and_owned_readiness(
     assert calls["wait_runtime"] is runtime
     assert calls["wait_kwargs"] == {"timeout": 30.0, "poll_interval": 0.1}
     assert "cleanup" not in calls
+
+
+def test_short_unix_ipc_path_budget_is_admissible() -> None:
+    rpc_base = Path("/tmp/relaylm-vllm-rpc-0123456789abcdef01234567")
+    runtime_paths = launcher.VLLMRuntimePathPlan(
+        rpc_base_path=rpc_base,
+        tmpdir=Path("/tmp"),
+        path_class="native_linux",
+        rebased_from_drvfs=False,
+        environment={
+            "VLLM_RPC_BASE_PATH": str(rpc_base),
+            "TMPDIR": "/tmp",
+            "TMP": "/tmp",
+            "TEMP": "/tmp",
+        },
+    )
+
+    launcher._validate_vllm_unix_ipc_path(runtime_paths)
 
 
 def test_launch_rejects_overlong_unix_ipc_path_before_provider_start(
