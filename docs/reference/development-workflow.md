@@ -173,16 +173,18 @@ After the cumulative implementation, tests, and authority edits are complete, re
 
 Do not review from an earlier checkout, implementation summary, or remembered patch.
 
+Fresh-head review challenges the transaction's **completion claim**, not only the changed lines. When a claimed invariant can be realized through materially equivalent supported paths, inspect those sibling paths far enough to search for material counterexamples. Discovery scope may exceed the transaction's mutation scope; discovering a sibling violation does not authorize unrelated or cross-owner mutation.
+
 Ask:
 
 1. Does the change express the intended contract or preservation goal?
 2. Did it add more semantics or machinery than required? Before completion, can necessary additions be integrated into existing principles, deduplicated, or expressed more generally without weakening the intended behavior or authority boundaries?
-3. Are material failure modes or authority boundaries under-tested?
+3. Does the claimed invariant hold across materially equivalent supported realization paths, and are material counterexamples, failure modes, or authority boundaries under-tested?
 4. Do current-authority docs match the code and distinguish current from deferred behavior?
 5. Does the diff preserve an obsolete bridge, wrapper, dual authority, or implementation-history artifact instead of converging directly?
 6. Does the cumulative changed-path set still fit the bounded responsibility?
 
-Any material mismatch means the transaction is incomplete.
+Any material mismatch means the transaction is incomplete. A material sibling finding outside the current mutation boundary is routed to its current owner rather than ignored or absorbed opportunistically. The current transaction must narrow an over-broad completion claim when the finding is not actually part of its responsibility; if the finding remains a counterexample to the claim being made, completion waits for the responsible boundary to be resolved.
 
 High-risk changes may additionally use an isolated adversarial review under `docs/reference/ai-development.md`; that does not replace this fresh-head review.
 
@@ -316,5 +318,5 @@ fresh authority
 7. **Review and CI evidence belong to the exact current head.**
 8. **Parallel work requires disjoint semantic ownership.**
 9. **Current authority never presents deferred behavior as implemented.**
-10. **Necessary additions are allowed; before completion, crystallize them by checking for integration into existing principles, deduplication, and generalization without weakening required behavior or authority boundaries.**
+10. **Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate necessary additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
 11. **A completed transaction reconciles its owning Issue.**
