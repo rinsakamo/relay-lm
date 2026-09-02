@@ -99,7 +99,7 @@ The final launch uses:
 
 ```text
 --gpu-memory-utilization <required-envelope-derived value>
---kv-cache-memory-bytes <required_kv_cache_bytes>
+--kv-cache-memory-bytes <required_kv_cache_memory_bytes>
 --max-model-len <selected target_model_len>
 ```
 
@@ -172,7 +172,7 @@ temporary variation with durable meaning unchanged
 
 The first #1906 real-model iteration is an explicit negative baseline for this gate: its English sequential contrast passed on both base and candidate heads, while the Japanese S5 created durable `user.preference/preferred_beverage=紅茶` on both heads in all 3 replicates. Therefore English-only success is not sufficient evidence for #1903. A candidate semantic fix must pass the Japanese black-box case without adding that Japanese wording to the prompt.
 
-This fixture exists to detect durability/epistemic-strength regression after model-facing State projection semantics. It must be run against the exact current prompt/wire identity when claiming that tentative overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
+This fixture exists to detect durability/epistemic-strength regression after model-facing State grammar changes. It must be run against the exact current prompt/wire identity when claiming that tentative overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
 
 ## Execution
 
