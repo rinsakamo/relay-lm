@@ -47,7 +47,9 @@ Docs    current human-readable authority
 History completed/superseded past work
 ```
 
-Open Issues should represent real unresolved work. Successful transactions reconcile their owning Issues after merge.
+An owning Issue discussion may carry the concise execution handoff required by `docs/reference/development-workflow.md` when a transaction performs material physical/external execution. The handoff comment is historical working evidence, not current authority, not a raw-log archive requirement, and not repository-mutation authorization. Keep the Issue body focused on intention and remaining work; stable reusable lessons are either converged by a transaction that already owns the relevant mutation or routed to the responsible owner/successor, while producer-owned immutable results remain evidence and volatile trial detail remains historical. When no owning Issue exists and a PR is the durable transaction surface, the same bounded handoff may live in the PR discussion.
+
+Open Issues should represent real unresolved work. Repository-mutation transactions reconcile their owning Issues after merge; bounded no-repository-mutation transactions reconcile them after terminal completion.
 
 ## Architecture Decision Records
 

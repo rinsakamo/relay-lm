@@ -19,11 +19,13 @@ Every repository transaction:
 3. owns one bounded responsibility and names material non-goals;
 4. uses the verification discipline appropriate to the change class;
 5. converges code, tests, and owner-local authority directly on the current contract;
-6. re-fetches and reviews the exact final PR head;
-7. requires the required `v1` CI results for that exact reviewed head;
-8. re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
-9. merges only the exact reviewed/tested head with expected-head protection;
-10. reconciles the owning Issue after the merge when an Issue exists.
+6. when it mutates the repository, re-fetches and reviews the exact final PR head;
+7. when it mutates the repository, requires the required `v1` CI results for that exact reviewed head;
+8. when it mutates the repository, re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
+9. when it mutates the repository, merges only the exact reviewed/tested head with expected-head protection;
+10. before declaring completion, reconciles material physical/external execution learning when applicable and reconciles the owning Issue after merge, or after terminal completion of a no-repository-mutation transaction, when an Issue exists.
+
+A bounded physical/external execution-only transaction that performs no repository mutation still consumes fresh repository/owner authority and the owning execution/evidence contract, but it does not create a no-op PR merely to satisfy repository mutation gates. Fresh-head review, exact-head CI, and merge requirements apply when there is a repository mutation/PR; execution-only completion uses the applicable owner-specific physical/evidence gates plus section 10 reconciliation.
 
 Handoffs, old comments, previously recorded SHAs, earlier CI results, Issues, and projections are historical evidence. They do not replace fresh repository facts.
 
@@ -225,9 +227,48 @@ Immediately before merge:
 
 If the base moved, classify overlap before merge. A moved base is not automatically a reason to rebase, and it is never permission to reuse stale semantic assumptions.
 
-## 10. Issue reconciliation
+## 10. Completion reconciliation
 
-After a successful merge, reconcile the owning Issue against merged reality.
+### Physical / external execution learning
+
+This rule is conditional and orthogonal to change classification. It applies when a transaction performs material execution that depends on host, GPU/runtime, external service/tooling, or manual operations whose outcome cannot be reconstructed from current repository authority and required CI alone. Ordinary repository-only semantic, preservation, docs, and CI transactions do not add this ceremony merely because they executed tests or deterministic repository tooling.
+
+Before claiming completion for an applicable execution, publish a concise repository-visible execution handoff on the shared transaction surface, normally the owning Issue discussion; when no owning Issue exists and a PR is the durable transaction surface, use the PR discussion. The handoff is historical working evidence. It is not current authority, an execution prompt, or authorization to reuse historical host state.
+
+Retain only the material execution path:
+
+- enough stable execution identity and conditions to disambiguate the run;
+- materially distinct attempt deltas and their observable outcomes;
+- the final successful path, or the terminal failure if no path succeeded;
+- citable artifact or evidence references;
+- candidate reusable lessons; and
+- volatile observations explicitly labeled historical.
+
+Do not turn the handoff into a raw log archive. Secrets, credentials, unbounded logs, prompt/request payloads, and transient process/GPU state remain outside it unless an existing evidence owner explicitly requires a bounded form. Prefer citable references to existing immutable evidence over copying its payload into the handoff.
+
+Then classify each material lesson without widening mutation authority:
+
+```text
+reusable procedure or enforceable invariant
+  → if already inside this transaction's mutation responsibility,
+     converge it through the responsible owner / deterministic guard / regression
+  → otherwise route it to the current owner or successor work;
+     an execution-only transaction does not gain repository mutation authority
+
+immutable execution result
+  → preserve under the existing producer-owned evidence boundary
+
+volatile / superseded observation
+  → leave historical; do not copy into current authority
+```
+
+The shared handoff never replaces fresh repository authority, current upstream verification, live host/admission/capacity checks, or exact-head evidence required by the owning execution contract.
+
+> **Do not preserve trial history as authority; preserve what the trial taught us.**
+
+### Owning Issue reconciliation
+
+After a successful merge, or after terminal completion of a bounded no-repository-mutation transaction, reconcile the owning Issue against current reality.
 
 Use one of these outcomes:
 
@@ -307,6 +348,19 @@ fresh authority
   → Issue reconciliation
 ```
 
+Physical/external execution-only transaction:
+
+```text
+fresh repository / owner / execution authority
+  → bounded physical/external execution under its owning contract
+  → producer-owned evidence or terminal outcome
+  → shared execution handoff
+  → reusable-learning reconciliation
+  → Issue reconciliation
+```
+
+When a repository mutation shape also includes material physical/external execution covered by section 10, insert the same handoff and reusable-learning reconciliation before ordinary completion / Issue reconciliation.
+
 ## Fixed principles
 
 1. **Meaning → Example → Test → Code → Docs/Authority → Audit.**
@@ -319,4 +373,5 @@ fresh authority
 8. **Parallel work requires disjoint semantic ownership.**
 9. **Current authority never presents deferred behavior as implemented.**
 10. **Necessary additions are allowed. Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
-11. **A completed transaction reconciles its owning Issue.**
+11. **Material physical/external execution is complete only after reusable learning is shared and reconciled without promoting trial history to authority.**
+12. **A completed transaction reconciles its owning Issue after merge or terminal no-repository-mutation completion when one exists.**
