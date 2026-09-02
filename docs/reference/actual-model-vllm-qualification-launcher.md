@@ -11,6 +11,7 @@ When RelayLM tooling starts a vLLM process for a citable actual-model or externa
 ```text
 fresh host facts
   -> prepare_vllm_qualification_launch(...)
+       -> validate direct `vllm serve <model>` topology
        -> negotiate_gpu_memory_utilization(...)
        -> selected reservation written into final argv
        -> negotiate_vllm_launch(...)
@@ -51,7 +52,17 @@ The selected value, not the remembered requested value, is written into the exac
 
 ## Command identity
 
-The incoming direct vLLM command must contain exactly one `--gpu-memory-utilization` setting, in either split or `--flag=value` form. Its numeric value must agree with `requested_utilization`.
+The incoming direct command must begin exactly with the current serving topology:
+
+```text
+vllm serve <model>
+```
+
+`vllm` is the required executable token, `serve` is the required subcommand, and the third token must be a non-option model positional. Missing or different executable/subcommand tokens, a missing model positional, or an option in the model position fail closed with `VLLMHostPreflightError` during `prepare_vllm_qualification_launch(...)`, before GPU admission can produce a launchable plan and before any provider process is spawned.
+
+The launcher does not infer or insert `serve`, repair positional ordering, substitute a model, or reinterpret another vLLM subcommand as serving intent. A malformed caller command is an execution-preflight failure, not a reason to spend a provider-start attempt.
+
+The direct command must also contain exactly one `--gpu-memory-utilization` setting, in either split or `--flag=value` form. Its numeric value must agree with `requested_utilization`.
 
 Duplicate, conflicting, missing, malformed, or mismatched reservation settings fail closed. All other semantic launch tokens remain unchanged except for the already-authorized omission of explicitly classified non-semantic legacy flags through `negotiate_vllm_launch(...)`.
 
