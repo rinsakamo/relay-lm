@@ -38,6 +38,39 @@ Load additional context only when it can change the decision or verification res
 
 Large always-on instruction files create hidden coupling between unrelated tasks. Tool-specific bootstrap files should therefore stay thin and route into repository authority instead of copying it.
 
+### Crystallize context across agent boundaries
+
+When work is delegated to an agent whose scarce capability is physical/local access, do not spend that finite execution budget re-reading broad repository history that another coordination context has already resolved.
+
+Before delegation, crystallize the selected working context into the smallest **execution capsule** that still preserves every fact that can materially change execution correctness. The capsule should contain, as applicable:
+
+- the bounded owner/goal and current authority that must be reacquired;
+- fixed product/scientific identity and invariants;
+- operations that genuinely require the delegated environment;
+- mechanical dimensions the executor may vary;
+- prohibited changes and ownership boundaries;
+- stop or terminal conditions; and
+- the evidence / handoff shape required on return.
+
+Omit long historical narrative, duplicated canonical text, already-resolved rationale, raw prior logs, and unrelated Issue/PR context when they cannot change the executor's decision. Do not optimize for prompt length by deleting necessary authority, safety, reproducibility, or evidence constraints.
+
+The executor still reacquires all repository, upstream, host, GPU, process, runtime, or other live facts required by the owning contract. A compact capsule is planning input, not permission to treat historical values as current authority.
+
+On return, apply the same rule in the opposite direction: crystallize raw local observations and logs into the bounded physical/external execution handoff owned by `docs/reference/development-workflow.md` rather than copying the entire execution transcript upstream.
+
+The optimization target is lower total human time and lower finite delegated-agent token/time consumption while preserving evidence quality, not the shortest possible prompt in isolation.
+
+```text
+broad coordination context
+  -> selected current authority + material history
+  -> bounded execution capsule
+  -> narrow physical/local execution
+  -> bounded execution handoff
+  -> upstream reconciliation
+```
+
+> **Reason broadly. Crystallize aggressively. Execute narrowly.**
+
 ## Deterministic boundaries stay deterministic
 
 When a stable repository invariant can be checked or transformed deterministically with bounded complexity, prefer code, schema, tests, or explicit configuration over asking an LLM to infer the rule repeatedly.
