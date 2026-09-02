@@ -7,6 +7,8 @@ from relaylm.actual_model_vllm_launch_preflight import (
     RuntimeOwnershipAttestation,
     RuntimeOwnershipBoundary,
     RuntimeProcessIdentity,
+)
+from relaylm.actual_model_vllm_live_owner_preflight import (
     find_unowned_vllm_processes,
 )
 
