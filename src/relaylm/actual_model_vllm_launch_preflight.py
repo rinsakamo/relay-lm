@@ -1075,11 +1075,19 @@ def snapshot_runtime_processes(
     return tuple(sorted(processes, key=lambda item: item.pid))
 
 
-def parse_listener_snapshot(snapshot_text: str) -> tuple[RuntimeListenerObservation, ...]:
-    """Parse content-free ``ss`` listener rows, retaining endpoint and PIDs only."""
+def parse_listener_snapshot(
+    snapshot_text: str,
+    *,
+    expected_endpoint: RuntimeListenerEndpoint | None = None,
+) -> tuple[RuntimeListenerObservation, ...]:
+    """Parse content-free ``ss`` listener rows, optionally scoped to one endpoint."""
 
     if not isinstance(snapshot_text, str):
         raise TypeError("listener snapshot text must be a string")
+    if expected_endpoint is not None and not isinstance(
+        expected_endpoint, RuntimeListenerEndpoint
+    ):
+        raise TypeError("expected_endpoint must be RuntimeListenerEndpoint or None")
     listeners: list[RuntimeListenerObservation] = []
     for line_number, raw_line in enumerate(snapshot_text.splitlines(), start=1):
         line = raw_line.strip()
@@ -1099,6 +1107,10 @@ def parse_listener_snapshot(snapshot_text: str) -> tuple[RuntimeListenerObservat
                 f"listener snapshot row {line_number} has no parseable endpoint",
                 code="LISTENER_SNAPSHOT_UNAVAILABLE",
             )
+        if expected_endpoint is not None and not _listener_matches(
+            expected_endpoint, endpoint
+        ):
+            continue
         pids = tuple(dict.fromkeys(int(value) for value in re.findall(r"pid=(\d+)", line)))
         if not pids:
             raise RuntimeOwnershipError(
@@ -1111,9 +1123,10 @@ def parse_listener_snapshot(snapshot_text: str) -> tuple[RuntimeListenerObservat
 
 def snapshot_runtime_listeners(
     *,
+    expected_endpoint: RuntimeListenerEndpoint | None = None,
     run: RunProcessSnapshot = subprocess.run,
 ) -> tuple[RuntimeListenerObservation, ...]:
-    """Snapshot listening sockets through ``ss`` without a shell search."""
+    """Snapshot listeners shell-free, optionally requiring PID only at one endpoint."""
 
     try:
         completed = run(
@@ -1132,7 +1145,10 @@ def snapshot_runtime_listeners(
             "listener snapshot stdout must be text",
             code="LISTENER_SNAPSHOT_UNAVAILABLE",
         )
-    return parse_listener_snapshot(completed.stdout)
+    return parse_listener_snapshot(
+        completed.stdout,
+        expected_endpoint=expected_endpoint,
+    )
 
 
 class OwnedVLLMRuntime:
@@ -1193,7 +1209,10 @@ class OwnedVLLMRuntime:
         _validate_timeout(escalation_timeout, "escalation_timeout")
         _validate_timeout(poll_interval, "poll_interval")
         process_snapshot = process_snapshot or snapshot_runtime_processes
-        listener_snapshot = listener_snapshot or snapshot_runtime_listeners
+        if listener_snapshot is None:
+            listener_snapshot = lambda: snapshot_runtime_listeners(
+                expected_endpoint=self.boundary.expected_listener
+            )
 
         graceful: list[int] = []
         escalated: list[int] = []
@@ -1420,7 +1439,10 @@ def attest_vllm_runtime_ownership(
     if not isinstance(boundary, RuntimeOwnershipBoundary):
         raise TypeError("boundary must be RuntimeOwnershipBoundary")
     process_snapshot = process_snapshot or snapshot_runtime_processes
-    listener_snapshot = listener_snapshot or snapshot_runtime_listeners
+    if listener_snapshot is None:
+        listener_snapshot = lambda: snapshot_runtime_listeners(
+            expected_endpoint=boundary.expected_listener
+        )
     try:
         processes = _owned_processes(boundary, process_snapshot())
     except RuntimeOwnershipError:
@@ -1475,7 +1497,10 @@ def wait_for_vllm_runtime_readiness(
     _validate_timeout(timeout, "timeout")
     _validate_timeout(poll_interval, "poll_interval")
     process_snapshot = process_snapshot or snapshot_runtime_processes
-    listener_snapshot = listener_snapshot or snapshot_runtime_listeners
+    if listener_snapshot is None:
+        listener_snapshot = lambda: snapshot_runtime_listeners(
+            expected_endpoint=runtime.boundary.expected_listener
+        )
     deadline = clock() + timeout
     while True:
         try:
@@ -1530,10 +1555,6 @@ def _read_runtime_process_identity(
             owner_nonce=observed_nonce,
         )
     except RuntimeOwnershipError:
-        # Kernel/system entries such as PID 1/2 can expose zero process-group
-        # fields in a container namespace.  They are not runtime evidence;
-        # an owned entry that cannot be represented simply disappears from
-        # the snapshot and therefore fails closed at attestation/cleanup.
         return None
 
 
