@@ -76,6 +76,7 @@ def prepare_vllm_qualification_launch(
     before any execution freeze.
     """
 
+    _validate_direct_vllm_serve_command(command)
     _validate_declared_context_window(
         command=command,
         required_context_window=required_context_window,
@@ -174,6 +175,27 @@ def launch_vllm_qualification_runtime(
         runtime=runtime,
         ownership=ownership,
     )
+
+
+def _validate_direct_vllm_serve_command(command: Sequence[str]) -> None:
+    """Require the direct serving CLI topology before any launch can be planned."""
+
+    if isinstance(command, (str, bytes)) or not command:
+        raise TypeError("vLLM command must be a non-empty sequence")
+    if not all(isinstance(item, str) and item for item in command):
+        raise VLLMHostPreflightError("vLLM command must contain non-empty strings")
+    if len(command) < 3:
+        raise VLLMHostPreflightError(
+            "qualification launch requires direct 'vllm serve <model>' command"
+        )
+    if command[0] != "vllm" or command[1] != "serve":
+        raise VLLMHostPreflightError(
+            "qualification launch requires direct 'vllm serve <model>' command"
+        )
+    if command[2].startswith("-"):
+        raise VLLMHostPreflightError(
+            "qualification launch requires a non-option model after 'vllm serve'"
+        )
 
 
 def _validate_vllm_unix_ipc_path(runtime_paths: VLLMRuntimePathPlan) -> None:
