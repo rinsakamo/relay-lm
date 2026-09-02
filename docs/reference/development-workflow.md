@@ -19,10 +19,10 @@ Every repository transaction:
 3. owns one bounded responsibility and names material non-goals;
 4. uses the verification discipline appropriate to the change class;
 5. converges code, tests, and owner-local authority directly on the current contract;
-6. re-fetches and reviews the exact final PR head;
-7. requires the required `v1` CI results for that exact reviewed head;
-8. re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
-9. merges only the exact reviewed/tested head with expected-head protection;
+6. when it mutates the repository, re-fetches and reviews the exact final PR head;
+7. when it mutates the repository, requires the required `v1` CI results for that exact reviewed head;
+8. when it mutates the repository, re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
+9. when it mutates the repository, merges only the exact reviewed/tested head with expected-head protection;
 10. before declaring completion, reconciles material physical/external execution learning when applicable and reconciles the owning Issue after merge, or after terminal completion of a no-repository-mutation transaction, when an Issue exists.
 
 A bounded physical/external execution-only transaction that performs no repository mutation still consumes fresh repository/owner authority and the owning execution/evidence contract, but it does not create a no-op PR merely to satisfy repository mutation gates. Fresh-head review, exact-head CI, and merge requirements apply when there is a repository mutation/PR; execution-only completion uses the applicable owner-specific physical/evidence gates plus section 10 reconciliation.
