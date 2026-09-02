@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from tools.repository_authority import load_declarations, qualification_fingerprint
+from tools.repository_qualification_coverage import qualification_coverage_gaps
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -42,11 +43,20 @@ def _load_freeze_spec() -> dict[str, object]:
     assert set(document) == _EXPECTED_KEYS
     assert document["format_version"] == 1
     assert document["id"] == "core-semantic-v1"
-    assert document["roots"] == ["runtime_configuration"]
+    assert document["roots"] == ["crystallization", "runtime_configuration"]
     expected = document["expected_fingerprint"]
     assert isinstance(expected, str)
     assert _FINGERPRINT_RE.fullmatch(expected)
     return document
+
+
+def test_core_semantic_qualification_coverage_has_no_silent_implementation_omissions() -> None:
+    spec = _load_freeze_spec()
+    declarations = load_declarations(REPOSITORY_ROOT)
+    assert qualification_coverage_gaps(
+        declarations,
+        roots=tuple(spec["roots"]),
+    ) == ()
 
 
 def test_core_semantic_qualification_fingerprint_matches_freeze() -> None:

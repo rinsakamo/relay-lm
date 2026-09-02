@@ -9,6 +9,7 @@ from tools.repository_authority import (
     AUTHORITY_DIRECTORY,
     DECLARATION_SCHEMA_VERSION,
     AuthorityError,
+    QualificationExclusion,
     load_declarations,
     qualification_fingerprint,
     qualification_manifest,
@@ -62,6 +63,67 @@ def test_qualification_inputs_are_optional_owner_local_selectors(tmp_path: Path)
     assert validate_repository(tmp_path) == ()
     loaded = load_declarations(tmp_path)[0]
     assert loaded.qualification_inputs == ("src/context_compiler.py",)
+
+
+def test_qualification_exclusion_is_owner_local_and_reasoned(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    implementation = declaration["implementation"][0]  # type: ignore[index]
+    declaration["qualification_exclusions"] = [
+        {"path": implementation, "reason": "Diagnostic-only realization."}
+    ]
+    _write(tmp_path, declaration)
+
+    assert validate_repository(tmp_path) == ()
+    loaded = load_declarations(tmp_path)[0]
+    assert loaded.qualification_exclusions == (
+        QualificationExclusion(
+            path="src/context_compiler.py",
+            reason="Diagnostic-only realization.",
+        ),
+    )
+
+
+def test_qualification_exclusion_requires_non_empty_reason(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    implementation = declaration["implementation"][0]  # type: ignore[index]
+    declaration["qualification_exclusions"] = [
+        {"path": implementation, "reason": "  "}
+    ]
+    _write(tmp_path, declaration)
+
+    assert validate_repository(tmp_path) == (
+        ".ai/authority/context_compiler.yaml: qualification exclusion "
+        "'src/context_compiler.py' reason must be a non-empty string",
+    )
+
+
+def test_qualification_exclusion_must_be_implementation(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    semantic = declaration["canonical_surfaces"][0]  # type: ignore[index]
+    declaration["qualification_exclusions"] = [
+        {"path": semantic, "reason": "Not implementation."}
+    ]
+    _write(tmp_path, declaration)
+
+    assert validate_repository(tmp_path) == (
+        ".ai/authority/context_compiler.yaml: qualification exclusion "
+        "'docs/contracts/context_compiler.md' must be an implementation surface",
+    )
+
+
+def test_qualification_input_cannot_also_be_excluded_in_declaration(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    implementation = declaration["implementation"][0]  # type: ignore[index]
+    declaration["qualification_inputs"] = [implementation]
+    declaration["qualification_exclusions"] = [
+        {"path": implementation, "reason": "Contradiction."}
+    ]
+    _write(tmp_path, declaration)
+
+    assert validate_repository(tmp_path) == (
+        ".ai/authority/context_compiler.yaml: qualification input "
+        "'src/context_compiler.py' cannot also be excluded",
+    )
 
 
 def test_qualification_input_must_already_belong_to_declaring_owner(tmp_path: Path) -> None:
@@ -161,62 +223,75 @@ def test_manifest_is_derived_from_closure_without_central_path_list(tmp_path: Pa
     )
 
     assert manifest == {
-        "format_version": 1,
+        "format_version": 2,
         "roots": ["cognitive_turn"],
         "owners": [
             {
                 "id": "cognitive_turn",
                 "qualification_inputs": ["docs/contracts/cognitive_turn.md"],
+                "qualification_exclusions": [],
             },
             {
                 "id": "provider_and_api",
                 "qualification_inputs": ["src/provider_and_api.py"],
+                "qualification_exclusions": [],
             },
         ],
     }
 
 
-def test_manifest_normalizes_qualification_input_order(tmp_path: Path) -> None:
+def test_manifest_normalizes_qualification_input_and_exclusion_order(tmp_path: Path) -> None:
     declaration = _owner(tmp_path, "context_compiler")
     semantic = declaration["canonical_surfaces"][0]  # type: ignore[index]
     implementation = declaration["implementation"][0]  # type: ignore[index]
-    declaration["qualification_inputs"] = [implementation, semantic]
+    extra = _touch(tmp_path, "src/context_extra.py")
+    declaration["implementation"] = [implementation, extra]
+    declaration["qualification_inputs"] = [semantic]
+    declaration["qualification_exclusions"] = [
+        {"path": extra, "reason": "Extra realization."},
+        {"path": implementation, "reason": "Primary realization."},
+    ]
     _write(tmp_path, declaration)
 
-    first_declarations = load_declarations(tmp_path)
-    first_manifest = qualification_manifest(
+    manifest = qualification_manifest(
         tmp_path,
-        first_declarations,
-        roots=("context_compiler",),
-    )
-    first_fingerprint = qualification_fingerprint(
-        tmp_path,
-        first_declarations,
+        load_declarations(tmp_path),
         roots=("context_compiler",),
     )
 
-    declaration["qualification_inputs"] = [semantic, implementation]
-    _write(tmp_path, declaration)
-    second_declarations = load_declarations(tmp_path)
-    second_manifest = qualification_manifest(
-        tmp_path,
-        second_declarations,
-        roots=("context_compiler",),
-    )
-    second_fingerprint = qualification_fingerprint(
-        tmp_path,
-        second_declarations,
-        roots=("context_compiler",),
-    )
-
-    assert first_manifest == second_manifest
-    assert first_manifest["owners"] == [
+    assert manifest["owners"] == [
         {
             "id": "context_compiler",
-            "qualification_inputs": [semantic, implementation],
+            "qualification_inputs": [semantic],
+            "qualification_exclusions": sorted([extra, implementation]),
         }
     ]
-    assert first_fingerprint == second_fingerprint
+
+
+def test_exclusion_reason_wording_does_not_change_product_fingerprint(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    implementation = declaration["implementation"][0]  # type: ignore[index]
+    declaration["qualification_exclusions"] = [
+        {"path": implementation, "reason": "Diagnostic wrapper."}
+    ]
+    _write(tmp_path, declaration)
+    before = qualification_fingerprint(
+        tmp_path,
+        load_declarations(tmp_path),
+        roots=("context_compiler",),
+    )
+
+    declaration["qualification_exclusions"] = [
+        {"path": implementation, "reason": "Diagnostic-only wrapper."}
+    ]
+    _write(tmp_path, declaration)
+    after = qualification_fingerprint(
+        tmp_path,
+        load_declarations(tmp_path),
+        roots=("context_compiler",),
+    )
+
+    assert before == after
 
 
 def test_fingerprint_changes_with_exact_selected_file_bytes(tmp_path: Path) -> None:
@@ -260,6 +335,9 @@ def test_fingerprint_changes_when_owner_path_association_changes(tmp_path: Path)
     )
 
     first["qualification_inputs"] = []
+    first["qualification_exclusions"] = [
+        {"path": shared, "reason": "Owned elsewhere for this qualification."}
+    ]
     second["qualification_inputs"] = [shared]
     _write(tmp_path, first)
     _write(tmp_path, second)

@@ -20,6 +20,7 @@ from typing import Mapping, Sequence
 from tools.repository_authority import (
     AuthorityError,
     Declaration,
+    QualificationExclusion,
     load_declarations,
     qualification_owner_closure,
 )
@@ -33,20 +34,6 @@ class QualificationCoverageGap:
     omitted_implementation: tuple[str, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class QualificationExclusion:
-    """One explicit owner-local reason not to fingerprint an implementation surface."""
-
-    path: str
-    reason: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.path, str) or not self.path.strip():
-            raise ValueError("qualification exclusion path must be non-empty")
-        if not isinstance(self.reason, str) or not self.reason.strip():
-            raise ValueError("qualification exclusion reason must be non-empty")
-
-
 def qualification_coverage_gaps(
     declarations: Sequence[Declaration],
     *,
@@ -57,8 +44,8 @@ def qualification_coverage_gaps(
 
     A path is resolved only when the same owner either selects it in
     ``qualification_inputs`` or explicitly excludes it with a non-empty reason.
-    Exclusions are valid only for that owner's implementation surfaces and may
-    not contradict a selected qualification input.
+    Persisted declaration exclusions are used by default; tests and bounded
+    callers may provide an explicit mapping to exercise the same contract.
 
     This function deliberately does not infer whether an exclusion reason is a
     good release decision. It only makes the disposition explicit and
@@ -67,7 +54,15 @@ def qualification_coverage_gaps(
 
     owners_by_id = {declaration.id: declaration for declaration in declarations}
     closure = qualification_owner_closure(declarations, roots=roots)
-    supplied = exclusions_by_owner or {}
+    supplied = (
+        {
+            declaration.id: declaration.qualification_exclusions
+            for declaration in declarations
+            if declaration.qualification_exclusions
+        }
+        if exclusions_by_owner is None
+        else exclusions_by_owner
+    )
 
     unknown_owners = sorted(owner for owner in supplied if owner not in owners_by_id)
     if unknown_owners:

@@ -9,6 +9,7 @@ implementation:
 - src/relaylm/memory_provenance.py
 - src/relaylm/memory_retrieval.py
 qualification_inputs:
+- docs/contracts/memory-provenance.md
 - src/relaylm/memory_provenance.py
 - src/relaylm/memory_retrieval.py
 tests:

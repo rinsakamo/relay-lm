@@ -6,6 +6,10 @@ canonical_surfaces:
 implementation:
 - src/relaylm/crystallization.py
 - src/relaylm/providers/openai_compatible_crystallization.py
+qualification_inputs:
+- docs/contracts/crystallization.md
+- src/relaylm/crystallization.py
+- src/relaylm/providers/openai_compatible_crystallization.py
 tests:
 - tests/unit/test_crystallization.py
 - tests/unit/test_evaluation_crystallization.py

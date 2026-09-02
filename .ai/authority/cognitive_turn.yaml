@@ -49,6 +49,15 @@ qualification_inputs:
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 - src/relaylm/providers/openai_compatible_budget.py
+qualification_exclusions:
+- path: src/relaylm/cognition_execution_evidence.py
+  reason: >-
+    Content-free execution evidence records outcomes without changing ordinary
+    Pass 1 or Pass 2 cognition decisions.
+- path: src/relaylm/shadow_turn.py
+  reason: >-
+    Shadow comparison execution is evidence-only and is not the Core 1.0
+    ordinary serving path.
 tests:
 - tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognition_pass_execution.py

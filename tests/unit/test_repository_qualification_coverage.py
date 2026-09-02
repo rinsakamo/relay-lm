@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from tools.repository_authority import AuthorityError, Declaration
+from tools.repository_authority import AuthorityError, Declaration, QualificationExclusion
 from tools.repository_qualification_coverage import (
     QualificationCoverageGap,
-    QualificationExclusion,
     qualification_coverage_gaps,
 )
 
@@ -15,6 +14,7 @@ def _declaration(
     *,
     implementation: tuple[str, ...] = (),
     qualification_inputs: tuple[str, ...] = (),
+    qualification_exclusions: tuple[QualificationExclusion, ...] = (),
     depends_on: tuple[str, ...] = (),
 ) -> Declaration:
     return Declaration(
@@ -23,6 +23,7 @@ def _declaration(
         path=f".ai/authority/{identifier}.yaml",
         implementation=implementation,
         qualification_inputs=qualification_inputs,
+        qualification_exclusions=qualification_exclusions,
         depends_on=depends_on,
     )
 
@@ -102,7 +103,28 @@ def test_audit_is_empty_when_all_implementation_surfaces_are_selected() -> None:
     ) == ()
 
 
-def test_reasoned_exclusion_resolves_an_unselected_implementation_surface() -> None:
+def test_persisted_reasoned_exclusion_resolves_an_unselected_surface() -> None:
+    declarations = (
+        _declaration(
+            "runtime_configuration",
+            implementation=("runtime.py", "operator.py"),
+            qualification_inputs=("runtime.py",),
+            qualification_exclusions=(
+                QualificationExclusion(
+                    path="operator.py",
+                    reason="Operator-only wrapper; semantic inputs are selected separately.",
+                ),
+            ),
+        ),
+    )
+
+    assert qualification_coverage_gaps(
+        declarations,
+        roots=("runtime_configuration",),
+    ) == ()
+
+
+def test_reasoned_exclusion_override_resolves_an_unselected_implementation_surface() -> None:
     declarations = (
         _declaration(
             "runtime_configuration",

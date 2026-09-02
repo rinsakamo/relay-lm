@@ -18,6 +18,7 @@ implementation:
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
 qualification_inputs:
+- docs/contracts/cognitive-budget.md
 - src/relaylm/budget.py
 - src/relaylm/budget_controls.py
 - src/relaylm/budget_enforcement.py
@@ -25,6 +26,16 @@ qualification_inputs:
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
+qualification_exclusions:
+- path: src/relaylm/budget_diagnostics.py
+  reason: >-
+    Content-free diagnostics report budget decisions without changing selection,
+    degradation, accounting, or enforcement semantics.
+- path: src/relaylm/providers/openai_compatible.py
+  reason: >-
+    Shared provider transport is fingerprinted by its provider and cognition
+    owners; Cognitive Budget exact serialization and counting semantics live in
+    openai_compatible_budget.py.
 tests:
 - tests/unit/test_cognitive_budget_accounting.py
 - tests/unit/test_cognitive_budget_plan.py
