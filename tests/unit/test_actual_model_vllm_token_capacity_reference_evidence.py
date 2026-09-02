@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -20,7 +21,9 @@ def _launch_class() -> VLLMTokenCapacityLaunchClass:
         backend_version="0.26.1rc1.dev549+g70b84f0bc",
         backend_source_revision="b" * 40,
         model_runner="v2",
-        host_capability_class="cuda-sm86-12gb",
+        gpu_compute_capability_major=8,
+        gpu_compute_capability_minor=6,
+        gpu_total_memory_bytes=12_884_377_600,
     )
 
 
@@ -58,7 +61,7 @@ def test_reference_evidence_rejects_incompatible_launch_class() -> None:
     evidence = _evidence()
     incompatible = replace(
         _launch_class(),
-        backend_source_revision="c" * 40,
+        gpu_compute_capability_minor=9,
     )
 
     with pytest.raises(
@@ -92,3 +95,20 @@ def test_reference_evidence_id_is_independent_of_artifact_path(tmp_path) -> None
     )
 
     assert first.name == second.name == f"{evidence.evidence_id}.json"
+
+
+def test_reference_evidence_rejects_tampered_content_id(tmp_path) -> None:
+    evidence = _evidence()
+    path = write_vllm_token_capacity_reference_evidence(
+        evidence=evidence,
+        artifact_root=tmp_path,
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["successful_launch"]["kv_cache_capacity_tokens"] = 4_080
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        VLLMTokenCapacityReferenceEvidenceError,
+        match="evidence_id",
+    ):
+        load_vllm_token_capacity_reference_evidence(path)
