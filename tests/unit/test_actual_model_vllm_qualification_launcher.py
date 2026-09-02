@@ -306,6 +306,7 @@ def test_launch_uses_selected_command_native_environment_and_owned_readiness(
         calls["wait_kwargs"] = kwargs
         return ownership
 
+    monkeypatch.setattr(launcher, "_validate_vllm_unix_ipc_path", lambda _paths: None)
     monkeypatch.setattr(launcher, "launch_owned_vllm_runtime", fake_launch)
     monkeypatch.setattr(launcher, "wait_for_vllm_runtime_readiness", fake_wait)
 
@@ -329,6 +330,61 @@ def test_launch_uses_selected_command_native_environment_and_owned_readiness(
     assert calls["wait_runtime"] is runtime
     assert calls["wait_kwargs"] == {"timeout": 30.0, "poll_interval": 0.1}
     assert "cleanup" not in calls
+
+
+def test_short_unix_ipc_path_budget_is_admissible() -> None:
+    rpc_base = Path("/tmp/relaylm-vllm-rpc-0123456789abcdef01234567")
+    runtime_paths = launcher.VLLMRuntimePathPlan(
+        rpc_base_path=rpc_base,
+        tmpdir=Path("/tmp"),
+        path_class="native_linux",
+        rebased_from_drvfs=False,
+        environment={
+            "VLLM_RPC_BASE_PATH": str(rpc_base),
+            "TMPDIR": "/tmp",
+            "TMP": "/tmp",
+            "TEMP": "/tmp",
+        },
+    )
+
+    launcher._validate_vllm_unix_ipc_path(runtime_paths)
+
+
+def test_launch_rejects_overlong_unix_ipc_path_before_provider_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    long_root = tmp_path / ("x" * 80)
+    plan = prepare_vllm_qualification_launch(
+        command=_command(),
+        supported_flags=SUPPORTED_FLAGS,
+        requested_utilization=0.92,
+        fallback_utilization=0.90,
+        fresh_free_memory_bytes=10_980,
+        total_memory_bytes=12_000,
+        required_context_window=4096,
+        capacity_recheck=lambda _utilization, _context: True,
+        run_id="qualification-overlong-ipc",
+        native_root=long_root,
+    )
+    assert len(str(plan.runtime_paths.rpc_base_path).encode("utf-8")) + 37 > 107
+    monkeypatch.setattr(
+        launcher,
+        "launch_owned_vllm_runtime",
+        lambda *_args, **_kwargs: pytest.fail("provider launch must not occur"),
+    )
+
+    try:
+        with pytest.raises(VLLMHostPreflightError, match="Unix IPC path"):
+            launch_vllm_qualification_runtime(
+                plan,
+                run_id="qualification-overlong-ipc",
+                expected_listener=RuntimeListenerEndpoint(
+                    host="127.0.0.1", port=8000
+                ),
+            )
+    finally:
+        plan.runtime_paths.rpc_base_path.rmdir()
 
 
 def test_launch_rejects_runtime_path_environment_override(

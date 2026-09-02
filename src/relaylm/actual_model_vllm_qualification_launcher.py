@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,8 @@ from relaylm.actual_model_vllm_launch_preflight import (
 
 _GPU_MEMORY_FLAG = "--gpu-memory-utilization"
 _MAX_MODEL_LEN_FLAG = "--max-model-len"
+_UNIX_IPC_PATH_MAX_BYTES = 107
+_VLLM_IPC_SUFFIX_BYTES = 37
 CapacityRecheck = Callable[[float, int], bool]
 
 
@@ -146,6 +149,7 @@ def launch_vllm_qualification_runtime(
         runtime_environment=plan.runtime_paths.environment,
         caller_environment=env,
     )
+    _validate_vllm_unix_ipc_path(plan.runtime_paths)
     runtime = launch_owned_vllm_runtime(
         plan.launch.command,
         run_id=run_id,
@@ -170,6 +174,23 @@ def launch_vllm_qualification_runtime(
         runtime=runtime,
         ownership=ownership,
     )
+
+
+def _validate_vllm_unix_ipc_path(runtime_paths: VLLMRuntimePathPlan) -> None:
+    """Reject RPC bases that cannot fit the pinned vLLM V2 Unix IPC suffix."""
+
+    if not isinstance(runtime_paths, VLLMRuntimePathPlan):
+        raise TypeError("runtime_paths must be VLLMRuntimePathPlan")
+    rpc_base_bytes = len(os.fsencode(runtime_paths.rpc_base_path))
+    endpoint_bytes = rpc_base_bytes + _VLLM_IPC_SUFFIX_BYTES
+    if endpoint_bytes > _UNIX_IPC_PATH_MAX_BYTES:
+        raise VLLMHostPreflightError(
+            "vLLM Unix IPC path exceeds the conservative host socket budget "
+            "before provider launch "
+            f"(rpc_base_bytes={rpc_base_bytes}, "
+            f"reserved_suffix_bytes={_VLLM_IPC_SUFFIX_BYTES}, "
+            f"max_bytes={_UNIX_IPC_PATH_MAX_BYTES})"
+        )
 
 
 def _validate_declared_context_window(
