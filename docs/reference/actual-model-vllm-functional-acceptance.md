@@ -1,6 +1,6 @@
 # Actual-model vLLM functional acceptance
 
-Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386, with the current final Core semantic qualification transaction owned by #2092. Numeric Cognitive Budget selection remains #1388 authority.
+Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386; current pre-final physical routing is #2124 reference acquisition, and a fresh final Core semantic qualification owner is created only after `#2124 = REFERENCE_READY`. Numeric Cognitive Budget selection remains #1388 authority and blocked until that later final qualification PASS.
 
 Stage R exists first to answer a product question:
 
