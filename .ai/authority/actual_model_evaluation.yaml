@@ -14,6 +14,7 @@ canonical_surfaces:
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
+- docs/reference/actual-model-vllm-kv-allocation-geometry.md
 - docs/reference/actual-model-vllm-live-owner-preflight.md
 - docs/reference/actual-model-vllm-qualification-launcher.md
 - docs/reference/actual-model-vllm-budget-facade.md
@@ -117,6 +118,7 @@ tests:
 - tests/unit/test_actual_model_vllm_capacity_acquisition.py
 - tests/unit/test_actual_model_vllm_capacity_producer.py
 - tests/unit/test_actual_model_vllm_profiler.py
+- tests/unit/test_actual_model_vllm_kv_allocation_geometry.py
 - tests/unit/test_actual_model_vllm_launch_preflight.py
 - tests/unit/test_actual_model_vllm_live_owner_preflight.py
 - tests/unit/test_actual_model_vllm_qualification_launcher.py
