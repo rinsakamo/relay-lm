@@ -42,6 +42,13 @@ qualification_inputs:
 - src/relaylm/providers/openai_compatible_identity.py
 - src/relaylm/providers/openai_compatible_cognition.py
 - src/relaylm/api/openai.py
+- src/relaylm/server.py
+qualification_exclusions:
+- path: src/relaylm/providers/lm_studio_reasoning.py
+  reason: >-
+    Native LM Studio reasoning capability attestation is not wired into the
+    current release request realization; runtime assembly fails closed on
+    per-request LM Studio reasoning overrides.
 tests:
 - tests/unit/test_openai_boundary.py
 - tests/unit/test_openai_compatible_single_pass_structure_ownership.py

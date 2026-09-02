@@ -2,6 +2,7 @@
   "format_version": 1,
   "id": "core-semantic-v1",
   "roots": [
+    "crystallization",
     "runtime_configuration"
   ],
   "expected_fingerprint": "sha256:49c805cb3fe5bce925420d00b538858f1b84f1a28a20568ae4e4d6a0212e2369"
