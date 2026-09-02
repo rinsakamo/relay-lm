@@ -263,7 +263,7 @@ def test_manifest_normalizes_qualification_input_and_exclusion_order(tmp_path: P
         {
             "id": "context_compiler",
             "qualification_inputs": [semantic],
-            "qualification_exclusions": [extra, implementation],
+            "qualification_exclusions": sorted([extra, implementation]),
         }
     ]
 
