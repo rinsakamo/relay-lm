@@ -6,18 +6,52 @@ This surface refines the continuous byte/token bound described by `actual-model-
 
 ## Stable launch-class reference
 
-A reusable `VLLMTokenCapacityReference` must bind one citable same-launch-class observation containing:
+A reusable `VLLMTokenCapacityReference` binds one citable same-launch-class successful observation containing:
 
 - conservative non-KV envelope bytes;
 - explicit KV-cache bytes from the successful reference launch;
 - resulting attested KV token capacity;
 - KV allocation-unit bytes;
-- KV allocation-unit token capacity;
-- the same target/runtime/runner launch-class identity that makes those values applicable.
+- KV allocation-unit token capacity.
+
+The reference is consumable only through a compatible stable launch-class identity. Current `VLLMTokenCapacityLaunchClass` binds mechanically attestable fields:
+
+- exact target id;
+- immutable target artifact revision;
+- exact target digest;
+- exact backend version;
+- exact pinned backend source revision;
+- model-runner trajectory (`v1` or `v2`);
+- GPU compute capability major/minor;
+- GPU total memory bytes.
+
+Compute capability and total memory describe the reusable hardware capability class without persisting a GPU UUID or inventing an opaque host-class label. Current free VRAM is deliberately excluded from compatibility and is reacquired for every admission.
 
 Allocation-unit geometry is launch-class evidence. It is not inferred from current free VRAM, a remembered PID, a transaction-local utilization fraction, or a historical absolute KV value.
 
 The reference fails closed if its declared whole-allocation-unit capacity cannot carry its own attested KV token capacity.
+
+## Citable reference evidence
+
+`VLLMTokenCapacityReferenceEvidence` is the producer-owned immutable artifact that makes the reference reusable instead of reconstructing it from a rehearsal log.
+
+One artifact is created from one successful owned launch observation by `VLLMTokenCapacityReferenceEvidence.from_successful_launch(...)`. It records:
+
+- the stable `VLLMTokenCapacityLaunchClass` compatibility identity;
+- the startup free-memory observation used to derive the conservative launch envelope;
+- the derived non-KV envelope;
+- explicit reference KV bytes;
+- attested reference token capacity;
+- explicit allocation-unit byte/token geometry;
+- a versioned deterministic `amkvref-<sha256>` evidence id.
+
+`write_vllm_token_capacity_reference_evidence(...)` persists the artifact atomically. `load_vllm_token_capacity_reference_evidence(...)` strictly validates its schema, content-derived evidence id, filename, successful-launch envelope, and allocation geometry before returning it.
+
+A later consumer does not receive a `VLLMTokenCapacityReference` merely because an artifact parses. It supplies the fresh expected `VLLMTokenCapacityLaunchClass` to `require_compatible_reference(...)`; an exact mismatch in target identity/revision/digest, backend version/source, model runner, compute capability, or total GPU memory fails closed.
+
+The successful launch's `startup_free_bytes` is immutable observation provenance used to derive the conservative non-KV envelope; it is not a later host-admission value or a compatibility selector by itself. PID, PGID, session, nonce, listener ownership, GPU UUID, RPC/temp paths and later live GPU free memory are not stored as reusable process authority.
+
+A reference-acquisition transaction may emit this artifact only after a successful owned runtime and capacity attestation establish all required geometry. Source-level page information without a successful same-launch-class observation is insufficient. Conversely, a later qualification consumes the persisted stable geometry but still reacquires fresh host free/total memory and current process/listener authority.
 
 ## Fixed-window conversion
 
@@ -65,8 +99,8 @@ Final launch memory identity remains:
 
 ## Evidence discipline
 
-Historical execution can demonstrate that continuous arithmetic was insufficient and motivate this invariant. Its absolute KV bytes, utilization, free-memory state, PIDs, paths and live capacity remain historical unless a later owner explicitly requalifies them.
+Historical execution can demonstrate that continuous arithmetic was insufficient and motivate this invariant. Its absolute KV bytes, utilization, free-memory state, PIDs, paths and live capacity remain historical unless a later owner explicitly produces citable evidence under the current artifact contract.
 
-A later physical transaction reacquires the applicable launch-class geometry and fresh host admission before provider spawn. It does not copy one rehearsal's absolute memory recipe into product defaults.
+A later physical qualification loads one compatible reference artifact and separately reacquires fresh host admission before provider spawn. It does not copy one rehearsal's absolute memory recipe into product defaults.
 
-> **Select the semantic window elsewhere, preserve the continuous upper bound, round the physical carrier in the runtime's attested allocation units, and use fresh free VRAM only to decide whether the host can carry that fixed requirement.**
+> **Select the semantic window elsewhere, persist one successful launch's stable geometry as identity-bound evidence, preserve the continuous upper bound, round the physical carrier in the runtime's attested allocation units, and use fresh free VRAM only to decide whether the host can carry that fixed requirement.**
