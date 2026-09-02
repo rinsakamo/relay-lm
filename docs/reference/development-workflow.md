@@ -23,7 +23,9 @@ Every repository transaction:
 7. requires the required `v1` CI results for that exact reviewed head;
 8. re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
 9. merges only the exact reviewed/tested head with expected-head protection;
-10. before declaring completion, reconciles material physical/external execution learning when applicable and reconciles the owning Issue after merge when an Issue exists.
+10. before declaring completion, reconciles material physical/external execution learning when applicable and reconciles the owning Issue after merge, or after terminal completion of a no-repository-mutation transaction, when an Issue exists.
+
+A bounded physical/external execution-only transaction that performs no repository mutation still consumes fresh repository/owner authority and the owning execution/evidence contract, but it does not create a no-op PR merely to satisfy repository mutation gates. Fresh-head review, exact-head CI, and merge requirements apply when there is a repository mutation/PR; execution-only completion uses the applicable owner-specific physical/evidence gates plus section 10 reconciliation.
 
 Handoffs, old comments, previously recorded SHAs, earlier CI results, Issues, and projections are historical evidence. They do not replace fresh repository facts.
 
@@ -270,7 +272,7 @@ The shared handoff never replaces fresh repository authority, current upstream v
 
 ### Owning Issue reconciliation
 
-After a successful merge, reconcile the owning Issue against merged reality.
+After a successful merge, or after terminal completion of a bounded no-repository-mutation transaction, reconcile the owning Issue against current reality.
 
 Use one of these outcomes:
 
@@ -350,14 +352,18 @@ fresh authority
   → Issue reconciliation
 ```
 
-When any completion shape includes material physical/external execution covered by section 10, insert this conditional reconciliation before completion:
+Physical/external execution-only transaction:
 
 ```text
-material physical/external execution
+fresh repository / owner / execution authority
+  → bounded physical/external execution under its owning contract
+  → producer-owned evidence or terminal outcome
   → shared execution handoff
   → reusable-learning reconciliation
-  → ordinary completion / Issue reconciliation
+  → Issue reconciliation
 ```
+
+When a repository mutation shape also includes material physical/external execution covered by section 10, insert the same handoff and reusable-learning reconciliation before ordinary completion / Issue reconciliation.
 
 ## Fixed principles
 
@@ -372,4 +378,4 @@ material physical/external execution
 9. **Current authority never presents deferred behavior as implemented.**
 10. **Necessary additions are allowed. Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
 11. **Material physical/external execution is complete only after reusable learning is shared and reconciled without promoting trial history to authority.**
-12. **A completed transaction reconciles its owning Issue.**
+12. **A completed transaction reconciles its owning Issue after merge or terminal no-repository-mutation completion when one exists.**
