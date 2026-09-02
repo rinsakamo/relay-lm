@@ -1,6 +1,6 @@
 # Actual-model vLLM functional acceptance
 
-Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386, with the current production semantic qualification transaction owned by #2017. Numeric Cognitive Budget selection remains #1388 authority.
+Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386, with the current final Core semantic qualification transaction owned by #2092. Numeric Cognitive Budget selection remains #1388 authority.
 
 Stage R exists first to answer a product question:
 
@@ -172,7 +172,7 @@ temporary variation with durable meaning unchanged
 
 The first #1906 real-model iteration is an explicit negative baseline for this gate: its English sequential contrast passed on both base and candidate heads, while the Japanese S5 created durable `user.preference/preferred_beverage=紅茶` on both heads in all 3 replicates. Therefore English-only success is not sufficient evidence for #1903. A candidate semantic fix must pass the Japanese black-box case without adding that Japanese wording to the prompt.
 
-This fixture exists to detect durability/epistemic-strength regression after model-facing State grammar changes. It must be run against the exact current prompt/wire identity when claiming that tentative overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
+This fixture exists to detect durability/epistemic-strength regression after model-facing State projection semantics. It must be run against the exact current prompt/wire identity when claiming that tentative overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
 
 ## Execution
 
