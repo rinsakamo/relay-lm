@@ -28,16 +28,28 @@ class VLLMTokenCapacityReference:
     non_kv_memory_bytes: int
     kv_cache_memory_bytes: int
     kv_cache_capacity_tokens: int
+    kv_allocation_unit_bytes: int
+    kv_allocation_unit_tokens: int
 
     def __post_init__(self) -> None:
         for name in (
             "non_kv_memory_bytes",
             "kv_cache_memory_bytes",
             "kv_cache_capacity_tokens",
+            "kv_allocation_unit_bytes",
+            "kv_allocation_unit_tokens",
         ):
             _require_int(getattr(self, name), name)
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be positive")
+
+        allocation_capacity_tokens = (
+            self.kv_cache_memory_bytes // self.kv_allocation_unit_bytes
+        ) * self.kv_allocation_unit_tokens
+        if allocation_capacity_tokens < self.kv_cache_capacity_tokens:
+            raise ValueError(
+                "KV allocation geometry cannot carry the attested KV token capacity"
+            )
 
     @classmethod
     def from_successful_launch_envelope(
@@ -46,6 +58,8 @@ class VLLMTokenCapacityReference:
         startup_free_bytes: int,
         kv_cache_memory_bytes: int,
         kv_cache_capacity_tokens: int,
+        kv_allocation_unit_bytes: int,
+        kv_allocation_unit_tokens: int,
     ) -> VLLMTokenCapacityReference:
         """Build a conservative non-KV envelope from one successful launch."""
 
@@ -53,6 +67,8 @@ class VLLMTokenCapacityReference:
             ("startup_free_bytes", startup_free_bytes),
             ("kv_cache_memory_bytes", kv_cache_memory_bytes),
             ("kv_cache_capacity_tokens", kv_cache_capacity_tokens),
+            ("kv_allocation_unit_bytes", kv_allocation_unit_bytes),
+            ("kv_allocation_unit_tokens", kv_allocation_unit_tokens),
         ):
             _require_int(value, name)
             if value <= 0:
@@ -65,6 +81,8 @@ class VLLMTokenCapacityReference:
             non_kv_memory_bytes=startup_free_bytes - kv_cache_memory_bytes,
             kv_cache_memory_bytes=kv_cache_memory_bytes,
             kv_cache_capacity_tokens=kv_cache_capacity_tokens,
+            kv_allocation_unit_bytes=kv_allocation_unit_bytes,
+            kv_allocation_unit_tokens=kv_allocation_unit_tokens,
         )
 
     @property
@@ -74,7 +92,7 @@ class VLLMTokenCapacityReference:
         return _ceil_div(self.kv_cache_memory_bytes, self.kv_cache_capacity_tokens)
 
     def required_kv_cache_memory_bytes(self, *, target_model_len: int) -> int:
-        """Convert one selected token window into explicit KV bytes without extrapolation."""
+        """Convert a selected token window into page-conservative explicit KV bytes."""
 
         _require_int(target_model_len, "target_model_len")
         if target_model_len <= 0:
@@ -84,7 +102,15 @@ class VLLMTokenCapacityReference:
                 "target_model_len exceeds the attested KV token capacity; "
                 "fresh launch-capability evidence is required"
             )
-        return self.kv_bytes_per_token_upper_bound * target_model_len
+
+        continuous_requirement = (
+            self.kv_bytes_per_token_upper_bound * target_model_len
+        )
+        allocation_requirement = (
+            _ceil_div(target_model_len, self.kv_allocation_unit_tokens)
+            * self.kv_allocation_unit_bytes
+        )
+        return max(continuous_requirement, allocation_requirement)
 
     def required_total_memory_bytes(self, *, target_model_len: int) -> int:
         return self.non_kv_memory_bytes + self.required_kv_cache_memory_bytes(
