@@ -318,5 +318,5 @@ fresh authority
 7. **Review and CI evidence belong to the exact current head.**
 8. **Parallel work requires disjoint semantic ownership.**
 9. **Current authority never presents deferred behavior as implemented.**
-10. **Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate necessary additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
+10. **Necessary additions are allowed. Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
 11. **A completed transaction reconciles its owning Issue.**
