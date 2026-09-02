@@ -47,6 +47,8 @@ Docs    current human-readable authority
 History completed/superseded past work
 ```
 
+An owning Issue discussion may carry the concise execution handoff required by `docs/reference/development-workflow.md` when a transaction performs material physical/external execution. The handoff comment is historical working evidence, not current authority and not a requirement to archive raw trial logs. Keep the Issue body focused on intention and remaining work; promote stable reusable lessons to their current semantic owner, deterministic guard/regression, or producer-owned evidence boundary, while volatile trial detail remains historical. When no owning Issue exists and a PR is the durable transaction surface, the same bounded handoff may live in the PR discussion.
+
 Open Issues should represent real unresolved work. Successful transactions reconcile their owning Issues after merge.
 
 ## Architecture Decision Records
