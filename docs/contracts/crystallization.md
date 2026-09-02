@@ -2,6 +2,33 @@
 
 Crystallization is an **off-turn semantic synthesis process**. It is not a new truth authority and is not part of the ordinary synchronous cognitive turn.
 
+## Conceptual boundary
+
+Selection or distillation may reduce the history and evidence that a synthesis step needs to consider. That reduction is a means; **crystallization names the durable semantic result**.
+
+The persistent cognitive result of crystallization has two complementary forms:
+
+- **semantic structure** — durable governed MEMORY semantic units, including their typed temporal/provenance organization, for readable and retrievable long-horizon meaning; and
+- **current State** — accepted current machine understanding written only through the existing deterministic Validator / State path.
+
+Persisted Events remain occurrence/provenance evidence. They are not replaced, promoted, or deleted merely because their meaning has been crystallized. Likewise, MEMORY structure does not become a second current-truth authority and prose does not override Canonical State.
+
+```text
+history / evidence / prior synthesis
+        |
+        +--> selection or distillation when needed
+        |
+        v
+semantic synthesis
+        |
+        v
+crystallized semantic structure + current State
+
+Events remain evidence / provenance history.
+```
+
+In this sense, crystallization preserves what future cognition needs as **structure + State**, while retaining the underlying evidence needed to explain, validate, correct, or supersede that result.
+
 ## Current core
 
 The current provider-agnostic orchestration is:
