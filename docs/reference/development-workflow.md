@@ -23,7 +23,7 @@ Every repository transaction:
 7. requires the required `v1` CI results for that exact reviewed head;
 8. re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
 9. merges only the exact reviewed/tested head with expected-head protection;
-10. reconciles the owning Issue after the merge when an Issue exists.
+10. before declaring completion, reconciles material physical/external execution learning when applicable and reconciles the owning Issue after merge when an Issue exists.
 
 Handoffs, old comments, previously recorded SHAs, earlier CI results, Issues, and projections are historical evidence. They do not replace fresh repository facts.
 
@@ -225,7 +225,50 @@ Immediately before merge:
 
 If the base moved, classify overlap before merge. A moved base is not automatically a reason to rebase, and it is never permission to reuse stale semantic assumptions.
 
-## 10. Issue reconciliation
+## 10. Completion reconciliation
+
+### Physical / external execution learning
+
+This rule is conditional and orthogonal to change classification. It applies when a transaction performs material execution that depends on host, GPU/runtime, external service/tooling, or manual operations whose outcome cannot be reconstructed from current repository authority and required CI alone. Ordinary repository-only semantic, preservation, docs, and CI transactions do not add this ceremony merely because they executed tests or deterministic repository tooling.
+
+Before claiming completion for an applicable execution, publish a concise repository-visible execution handoff on the shared transaction surface, normally the owning Issue discussion; when no owning Issue exists and a PR is the durable transaction surface, use the PR discussion. The handoff is historical working evidence. It is not current authority, an execution prompt, or authorization to reuse historical host state.
+
+Retain only the material execution path:
+
+- enough stable execution identity and conditions to disambiguate the run;
+- materially distinct attempt deltas and their observable outcomes;
+- the final successful path, or the terminal failure if no path succeeded;
+- citable artifact or evidence references;
+- candidate reusable lessons; and
+- volatile observations explicitly labeled historical.
+
+Do not turn the handoff into a raw log archive. Secrets, credentials, unbounded logs, prompt/request payloads, and transient process/GPU state remain outside it unless an existing evidence owner explicitly requires a bounded form.
+
+Then reconcile each material lesson according to what it became:
+
+```text
+stable reusable procedure
+  → promote to the responsible owner's current canonical surface
+     or repository-native procedure
+
+stable enforceable invariant
+  → prefer deterministic validation / regression when justified
+
+immutable execution result
+  → preserve under the existing producer-owned evidence boundary
+
+volatile / superseded observation
+  → leave historical; do not copy into current authority
+
+reusable finding outside this mutation boundary
+  → route to its current owner / successor work without opportunistic mutation
+```
+
+The shared handoff never replaces fresh repository authority, current upstream verification, live host/admission/capacity checks, or exact-head evidence required by the owning execution contract.
+
+> **Do not preserve trial history as authority; preserve what the trial taught us.**
+
+### Owning Issue reconciliation
 
 After a successful merge, reconcile the owning Issue against merged reality.
 
@@ -307,6 +350,15 @@ fresh authority
   → Issue reconciliation
 ```
 
+When any completion shape includes material physical/external execution covered by section 10, insert this conditional reconciliation before completion:
+
+```text
+material physical/external execution
+  → shared execution handoff
+  → reusable-learning reconciliation
+  → ordinary completion / Issue reconciliation
+```
+
 ## Fixed principles
 
 1. **Meaning → Example → Test → Code → Docs/Authority → Audit.**
@@ -319,4 +371,5 @@ fresh authority
 8. **Parallel work requires disjoint semantic ownership.**
 9. **Current authority never presents deferred behavior as implemented.**
 10. **Necessary additions are allowed. Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
-11. **A completed transaction reconciles its owning Issue.**
+11. **Material physical/external execution is complete only after reusable learning is shared and reconciled without promoting trial history to authority.**
+12. **A completed transaction reconciles its owning Issue.**
