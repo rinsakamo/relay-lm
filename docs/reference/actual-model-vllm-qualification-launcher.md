@@ -16,6 +16,7 @@ fresh host facts
        -> negotiate_vllm_launch(...)
        -> fresh native RPC/temp path
   -> launch_vllm_qualification_runtime(...)
+       -> validate Unix IPC path budget
        -> launch_owned_vllm_runtime(...)
        -> wait_for_vllm_runtime_readiness(...)
   -> fresh serving-runtime capacity / launch attestation
@@ -59,6 +60,12 @@ The launcher does not lower `--max-model-len`, truncate input, or infer a new co
 ## Runtime paths and ownership
 
 The selected plan creates a fresh native-Linux runtime path through `prepare_vllm_runtime_paths(...)`. Caller environment may add unrelated variables but may not override the plan's RPC/temp path values.
+
+Immediately before spawning the provider, the qualification launcher also checks that the filesystem-encoded `VLLM_RPC_BASE_PATH` can fit the current pinned vLLM V2 Unix IPC endpoint shape. The guard reserves 37 bytes for the `/` separator plus the 36-character vLLM-generated UUID suffix and requires the complete pathname to remain within the conservative 107-byte Unix-domain-socket pathname budget.
+
+If that budget cannot be satisfied, launch fails closed with `VLLMHostPreflightError` **before** `launch_owned_vllm_runtime(...)` is called. The launcher does not silently reroot, shorten a scientific condition, search alternate paths, or consume a provider-start attempt. A subsequent fresh physical transaction must select and attest a sufficiently short native-Linux root under its current host authority; the existing `/tmp` default remains only a default, not remembered host evidence.
+
+This pathname gate is execution infrastructure only. It does not change model, artifact, context, GPU/KV capacity, decoding, reasoning, prompt, scenario, or semantic qualification identity.
 
 Launch then uses the #2051 owned-process contract:
 
