@@ -1210,7 +1210,7 @@ class OwnedVLLMRuntime:
         _validate_timeout(poll_interval, "poll_interval")
         process_snapshot = process_snapshot or snapshot_runtime_processes
         if listener_snapshot is None:
-            listener_snapshot = lambda: snapshot_runtime_listeners(
+            listener_snapshot = lambda: snapshot_runtime_listeners(  # noqa: E731
                 expected_endpoint=self.boundary.expected_listener
             )
 
@@ -1440,7 +1440,7 @@ def attest_vllm_runtime_ownership(
         raise TypeError("boundary must be RuntimeOwnershipBoundary")
     process_snapshot = process_snapshot or snapshot_runtime_processes
     if listener_snapshot is None:
-        listener_snapshot = lambda: snapshot_runtime_listeners(
+        listener_snapshot = lambda: snapshot_runtime_listeners(  # noqa: E731
             expected_endpoint=boundary.expected_listener
         )
     try:
@@ -1498,7 +1498,7 @@ def wait_for_vllm_runtime_readiness(
     _validate_timeout(poll_interval, "poll_interval")
     process_snapshot = process_snapshot or snapshot_runtime_processes
     if listener_snapshot is None:
-        listener_snapshot = lambda: snapshot_runtime_listeners(
+        listener_snapshot = lambda: snapshot_runtime_listeners(  # noqa: E731
             expected_endpoint=runtime.boundary.expected_listener
         )
     deadline = clock() + timeout
@@ -1555,6 +1555,10 @@ def _read_runtime_process_identity(
             owner_nonce=observed_nonce,
         )
     except RuntimeOwnershipError:
+        # Kernel/system entries such as PID 1/2 can expose zero process-group
+        # fields in a container namespace.  They are not runtime evidence;
+        # an owned entry that cannot be represented simply disappears from
+        # the snapshot and therefore fails closed at attestation/cleanup.
         return None
 
 
