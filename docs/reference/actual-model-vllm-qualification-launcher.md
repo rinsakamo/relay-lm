@@ -47,7 +47,7 @@ fixed scientific condition
        -> semantic execution
 ```
 
-The convergence transaction may use the same repository-owned preparation, negotiation, launch, readiness, capacity, ownership, and cleanup primitives repeatedly. Multiple mechanical attempts are allowed **inside that convergence transaction** when each attempt is a deliberate correction grounded in an observable previous failure. Blind Cartesian sweeps, retry-until-semantic-PASS, and unbounded parameter search remain prohibited.
+The convergence transaction may use the same repository-owned preparation, negotiation, launch, readiness, capacity, ownership, and cleanup primitives repeatedly. Multiple mechanical attempts are allowed **inside that convergence transaction** when each attempt is a deliberate correction grounded in an observable previous failure. Blind Cartesian sweeps, retry-until-semantic-PASS, and unbounded parameter search remain prohibited. Once one complete owned readiness + capacity recipe succeeds, convergence stops; do not continue trying alternatives to optimize throughput, headroom, or convenience.
 
 The convergence transaction must keep the qualification-significant scientific condition fixed. It must not vary or tune:
 
@@ -64,7 +64,7 @@ Subject to the owning execution contract, convergence may vary only non-semantic
 - native runtime root/path placement;
 - caller environment delta, while runtime-owned keys remain protected;
 - capability-negotiated non-semantic observability flags;
-- process/session/listener placement where it does not alter the scientific condition;
+- process/session/listener placement only where the current ownership contract permits it; never switch ports/endpoints to bypass another owner or unproven ownership;
 - mechanical GPU reservation across distinct attempts when the same fixed context and capacity requirement remain unchanged.
 
 The existing per-call launcher contract remains unchanged: one preparation request still accepts at most one explicitly supplied lower `fallback_utilization`. A convergence transaction may make a later, distinct preparation attempt with a newly declared requested reservation when the previous observable failure justifies it. A citable qualification transaction may not continue that search.
