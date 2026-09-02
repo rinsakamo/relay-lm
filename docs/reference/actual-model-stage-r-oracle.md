@@ -138,7 +138,7 @@ If B wins:
 1. #1533 owns the production prompt replacement;
 2. merge the exact accepted semantic change;
 3. intentionally advance the Core semantic fingerprint;
-4. reacquire fresh #1386/#2017 authority;
+4. reacquire fresh #1386 routing and the current bounded production semantic qualification authority;
 5. run fresh Stage R on the merged production B identity;
 6. only that production PASS may unblock #1388.
 
