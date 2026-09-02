@@ -35,6 +35,8 @@ def _reference() -> VLLMTokenCapacityReference:
         non_kv_memory_bytes=5_000_000,
         kv_cache_memory_bytes=4_000_001,
         kv_cache_capacity_tokens=4_000,
+        kv_allocation_unit_bytes=1,
+        kv_allocation_unit_tokens=1,
     )
 
 
@@ -134,11 +136,15 @@ def test_successful_launch_envelope_becomes_stable_non_kv_reference() -> None:
         startup_free_bytes=11_789_139_968,
         kv_cache_memory_bytes=1_539_740_672,
         kv_cache_capacity_tokens=4_457,
+        kv_allocation_unit_bytes=1,
+        kv_allocation_unit_tokens=1,
     )
 
     assert reference.non_kv_memory_bytes == 10_249_399_296
     assert reference.kv_cache_memory_bytes == 1_539_740_672
     assert reference.kv_cache_capacity_tokens == 4_457
+    assert reference.kv_allocation_unit_bytes == 1
+    assert reference.kv_allocation_unit_tokens == 1
 
 
 def test_token_capacity_reference_uses_conservative_byte_per_token_ceiling() -> None:
@@ -283,6 +289,8 @@ def test_token_capacity_reference_requires_positive_integer_evidence(
             non_kv_memory_bytes=non_kv_memory_bytes,
             kv_cache_memory_bytes=kv_cache_memory_bytes,
             kv_cache_capacity_tokens=kv_cache_capacity_tokens,
+            kv_allocation_unit_bytes=1,
+            kv_allocation_unit_tokens=1,
         )
 
 
