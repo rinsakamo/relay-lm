@@ -273,6 +273,11 @@ requires all of the following before startup readiness can be recorded:
 - the expected listener endpoint has kernel-reported owner PIDs and every such PID
   is one of the nonce-owned runtime processes.
 
+Listener ownership observation is scoped to the transaction's expected endpoint.
+Kernel PID metadata on unrelated listener endpoints is neither ownership authority nor
+a global prerequisite. If the expected endpoint itself is present but its kernel owner
+PID cannot be established, ownership remains unproven and the run fails closed.
+
 The process list retains PPID, PGID, session ID and start-time ticks. Therefore a
 wrapper may exit and reparent a vLLM/EngineCore descendant without making that
 descendant unidentifiable: the current nonce and process identity remain the
