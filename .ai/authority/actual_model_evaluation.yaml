@@ -14,6 +14,7 @@ canonical_surfaces:
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
+- docs/reference/actual-model-vllm-live-owner-preflight.md
 - docs/reference/actual-model-vllm-qualification-launcher.md
 - docs/reference/actual-model-vllm-budget-facade.md
 - docs/reference/actual-model-vllm-capacity-acquisition.md
@@ -51,6 +52,7 @@ implementation:
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
 - src/relaylm/actual_model_vllm_profiler.py
 - src/relaylm/actual_model_vllm_launch_preflight.py
+- src/relaylm/actual_model_vllm_live_owner_preflight.py
 - src/relaylm/actual_model_vllm_qualification_launcher.py
 - src/relaylm/actual_model_host.py
 - src/relaylm/actual_model_stage_r.py
@@ -116,6 +118,7 @@ tests:
 - tests/unit/test_actual_model_vllm_capacity_producer.py
 - tests/unit/test_actual_model_vllm_profiler.py
 - tests/unit/test_actual_model_vllm_launch_preflight.py
+- tests/unit/test_actual_model_vllm_live_owner_preflight.py
 - tests/unit/test_actual_model_vllm_qualification_launcher.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
 - tests/unit/test_actual_model_vllm_evidence_preflight.py
