@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from relaylm.actual_model_vllm_reference import (
+from relaylm.actual_model_vllm_profiler import (
     VLLMTokenCapacityLaunchClass,
     VLLMTokenCapacityReferenceEvidence,
     VLLMTokenCapacityReferenceEvidenceError,
@@ -17,9 +17,10 @@ from relaylm.actual_model_vllm_reference import (
 def _launch_class() -> VLLMTokenCapacityLaunchClass:
     return VLLMTokenCapacityLaunchClass(
         target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1",
-        target_revision="sha256:" + "a" * 64,
+        target_artifact_revision="a" * 40,
+        target_digest="sha256:" + "b" * 64,
         backend_version="0.26.1rc1.dev549+g70b84f0bc",
-        backend_source_revision="b" * 40,
+        backend_source_revision="c" * 40,
         model_runner="v2",
         gpu_compute_capability_major=8,
         gpu_compute_capability_minor=6,
