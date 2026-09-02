@@ -63,11 +63,13 @@ _DECLARATION_FIELDS = (
     "owner_issue",
     *_SURFACE_FIELDS,
     "qualification_inputs",
+    "qualification_exclusions",
     "depends_on",
     "evidence",
     "evidence_refs",
 )
 _EVIDENCE_FIELDS = ("id", "summary", "surfaces")
+_QUALIFICATION_EXCLUSION_FIELDS = ("path", "reason")
 _CONTRACT_FIELDS = ("schema_version", "bootstrap", "freshness")
 _BOOTSTRAP_FIELDS = ("path", "purpose")
 _FRESHNESS_FIELDS = ("classes", "facts")
@@ -88,6 +90,20 @@ class EvidenceRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class QualificationExclusion:
+    """One explicit owner-local reason not to fingerprint an implementation surface."""
+
+    path: str
+    reason: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.path, str) or not self.path.strip():
+            raise ValueError("qualification exclusion path must be non-empty")
+        if not isinstance(self.reason, str) or not self.reason.strip():
+            raise ValueError("qualification exclusion reason must be non-empty")
+
+
+@dataclass(frozen=True, slots=True)
 class Declaration:
     """One semantic owner's local repository authority."""
 
@@ -101,6 +117,7 @@ class Declaration:
     tests: tuple[str, ...] = ()
     annotations: tuple[str, ...] = ()
     qualification_inputs: tuple[str, ...] = ()
+    qualification_exclusions: tuple[QualificationExclusion, ...] = ()
     depends_on: tuple[str, ...] = ()
     evidence: tuple[EvidenceRecord, ...] = ()
     evidence_refs: tuple[str, ...] = ()
@@ -200,7 +217,7 @@ def consumers_of(declarations: Sequence[Declaration]) -> dict[str, tuple[str, ..
     return {owner: tuple(sorted(consumers)) for owner, consumers in sorted(derived.items())}
 
 
-QUALIFICATION_MANIFEST_FORMAT_VERSION = 1
+QUALIFICATION_MANIFEST_FORMAT_VERSION = 2
 
 
 def qualification_owner_closure(
@@ -251,6 +268,10 @@ def qualification_manifest(
             {
                 "id": owner,
                 "qualification_inputs": sorted(owners_by_id[owner].qualification_inputs),
+                "qualification_exclusions": sorted(
+                    exclusion.path
+                    for exclusion in owners_by_id[owner].qualification_exclusions
+                ),
             }
             for owner in closure
         ],
@@ -274,7 +295,7 @@ def qualification_fingerprint(
         separators=(",", ":"),
     ).encode("utf-8")
     digest = hashlib.sha256()
-    digest.update(b"relaylm-qualification-fingerprint-v1\0")
+    digest.update(b"relaylm-qualification-fingerprint-v2\0")
     digest.update(len(manifest_bytes).to_bytes(8, "big"))
     digest.update(manifest_bytes)
 
@@ -366,6 +387,13 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         document.get("qualification_inputs"),
         errors,
     )
+    qualification_exclusions = _read_qualification_exclusions(
+        prefix,
+        document.get("qualification_exclusions"),
+        errors,
+        implementation=surfaces["implementation"],
+        qualification_inputs=qualification_inputs,
+    )
     evidence_refs = _read_identifiers(
         prefix, "evidence_refs", document.get("evidence_refs"), errors, pattern=_EVIDENCE_ID_RE
     )
@@ -409,6 +437,7 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         tests=surfaces["tests"],
         annotations=surfaces["annotations"],
         qualification_inputs=qualification_inputs,
+        qualification_exclusions=qualification_exclusions,
         depends_on=depends_on,
         evidence=evidence,
         evidence_refs=evidence_refs,
@@ -449,6 +478,62 @@ def _read_paths(
         if not (root / entry).exists():
             errors.append(f"{prefix}: {name} path '{entry}' does not exist")
     return tuple(seen)
+
+
+def _read_qualification_exclusions(
+    prefix: str,
+    value: Any,
+    errors: list[str],
+    *,
+    implementation: Sequence[str],
+    qualification_inputs: Sequence[str],
+) -> tuple[QualificationExclusion, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        errors.append(f"{prefix}: qualification_exclusions must be a list of records")
+        return ()
+
+    implementation_paths = set(implementation)
+    selected_paths = set(qualification_inputs)
+    seen: set[str] = set()
+    exclusions: list[QualificationExclusion] = []
+    for entry in value:
+        if not isinstance(entry, Mapping):
+            errors.append(f"{prefix}: qualification exclusion must be a mapping")
+            continue
+        for key in entry:
+            if key not in _QUALIFICATION_EXCLUSION_FIELDS:
+                errors.append(f"{prefix}: unknown qualification exclusion field '{key}'")
+
+        path = entry.get("path")
+        if not isinstance(path, str) or not _is_repository_relative(path):
+            errors.append(
+                f"{prefix}: qualification exclusion path '{path}' must be repository-relative"
+            )
+            continue
+        reason = entry.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            errors.append(
+                f"{prefix}: qualification exclusion '{path}' reason must be a non-empty string"
+            )
+            continue
+        if path in seen:
+            errors.append(f"{prefix}: qualification_exclusions repeats '{path}'")
+            continue
+        seen.add(path)
+        if path not in implementation_paths:
+            errors.append(
+                f"{prefix}: qualification exclusion '{path}' must be an implementation surface"
+            )
+            continue
+        if path in selected_paths:
+            errors.append(
+                f"{prefix}: qualification input '{path}' cannot also be excluded"
+            )
+            continue
+        exclusions.append(QualificationExclusion(path=path, reason=reason.strip()))
+    return tuple(exclusions)
 
 
 def _is_repository_relative(value: str) -> bool:

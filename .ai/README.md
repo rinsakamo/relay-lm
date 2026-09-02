@@ -107,6 +107,10 @@ qualification_inputs:
   - docs/architecture/context-compiler.md
   - src/relaylm/context.py
 
+qualification_exclusions:
+  - path: src/relaylm/context_diagnostics.py
+    reason: Content-free diagnostics only; no context selection semantics.
+
 depends_on:
   - persistence
 
@@ -132,6 +136,7 @@ Field roles:
 | `implementation` | supporting write surfaces; not an authority claim |
 | `tests` | executable contracts covering this owner |
 | `qualification_inputs` | owner-selected existing local surfaces whose exact bytes participate in semantic qualification identity |
+| `qualification_exclusions` | owner-local implementation paths deliberately outside that qualification identity, each with a non-empty machine-auditable reason |
 | `depends_on` | consumer-owned dependency edges |
 | `evidence` | evidence records produced and owned here |
 | `evidence_refs` | evidence produced by another owner and only referenced here |
@@ -171,18 +176,27 @@ owner as a canonical, implementation, test, annotation, or produced-evidence
 surface; a `references` entry pointing at another owner's canonical document
 cannot be restated as this owner's qualification input.
 
+An owner may also disposition one of its own implementation surfaces through
+`qualification_exclusions`. Every exclusion must name an implementation path
+owned by that same declaration, must carry a non-empty reason, and cannot also
+be selected as a qualification input. For a release qualification closure,
+silence is not exclusion: every implementation surface must be selected or
+explicitly excluded before coverage is complete.
+
 Given one or more qualification root owners,
 `tools.repository_authority.qualification_owner_closure(...)` follows the
 transitive `depends_on` closure. `qualification_manifest(...)` then derives a
 deterministic manifest containing the normalized roots, every owner in that
-closure, and each owner's selected inputs. There is no committed aggregate list
-of all product paths.
+closure, each owner's selected inputs, and each owner's excluded implementation
+paths. Exclusion reasons remain owner-local governance prose; the path
+disposition, not wording edits to the reason, participates in product identity.
+There is no committed aggregate list of all product paths.
 
 `qualification_fingerprint(...)` hashes that manifest identity together with
 the exact bytes of the selected files. Changing selected bytes, roots,
-dependency closure, selected paths, or owner/path association changes the
-fingerprint. Shared implementation files are read once as bytes while the
-manifest still retains every owner association.
+dependency closure, selected paths, excluded paths, or owner/path association
+changes the fingerprint. Shared implementation files are read once as bytes
+while the manifest still retains every owner association.
 
 Tests, evaluation fixtures, actual-model harness implementation, and other
 supporting surfaces are **not** qualification-significant merely because they
@@ -218,7 +232,9 @@ remembered HEAD, PR list, or check result.
 
 `ARCHITECTURE.md` is generated, not written. It is materialized from these
 declarations at a version/release boundary and carries provenance naming the
-frozen input commit it describes.
+generator, projection schema version, frozen input commit, and package version,
+so a reader can tell which repository state it describes without that
+provenance appearing in the rendered page.
 
 ```bash
 python -m tools.repository_docs --commit <frozen-input> write
