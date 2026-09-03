@@ -1,21 +1,28 @@
 # Reusable Lab Environment
 
-This document is the owner-local contract for Issue #2057's LAB1 and LAB2
-boundary. It preserves a prepared model/runtime laboratory while keeping every
-volatile fact required by actual-model Qualification fresh.
+This document is the owner-local contract for the stable LAB1/LAB2 boundary.
+It preserves a prepared model/runtime laboratory while keeping every volatile
+fact required by actual-model Qualification fresh. LAB3 exploratory execution
+is defined separately in `docs/reference/lab-session.md`.
 
 ## Boundary
 
 `relaylm.lab_environment` represents one stable, prepared environment as a
 canonical JSON manifest. It records identity, not a VM image or a live session.
-The supported loop is:
+The supported loops are:
 
 ```text
 explicit stable inputs
   -> capture LabEnvironmentManifest
   -> atomically save manifest.json
 
-later transaction
+later exploration
+  -> load and fingerprint-check manifest
+  -> observe the same stable identities
+  -> verify existing cache bytes by digest
+  -> LAB3 ExploratoryLabSession / rehearsal
+
+later Qualification
   -> load and fingerprint-check manifest
   -> observe the same stable identities
   -> verify existing cache bytes by digest
@@ -28,7 +35,7 @@ The Lab Environment layer does not install packages, download artifacts,
 launch a runtime, issue GitHub authority, or produce semantic evidence.
 `restore` means that the caller's current stable identities and existing cache
 references still match. A successful restore is provenance for a later
-transaction; it is not a launch attestation.
+exploratory or Qualification transaction; it is not a launch attestation.
 
 ## Canonical manifest
 
@@ -170,6 +177,18 @@ this manifest. If the launch-significant physical identities are unchanged,
 the same fingerprint can be restored and reused; the semantic experiment gets
 its own current qualification identity and evidence transaction.
 
+## Exploratory handoff
+
+After a successful restore, a caller may use the same prepared environment for
+LAB3 exploration without rebuilding or re-downloading it. LAB3 may attach an
+already-owned warm runtime and record multiple named, non-citable trials while
+execution mechanics are being learned.
+
+The Lab Environment fingerprint is stable provenance for those trials. It does
+not make their runtime state, GPU observations, procedure outcome, or semantic
+outputs durable authority. A successful rehearsal produces only the
+non-citable procedure hint defined by `docs/reference/lab-session.md`.
+
 ## Qualification handoff
 
 The Lab Environment fingerprint may be recorded as prepared-environment
@@ -186,13 +205,17 @@ verified Lab Environment
   -> semantic Qualification evidence
 ```
 
+A prior LAB3 rehearsal does not replace any step above. It only identifies a
+mechanical procedure to reproduce under the later fresh transaction.
+
 The lab layer therefore removes repeat setup work without promoting historical
 physical observations into current policy. Existing #2045, #2051, #2054, and
 external-qualification behavior remains the owner of those facts.
 
 ## Explicit non-goals
 
-LAB1/2 does not provide a daemon, scheduler, container, VM, CUDA/VRAM
-checkpoint, warm process, benchmark retry, semantic evidence writer, or
-qualification promotion path. LAB3 exploratory warm sessions are deferred to
-a separate bounded transaction; no warm runtime is implied by this manifest.
+The Lab Environment manifest does not provide a daemon, scheduler, container,
+VM, CUDA/VRAM checkpoint, warm process, benchmark retry, semantic evidence
+writer, or qualification promotion path. LAB3 warm exploratory sessions are a
+separate boundary in `docs/reference/lab-session.md`; no warm runtime or
+exploratory result is implied by, stored in, or promoted through this manifest.
