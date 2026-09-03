@@ -75,6 +75,31 @@ Do not add fake test-first ceremony. Ground the edit in current implementation a
 
 Docs-only work must not introduce new product semantics or hand-edit generated persistent projections.
 
+### Physical execution intent: rehearsal versus Qualification
+
+Change classification and physical execution intent are orthogonal. Before a citable physical Qualification, decide whether the **mechanical execution procedure itself is already known** from current deterministic repository authority and applicable stable procedure.
+
+```text
+mechanics already known
+  → enter the fresh owner-specific Qualification directly
+
+material mechanical uncertainty remains
+  → LAB3 exploratory rehearsal
+  → non-citable procedure hint
+  → stop/clean exploratory runtime as applicable
+  → enter a separate fresh owner-specific Qualification
+```
+
+A rehearsal is for execution-procedure discovery: clean-checkout placement, native runtime paths and IPC budgets, caller/runtime environment composition, bounded endpoint/listener mechanics, current launch-capability negotiation, readiness wiring, profiler/final-launch procedure, ownership-safe cleanup, and comparable non-semantic host/runtime mechanics.
+
+Exploratory rehearsal is **NON-CITABLE**. It may reuse one safely owned warm runtime, retry, or change a mechanical condition, but each materially distinct attempt is a separately identified exploratory trial. Its notes and successful procedure hint are historical working knowledge only. They never satisfy current repository/Issue authority, live process/listener ownership, GPU/admission/capacity facts, execution freeze, benchmark evidence, or any other Qualification requirement.
+
+A successful rehearsal is therefore not a cheaper Qualification. It says only which procedure should be reproduced from fresh authority. The later citable transaction reacquires every volatile or qualification-significant fact required by its owner, freezes its exact condition, and follows that owner's no-retry/stop rules unchanged. Exploratory output must never be retroactively relabeled as citable evidence.
+
+Do not require rehearsal when the mechanics are already deterministic and known; that would create freshness theater and new ceremony. Conversely, do not repeatedly spend one-shot Qualification transactions merely to discover successive mechanical procedure defects that could be converged safely outside the proof.
+
+The canonical LAB3 boundary is `docs/reference/lab-session.md`. An already-open/frozen citable transaction keeps its own current contract; LAB3 does not relax it in place.
+
 ## 3. One concept, one current owner
 
 Semantic ownership is the primary decomposition rule.
@@ -352,12 +377,19 @@ Physical/external execution-only transaction:
 
 ```text
 fresh repository / owner / execution authority
+  → if mechanics are materially uncertain:
+       LAB3 exploratory rehearsal
+       → non-citable procedure hint
+       → stop/clean exploratory runtime as applicable
+       → start a separate fresh execution transaction
   → bounded physical/external execution under its owning contract
   → producer-owned evidence or terminal outcome
   → shared execution handoff
   → reusable-learning reconciliation
   → Issue reconciliation
 ```
+
+The rehearsal branch above is skipped when current deterministic authority already makes the procedure known. Rehearsal output never satisfies the fresh execution/evidence gates that follow it.
 
 When a repository mutation shape also includes material physical/external execution covered by section 10, insert the same handoff and reusable-learning reconciliation before ordinary completion / Issue reconciliation.
 
@@ -375,3 +407,4 @@ When a repository mutation shape also includes material physical/external execut
 10. **Necessary additions are allowed. Before completion, crystallize the transaction: challenge its claimed invariant across materially equivalent supported paths, integrate additions into existing principles, deduplicate, and generalize without widening mutation beyond the responsible semantic boundary.**
 11. **Material physical/external execution is complete only after reusable learning is shared and reconciled without promoting trial history to authority.**
 12. **A completed transaction reconciles its owning Issue after merge or terminal no-repository-mutation completion when one exists.**
+13. **Unknown mechanical execution procedure is explored/rehearsed before proof; strict Qualification reproduces the known procedure freshly rather than serving as the discovery loop.**
