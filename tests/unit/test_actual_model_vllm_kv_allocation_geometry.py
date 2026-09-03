@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from relaylm.actual_model_vllm_profiler import VLLMTokenCapacityReference
+from relaylm.actual_model_vllm_profiler import (
+    VLLMKVAllocationDemand,
+    VLLMTokenCapacityReference,
+)
 
 
 def _page_reference() -> VLLMTokenCapacityReference:
@@ -38,3 +41,25 @@ def test_inconsistent_allocation_geometry_fails_closed() -> None:
             kv_allocation_unit_bytes=64_000,
             kv_allocation_unit_tokens=64,
         )
+
+
+def test_heterogeneous_group_widths_are_representable_without_scalar_collapse() -> None:
+    reference = VLLMTokenCapacityReference(
+        non_kv_memory_bytes=5_000_000,
+        kv_cache_memory_bytes=10_000_000,
+        kv_cache_capacity_tokens=4_096,
+        kv_pool_block_bytes=10_000,
+        kv_allocation_demands=(
+            VLLMKVAllocationDemand(
+                multiplicity=5,
+                tokens_per_block=16,
+                fixed_blocks_per_request=1,
+            ),
+            VLLMKVAllocationDemand(
+                multiplicity=1,
+                tokens_per_block=64,
+            ),
+        ),
+    )
+
+    assert reference.required_kv_pool_blocks(target_model_len=3_000) == 992
