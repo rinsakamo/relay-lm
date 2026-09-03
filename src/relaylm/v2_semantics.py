@@ -1,0 +1,823 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+import hashlib
+import json
+from typing import Iterable, Literal as TypingLiteral
+
+
+Origin = TypingLiteral["observed", "endogenous"]
+Verdict = TypingLiteral["accepted", "deferred", "rejected"]
+
+
+@dataclass(frozen=True, slots=True)
+class Literal:
+    value: object
+
+
+@dataclass(frozen=True, slots=True)
+class Ref:
+    anchor: str
+
+
+@dataclass(frozen=True, slots=True)
+class Var:
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class Apply:
+    symbol: str
+    args: tuple[Expr, ...] = ()
+
+
+Expr = Literal | Ref | Var | Apply
+
+
+@dataclass(frozen=True, slots=True)
+class ProvenanceLink:
+    relation: str
+    target: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProvenanceRecord:
+    id: str
+    origin: Origin
+    time: str
+    source: str
+    payload_ref: str | None
+    links: tuple[ProvenanceLink, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ObservationInput:
+    slot: str
+    time: str
+    source: str
+    payload: str
+
+
+@dataclass(frozen=True, slots=True)
+class Proposal:
+    expr: Expr
+    observed_support_slots: tuple[str, ...] = ()
+    existing_provenance_support: tuple[str, ...] = ()
+    revision_of: tuple[str, ...] = ()
+    deactivate_roots: tuple[str, ...] = ()
+    requested_anchors: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ActionRequest:
+    name: str
+    payload: str
+
+
+@dataclass(frozen=True, slots=True)
+class TransactionRequest:
+    base_generation: str
+    observations: tuple[ObservationInput, ...] = ()
+    proposals: tuple[Proposal, ...] = ()
+    actions: tuple[ActionRequest, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class GovernancePolicy:
+    allow_protected_roots: bool = False
+    protected_root_symbols: frozenset[str] = frozenset({"identity", "values"})
+    outcome_symbols: frozenset[str] = frozenset({"outcome"})
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalDecision:
+    status: Verdict
+    reason: str
+    semantic_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TransactionResult:
+    generation_id: str
+    decisions: tuple[ProposalDecision, ...]
+    observation_records: tuple[str, ...]
+    action_records: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Generation:
+    generation_id: str
+    parent_generation_id: str | None
+    active_roots: tuple[str, ...]
+    anchor_root: str
+    provenance_head: str | None
+    target_cognition: str | None
+    horizon: str | None
+    created_by_transaction: str
+
+
+@dataclass(frozen=True, slots=True)
+class MigrationCheck:
+    ok: bool
+    missing_symbols: tuple[str, ...] = ()
+
+
+class StaleGenerationError(RuntimeError):
+    pass
+
+
+class InvalidTransactionError(ValueError):
+    pass
+
+
+_BINDERS = frozenset({"forall", "exists", "lambda"})
+_EMBEDDING_ROOTS = frozenset({"believes", "hypothetical", "counterfactual"})
+
+
+def literal(value: object) -> Literal:
+    return Literal(value)
+
+
+def ref(anchor: str) -> Ref:
+    return Ref(anchor)
+
+
+def var(name: str) -> Var:
+    return Var(name)
+
+
+def apply(symbol: str, *args: Expr) -> Apply:
+    return Apply(symbol, tuple(args))
+
+
+def _json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _digest(value: object) -> str:
+    return hashlib.sha256(_json_bytes(value)).hexdigest()
+
+
+def _literal_payload(value: object) -> object:
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            raise ValueError("non-finite float literal is not canonical")
+        return value
+    raise TypeError(f"unsupported literal type: {type(value).__name__}")
+
+
+def canonical_form(expr: Expr) -> object:
+    return _canonical_form(expr, {})
+
+
+def _canonical_form(expr: Expr, env: dict[str, str]) -> object:
+    if isinstance(expr, Literal):
+        return ["lit", _literal_payload(expr.value)]
+    if isinstance(expr, Ref):
+        if not expr.anchor:
+            raise ValueError("anchor must not be empty")
+        return ["ref", expr.anchor]
+    if isinstance(expr, Var):
+        if not expr.name:
+            raise ValueError("variable name must not be empty")
+        return ["var", env.get(expr.name, expr.name)]
+    if not isinstance(expr, Apply):
+        raise TypeError(f"unsupported expression type: {type(expr).__name__}")
+    if not expr.symbol:
+        raise ValueError("symbol must not be empty")
+    if expr.symbol in _BINDERS:
+        if len(expr.args) != 2 or not isinstance(expr.args[0], Var):
+            raise ValueError(f"{expr.symbol} requires (Var, body)")
+        binder = expr.args[0]
+        canonical_name = f"${len(env)}"
+        inner = dict(env)
+        inner[binder.name] = canonical_name
+        return [
+            "apply",
+            expr.symbol,
+            [["var", canonical_name], _canonical_form(expr.args[1], inner)],
+        ]
+    return [
+        "apply",
+        expr.symbol,
+        [_canonical_form(arg, env) for arg in expr.args],
+    ]
+
+
+def semantic_id(expr: Expr) -> str:
+    return _digest(canonical_form(expr))
+
+
+def _iter_expr(expr: Expr) -> Iterable[Expr]:
+    yield expr
+    if isinstance(expr, Apply):
+        for arg in expr.args:
+            yield from _iter_expr(arg)
+
+
+def root_symbol(expr: Expr) -> str | None:
+    return expr.symbol if isinstance(expr, Apply) else None
+
+
+def _decode_serialized(value: object) -> Expr:
+    if not isinstance(value, list) or len(value) < 2:
+        raise ValueError("invalid serialized expression")
+    tag = value[0]
+    if tag == "lit" and len(value) == 2:
+        return Literal(value[1])
+    if tag == "ref" and len(value) == 2 and isinstance(value[1], str):
+        return Ref(value[1])
+    if tag == "var" and len(value) == 2 and isinstance(value[1], str):
+        return Var(value[1])
+    if tag == "apply" and len(value) == 3 and isinstance(value[1], str):
+        args_raw = value[2]
+        if not isinstance(args_raw, list):
+            raise ValueError("invalid apply args")
+        return Apply(value[1], tuple(_decode_serialized(arg) for arg in args_raw))
+    raise ValueError("invalid serialized expression")
+
+
+class SemanticTransactionStore:
+    """Deterministic LLM-free proof store for RelayLM 2.0 semantic transactions."""
+
+    def __init__(self) -> None:
+        self.semantic_nodes: dict[str, bytes] = {}
+        self.anchors: set[str] = set()
+        self.provenance: dict[str, ProvenanceRecord] = {}
+        self.payloads: dict[str, str] = {}
+        self.generations: dict[str, Generation] = {}
+        self.retired_generations: set[str] = set()
+        self.current_generation = self._create_genesis()
+
+    def _create_genesis(self) -> str:
+        tx_id = _digest(["genesis"])
+        generation = self._make_generation(
+            parent=None,
+            roots=(),
+            anchors=(),
+            provenance_head=None,
+            target_cognition=None,
+            horizon=None,
+            tx_id=tx_id,
+        )
+        self.generations[generation.generation_id] = generation
+        return generation.generation_id
+
+    def _make_generation(
+        self,
+        *,
+        parent: str | None,
+        roots: Iterable[str],
+        anchors: Iterable[str],
+        provenance_head: str | None,
+        target_cognition: str | None,
+        horizon: str | None,
+        tx_id: str,
+    ) -> Generation:
+        root_tuple = tuple(sorted(set(roots)))
+        anchor_tuple = tuple(sorted(set(anchors)))
+        anchor_root = _digest(["anchors", anchor_tuple])
+        payload = [
+            "generation",
+            parent,
+            root_tuple,
+            anchor_root,
+            provenance_head,
+            target_cognition,
+            horizon,
+            tx_id,
+        ]
+        generation_id = _digest(payload)
+        return Generation(
+            generation_id=generation_id,
+            parent_generation_id=parent,
+            active_roots=root_tuple,
+            anchor_root=anchor_root,
+            provenance_head=provenance_head,
+            target_cognition=target_cognition,
+            horizon=horizon,
+            created_by_transaction=tx_id,
+        )
+
+    def active_generation(self) -> Generation:
+        return self.generations[self.current_generation]
+
+    def active_exprs(self) -> tuple[Expr, ...]:
+        return tuple(self.expr_for_id(root) for root in self.active_generation().active_roots)
+
+    def expr_for_id(self, node_id: str) -> Expr:
+        raw = self.semantic_nodes[node_id]
+        return _decode_serialized(json.loads(raw.decode("utf-8")))
+
+    def _intern_accepted(self, expr: Expr) -> str:
+        for node in _iter_expr(expr):
+            form = canonical_form(node)
+            node_id = _digest(form)
+            self.semantic_nodes.setdefault(node_id, _json_bytes(form))
+        return semantic_id(expr)
+
+    def _provenance_record_id(
+        self,
+        *,
+        origin: Origin,
+        time: str,
+        source: str,
+        payload_ref: str | None,
+        links: tuple[ProvenanceLink, ...],
+    ) -> str:
+        return _digest(
+            [
+                "provenance",
+                origin,
+                time,
+                source,
+                payload_ref,
+                [[link.relation, link.target] for link in links],
+            ]
+        )
+
+    def _append_provenance(
+        self,
+        *,
+        origin: Origin,
+        time: str,
+        source: str,
+        payload: str | None = None,
+        payload_ref: str | None = None,
+        links: tuple[ProvenanceLink, ...] = (),
+    ) -> str:
+        if payload is not None and payload_ref is not None:
+            raise ValueError("payload and payload_ref are mutually exclusive")
+        if payload is not None:
+            payload_ref = _digest(["payload", payload])
+            self.payloads[payload_ref] = payload
+        record_id = self._provenance_record_id(
+            origin=origin,
+            time=time,
+            source=source,
+            payload_ref=payload_ref,
+            links=links,
+        )
+        self.provenance.setdefault(
+            record_id,
+            ProvenanceRecord(
+                id=record_id,
+                origin=origin,
+                time=time,
+                source=source,
+                payload_ref=payload_ref,
+                links=links,
+            ),
+        )
+        return record_id
+
+    def _latest_provenance_head(self) -> str | None:
+        if not self.provenance:
+            return None
+        return max(
+            self.provenance.values(),
+            key=lambda record: (record.time, record.id),
+        ).id
+
+    def _transaction_id(
+        self,
+        request: TransactionRequest,
+        policy: GovernancePolicy,
+    ) -> str:
+        return _digest(
+            [
+                "tx",
+                request.base_generation,
+                [
+                    [obs.slot, obs.time, obs.source, obs.payload]
+                    for obs in request.observations
+                ],
+                [
+                    [
+                        canonical_form(proposal.expr),
+                        proposal.observed_support_slots,
+                        proposal.existing_provenance_support,
+                        proposal.revision_of,
+                        proposal.deactivate_roots,
+                        proposal.requested_anchors,
+                    ]
+                    for proposal in request.proposals
+                ],
+                [[action.name, action.payload] for action in request.actions],
+                sorted(policy.protected_root_symbols),
+                sorted(policy.outcome_symbols),
+                policy.allow_protected_roots,
+            ]
+        )
+
+    def transact(
+        self,
+        request: TransactionRequest,
+        *,
+        policy: GovernancePolicy = GovernancePolicy(),
+    ) -> TransactionResult:
+        if request.base_generation != self.current_generation:
+            raise StaleGenerationError("base generation is stale")
+        if request.base_generation in self.retired_generations:
+            raise InvalidTransactionError("base generation is retired")
+
+        slots = [obs.slot for obs in request.observations]
+        if any(not slot for slot in slots):
+            raise InvalidTransactionError("observation slot must not be empty")
+        if len(slots) != len(set(slots)):
+            raise InvalidTransactionError("duplicate observation slot")
+        for proposal in request.proposals:
+            if any(not anchor for anchor in proposal.requested_anchors):
+                raise InvalidTransactionError("anchor must not be empty")
+
+        tx_id = self._transaction_id(request, policy)
+
+        # OBSERVE is a trusted boundary step. Once accepted by the adapter, the
+        # occurrence is canonical even if every later semantic proposal is rejected.
+        observation_records: dict[str, str] = {}
+        for obs in request.observations:
+            observation_records[obs.slot] = self._append_provenance(
+                origin="observed",
+                time=obs.time,
+                source=obs.source,
+                payload=obs.payload,
+            )
+
+        # PROPOSE/GOVERN is staging-only. No semantic node, anchor, or proposal
+        # provenance is persistent until every proposal decision has been computed.
+        staged: list[tuple[int, Proposal, ProposalDecision]] = []
+        decisions: list[ProposalDecision] = []
+        for proposal_index, proposal in enumerate(request.proposals):
+            decision = self._govern_proposal(
+                proposal,
+                observation_records=observation_records,
+                policy=policy,
+            )
+            if decision.status == "accepted":
+                decision = ProposalDecision(
+                    "accepted",
+                    "accepted",
+                    semantic_id=semantic_id(proposal.expr),
+                )
+            staged.append((proposal_index, proposal, decision))
+            decisions.append(decision)
+
+        active_roots = set(self.active_generation().active_roots)
+        accepted_anchors: set[str] = set()
+        for _proposal_index, proposal, decision in staged:
+            if decision.status != "accepted":
+                continue
+            assert decision.semantic_id is not None
+            for deactivate in proposal.deactivate_roots:
+                active_roots.discard(deactivate)
+            active_roots.add(decision.semantic_id)
+            accepted_anchors.update(proposal.requested_anchors)
+
+        # COMMIT: accepted semantics and lineage become canonical together.
+        for proposal_index, proposal, decision in staged:
+            if decision.status != "accepted":
+                continue
+            root_id = self._intern_accepted(proposal.expr)
+            assert root_id == decision.semantic_id
+
+            links: list[ProvenanceLink] = []
+            for slot in proposal.observed_support_slots:
+                links.append(ProvenanceLink("supports", observation_records[slot]))
+            for record_id in proposal.existing_provenance_support:
+                links.append(ProvenanceLink("supports", record_id))
+            for revised in proposal.revision_of:
+                links.append(ProvenanceLink("revises", f"sem:{revised}"))
+            links.append(ProvenanceLink("produces", f"sem:{root_id}"))
+            self._append_provenance(
+                origin="endogenous",
+                time=self._proposal_time(request, proposal_index),
+                source=f"semantic-transaction:{tx_id}",
+                payload=None,
+                links=tuple(sorted(links, key=lambda link: (link.relation, link.target))),
+            )
+
+        self.anchors.update(accepted_anchors)
+
+        generation = self._make_generation(
+            parent=request.base_generation,
+            roots=active_roots,
+            anchors=self.anchors,
+            provenance_head=self._latest_provenance_head(),
+            target_cognition=self.active_generation().target_cognition,
+            horizon=self.active_generation().horizon,
+            tx_id=tx_id,
+        )
+        self.generations[generation.generation_id] = generation
+        self.current_generation = generation.generation_id
+
+        action_records: list[str] = []
+        for action_index, action in enumerate(request.actions):
+            action_records.append(
+                self._append_provenance(
+                    origin="endogenous",
+                    time=self._action_time(request, action_index),
+                    source=f"action:{tx_id}",
+                    payload=action.payload,
+                    links=(
+                        ProvenanceLink("attempts", f"action:{action.name}"),
+                    ),
+                )
+            )
+
+        return TransactionResult(
+            generation_id=generation.generation_id,
+            decisions=tuple(decisions),
+            observation_records=tuple(observation_records.values()),
+            action_records=tuple(action_records),
+        )
+
+    @staticmethod
+    def _proposal_time(request: TransactionRequest, index: int) -> str:
+        if request.observations:
+            return request.observations[-1].time
+        return f"proposal:{index:06d}"
+
+    @staticmethod
+    def _action_time(request: TransactionRequest, index: int) -> str:
+        if request.observations:
+            return request.observations[-1].time
+        return f"action:{index:06d}"
+
+    def _govern_proposal(
+        self,
+        proposal: Proposal,
+        *,
+        observation_records: dict[str, str],
+        policy: GovernancePolicy,
+    ) -> ProposalDecision:
+        try:
+            canonical_form(proposal.expr)
+        except (TypeError, ValueError) as exc:
+            return ProposalDecision("rejected", f"invalid_semantics:{exc}")
+
+        for slot in proposal.observed_support_slots:
+            if slot not in observation_records:
+                return ProposalDecision("rejected", "missing_observed_support_slot")
+
+        support_ids = list(proposal.existing_provenance_support)
+        support_ids.extend(
+            observation_records[slot] for slot in proposal.observed_support_slots
+        )
+        for record_id in support_ids:
+            record = self.provenance.get(record_id)
+            if record is None:
+                return ProposalDecision("rejected", "missing_provenance_support")
+
+        symbol = root_symbol(proposal.expr)
+        if (
+            symbol in policy.protected_root_symbols
+            and not policy.allow_protected_roots
+        ):
+            return ProposalDecision("rejected", "protected_root_requires_authority")
+
+        if symbol in policy.outcome_symbols:
+            if not support_ids:
+                return ProposalDecision("rejected", "outcome_requires_observed_support")
+            if not any(self.provenance[record_id].origin == "observed" for record_id in support_ids):
+                return ProposalDecision("rejected", "outcome_requires_observed_support")
+
+        for root_id in proposal.deactivate_roots:
+            if root_id not in self.active_generation().active_roots:
+                return ProposalDecision("rejected", "deactivate_root_not_active")
+        for revised in proposal.revision_of:
+            if revised not in self.semantic_nodes:
+                return ProposalDecision("rejected", "revision_target_missing")
+
+        return ProposalDecision("accepted", "accepted")
+
+    def query_status(self, expr: Expr) -> str:
+        root_id = semantic_id(expr)
+        negated_id = semantic_id(apply("not", expr))
+        roots = set(self.active_generation().active_roots)
+        positive = root_id in roots
+        negative = negated_id in roots
+        if positive and negative:
+            return "CONFLICT"
+        if positive:
+            return "TRUE"
+        if negative:
+            return "FALSE"
+        return "UNKNOWN"
+
+    def derive_pressures(self, now: str) -> tuple[str, ...]:
+        current = datetime.fromisoformat(now.replace("Z", "+00:00"))
+        pressures: list[str] = []
+        for expr in self.active_exprs():
+            if (
+                isinstance(expr, Apply)
+                and expr.symbol == "deadline"
+                and len(expr.args) == 2
+                and isinstance(expr.args[1], Literal)
+                and isinstance(expr.args[1].value, str)
+            ):
+                deadline = datetime.fromisoformat(
+                    expr.args[1].value.replace("Z", "+00:00")
+                )
+                if current >= deadline:
+                    pressures.append(f"deadline_due:{semantic_id(expr)}")
+        return tuple(sorted(pressures))
+
+    def migrate_generation(
+        self,
+        generation_id: str,
+        *,
+        native_symbols: frozenset[str],
+    ) -> MigrationCheck:
+        generation = self.generations[generation_id]
+        definitions = self._active_symbol_definitions(generation)
+        missing: set[str] = set()
+        native = set(native_symbols) | {
+            "defines",
+            "believes",
+            "hypothetical",
+            "counterfactual",
+            "not",
+            "same_as",
+            "different_from",
+            "forall",
+            "exists",
+            "lambda",
+        }
+        for root in generation.active_roots:
+            expr = self.expr_for_id(root)
+            self._find_missing_symbols(expr, native, definitions, missing)
+        return MigrationCheck(ok=not missing, missing_symbols=tuple(sorted(missing)))
+
+    def _active_symbol_definitions(self, generation: Generation) -> set[str]:
+        defined: set[str] = set()
+        for root in generation.active_roots:
+            expr = self.expr_for_id(root)
+            if (
+                isinstance(expr, Apply)
+                and expr.symbol == "defines"
+                and len(expr.args) == 2
+                and isinstance(expr.args[0], Ref)
+            ):
+                defined.add(expr.args[0].anchor)
+        return defined
+
+    def _find_missing_symbols(
+        self,
+        expr: Expr,
+        native: set[str],
+        defined: set[str],
+        missing: set[str],
+    ) -> None:
+        if not isinstance(expr, Apply):
+            return
+        if expr.symbol not in native and expr.symbol not in defined:
+            missing.add(expr.symbol)
+        for arg in expr.args:
+            self._find_missing_symbols(arg, native, defined, missing)
+
+    def retire_generation(self, generation_id: str) -> None:
+        if generation_id == self.current_generation:
+            raise InvalidTransactionError("current generation cannot be retired")
+        if generation_id not in self.generations:
+            raise KeyError(generation_id)
+        self.retired_generations.add(generation_id)
+
+    def garbage_collect_semantics(self) -> int:
+        retained_generations = [
+            generation
+            for generation_id, generation in self.generations.items()
+            if generation_id not in self.retired_generations
+        ]
+        reachable: set[str] = set()
+        for generation in retained_generations:
+            for root in generation.active_roots:
+                reachable.update(self._semantic_closure(root))
+        before = len(self.semantic_nodes)
+        self.semantic_nodes = {
+            node_id: payload
+            for node_id, payload in self.semantic_nodes.items()
+            if node_id in reachable
+        }
+        return before - len(self.semantic_nodes)
+
+    def _semantic_closure(self, root_id: str) -> set[str]:
+        closure: set[str] = set()
+
+        def visit(node_id: str) -> None:
+            if node_id in closure or node_id not in self.semantic_nodes:
+                return
+            closure.add(node_id)
+            expr = self.expr_for_id(node_id)
+            if isinstance(expr, Apply):
+                for arg in expr.args:
+                    child_id = semantic_id(arg)
+                    visit(child_id)
+
+        visit(root_id)
+        return closure
+
+    def delete_payload(
+        self,
+        record_id: str,
+        *,
+        time: str,
+        full_erasure: bool = False,
+    ) -> str:
+        record = self.provenance.get(record_id)
+        if record is None:
+            raise KeyError(record_id)
+        if record.origin != "observed":
+            raise InvalidTransactionError("only observed payloads are erasable evidence")
+        if record.payload_ref is not None:
+            self.payloads.pop(record.payload_ref, None)
+
+        if full_erasure:
+            del self.provenance[record_id]
+            for generation_id, generation in self.generations.items():
+                if generation.provenance_head == record_id:
+                    self.retired_generations.add(generation_id)
+            relation = "erases"
+        else:
+            relation = "deletes_payload"
+
+        tombstone = self._append_provenance(
+            origin="endogenous",
+            time=time,
+            source="governance",
+            payload=None,
+            links=(ProvenanceLink(relation, f"prov:{record_id}"),),
+        )
+        if full_erasure and self.current_generation in self.retired_generations:
+            parent = self.current_generation
+            old = self.active_generation()
+            tx_id = _digest(["erasure-rebase", parent, tombstone])
+            generation = self._make_generation(
+                parent=parent,
+                roots=old.active_roots,
+                anchors=self.anchors,
+                provenance_head=self._latest_provenance_head(),
+                target_cognition=old.target_cognition,
+                horizon=old.horizon,
+                tx_id=tx_id,
+            )
+            self.generations[generation.generation_id] = generation
+            self.current_generation = generation.generation_id
+        return tombstone
+
+    def canonical_snapshot(self) -> bytes:
+        value = {
+            "anchors": sorted(self.anchors),
+            "semantic_nodes": {
+                node_id: payload.decode("utf-8")
+                for node_id, payload in sorted(self.semantic_nodes.items())
+            },
+            "provenance": {
+                record_id: {
+                    "origin": record.origin,
+                    "time": record.time,
+                    "source": record.source,
+                    "payload_ref": record.payload_ref,
+                    "links": [
+                        [link.relation, link.target]
+                        for link in record.links
+                    ],
+                }
+                for record_id, record in sorted(self.provenance.items())
+            },
+            "payload_refs": sorted(self.payloads),
+            "generations": {
+                generation_id: {
+                    "parent": generation.parent_generation_id,
+                    "roots": generation.active_roots,
+                    "anchor_root": generation.anchor_root,
+                    "provenance_head": generation.provenance_head,
+                    "target_cognition": generation.target_cognition,
+                    "horizon": generation.horizon,
+                    "created_by": generation.created_by_transaction,
+                }
+                for generation_id, generation in sorted(self.generations.items())
+            },
+            "retired_generations": sorted(self.retired_generations),
+            "current_generation": self.current_generation,
+        }
+        return _json_bytes(value)
+
+    def derived_symbol_index(self) -> dict[str, tuple[str, ...]]:
+        index: dict[str, list[str]] = {}
+        for node_id, payload in self.semantic_nodes.items():
+            expr = _decode_serialized(json.loads(payload.decode("utf-8")))
+            if isinstance(expr, Apply):
+                index.setdefault(expr.symbol, []).append(node_id)
+        return {
+            symbol: tuple(sorted(node_ids))
+            for symbol, node_ids in sorted(index.items())
+        }

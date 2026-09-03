@@ -1,0 +1,10 @@
+schema_version: 1
+id: relaylm2_semantic_transaction
+owner_issue: 2135
+summary: RelayLM 2.0 LLM-free deterministic semantic transaction and minimal-substrate falsification contract.
+canonical_surfaces:
+- docs/research/relaylm2-semantic-transaction.md
+implementation:
+- src/relaylm/v2_semantics.py
+tests:
+- tests/unit/test_v2_semantic_transaction.py
