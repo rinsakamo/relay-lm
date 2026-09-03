@@ -177,7 +177,7 @@ def test_trial_ids_are_unique_and_free_text_is_not_accepted() -> None:
 
     with pytest.raises(LabSessionError, match="condition_id"):
         session.record_trial(
-            trial_id="trial 2",
+            trial_id="trial-2",
             condition_id="contains free text and spaces",
             required_steps=("launch",),
             completed_steps=(),
