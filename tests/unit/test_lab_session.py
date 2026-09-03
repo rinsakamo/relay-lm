@@ -64,6 +64,22 @@ def test_exploratory_session_is_non_citable_by_construction() -> None:
     assert not hasattr(session, "to_frozen_experiment_identity")
 
 
+def test_session_identity_and_attached_runtime_are_read_only() -> None:
+    runtime = _FakeOwnedRuntime()
+    session = _session(runtime=runtime)
+
+    with pytest.raises(AttributeError):
+        session.session_id = "other-session"  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        session.lab_environment_fingerprint = "sha256:" + "b" * 64  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        session.runtime = None  # type: ignore[misc]
+
+    assert session.session_id == "lab3-session-1"
+    assert session.lab_environment_fingerprint == LAB_FINGERPRINT
+    assert session.runtime is runtime
+
+
 def test_warm_owned_runtime_can_be_reused_across_distinct_trials() -> None:
     runtime = _FakeOwnedRuntime()
     session = _session(runtime=runtime)
@@ -71,7 +87,7 @@ def test_warm_owned_runtime_can_be_reused_across_distinct_trials() -> None:
     first = session.record_trial(
         trial_id="trial-1",
         condition_id="endpoint:auto-1",
-        required_steps=("endpoint", "launch", "readiness", "cleanup"),
+        required_steps=("endpoint", "launch", "readiness"),
         completed_steps=("endpoint", "launch"),
         outcome="INCONCLUSIVE",
         detail_codes=("LISTENER_UNPROVEN",),
@@ -79,8 +95,8 @@ def test_warm_owned_runtime_can_be_reused_across_distinct_trials() -> None:
     second = session.record_trial(
         trial_id="trial-2",
         condition_id="endpoint:auto-2",
-        required_steps=("endpoint", "launch", "readiness", "cleanup"),
-        completed_steps=("endpoint", "launch", "readiness", "cleanup"),
+        required_steps=("endpoint", "launch", "readiness"),
+        completed_steps=("endpoint", "launch", "readiness"),
         outcome="PASS",
     )
 
