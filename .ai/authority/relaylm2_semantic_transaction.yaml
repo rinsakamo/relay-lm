@@ -8,3 +8,4 @@ implementation:
 - src/relaylm/v2_semantics.py
 tests:
 - tests/unit/test_v2_semantic_transaction.py
+- tests/unit/test_v2_semantic_transaction_hardening.py
