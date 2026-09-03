@@ -1,12 +1,13 @@
 schema_version: 1
 id: lab_environment
 summary: >-
-  Stable prepared Lab Environment identity, digest-only cache references,
-  deterministic fingerprinting, atomic persistence, and fail-closed restore
-  before fresh Qualification authority.
-owner_issue: 2057
+  Stable prepared Lab Environment identity and non-citable LAB3 exploratory
+  sessions/rehearsals that reuse existing owned-runtime primitives before a
+  separate fresh Qualification transaction.
+owner_issue: 2139
 canonical_surfaces:
 - docs/reference/lab-environment.md
+- docs/reference/lab-session.md
 references:
 - docs/reference/actual-model-stage-r-current.md
 - docs/reference/actual-model-vllm-binding.md
@@ -14,8 +15,10 @@ references:
 - docs/reference/external-qualification.md
 implementation:
 - src/relaylm/lab_environment.py
+- src/relaylm/lab_session.py
 tests:
 - tests/unit/test_lab_environment.py
+- tests/unit/test_lab_session.py
 depends_on:
 - actual_model_evaluation
 - external_qualification
