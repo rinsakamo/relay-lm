@@ -148,12 +148,24 @@ class ExploratoryLabSession:
         _validate_lab_fingerprint(lab_environment_fingerprint)
         if runtime is not None and not isinstance(runtime, OwnedVLLMRuntime):
             raise TypeError("runtime must be OwnedVLLMRuntime or None")
-        self.session_id = session_id
-        self.lab_environment_fingerprint = lab_environment_fingerprint
-        self.runtime = runtime
+        self._session_id = session_id
+        self._lab_environment_fingerprint = lab_environment_fingerprint
+        self._runtime = runtime
         self._state: SessionState = "OPEN"
         self._trials: list[ExploratoryTrialRecord] = []
         self._cleanup_receipt: RuntimeCleanupReceipt | None = None
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    @property
+    def lab_environment_fingerprint(self) -> str:
+        return self._lab_environment_fingerprint
+
+    @property
+    def runtime(self) -> OwnedVLLMRuntime | None:
+        return self._runtime
 
     @property
     def trials(self) -> tuple[ExploratoryTrialRecord, ...]:
