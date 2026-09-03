@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from relaylm.actual_model_vllm_profiler import (
+    VLLMKVAllocationDemand,
     VLLMTokenCapacityLaunchClass,
     VLLMTokenCapacityReferenceEvidence,
     VLLMTokenCapacityReferenceEvidenceError,
@@ -28,14 +29,28 @@ def _launch_class() -> VLLMTokenCapacityLaunchClass:
     )
 
 
+def _demands() -> tuple[VLLMKVAllocationDemand, ...]:
+    return (
+        VLLMKVAllocationDemand(
+            multiplicity=5,
+            tokens_per_block=16,
+            fixed_blocks_per_request=1,
+        ),
+        VLLMKVAllocationDemand(
+            multiplicity=1,
+            tokens_per_block=64,
+        ),
+    )
+
+
 def _evidence() -> VLLMTokenCapacityReferenceEvidence:
     return VLLMTokenCapacityReferenceEvidence.from_successful_launch(
         launch_class=_launch_class(),
         startup_free_bytes=11_800_000_000,
         kv_cache_memory_bytes=1_420_000_000,
         kv_cache_capacity_tokens=4_096,
-        kv_allocation_unit_bytes=5_000_000,
-        kv_allocation_unit_tokens=16,
+        kv_pool_block_bytes=1_000_000,
+        kv_allocation_demands=_demands(),
     )
 
 
@@ -51,11 +66,12 @@ def test_reference_evidence_round_trips_and_yields_compatible_reference(tmp_path
 
     assert loaded == evidence
     assert path.name == f"{evidence.evidence_id}.json"
+    assert evidence.format_version == 2
     assert reference.non_kv_memory_bytes == 10_380_000_000
     assert reference.kv_cache_memory_bytes == 1_420_000_000
     assert reference.kv_cache_capacity_tokens == 4_096
-    assert reference.kv_allocation_unit_bytes == 5_000_000
-    assert reference.kv_allocation_unit_tokens == 16
+    assert reference.kv_pool_block_bytes == 1_000_000
+    assert reference.kv_allocation_demands == _demands()
 
 
 def test_reference_evidence_rejects_incompatible_launch_class() -> None:
@@ -77,10 +93,10 @@ def test_reference_evidence_rejects_impossible_allocation_geometry() -> None:
         VLLMTokenCapacityReferenceEvidence.from_successful_launch(
             launch_class=_launch_class(),
             startup_free_bytes=11_800_000_000,
-            kv_cache_memory_bytes=1_420_000_000,
+            kv_cache_memory_bytes=5_000_000,
             kv_cache_capacity_tokens=4_096,
-            kv_allocation_unit_bytes=1_000_000_000,
-            kv_allocation_unit_tokens=16,
+            kv_pool_block_bytes=1_000_000,
+            kv_allocation_demands=_demands(),
         )
 
 
@@ -98,6 +114,33 @@ def test_reference_evidence_id_is_independent_of_artifact_path(tmp_path) -> None
     assert first.name == second.name == f"{evidence.evidence_id}.json"
 
 
+def test_equivalent_demand_order_and_duplicates_have_one_content_identity() -> None:
+    canonical = _evidence()
+    reordered = VLLMTokenCapacityReferenceEvidence.from_successful_launch(
+        launch_class=_launch_class(),
+        startup_free_bytes=11_800_000_000,
+        kv_cache_memory_bytes=1_420_000_000,
+        kv_cache_capacity_tokens=4_096,
+        kv_pool_block_bytes=1_000_000,
+        kv_allocation_demands=(
+            VLLMKVAllocationDemand(multiplicity=1, tokens_per_block=64),
+            VLLMKVAllocationDemand(
+                multiplicity=2,
+                tokens_per_block=16,
+                fixed_blocks_per_request=1,
+            ),
+            VLLMKVAllocationDemand(
+                multiplicity=3,
+                tokens_per_block=16,
+                fixed_blocks_per_request=1,
+            ),
+        ),
+    )
+
+    assert reordered.reference.kv_allocation_demands == _demands()
+    assert reordered.evidence_id == canonical.evidence_id
+
+
 def test_reference_evidence_rejects_tampered_content_id(tmp_path) -> None:
     evidence = _evidence()
     path = write_vllm_token_capacity_reference_evidence(
@@ -111,5 +154,19 @@ def test_reference_evidence_rejects_tampered_content_id(tmp_path) -> None:
     with pytest.raises(
         VLLMTokenCapacityReferenceEvidenceError,
         match="evidence_id",
+    ):
+        load_vllm_token_capacity_reference_evidence(path)
+
+
+def test_reference_evidence_rejects_legacy_scalar_format(tmp_path) -> None:
+    evidence = _evidence()
+    payload = evidence.to_mapping()
+    payload["format_version"] = 1
+    path = tmp_path / f"{evidence.evidence_id}.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        VLLMTokenCapacityReferenceEvidenceError,
+        match="format_version",
     ):
         load_vllm_token_capacity_reference_evidence(path)

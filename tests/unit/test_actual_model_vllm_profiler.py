@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from relaylm.actual_model_vllm_profiler import (
+    VLLMKVAllocationDemand,
     VLLMLaunchMemoryAdmission,
     VLLMTokenCapacityReference,
 )
@@ -35,8 +36,10 @@ def _reference() -> VLLMTokenCapacityReference:
         non_kv_memory_bytes=5_000_000,
         kv_cache_memory_bytes=4_000_001,
         kv_cache_capacity_tokens=4_000,
-        kv_allocation_unit_bytes=1,
-        kv_allocation_unit_tokens=1,
+        kv_pool_block_bytes=1,
+        kv_allocation_demands=(
+            VLLMKVAllocationDemand(multiplicity=1, tokens_per_block=1),
+        ),
     )
 
 
@@ -136,15 +139,19 @@ def test_successful_launch_envelope_becomes_stable_non_kv_reference() -> None:
         startup_free_bytes=11_789_139_968,
         kv_cache_memory_bytes=1_539_740_672,
         kv_cache_capacity_tokens=4_457,
-        kv_allocation_unit_bytes=1,
-        kv_allocation_unit_tokens=1,
+        kv_pool_block_bytes=1,
+        kv_allocation_demands=(
+            VLLMKVAllocationDemand(multiplicity=1, tokens_per_block=1),
+        ),
     )
 
     assert reference.non_kv_memory_bytes == 10_249_399_296
     assert reference.kv_cache_memory_bytes == 1_539_740_672
     assert reference.kv_cache_capacity_tokens == 4_457
-    assert reference.kv_allocation_unit_bytes == 1
-    assert reference.kv_allocation_unit_tokens == 1
+    assert reference.kv_pool_block_bytes == 1
+    assert reference.kv_allocation_demands == (
+        VLLMKVAllocationDemand(multiplicity=1, tokens_per_block=1),
+    )
 
 
 def test_token_capacity_reference_uses_conservative_byte_per_token_ceiling() -> None:
@@ -169,10 +176,7 @@ def test_token_capacity_reference_is_monotonic() -> None:
     larger = reference.required_kv_cache_memory_bytes(target_model_len=3_000)
 
     assert smaller < larger
-    assert larger <= (
-        reference.kv_bytes_per_token_upper_bound
-        * reference.kv_cache_capacity_tokens
-    )
+    assert larger <= reference.kv_cache_memory_bytes
 
 
 def test_token_capacity_reference_refuses_extrapolation_beyond_attested_capacity() -> None:
@@ -289,8 +293,10 @@ def test_token_capacity_reference_requires_positive_integer_evidence(
             non_kv_memory_bytes=non_kv_memory_bytes,
             kv_cache_memory_bytes=kv_cache_memory_bytes,
             kv_cache_capacity_tokens=kv_cache_capacity_tokens,
-            kv_allocation_unit_bytes=1,
-            kv_allocation_unit_tokens=1,
+            kv_pool_block_bytes=1,
+            kv_allocation_demands=(
+                VLLMKVAllocationDemand(multiplicity=1, tokens_per_block=1),
+            ),
         )
 
 

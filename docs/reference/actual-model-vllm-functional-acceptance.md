@@ -1,6 +1,6 @@
 # Actual-model vLLM functional acceptance
 
-Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386; current pre-final physical routing is #2124 reference acquisition, and a fresh final Core semantic qualification owner is created only after `#2124 = REFERENCE_READY`. Numeric Cognitive Budget selection remains #1388 authority and blocked until that later final qualification PASS.
+Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386. Pre-final release routing requires one current citable same-launch-class memory reference under the heterogeneous shared-pool geometry contract, followed only after `REFERENCE_READY` by a fresh final Core semantic qualification owner. Numeric Cognitive Budget selection remains #1388 authority and blocked until that later final qualification PASS.
 
 Stage R exists first to answer a product question:
 
@@ -58,9 +58,11 @@ Bind a citable successful launch-capability observation for the same target/runt
 - startup free GPU bytes from the successful launch;
 - explicit KV-cache bytes used by that successful launch;
 - resulting GPU KV-cache token capacity;
-- KV allocation-unit bytes;
-- KV allocation-unit token capacity;
+- exact shared-pool bytes consumed by one KV block id;
+- canonical conservative per-group KV allocation-demand terms;
 - target/runtime/runner identity.
+
+Each allocation-demand term records the multiplicity of equivalent KV groups, their effective request tokens per block, and any source-attested fixed block overhead. Different group widths remain distinct; they are not collapsed into one fictional universal token page.
 
 A conservative reusable non-KV envelope is:
 
@@ -72,18 +74,33 @@ reference_non_kv_bytes =
 
 This is deliberately an upper-bound carriage envelope, not a claim that every byte in the difference was consumed by the model.
 
-For a selected `target_model_len`, derive a conservative KV requirement without extrapolating beyond the attested token capacity and without treating KV allocation as continuous when the pinned runtime allocates whole pages/blocks:
+For a selected `target_model_len`, derive a conservative KV requirement without extrapolating beyond the attested token capacity and without treating heterogeneous KV allocation as continuous:
 
 ```text
 kv_bytes_per_token_upper =
     ceil(reference_kv_cache_bytes / reference_kv_cache_capacity_tokens)
 
 continuous_kv_bytes =
-    target_model_len * kv_bytes_per_token_upper
+    min(
+        reference_kv_cache_bytes,
+        target_model_len * kv_bytes_per_token_upper
+    )
+
+allocation_blocks =
+    sum(
+        multiplicity
+        * (
+            ceil(target_model_len / tokens_per_block)
+            + fixed_blocks_per_request
+        )
+        for each allocation-demand term
+    )
 
 allocation_kv_bytes =
-    ceil(target_model_len / kv_allocation_unit_tokens)
-    * kv_allocation_unit_bytes
+    min(
+        reference_kv_cache_bytes,
+        allocation_blocks * kv_pool_block_bytes
+    )
 
 required_kv_cache_bytes =
     max(continuous_kv_bytes, allocation_kv_bytes)
@@ -92,7 +109,9 @@ required_total_bytes =
     reference_non_kv_bytes + required_kv_cache_bytes
 ```
 
-The detailed allocation-unit contract is canonical in `actual-model-vllm-kv-allocation-geometry.md`. There is no universal `+1 page` rule and no special case for one historical context window or KV byte count.
+The detailed heterogeneous allocation contract is canonical in `actual-model-vllm-kv-allocation-geometry.md`. There is no universal `+1 page`, no universal tokens-per-block value, and no special case for one historical context window or KV byte count.
+
+A finite-window plateau may be omitted from a recorded term only when the resulting term is a conservative overestimate. The successful reference KV bytes cap both component bounds because that full explicit pool is already a proven sufficient carrier for any selected target at or below the attested capacity. Understatement or guessed geometry fails closed.
 
 `target_model_len` must be positive and must not exceed the attested KV token capacity. A larger target requires fresh launch-capability evidence rather than extrapolation.
 
@@ -124,7 +143,7 @@ If fresh free memory is below `required_total_bytes`, fail closed before launch.
 
 The existing profiler parser remains valid for **launch-capability acquisition** when the launch-significant target/runtime/runner class changes and new memory geometry must be attested.
 
-`python -m relaylm.actual_model_vllm_profiler --log <profiler-log>` still parses the pinned runtime's unambiguous “fully utilize GPU memory” KV recommendation for that capability transaction. The launch-class reference must additionally bind the applicable allocation-unit byte/token geometry; the recommendation parser alone does not manufacture or guess that geometry.
+`python -m relaylm.actual_model_vllm_profiler --log <profiler-log>` still parses the pinned runtime's unambiguous “fully utilize GPU memory” KV recommendation for that capability transaction. The launch-class reference must additionally bind the exact shared-pool block byte cost and conservative heterogeneous allocation-demand terms from the pinned runtime/configuration; the recommendation parser alone does not manufacture or guess that geometry.
 
 Ordinary Stage R does not repeat that maximize-free-VRAM profiler merely because desktop/WSL/driver VRAM occupancy changed.
 
@@ -192,7 +211,7 @@ Use one clean exact RelayLM checkout and an isolated environment for the canonic
 Before launch:
 
 1. bind the current legal target token window;
-2. bind citable same-launch-class token/KV geometry, including allocation-unit bytes/tokens;
+2. bind one citable same-launch-class reference with exact shared-pool block bytes and conservative heterogeneous allocation-demand terms;
 3. acquire fresh host `free_bytes` / `total_bytes`;
 4. build `VLLMLaunchMemoryAdmission.for_token_window(...)`;
 5. fail closed if the required envelope does not fit;
@@ -245,7 +264,7 @@ During the same run, retain token/timing observations when already available:
 
 - fresh startup free GPU memory as environment evidence;
 - launch-class non-KV reference envelope and its evidence identity;
-- launch-class KV allocation-unit byte/token geometry and its evidence identity;
+- launch-class shared-pool block bytes plus heterogeneous allocation-demand terms and their evidence identity;
 - selected target token window;
 - derived explicit KV-cache byte requirement;
 - production serialized-input token count;
@@ -279,4 +298,4 @@ The focused durability fixture extends regression coverage for model-facing Stat
 
 ## Principle
 
-> Select token demand by cognitive/evaluation authority, convert that demand to a stable physical memory requirement, and use fresh free VRAM only to answer whether the host can carry it.
+> Select token demand by cognitive/evaluation authority, convert that demand to a stable heterogeneous physical memory requirement, and use fresh free VRAM only to answer whether the host can carry it.

@@ -24,9 +24,67 @@ _KV_CACHE_FULLY_UTILIZE_PREFIX_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _MEMORY_UTILIZATION_SCALE = 1_000_000
-_TOKEN_CAPACITY_REFERENCE_EVIDENCE_FORMAT_VERSION = 1
+_TOKEN_CAPACITY_REFERENCE_EVIDENCE_FORMAT_VERSION = 2
 _TOKEN_CAPACITY_REFERENCE_EVIDENCE_PREFIX = "amkvref"
 _VLLM_MODEL_RUNNERS = ("v1", "v2")
+
+
+@dataclass(frozen=True, slots=True)
+class VLLMKVAllocationDemand:
+    """Conservative shared-pool block demand for equivalent vLLM KV groups."""
+
+    multiplicity: int
+    tokens_per_block: int
+    fixed_blocks_per_request: int = 0
+
+    def __post_init__(self) -> None:
+        _require_positive_int(self.multiplicity, "multiplicity")
+        _require_positive_int(self.tokens_per_block, "tokens_per_block")
+        _require_non_negative_int(
+            self.fixed_blocks_per_request,
+            "fixed_blocks_per_request",
+        )
+
+    def required_blocks(self, *, target_model_len: int) -> int:
+        _require_positive_int(target_model_len, "target_model_len")
+        return self.multiplicity * (
+            _ceil_div(target_model_len, self.tokens_per_block)
+            + self.fixed_blocks_per_request
+        )
+
+    def to_mapping(self) -> dict[str, int]:
+        return {
+            "multiplicity": self.multiplicity,
+            "tokens_per_block": self.tokens_per_block,
+            "fixed_blocks_per_request": self.fixed_blocks_per_request,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: object) -> VLLMKVAllocationDemand:
+        mapping = _require_mapping(value, "kv_allocation_demand")
+        _require_exact_keys(
+            mapping,
+            {
+                "multiplicity",
+                "tokens_per_block",
+                "fixed_blocks_per_request",
+            },
+            "kv_allocation_demand",
+        )
+        return cls(
+            multiplicity=_require_positive_int(
+                mapping["multiplicity"],
+                "multiplicity",
+            ),
+            tokens_per_block=_require_positive_int(
+                mapping["tokens_per_block"],
+                "tokens_per_block",
+            ),
+            fixed_blocks_per_request=_require_non_negative_int(
+                mapping["fixed_blocks_per_request"],
+                "fixed_blocks_per_request",
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,27 +94,29 @@ class VLLMTokenCapacityReference:
     non_kv_memory_bytes: int
     kv_cache_memory_bytes: int
     kv_cache_capacity_tokens: int
-    kv_allocation_unit_bytes: int
-    kv_allocation_unit_tokens: int
+    kv_pool_block_bytes: int
+    kv_allocation_demands: tuple[VLLMKVAllocationDemand, ...]
 
     def __post_init__(self) -> None:
         for name in (
             "non_kv_memory_bytes",
             "kv_cache_memory_bytes",
             "kv_cache_capacity_tokens",
-            "kv_allocation_unit_bytes",
-            "kv_allocation_unit_tokens",
+            "kv_pool_block_bytes",
         ):
-            _require_int(getattr(self, name), name)
-            if getattr(self, name) <= 0:
-                raise ValueError(f"{name} must be positive")
+            _require_positive_int(getattr(self, name), name)
 
-        allocation_capacity_tokens = (
-            self.kv_cache_memory_bytes // self.kv_allocation_unit_bytes
-        ) * self.kv_allocation_unit_tokens
-        if allocation_capacity_tokens < self.kv_cache_capacity_tokens:
+        demands = _canonicalize_allocation_demands(self.kv_allocation_demands)
+        object.__setattr__(self, "kv_allocation_demands", demands)
+
+        available_pool_blocks = self.kv_cache_memory_bytes // self.kv_pool_block_bytes
+        if available_pool_blocks <= 0:
             raise ValueError(
-                "KV allocation geometry cannot carry the attested KV token capacity"
+                "KV allocation geometry has no complete block inside the attested KV pool"
+            )
+        if self._required_kv_pool_blocks_unchecked(target_model_len=1) > available_pool_blocks:
+            raise ValueError(
+                "KV allocation geometry cannot carry one token inside the attested KV pool"
             )
 
     @classmethod
@@ -66,8 +126,8 @@ class VLLMTokenCapacityReference:
         startup_free_bytes: int,
         kv_cache_memory_bytes: int,
         kv_cache_capacity_tokens: int,
-        kv_allocation_unit_bytes: int,
-        kv_allocation_unit_tokens: int,
+        kv_pool_block_bytes: int,
+        kv_allocation_demands: tuple[VLLMKVAllocationDemand, ...],
     ) -> VLLMTokenCapacityReference:
         """Build a conservative non-KV envelope from one successful launch."""
 
@@ -75,12 +135,9 @@ class VLLMTokenCapacityReference:
             ("startup_free_bytes", startup_free_bytes),
             ("kv_cache_memory_bytes", kv_cache_memory_bytes),
             ("kv_cache_capacity_tokens", kv_cache_capacity_tokens),
-            ("kv_allocation_unit_bytes", kv_allocation_unit_bytes),
-            ("kv_allocation_unit_tokens", kv_allocation_unit_tokens),
+            ("kv_pool_block_bytes", kv_pool_block_bytes),
         ):
-            _require_int(value, name)
-            if value <= 0:
-                raise ValueError(f"{name} must be positive")
+            _require_positive_int(value, name)
         if kv_cache_memory_bytes >= startup_free_bytes:
             raise ValueError(
                 "successful launch evidence must leave positive non-KV memory"
@@ -89,8 +146,8 @@ class VLLMTokenCapacityReference:
             non_kv_memory_bytes=startup_free_bytes - kv_cache_memory_bytes,
             kv_cache_memory_bytes=kv_cache_memory_bytes,
             kv_cache_capacity_tokens=kv_cache_capacity_tokens,
-            kv_allocation_unit_bytes=kv_allocation_unit_bytes,
-            kv_allocation_unit_tokens=kv_allocation_unit_tokens,
+            kv_pool_block_bytes=kv_pool_block_bytes,
+            kv_allocation_demands=kv_allocation_demands,
         )
 
     @property
@@ -99,24 +156,41 @@ class VLLMTokenCapacityReference:
 
         return _ceil_div(self.kv_cache_memory_bytes, self.kv_cache_capacity_tokens)
 
-    def required_kv_cache_memory_bytes(self, *, target_model_len: int) -> int:
-        """Convert a selected token window into page-conservative explicit KV bytes."""
-
-        _require_int(target_model_len, "target_model_len")
-        if target_model_len <= 0:
-            raise ValueError("target_model_len must be positive")
-        if target_model_len > self.kv_cache_capacity_tokens:
-            raise ValueError(
-                "target_model_len exceeds the attested KV token capacity; "
-                "fresh launch-capability evidence is required"
-            )
-
-        continuous_requirement = (
-            self.kv_bytes_per_token_upper_bound * target_model_len
+    def _required_kv_pool_blocks_unchecked(self, *, target_model_len: int) -> int:
+        return sum(
+            demand.required_blocks(target_model_len=target_model_len)
+            for demand in self.kv_allocation_demands
         )
-        allocation_requirement = (
-            _ceil_div(target_model_len, self.kv_allocation_unit_tokens)
-            * self.kv_allocation_unit_bytes
+
+    def required_kv_pool_blocks(self, *, target_model_len: int) -> int:
+        """Return the conservative shared-pool block demand for one request."""
+
+        _validate_target_model_len(
+            target_model_len=target_model_len,
+            capacity_tokens=self.kv_cache_capacity_tokens,
+        )
+        return self._required_kv_pool_blocks_unchecked(
+            target_model_len=target_model_len
+        )
+
+    def required_kv_cache_memory_bytes(self, *, target_model_len: int) -> int:
+        """Convert a selected token window into conservative explicit KV bytes."""
+
+        _validate_target_model_len(
+            target_model_len=target_model_len,
+            capacity_tokens=self.kv_cache_capacity_tokens,
+        )
+
+        continuous_requirement = min(
+            self.kv_cache_memory_bytes,
+            self.kv_bytes_per_token_upper_bound * target_model_len,
+        )
+        allocation_requirement = min(
+            self.kv_cache_memory_bytes,
+            self._required_kv_pool_blocks_unchecked(
+                target_model_len=target_model_len
+            )
+            * self.kv_pool_block_bytes,
         )
         return max(continuous_requirement, allocation_requirement)
 
@@ -294,8 +368,8 @@ class VLLMTokenCapacityReferenceEvidence:
         startup_free_bytes: int,
         kv_cache_memory_bytes: int,
         kv_cache_capacity_tokens: int,
-        kv_allocation_unit_bytes: int,
-        kv_allocation_unit_tokens: int,
+        kv_pool_block_bytes: int,
+        kv_allocation_demands: tuple[VLLMKVAllocationDemand, ...],
     ) -> VLLMTokenCapacityReferenceEvidence:
         if not isinstance(launch_class, VLLMTokenCapacityLaunchClass):
             raise TypeError("launch_class must be VLLMTokenCapacityLaunchClass")
@@ -303,8 +377,8 @@ class VLLMTokenCapacityReferenceEvidence:
             startup_free_bytes=startup_free_bytes,
             kv_cache_memory_bytes=kv_cache_memory_bytes,
             kv_cache_capacity_tokens=kv_cache_capacity_tokens,
-            kv_allocation_unit_bytes=kv_allocation_unit_bytes,
-            kv_allocation_unit_tokens=kv_allocation_unit_tokens,
+            kv_pool_block_bytes=kv_pool_block_bytes,
+            kv_allocation_demands=kv_allocation_demands,
         )
         return cls(
             launch_class=launch_class,
@@ -328,8 +402,11 @@ class VLLMTokenCapacityReferenceEvidence:
                 "non_kv_memory_bytes": self.reference.non_kv_memory_bytes,
                 "kv_cache_memory_bytes": self.reference.kv_cache_memory_bytes,
                 "kv_cache_capacity_tokens": self.reference.kv_cache_capacity_tokens,
-                "kv_allocation_unit_bytes": self.reference.kv_allocation_unit_bytes,
-                "kv_allocation_unit_tokens": self.reference.kv_allocation_unit_tokens,
+                "kv_pool_block_bytes": self.reference.kv_pool_block_bytes,
+                "kv_allocation_demands": [
+                    demand.to_mapping()
+                    for demand in self.reference.kv_allocation_demands
+                ],
             },
         }
 
@@ -361,12 +438,21 @@ class VLLMTokenCapacityReferenceEvidence:
                 "non_kv_memory_bytes",
                 "kv_cache_memory_bytes",
                 "kv_cache_capacity_tokens",
-                "kv_allocation_unit_bytes",
-                "kv_allocation_unit_tokens",
+                "kv_pool_block_bytes",
+                "kv_allocation_demands",
             },
             "successful_launch",
         )
+        demands_value = successful["kv_allocation_demands"]
+        if not isinstance(demands_value, list):
+            raise VLLMTokenCapacityReferenceEvidenceError(
+                "kv_allocation_demands must be an array"
+            )
         try:
+            demands = tuple(
+                VLLMKVAllocationDemand.from_mapping(item)
+                for item in demands_value
+            )
             evidence = cls.from_successful_launch(
                 launch_class=launch_class,
                 startup_free_bytes=_require_positive_int(
@@ -381,15 +467,14 @@ class VLLMTokenCapacityReferenceEvidence:
                     successful["kv_cache_capacity_tokens"],
                     "kv_cache_capacity_tokens",
                 ),
-                kv_allocation_unit_bytes=_require_positive_int(
-                    successful["kv_allocation_unit_bytes"],
-                    "kv_allocation_unit_bytes",
+                kv_pool_block_bytes=_require_positive_int(
+                    successful["kv_pool_block_bytes"],
+                    "kv_pool_block_bytes",
                 ),
-                kv_allocation_unit_tokens=_require_positive_int(
-                    successful["kv_allocation_unit_tokens"],
-                    "kv_allocation_unit_tokens",
-                ),
+                kv_allocation_demands=demands,
             )
+        except VLLMTokenCapacityReferenceEvidenceError:
+            raise
         except (TypeError, ValueError) as exc:
             raise VLLMTokenCapacityReferenceEvidenceError(
                 f"invalid successful launch geometry: {exc}"
@@ -633,6 +718,39 @@ def _canonical_json_bytes(value: object) -> bytes:
 
 def _ceil_div(numerator: int, denominator: int) -> int:
     return -(-numerator // denominator)
+
+
+def _validate_target_model_len(*, target_model_len: int, capacity_tokens: int) -> None:
+    _require_positive_int(target_model_len, "target_model_len")
+    if target_model_len > capacity_tokens:
+        raise ValueError(
+            "target_model_len exceeds the attested KV token capacity; "
+            "fresh launch-capability evidence is required"
+        )
+
+
+def _canonicalize_allocation_demands(
+    value: object,
+) -> tuple[VLLMKVAllocationDemand, ...]:
+    if not isinstance(value, tuple) or not value:
+        raise ValueError("kv_allocation_demands must be a non-empty tuple")
+    totals: dict[tuple[int, int], int] = {}
+    for item in value:
+        if not isinstance(item, VLLMKVAllocationDemand):
+            raise TypeError(
+                "kv_allocation_demands must contain VLLMKVAllocationDemand values"
+            )
+        key = (item.tokens_per_block, item.fixed_blocks_per_request)
+        totals[key] = totals.get(key, 0) + item.multiplicity
+    return tuple(
+        VLLMKVAllocationDemand(
+            multiplicity=multiplicity,
+            tokens_per_block=tokens_per_block,
+            fixed_blocks_per_request=fixed_blocks_per_request,
+        )
+        for (tokens_per_block, fixed_blocks_per_request), multiplicity
+        in sorted(totals.items())
+    )
 
 
 def _require_int(value: int, label: str) -> None:
