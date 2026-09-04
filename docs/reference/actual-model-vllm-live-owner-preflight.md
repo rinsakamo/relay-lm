@@ -28,6 +28,18 @@ current RuntimeOwnershipAttestation
 
 Only PIDs contained in the current positive ownership attestation are exempted. The helper does not infer ownership from command names, parent relationships, listener similarity, historical PIDs, or a remembered run. Passing anything other than a current `RuntimeOwnershipAttestation` fails rather than manufacturing ownership.
 
+## Listener observation transport
+
+Listener ownership proof is scoped to the transaction's expected endpoint. The observation transport is not itself authority.
+
+The preferred path remains the shell-free `ss -H -ltnp` snapshot when that transport returns a trustworthy result. A successful process return code alone is insufficient: an empty or otherwise unusable result accompanied by transport-error stderr such as an unavailable netlink socket is not evidence that the endpoint is absent.
+
+When the `ss` observation transport is unavailable for an endpoint-scoped query, the current fallback reads both `/proc/net/tcp` and `/proc/net/tcp6`, decodes the exact expected LISTEN endpoint, requires one unambiguous positive socket inode when present, and maps that inode through `/proc/<pid>/fd/* -> socket:[inode]` to the owning PID set. The resulting `RuntimeListenerObservation` has the same ownership meaning as the preferred path; procfs is a second observation backend, not a weaker proof mode.
+
+The fallback never rescues negative ownership evidence from a valid `ss` snapshot. If a trustworthy `ss` result shows the expected endpoint but cannot establish an owner PID, the run still fails closed. Likewise, unreadable procfs tables, malformed or ambiguous relevant rows, a missing/zero inode, unreadable required fd state, or a present socket with no provable PID never become endpoint absence or ownership.
+
+Unrelated sockets and hidden metadata on unrelated endpoints are neither authority nor a global prerequisite. Endpoint absence is accepted only after the selected trustworthy backend positively inspected the relevant kernel state.
+
 ## Execution ordering
 
 The bounded qualification ordering is:
@@ -52,4 +64,4 @@ The ownership attestation is volatile execution evidence. Its PIDs, nonce, liste
 
 A later transaction reacquires host cleanliness before launch, creates a new ownership boundary after spawn, and obtains a new attestation before using the live-owner guard.
 
-> **Command-name staleness proves pre-launch cleanliness; nonce ownership proves which canonical processes are expected after launch. Never let the current proven-owned EngineCore become its own stale competitor.**
+> **Command-name staleness proves pre-launch cleanliness; nonce ownership proves which canonical processes are expected after launch. Observation transport may change, but the endpoint-to-kernel-socket-to-owning-PID proof never weakens.**
