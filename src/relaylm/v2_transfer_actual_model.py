@@ -470,6 +470,62 @@ def _clone_store(store: SemanticTransactionStore) -> SemanticTransactionStore:
     return SemanticTransactionStore.from_snapshot(store.canonical_snapshot())
 
 
+def _validate_source_learning_lineage(
+    family: TransferFamily,
+    learned: SourceLearningResult,
+) -> None:
+    if learned.structure_id not in learned.store.active_generation().active_roots:
+        raise StructureProposalError("learned source Structure is not active")
+
+    evidence_ids = learned.source_evidence_ids
+    expected_observations = _source_observations(family)
+    if (
+        not evidence_ids
+        or len(evidence_ids) != len(expected_observations)
+        or len(set(evidence_ids)) != len(evidence_ids)
+    ):
+        raise StructureProposalError("source Evidence lineage does not match the source task")
+
+    for record_id, expected in zip(evidence_ids, expected_observations, strict=True):
+        record = learned.store.provenance.get(record_id)
+        if (
+            record is None
+            or record.origin != "observed"
+            or record.source != expected.source
+            or record.time != expected.time
+            or record.payload_ref is None
+            or learned.store.payloads.get(record.payload_ref) != expected.payload
+        ):
+            raise StructureProposalError("source Evidence lineage does not match the source task")
+
+    try:
+        canonical_hypothesis = _hypothesis_from_expr(
+            learned.store.expr_for_id(learned.structure_id)
+        )
+    except (KeyError, StructureProposalError) as exc:
+        raise StructureProposalError("learned Structure is not a valid canonical hypothesis") from exc
+    if canonical_hypothesis != learned.hypothesis or canonical_hypothesis.modulus != family.modulus:
+        raise StructureProposalError("learned Structure hypothesis does not match canonical cognition")
+
+    producers = [
+        record
+        for record in learned.store.provenance.values()
+        if record.origin == "endogenous"
+        and any(
+            link.relation == "produces"
+            and link.target == f"sem:{learned.structure_id}"
+            for link in record.links
+        )
+    ]
+    if len(producers) != 1:
+        raise StructureProposalError("learned Structure source Evidence lineage is ambiguous")
+    support_targets = {
+        link.target for link in producers[0].links if link.relation == "supports"
+    }
+    if support_targets != set(evidence_ids):
+        raise StructureProposalError("learned Structure source Evidence lineage is incomplete")
+
+
 def _make_r1_arm(
     *,
     base: SemanticTransactionStore,
@@ -494,8 +550,7 @@ def _make_r1_arm(
 
 
 def prepare_r1_arms(family: TransferFamily, learned: SourceLearningResult) -> R1ArmSet:
-    if learned.structure_id not in learned.store.active_generation().active_roots:
-        raise StructureProposalError("learned source Structure is not active")
+    _validate_source_learning_lineage(family, learned)
     base = _clone_store(learned.store)
     target_local = apply("r1_target_task", literal(family.public_target_digest))
     result = base.transact(
