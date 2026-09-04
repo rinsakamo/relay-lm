@@ -131,6 +131,20 @@ def test_procfs_unrelated_listener_does_not_satisfy_expected_endpoint(tmp_path: 
     ) == ()
 
 
+def test_procfs_malformed_unrelated_address_is_ignored_after_port_scope(
+    tmp_path: Path,
+) -> None:
+    _write_tables(
+        tmp_path,
+        tcp_rows=(_proc_row("NOTHEX", 9000, inode=12345),),
+    )
+
+    assert launch_preflight._snapshot_runtime_listeners_procfs(
+        expected_endpoint=_expected_v4(),
+        proc_root=tmp_path,
+    ) == ()
+
+
 def test_procfs_foreign_owner_is_preserved_as_observed_pid(tmp_path: Path) -> None:
     _write_tables(
         tmp_path,
