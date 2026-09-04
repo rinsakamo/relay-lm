@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -10,12 +11,35 @@ from relaylm.v2_transfer_experiment import generate_transfer_family
 from tools.v2_transfer_r1_host import (
     R1HostError,
     RepositoryState,
+    probe_git_repository,
     run_r1_host_smoke,
 )
 
 
-_COMMIT = "a" * 40
-_TREE = "b" * 40
+def _git(root: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def _git_repo(root: Path) -> tuple[Path, RepositoryState]:
+    root.mkdir(parents=True)
+    subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+    _git(root, "config", "user.email", "r1-host@example.invalid")
+    _git(root, "config", "user.name", "R1 Host Test")
+    (root / "tracked.txt").write_text("relaylm2-r1-host\n", encoding="utf-8")
+    _git(root, "add", "tracked.txt")
+    _git(root, "commit", "-m", "fixture")
+    state = RepositoryState(
+        commit=_git(root, "rev-parse", "HEAD"),
+        tree=_git(root, "rev-parse", "HEAD^{tree}"),
+        clean=True,
+    )
+    return root, state
 
 
 def _launch_admission() -> dict[str, object]:
@@ -31,10 +55,14 @@ def _launch_admission() -> dict[str, object]:
     }
 
 
-def _identity() -> dict[str, object]:
+def _identity(repository: RepositoryState) -> dict[str, object]:
     launch = _launch_admission()
     return {
-        "repository": {"commit": _COMMIT, "tree": _TREE, "clean_required": True},
+        "repository": {
+            "commit": repository.commit,
+            "tree": repository.tree,
+            "clean_required": True,
+        },
         "candidate": "relaylm2-transfer-r1-smoke",
         "prompt_core": "relaylm2-transfer-r1",
         "benchmark": "transfer-r1-smoke",
@@ -55,13 +83,16 @@ def _identity() -> dict[str, object]:
         "hardware": {"gpu": "fake-gpu", "vram_bytes": 12_000_000_000},
         "execution_order": ["source-learning", "t0", "t1", "t2"],
         "retry_policy": {"automatic_retry": False, "semantic_retry": False},
-        "authority": {"status": "CURRENT_AUTHORITY_CONFIRMED", "commit": _COMMIT},
+        "authority": {
+            "status": "CURRENT_AUTHORITY_CONFIRMED",
+            "commit": repository.commit,
+        },
         "launch_admission": launch,
     }
 
 
-def _live_binding() -> dict[str, object]:
-    identity = _identity()
+def _live_binding(repository: RepositoryState) -> dict[str, object]:
+    identity = _identity(repository)
     return {
         key: identity[key]
         for key in (
@@ -118,36 +149,66 @@ def _responses(seed: int = 2157) -> tuple[object, list[str]]:
     return family, [source, target, target, target]
 
 
-def _repo_state(*, clean: bool = True, commit: str = _COMMIT, tree: str = _TREE) -> RepositoryState:
-    return RepositoryState(commit=commit, tree=tree, clean=clean)
+def test_r1_git_probe_reads_commit_tree_and_worktree_cleanliness(tmp_path: Path):
+    repository_root, expected = _git_repo(tmp_path / "repo")
+
+    assert probe_git_repository(repository_root) == expected
+
+    (repository_root / "untracked.txt").write_text("dirty\n", encoding="utf-8")
+    dirty = probe_git_repository(repository_root)
+    assert dirty.commit == expected.commit
+    assert dirty.tree == expected.tree
+    assert dirty.clean is False
 
 
 def test_r1_host_rejects_dirty_or_wrong_repository_before_artifacts_or_model_calls(tmp_path: Path):
     family, responses = _responses()
-    for observed in (
-        _repo_state(clean=False),
-        _repo_state(commit="c" * 40),
-        _repo_state(tree="d" * 40),
+
+    dirty_root, dirty_state = _git_repo(tmp_path / "dirty-repo")
+    (dirty_root / "untracked.txt").write_text("dirty\n", encoding="utf-8")
+    dirty_artifact = tmp_path / "dirty-artifact"
+    dirty_client = FakeClient(responses.copy())
+    with pytest.raises(R1HostError, match="repository"):
+        run_r1_host_smoke(
+            artifact_root=dirty_artifact,
+            identity=_identity(dirty_state),
+            repository_root=dirty_root,
+            live_binding_probe=lambda: _live_binding(dirty_state),
+            client=dirty_client,
+            family=family,
+            step_index=0,
+            examples_visible=0,
+        )
+    assert not (dirty_artifact / "run-manifest.json").exists()
+    assert dirty_client.calls == []
+
+    for label, identity_mutation in (
+        ("wrong-commit", {"commit": "c" * 40}),
+        ("wrong-tree", {"tree": "d" * 40}),
     ):
-        root = tmp_path / observed.commit[:4] / observed.tree[:4] / str(observed.clean)
+        repository_root, state = _git_repo(tmp_path / f"{label}-repo")
+        identity = _identity(state)
+        identity["repository"] = {**identity["repository"], **identity_mutation}
+        artifact = tmp_path / f"{label}-artifact"
         client = FakeClient(responses.copy())
         with pytest.raises(R1HostError, match="repository"):
             run_r1_host_smoke(
-                artifact_root=root,
-                identity=_identity(),
-                repository_probe=lambda observed=observed: observed,
-                live_binding_probe=_live_binding,
+                artifact_root=artifact,
+                identity=identity,
+                repository_root=repository_root,
+                live_binding_probe=lambda state=state: _live_binding(state),
                 client=client,
                 family=family,
                 step_index=0,
                 examples_visible=0,
             )
-        assert not (root / "run-manifest.json").exists()
+        assert not (artifact / "run-manifest.json").exists()
         assert client.calls == []
 
 
 def test_r1_host_requires_fresh_empty_artifact_root(tmp_path: Path):
     family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
     root = tmp_path / "occupied"
     root.mkdir()
     (root / "stale.json").write_text("{}", encoding="utf-8")
@@ -155,9 +216,9 @@ def test_r1_host_requires_fresh_empty_artifact_root(tmp_path: Path):
     with pytest.raises(R1HostError, match="artifact root"):
         run_r1_host_smoke(
             artifact_root=root,
-            identity=_identity(),
-            repository_probe=_repo_state,
-            live_binding_probe=_live_binding,
+            identity=_identity(state),
+            repository_root=repository_root,
+            live_binding_probe=lambda: _live_binding(state),
             client=FakeClient(responses),
             family=family,
             step_index=0,
@@ -167,14 +228,15 @@ def test_r1_host_requires_fresh_empty_artifact_root(tmp_path: Path):
 
 def test_r1_host_writes_frozen_manifest_before_first_model_call_and_uses_one_client(tmp_path: Path):
     family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
     root = tmp_path / "run"
     client = FakeClient(responses, manifest_path=root / "run-manifest.json")
 
     result = run_r1_host_smoke(
         artifact_root=root,
-        identity=_identity(),
-        repository_probe=_repo_state,
-        live_binding_probe=_live_binding,
+        identity=_identity(state),
+        repository_root=repository_root,
+        live_binding_probe=lambda: _live_binding(state),
         client=client,
         family=family,
         step_index=0,
@@ -184,8 +246,8 @@ def test_r1_host_writes_frozen_manifest_before_first_model_call_and_uses_one_cli
     assert len(client.calls) == 4
     manifest = json.loads((root / "run-manifest.json").read_text(encoding="utf-8"))
     assert manifest["identity"]["repository"] == {
-        "commit": _COMMIT,
-        "tree": _TREE,
+        "commit": state.commit,
+        "tree": state.tree,
         "clean_required": True,
     }
     assert manifest["identity"]["execution_order"] == ["source-learning", "t0", "t1", "t2"]
@@ -201,8 +263,9 @@ def test_r1_host_writes_frozen_manifest_before_first_model_call_and_uses_one_cli
 
 def test_r1_host_rechecks_full_physical_binding_before_every_model_call(tmp_path: Path):
     family, responses = _responses()
-    stable = _live_binding()
-    drifted = _live_binding()
+    repository_root, state = _git_repo(tmp_path / "repo")
+    stable = _live_binding(state)
+    drifted = _live_binding(state)
     drifted["model"] = {"id": "different-model", "revision": "sha256:other"}
     observations = [stable, stable, drifted]
 
@@ -214,8 +277,8 @@ def test_r1_host_rechecks_full_physical_binding_before_every_model_call(tmp_path
     with pytest.raises(R1HostError, match="physical binding drift"):
         run_r1_host_smoke(
             artifact_root=root,
-            identity=_identity(),
-            repository_probe=_repo_state,
+            identity=_identity(state),
+            repository_root=repository_root,
             live_binding_probe=probe,
             client=client,
             family=family,
@@ -223,14 +286,14 @@ def test_r1_host_rechecks_full_physical_binding_before_every_model_call(tmp_path
             examples_visible=0,
         )
 
-    # Initial preflight + source-call check succeed; T0 is blocked before its request.
     assert len(client.calls) == 1
-    state = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
-    assert state["status"] == "INCOMPLETE"
+    state_payload = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
+    assert state_payload["status"] == "INCOMPLETE"
 
 
 def test_r1_host_provider_failure_is_terminal_and_never_retried_with_changed_settings(tmp_path: Path):
     family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
     responses[1] = "__FAIL__"
     client = FakeClient(responses)
     root = tmp_path / "failure"
@@ -238,9 +301,9 @@ def test_r1_host_provider_failure_is_terminal_and_never_retried_with_changed_set
     with pytest.raises(R1HostError, match="provider"):
         run_r1_host_smoke(
             artifact_root=root,
-            identity=_identity(),
-            repository_probe=_repo_state,
-            live_binding_probe=_live_binding,
+            identity=_identity(state),
+            repository_root=repository_root,
+            live_binding_probe=lambda: _live_binding(state),
             client=client,
             family=family,
             step_index=0,
@@ -248,20 +311,21 @@ def test_r1_host_provider_failure_is_terminal_and_never_retried_with_changed_set
         )
 
     assert len(client.calls) == 2
-    state = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
-    assert state["status"] == "INCOMPLETE"
+    state_payload = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
+    assert state_payload["status"] == "INCOMPLETE"
     evidence = (root / "request-evidence.jsonl").read_text(encoding="utf-8")
     assert "provider_failure" in evidence
 
 
 def test_r1_host_records_non_authoritative_raw_outputs_without_promoting_a_transfer_claim(tmp_path: Path):
     family, responses = _responses(seed=2162)
+    repository_root, state = _git_repo(tmp_path / "repo")
     root = tmp_path / "evidence"
     result = run_r1_host_smoke(
         artifact_root=root,
-        identity=_identity(),
-        repository_probe=_repo_state,
-        live_binding_probe=_live_binding,
+        identity=_identity(state),
+        repository_root=repository_root,
+        live_binding_probe=lambda: _live_binding(state),
         client=FakeClient(responses),
         family=family,
         step_index=0,
@@ -280,18 +344,19 @@ def test_r1_host_records_non_authoritative_raw_outputs_without_promoting_a_trans
 
 def test_r1_host_rejects_retry_policy_or_execution_order_that_could_change_the_causal_contract(tmp_path: Path):
     family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
     for key, value in (
         ("retry_policy", {"automatic_retry": True, "semantic_retry": False}),
         ("execution_order", ["source-learning", "t1", "t0", "t2"]),
     ):
-        identity = _identity()
+        identity = _identity(state)
         identity[key] = value
         with pytest.raises(R1HostError, match=key.replace("_", " ")):
             run_r1_host_smoke(
                 artifact_root=tmp_path / key,
                 identity=identity,
-                repository_probe=_repo_state,
-                live_binding_probe=_live_binding,
+                repository_root=repository_root,
+                live_binding_probe=lambda: _live_binding(state),
                 client=FakeClient(responses.copy()),
                 family=family,
                 step_index=0,
