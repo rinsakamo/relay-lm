@@ -357,6 +357,44 @@ hardware/GPU/VRAM/NVML where material
 output/run identity
 ```
 
+### R1 host admission
+
+The R1 host runner reuses the existing `external_qualification` frozen-identity and durable-run substrate. It does not define a second manifest/resume format.
+
+Before the first model request it must:
+
+1. observe the local repository commit/tree and require a clean checkout;
+2. compare that observation with the frozen experiment identity;
+3. obtain a **live** physical binding covering model, artifact, tokenizer, template, backend, runtime, decoding, reasoning, structured-output mode, context capacity, hardware, and launch/admission facts;
+4. compare every material binding field with the proposed frozen identity;
+5. freeze the identity against the live launch/admission attestation;
+6. create a fresh empty durable artifact root, which writes `run-manifest.json` before any model request.
+
+The host execution order is fixed:
+
+```text
+source-learning
+  -> T0
+  -> T1
+  -> T2
+```
+
+One client is used across the four calls. The full physical binding is reacquired and compared immediately before every call. Binding drift fails closed before the request.
+
+The physical probes are authority boundaries, not convenience inputs. A local execution wrapper must derive repository state from the current checkout and physical binding from the current loaded runtime/model/hardware. It must **not** satisfy a probe by copying values back out of the proposed manifest or a historical handoff.
+
+Provider or model-protocol failure stops the run and persists instrumentation. Automatic retry, semantic retry, alternate-model fallback, and silent decoding/protocol mutation are forbidden. The current R1 entrypoint starts fresh only; it does not reinterpret the generic durable infrastructure's exact-resume capability as permission to regenerate source learning.
+
+Raw requests, model responses, token counts, verifier results, binding checks, and failures are instrumentation-only. They do not become canonical Evidence merely because they are durably persisted.
+
+A completed host run reports only:
+
+```text
+NON_CITABLE_R1_SMOKE
+```
+
+Completion means that the bounded physical wiring executed under one frozen identity. It is not a citable transfer effect and does not authorize R2 conclusions.
+
 Repository CI is not a substitute for host authority. Actual GPU/vLLM/LM Studio execution must preserve the exact host/model/runtime identity and record failures rather than silently changing protocol or decoding until the experiment wins.
 
 > **Keep the substrate fixed. Change only eligibility. Then see whether the right prior Structure makes new competence cheaper.**
