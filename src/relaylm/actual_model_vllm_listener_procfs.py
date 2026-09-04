@@ -128,20 +128,46 @@ def _parse_procfs_tcp_table(
                 f"procfs listener row {line_number} has no local endpoint",
                 code="PROCFS_TABLE_ROW_MALFORMED",
             )
-        local = _decode_local_endpoint(fields[1], family=family, line_number=line_number)
-        if local is None:
+
+        local_value = fields[1]
+        if ":" not in local_value:
+            raise ProcfsListenerSnapshotError(
+                f"procfs listener row {line_number} has malformed local endpoint",
+                code="PROCFS_TABLE_ROW_MALFORMED",
+            )
+        _, port_hex = local_value.rsplit(":", 1)
+        try:
+            port = int(port_hex, 16)
+        except ValueError as exc:
+            raise ProcfsListenerSnapshotError(
+                f"procfs listener row {line_number} has malformed local port",
+                code="PROCFS_TABLE_ROW_MALFORMED",
+            ) from exc
+        if port != expected_port:
             continue
-        host, port = local
-        relevant = port == expected_port and _listener_hosts_match(expected_host, host)
-        if not relevant:
-            continue
-        if len(fields) < 10:
+        if len(fields) < 4:
             raise ProcfsListenerSnapshotError(
                 f"relevant procfs listener row {line_number} is incomplete",
                 code="PROCFS_TABLE_ROW_MALFORMED",
             )
         if fields[3].upper() != "0A":
             continue
+
+        local = _decode_local_endpoint(
+            local_value,
+            family=family,
+            line_number=line_number,
+        )
+        if local is None:
+            continue
+        host, port = local
+        if not _listener_hosts_match(expected_host, host):
+            continue
+        if len(fields) < 10:
+            raise ProcfsListenerSnapshotError(
+                f"relevant procfs listener row {line_number} is incomplete",
+                code="PROCFS_TABLE_ROW_MALFORMED",
+            )
         try:
             inode = int(fields[9], 10)
         except ValueError as exc:
