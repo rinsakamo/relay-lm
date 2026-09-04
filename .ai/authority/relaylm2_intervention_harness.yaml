@@ -1,0 +1,12 @@
+schema_version: 1
+id: relaylm2_intervention_harness
+owner_issue: 2155
+summary: RelayLM 2.0 deterministic matched-intervention harness over the minimal cognitive basis.
+canonical_surfaces:
+- docs/research/relaylm2-intervention-harness.md
+implementation:
+- src/relaylm/v2_interventions.py
+tests:
+- tests/unit/test_v2_interventions.py
+depends_on:
+- relaylm2_semantic_transaction
