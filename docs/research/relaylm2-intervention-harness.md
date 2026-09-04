@@ -21,6 +21,8 @@ Cognitive semantic / Crystal substrate
 ```
 
 The present harness does not add a third persistent cognitive substrate.
+Its authority declaration explicitly depends on `relaylm2_semantic_transaction`;
+the runtime dependency is therefore declared rather than inferred from imports.
 
 ## Principle
 
@@ -84,8 +86,12 @@ It may not:
 - treat endogenous Trace as observed Evidence;
 - persist the selected scope.
 
-This allows the transfer arms to differ only in whether already-present reusable
-Structure is eligible for target cognition.
+Local roots and cross-task candidate roots are recorded separately from the
+`allow_cross_task` eligibility flag. This prevents a nominal eligibility ablation
+from secretly swapping the candidate Structure set.
+
+This allows the transfer arms to differ only in whether the **same already-present
+reusable Structure** is eligible for target cognition.
 
 ## Transfer arms
 
@@ -102,6 +108,8 @@ T2 reusable + revisable/suppressible Structure
 ```
 
 The baseline must not be weakened by deleting source Structure or Evidence.
+Changing the cross-task candidate set is not equivalent to toggling reuse and is
+reported as an undeclared intervention.
 
 ## Revision and correction
 
@@ -148,6 +156,11 @@ prevent hidden free work.
 registry. It refuses undeclared operations, charges every selected operation,
 and verifies that policy execution did not mutate canonical cognition.
 
+`OperationPolicy.decision_cost` separately charges the work used to choose the
+plan. An adaptive allocator therefore cannot hide its own metareasoning cost
+outside the operation list. A later physical campaign must bind this synthetic
+field to measured calls/tokens/latency/compute rather than assume it is free.
+
 A privileged oracle policy/operation is quarantined unless a test explicitly
 enables it as a synthetic upper bound.
 
@@ -170,13 +183,15 @@ remain outside canonical persistence.
 
 ## Matched-arm diff
 
-`ArmSnapshot` exposes the experimentally relevant surfaces:
+`ArmSnapshot` exposes the experimentally relevant surfaces separately:
 
 ```text
 canonical digest
 active roots
 provenance ids
-projection eligibility
+local projection roots
+cross-task candidate roots
+cross-task eligibility flag
 projected roots
 Evidence packet ids
 policy id
@@ -185,31 +200,51 @@ commit decisions
 measurement events
 ```
 
-`InterventionSpec` declares which surfaces are allowed to differ for a given
-causal arm. `compare_arms()` reports all differences and the undeclared subset;
-`assert_clean_intervention()` fails on any undeclared difference.
-
-This is intentionally strict. For example, a transfer projection experiment may
-allow only:
+`InterventionSpec` declares both:
 
 ```text
-projection_eligibility
+allowed_differences
+required_differences
+```
+
+`compare_arms()` reports all differences, undeclared differences, and declared
+changes that failed to occur. `assert_clean_intervention()` fails either form.
+
+This guards against two opposite errors:
+
+```text
+contaminated arm
+  changes more surfaces than declared
+
+no-op arm
+  claims an intervention but fails to change the required surface
+```
+
+For the D1 transfer projection experiment, only these may and must differ:
+
+```text
+allow_cross_task
 projected_roots
 ```
 
-If one arm also has extra provenance, a changed canonical digest, or hidden
-resource work, the comparison fails.
+The local roots, cross-task candidate set, canonical digest, provenance, Evidence
+packets, policy identity, and resource surfaces must remain equal.
+
+If one arm also has extra provenance, a changed candidate set, a changed
+canonical digest, or hidden resource work, the comparison fails.
 
 ## Deterministic fixture gate
 
 `tests/unit/test_v2_interventions.py` freezes these requirements:
 
-- **D1 projection eligibility ablation** — same Crystal/Evidence; only target
-  projection eligibility differs;
+- **D1 projection eligibility ablation** — same Crystal/Evidence and same local /
+  cross-task candidate roots; only eligibility and resulting scope differ;
+- **D1 contamination attack** — swapping the candidate Structure set is detected
+  even when presented as a projection intervention;
 - **D2 revision Evidence equivalence** — sticky/revisable arms receive the exact
   same observed correction before commit behavior diverges;
-- **D3 allocator policy substitution** — one operation surface, explicit resource
-  ledger, quarantined oracle;
+- **D3 allocator policy substitution** — one operation surface, explicit policy
+  decision cost, explicit operation costs, and quarantined oracle;
 - **D4 one-shot non-propagation** — transient Evidence does not silently become
   durable semantic correction;
 - **D5 durable propagation** — supported revision affects later projection while
@@ -217,7 +252,9 @@ resource work, the comparison fails.
 - **D6 instrumentation non-authority** — metrics and resource accounting leave the
   canonical snapshot unchanged;
 - **D7 arm-diff contamination attack** — an undeclared extra Evidence record is
-  detected as a failed causal comparison.
+  detected as a failed causal comparison;
+- **required-change attack** — a nominal intervention that changes nothing fails
+  when the declared causal surface is required to differ.
 
 Additional negative fixtures reject endogenous Trace as an Evidence packet and
 show that one resource dimension cannot substitute for another merely because a
@@ -232,10 +269,12 @@ materially requires any of:
 2. a transfer/generality/attention/correction/intelligence state object;
 3. a privileged semantic writer for one experimental arm;
 4. hidden Evidence or context differences;
-5. free allocator observation or computation;
+5. free allocator observation, metareasoning, or computation;
 6. instrumentation promoted to semantic authority;
 7. destructive baseline manipulation instead of projection control;
-8. undeclared differences that the harness cannot expose.
+8. undeclared differences that the harness cannot expose;
+9. changing the candidate Structure set while calling it an eligibility ablation;
+10. accepting a no-op arm as evidence that an intervention occurred.
 
 A failure should return to #2132 rather than be hidden by a benchmark-specific
 exception.
