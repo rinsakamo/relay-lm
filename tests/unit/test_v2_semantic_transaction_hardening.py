@@ -212,3 +212,73 @@ def test_f33_generation_provenance_head_tracks_append_order_not_event_time():
         link.relation == "previous" and link.target == first_head
         for link in store.provenance[second_head].links
     )
+
+
+def test_f24_nested_shadowing_is_alpha_stable_across_three_binders():
+    left = apply(
+        "forall",
+        var("x"),
+        apply(
+            "exists",
+            var("x"),
+            apply(
+                "lambda",
+                var("y"),
+                apply("pair", var("x"), var("y")),
+            ),
+        ),
+    )
+    right = apply(
+        "forall",
+        var("outer"),
+        apply(
+            "exists",
+            var("inner"),
+            apply(
+                "lambda",
+                var("z"),
+                apply("pair", var("inner"), var("z")),
+            ),
+        ),
+    )
+
+    assert semantic_id(left) == semantic_id(right)
+
+
+def test_f24_free_variable_cannot_alias_canonical_bound_variable():
+    free_collision = apply(
+        "forall",
+        var("x"),
+        apply("pair", var("x"), var("$0")),
+    )
+    bound_twice = apply(
+        "forall",
+        var("x"),
+        apply("pair", var("x"), var("x")),
+    )
+
+    assert semantic_id(free_collision) != semantic_id(bound_twice)
+
+
+def test_f24_scoped_serialization_round_trips_through_durable_snapshot():
+    store = SemanticTransactionStore()
+    expr = apply(
+        "forall",
+        var("x"),
+        apply("pair", var("x"), var("$0")),
+    )
+    result = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            proposals=(Proposal(expr),),
+        )
+    )
+    root_id = result.decisions[0].semantic_id
+
+    assert root_id == semantic_id(expr)
+    assert semantic_id(store.expr_for_id(root_id)) == root_id
+
+    snapshot = store.canonical_snapshot()
+    rebuilt = SemanticTransactionStore.from_snapshot(snapshot)
+    assert rebuilt.canonical_snapshot() == snapshot
+    assert semantic_id(rebuilt.expr_for_id(root_id)) == root_id

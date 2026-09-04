@@ -176,10 +176,14 @@ def _literal_payload(value: object) -> object:
 
 
 def canonical_form(expr: Expr) -> object:
-    return _canonical_form(expr, {})
+    return _canonical_form(expr, {}, 0)
 
 
-def _canonical_form(expr: Expr, env: dict[str, str]) -> object:
+def _canonical_form(
+    expr: Expr,
+    env: dict[str, int],
+    depth: int,
+) -> object:
     if isinstance(expr, Literal):
         return ["lit", _literal_payload(expr.value)]
     if isinstance(expr, Ref):
@@ -189,7 +193,9 @@ def _canonical_form(expr: Expr, env: dict[str, str]) -> object:
     if isinstance(expr, Var):
         if not expr.name:
             raise ValueError("variable name must not be empty")
-        return ["var", env.get(expr.name, expr.name)]
+        if expr.name in env:
+            return ["bvar", env[expr.name]]
+        return ["var", expr.name]
     if not isinstance(expr, Apply):
         raise TypeError(f"unsupported expression type: {type(expr).__name__}")
     if not expr.symbol:
@@ -198,18 +204,19 @@ def _canonical_form(expr: Expr, env: dict[str, str]) -> object:
         if len(expr.args) != 2 or not isinstance(expr.args[0], Var):
             raise ValueError(f"{expr.symbol} requires (Var, body)")
         binder = expr.args[0]
-        canonical_name = f"${len(env)}"
+        if not binder.name:
+            raise ValueError("variable name must not be empty")
         inner = dict(env)
-        inner[binder.name] = canonical_name
+        inner[binder.name] = depth
         return [
             "apply",
             expr.symbol,
-            [["var", canonical_name], _canonical_form(expr.args[1], inner)],
+            [["bvar", depth], _canonical_form(expr.args[1], inner, depth + 1)],
         ]
     return [
         "apply",
         expr.symbol,
-        [_canonical_form(arg, env) for arg in expr.args],
+        [_canonical_form(arg, env, depth) for arg in expr.args],
     ]
 
 
@@ -236,7 +243,30 @@ def root_symbol(expr: Expr) -> str | None:
     return expr.symbol if isinstance(expr, Apply) else None
 
 
+def _serialized_free_var_names(value: object) -> set[str]:
+    names: set[str] = set()
+    if not isinstance(value, list) or not value:
+        return names
+    tag = value[0]
+    if tag == "var" and len(value) == 2 and isinstance(value[1], str):
+        names.add(value[1])
+        return names
+    if tag == "apply" and len(value) == 3 and isinstance(value[2], list):
+        for arg in value[2]:
+            names.update(_serialized_free_var_names(arg))
+    return names
+
+
 def _decode_serialized(value: object) -> Expr:
+    free_names = _serialized_free_var_names(value)
+    return _decode_serialized_inner(value, {}, free_names)
+
+
+def _decode_serialized_inner(
+    value: object,
+    bound_names: dict[int, str],
+    free_names: set[str],
+) -> Expr:
     if not isinstance(value, list) or len(value) < 2:
         raise ValueError("invalid serialized expression")
     tag = value[0]
@@ -245,12 +275,48 @@ def _decode_serialized(value: object) -> Expr:
     if tag == "ref" and len(value) == 2 and isinstance(value[1], str):
         return Ref(value[1])
     if tag == "var" and len(value) == 2 and isinstance(value[1], str):
+        if not value[1]:
+            raise ValueError("variable name must not be empty")
         return Var(value[1])
+    if tag == "bvar" and len(value) == 2 and type(value[1]) is int:
+        level = value[1]
+        if level < 0 or level not in bound_names:
+            raise ValueError("unbound serialized variable")
+        return Var(bound_names[level])
     if tag == "apply" and len(value) == 3 and isinstance(value[1], str):
+        symbol = value[1]
         args_raw = value[2]
-        if not isinstance(args_raw, list):
+        if not symbol or not isinstance(args_raw, list):
             raise ValueError("invalid apply args")
-        return Apply(value[1], tuple(_decode_serialized(arg) for arg in args_raw))
+        if symbol in _BINDERS:
+            if (
+                len(args_raw) != 2
+                or not isinstance(args_raw[0], list)
+                or len(args_raw[0]) != 2
+                or args_raw[0][0] != "bvar"
+                or type(args_raw[0][1]) is not int
+            ):
+                raise ValueError(f"{symbol} requires canonical bound variable")
+            level = args_raw[0][1]
+            if level != len(bound_names):
+                raise ValueError("invalid serialized binder level")
+            candidate = f"__relaylm_bound_{level}"
+            suffix = 0
+            occupied = free_names | set(bound_names.values())
+            while candidate in occupied:
+                suffix += 1
+                candidate = f"__relaylm_bound_{level}_{suffix}"
+            inner = dict(bound_names)
+            inner[level] = candidate
+            body = _decode_serialized_inner(args_raw[1], inner, free_names)
+            return Apply(symbol, (Var(candidate), body))
+        return Apply(
+            symbol,
+            tuple(
+                _decode_serialized_inner(arg, bound_names, free_names)
+                for arg in args_raw
+            ),
+        )
     raise ValueError("invalid serialized expression")
 
 
