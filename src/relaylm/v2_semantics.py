@@ -121,6 +121,7 @@ class Generation:
 class MigrationCheck:
     ok: bool
     missing_symbols: tuple[str, ...] = ()
+    missing_provenance: tuple[str, ...] = ()
 
 
 class StaleGenerationError(RuntimeError):
@@ -132,7 +133,6 @@ class InvalidTransactionError(ValueError):
 
 
 _BINDERS = frozenset({"forall", "exists", "lambda"})
-_EMBEDDING_ROOTS = frozenset({"believes", "hypothetical", "counterfactual"})
 
 
 def literal(value: object) -> Literal:
@@ -222,6 +222,14 @@ def _iter_expr(expr: Expr) -> Iterable[Expr]:
     if isinstance(expr, Apply):
         for arg in expr.args:
             yield from _iter_expr(arg)
+
+
+def _anchors_in_expr(expr: Expr) -> frozenset[str]:
+    return frozenset(
+        node.anchor
+        for node in _iter_expr(expr)
+        if isinstance(node, Ref)
+    )
 
 
 def root_symbol(expr: Expr) -> str | None:
@@ -440,8 +448,6 @@ class SemanticTransactionStore:
 
         tx_id = self._transaction_id(request, policy)
 
-        # OBSERVE is a trusted boundary step. Once accepted by the adapter, the
-        # occurrence is canonical even if every later semantic proposal is rejected.
         observation_records: dict[str, str] = {}
         for obs in request.observations:
             observation_records[obs.slot] = self._append_provenance(
@@ -451,8 +457,6 @@ class SemanticTransactionStore:
                 payload=obs.payload,
             )
 
-        # PROPOSE/GOVERN is staging-only. No semantic node, anchor, or proposal
-        # provenance is persistent until every proposal decision has been computed.
         staged: list[tuple[int, Proposal, ProposalDecision]] = []
         decisions: list[ProposalDecision] = []
         for proposal_index, proposal in enumerate(request.proposals):
@@ -479,9 +483,9 @@ class SemanticTransactionStore:
             for deactivate in proposal.deactivate_roots:
                 active_roots.discard(deactivate)
             active_roots.add(decision.semantic_id)
+            accepted_anchors.update(_anchors_in_expr(proposal.expr))
             accepted_anchors.update(proposal.requested_anchors)
 
-        # COMMIT: accepted semantics and lineage become canonical together.
         for proposal_index, proposal, decision in staged:
             if decision.status != "accepted":
                 continue
@@ -526,9 +530,7 @@ class SemanticTransactionStore:
                     time=self._action_time(request, action_index),
                     source=f"action:{tx_id}",
                     payload=action.payload,
-                    links=(
-                        ProvenanceLink("attempts", f"action:{action.name}"),
-                    ),
+                    links=(ProvenanceLink("attempts", f"action:{action.name}"),),
                 )
             )
 
@@ -563,6 +565,11 @@ class SemanticTransactionStore:
         except (TypeError, ValueError) as exc:
             return ProposalDecision("rejected", f"invalid_semantics:{exc}")
 
+        referenced_anchors = _anchors_in_expr(proposal.expr)
+        requested_anchors = frozenset(proposal.requested_anchors)
+        if not requested_anchors.issubset(referenced_anchors):
+            return ProposalDecision("rejected", "requested_anchor_not_referenced")
+
         for slot in proposal.observed_support_slots:
             if slot not in observation_records:
                 return ProposalDecision("rejected", "missing_observed_support_slot")
@@ -572,8 +579,7 @@ class SemanticTransactionStore:
             observation_records[slot] for slot in proposal.observed_support_slots
         )
         for record_id in support_ids:
-            record = self.provenance.get(record_id)
-            if record is None:
+            if record_id not in self.provenance:
                 return ProposalDecision("rejected", "missing_provenance_support")
 
         symbol = root_symbol(proposal.expr)
@@ -586,7 +592,10 @@ class SemanticTransactionStore:
         if symbol in policy.outcome_symbols:
             if not support_ids:
                 return ProposalDecision("rejected", "outcome_requires_observed_support")
-            if not any(self.provenance[record_id].origin == "observed" for record_id in support_ids):
+            if not any(
+                self.provenance[record_id].origin == "observed"
+                for record_id in support_ids
+            ):
                 return ProposalDecision("rejected", "outcome_requires_observed_support")
 
         for root_id in proposal.deactivate_roots:
@@ -638,7 +647,7 @@ class SemanticTransactionStore:
     ) -> MigrationCheck:
         generation = self.generations[generation_id]
         definitions = self._active_symbol_definitions(generation)
-        missing: set[str] = set()
+        missing_symbols: set[str] = set()
         native = set(native_symbols) | {
             "defines",
             "believes",
@@ -653,8 +662,22 @@ class SemanticTransactionStore:
         }
         for root in generation.active_roots:
             expr = self.expr_for_id(root)
-            self._find_missing_symbols(expr, native, definitions, missing)
-        return MigrationCheck(ok=not missing, missing_symbols=tuple(sorted(missing)))
+            self._find_missing_symbols(
+                expr,
+                native,
+                definitions,
+                missing_symbols,
+            )
+
+        missing_provenance: set[str] = set()
+        for root in generation.active_roots:
+            missing_provenance.update(self._missing_supports_for_root(root))
+
+        return MigrationCheck(
+            ok=not missing_symbols and not missing_provenance,
+            missing_symbols=tuple(sorted(missing_symbols)),
+            missing_provenance=tuple(sorted(missing_provenance)),
+        )
 
     def _active_symbol_definitions(self, generation: Generation) -> set[str]:
         defined: set[str] = set()
@@ -682,6 +705,48 @@ class SemanticTransactionStore:
             missing.add(expr.symbol)
         for arg in expr.args:
             self._find_missing_symbols(arg, native, defined, missing)
+
+    def _missing_supports_for_root(self, root_id: str) -> set[str]:
+        target = f"sem:{root_id}"
+        producer_ids = [
+            record.id
+            for record in self.provenance.values()
+            if any(
+                link.relation == "produces" and link.target == target
+                for link in record.links
+            )
+        ]
+        missing: set[str] = set()
+        visited: set[str] = set()
+        for producer_id in producer_ids:
+            self._collect_missing_supports(producer_id, visited, missing)
+        return missing
+
+    def _collect_missing_supports(
+        self,
+        record_id: str,
+        visited: set[str],
+        missing: set[str],
+    ) -> None:
+        if record_id in visited:
+            return
+        visited.add(record_id)
+        record = self.provenance.get(record_id)
+        if record is None:
+            missing.add(record_id)
+            return
+        for link in record.links:
+            if link.relation != "supports":
+                continue
+            support_id = (
+                link.target[5:]
+                if link.target.startswith("prov:")
+                else link.target
+            )
+            if support_id not in self.provenance:
+                missing.add(support_id)
+                continue
+            self._collect_missing_supports(support_id, visited, missing)
 
     def retire_generation(self, generation_id: str) -> None:
         if generation_id == self.current_generation:
@@ -834,23 +899,29 @@ class SemanticTransactionStore:
         store.anchors = set(raw["anchors"])
 
         store.semantic_nodes = {}
+        semantic_anchors: set[str] = set()
         for node_id, serialized in raw["semantic_nodes"].items():
             if not isinstance(node_id, str) or not isinstance(serialized, str):
                 raise InvalidTransactionError("invalid semantic snapshot entry")
             try:
                 form = json.loads(serialized)
                 expr = _decode_serialized(form)
-                canonical_bytes = _json_bytes(canonical_form(expr))
+                canonical = canonical_form(expr)
+                canonical_bytes = _json_bytes(canonical)
             except (json.JSONDecodeError, TypeError, ValueError) as exc:
                 raise InvalidTransactionError(
                     "invalid semantic snapshot payload"
                 ) from exc
             if (
-                _digest(canonical_form(expr)) != node_id
+                _digest(canonical) != node_id
                 or canonical_bytes.decode("utf-8") != serialized
             ):
                 raise InvalidTransactionError("semantic snapshot hash mismatch")
             store.semantic_nodes[node_id] = canonical_bytes
+            semantic_anchors.update(_anchors_in_expr(expr))
+
+        if not semantic_anchors.issubset(store.anchors):
+            raise InvalidTransactionError("semantic snapshot has unbound anchor")
 
         store.payloads = {}
         for payload_ref, payload in raw["payloads"].items():
@@ -997,10 +1068,7 @@ class SemanticTransactionStore:
         for generation_id, generation in store.generations.items():
             if generation_id in store.retired_generations:
                 continue
-            if any(
-                root not in store.semantic_nodes
-                for root in generation.active_roots
-            ):
+            if any(root not in store.semantic_nodes for root in generation.active_roots):
                 raise InvalidTransactionError(
                     "retained generation has missing semantics"
                 )
