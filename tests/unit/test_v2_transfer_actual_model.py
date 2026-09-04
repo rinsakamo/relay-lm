@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 
 import httpx
@@ -111,6 +112,15 @@ def test_r1_invalid_structure_response_fails_closed_without_structure_commit():
 
     with pytest.raises(StructureProposalError):
         run_source_learning(client, family)
+
+
+def test_r1_arm_preparation_rejects_tampered_source_evidence_lineage():
+    family = generate_transfer_family(seed=40, regime="shared")
+    learned = run_source_learning(FakeClient(_hypothesis_json(family)), family)
+    tampered = replace(learned, source_evidence_ids=())
+
+    with pytest.raises(StructureProposalError, match="source Evidence lineage"):
+        prepare_r1_arms(family, tampered)
 
 
 def test_r1_arms_clone_identical_learned_snapshot_and_t0_only_disables_cross_task_projection():
