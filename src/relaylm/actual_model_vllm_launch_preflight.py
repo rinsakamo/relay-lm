@@ -17,6 +17,11 @@ from pathlib import Path
 from collections.abc import Iterable, Mapping
 from typing import Callable, Literal, Sequence
 
+from relaylm.actual_model_vllm_listener_procfs import (
+    ProcfsListenerSnapshotError,
+    snapshot_procfs_listener,
+)
+
 
 class VLLMHostPreflightError(ValueError):
     """The bounded vLLM host-preflight process snapshot is not admissible."""
@@ -1121,13 +1126,38 @@ def parse_listener_snapshot(
     return tuple(listeners)
 
 
+def _snapshot_runtime_listeners_procfs(
+    *,
+    expected_endpoint: RuntimeListenerEndpoint,
+    proc_root: str | Path = "/proc",
+) -> tuple[RuntimeListenerObservation, ...]:
+    """Map exact procfs LISTEN socket identity to kernel-owning PIDs."""
+
+    if not isinstance(expected_endpoint, RuntimeListenerEndpoint):
+        raise TypeError("expected_endpoint must be RuntimeListenerEndpoint")
+    try:
+        observations = snapshot_procfs_listener(
+            expected_host=expected_endpoint.host,
+            expected_port=expected_endpoint.port,
+            proc_root=proc_root,
+        )
+    except ProcfsListenerSnapshotError as exc:
+        raise RuntimeOwnershipError(str(exc), code=exc.code) from exc
+    return tuple(
+        RuntimeListenerObservation(endpoint=expected_endpoint, pids=item.pids)
+        for item in observations
+    )
+
+
 def snapshot_runtime_listeners(
     *,
     expected_endpoint: RuntimeListenerEndpoint | None = None,
     run: RunProcessSnapshot = subprocess.run,
+    proc_root: str | Path = "/proc",
 ) -> tuple[RuntimeListenerObservation, ...]:
-    """Snapshot listeners shell-free, optionally requiring PID only at one endpoint."""
+    """Snapshot one listener, falling back only when the ``ss`` transport fails."""
 
+    transport_error: BaseException | None = None
     try:
         completed = run(
             ("ss", "-H", "-ltnp"),
@@ -1136,18 +1166,28 @@ def snapshot_runtime_listeners(
             text=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:
+        transport_error = exc
+    else:
+        if not isinstance(completed.stdout, str) or not isinstance(completed.stderr, str):
+            transport_error = RuntimeError("listener snapshot streams must be text")
+        elif completed.returncode != 0:
+            transport_error = RuntimeError("listener snapshot command failed")
+        elif completed.stderr.strip():
+            transport_error = RuntimeError("listener snapshot transport reported stderr")
+        else:
+            return parse_listener_snapshot(
+                completed.stdout,
+                expected_endpoint=expected_endpoint,
+            )
+
+    if expected_endpoint is None:
         raise RuntimeOwnershipError(
             "failed to acquire listener snapshot",
             code="LISTENER_SNAPSHOT_UNAVAILABLE",
-        ) from exc
-    if not isinstance(completed.stdout, str):
-        raise RuntimeOwnershipError(
-            "listener snapshot stdout must be text",
-            code="LISTENER_SNAPSHOT_UNAVAILABLE",
-        )
-    return parse_listener_snapshot(
-        completed.stdout,
+        ) from transport_error
+    return _snapshot_runtime_listeners_procfs(
         expected_endpoint=expected_endpoint,
+        proc_root=proc_root,
     )
 
 
