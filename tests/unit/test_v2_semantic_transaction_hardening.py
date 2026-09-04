@@ -189,3 +189,46 @@ def test_full_erasure_reports_unreconstructable_migration_and_survives_rebuild()
         rebuilt.current_generation,
         native_symbols=frozenset({"fact"}),
     ) == after
+
+
+def test_f33_generation_provenance_head_tracks_append_order_not_event_time():
+    store = SemanticTransactionStore()
+    first = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            observations=(
+                ObservationInput(
+                    slot="later-time-first",
+                    time=T1,
+                    source="user",
+                    payload="first append",
+                ),
+            ),
+        )
+    )
+    first_generation = first.generation_id
+    first_head = store.generations[first_generation].provenance_head
+    assert first_head == first.observation_records[0]
+
+    second = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            observations=(
+                ObservationInput(
+                    slot="backdated-later",
+                    time=T0,
+                    source="replay",
+                    payload="second append with earlier event time",
+                ),
+            ),
+        )
+    )
+    second_head = store.active_generation().provenance_head
+
+    assert second_head == second.observation_records[0]
+    assert second_head != first_head
+    assert store.generations[first_generation].provenance_head == first_head
+    assert any(
+        link.relation == "previous" and link.target == first_head
+        for link in store.provenance[second_head].links
+    )
