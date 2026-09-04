@@ -12,12 +12,14 @@ from relaylm.v2_semantics import (
     TransactionRequest,
     apply,
     literal,
+    ref,
     semantic_id,
     var,
 )
 
 
 T0 = "2026-09-03T12:00:00+00:00"
+T1 = "2026-09-03T12:01:00+00:00"
 
 
 def test_durable_snapshot_restores_canonical_state_and_rebuilds_views():
@@ -97,3 +99,93 @@ def test_durable_snapshot_rejects_tampered_semantic_hash():
 
     with pytest.raises(InvalidTransactionError, match="semantic snapshot hash mismatch"):
         SemanticTransactionStore.from_snapshot(tampered)
+
+
+def test_accepted_refs_close_into_anchor_registry_without_side_metadata():
+    store = SemanticTransactionStore()
+    meaning = apply(
+        "believes",
+        ref("E_alice"),
+        apply("location", ref("E_key"), literal("drawer")),
+    )
+
+    result = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            proposals=(Proposal(meaning),),
+        )
+    )
+
+    assert result.decisions[0].status == "accepted"
+    assert store.anchors == {"E_alice", "E_key"}
+    snapshot = store.canonical_snapshot()
+    rebuilt = SemanticTransactionStore.from_snapshot(snapshot)
+    assert rebuilt.anchors == store.anchors
+    assert rebuilt.canonical_snapshot() == snapshot
+
+
+def test_requested_anchor_cannot_create_unreferenced_canonical_identity():
+    store = SemanticTransactionStore()
+    meaning = apply("p", literal("x"))
+    nodes_before = dict(store.semantic_nodes)
+    anchors_before = set(store.anchors)
+
+    result = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            proposals=(Proposal(meaning, requested_anchors=("E_hidden",)),),
+        )
+    )
+
+    assert result.decisions[0].status == "rejected"
+    assert result.decisions[0].reason == "requested_anchor_not_referenced"
+    assert store.semantic_nodes == nodes_before
+    assert store.anchors == anchors_before
+    assert semantic_id(meaning) not in store.active_generation().active_roots
+
+
+def test_full_erasure_reports_unreconstructable_migration_and_survives_rebuild():
+    store = SemanticTransactionStore()
+    meaning = apply("fact", ref("E_subject"), literal("grounded"))
+    result = store.transact(
+        TransactionRequest(
+            base_generation=store.current_generation,
+            observations=(
+                ObservationInput(
+                    slot="e",
+                    time=T0,
+                    source="user",
+                    payload="grounded fact",
+                ),
+            ),
+            proposals=(Proposal(meaning, observed_support_slots=("e",)),),
+        )
+    )
+    evidence_id = result.observation_records[0]
+    root_id = result.decisions[0].semantic_id
+
+    before = store.migrate_generation(
+        store.current_generation,
+        native_symbols=frozenset({"fact"}),
+    )
+    assert before.ok
+    assert before.missing_symbols == ()
+    assert before.missing_provenance == ()
+
+    store.delete_payload(evidence_id, time=T1, full_erasure=True)
+
+    assert root_id in store.active_generation().active_roots
+    assert evidence_id not in store.provenance
+    after = store.migrate_generation(
+        store.current_generation,
+        native_symbols=frozenset({"fact"}),
+    )
+    assert not after.ok
+    assert after.missing_symbols == ()
+    assert after.missing_provenance == (evidence_id,)
+
+    rebuilt = SemanticTransactionStore.from_snapshot(store.canonical_snapshot())
+    assert rebuilt.migrate_generation(
+        rebuilt.current_generation,
+        native_symbols=frozenset({"fact"}),
+    ) == after
