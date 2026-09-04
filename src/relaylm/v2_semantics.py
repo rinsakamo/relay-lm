@@ -601,11 +601,6 @@ class SemanticTransactionStore:
         except (TypeError, ValueError) as exc:
             return ProposalDecision("rejected", f"invalid_semantics:{exc}")
 
-        referenced_anchors = _anchors_in_expr(proposal.expr)
-        requested_anchors = frozenset(proposal.requested_anchors)
-        if not requested_anchors.issubset(referenced_anchors):
-            return ProposalDecision("rejected", "requested_anchor_not_referenced")
-
         for slot in proposal.observed_support_slots:
             if slot not in observation_records:
                 return ProposalDecision("rejected", "missing_observed_support_slot")
@@ -635,7 +630,7 @@ class SemanticTransactionStore:
                 return ProposalDecision("rejected", "outcome_requires_observed_support")
 
         for root_id in proposal.deactivate_roots:
-            if root_id not in parent_roots(self.active_generation()):
+            if root_id not in self.active_generation().active_roots:
                 return ProposalDecision("rejected", "deactivate_root_not_active")
         for revised in proposal.revision_of:
             if revised not in self.semantic_nodes:
@@ -1151,13 +1146,6 @@ class SemanticTransactionStore:
         if current.anchor_root != _digest(["anchors", tuple(sorted(store.anchors))]):
             raise InvalidTransactionError("current anchor root mismatch")
 
-        erasures = {
-            link.target[5:]
-            for record in store.provenance.values()
-            for link in record.links
-            if link.relation == "erases"
-            and link.target.startswith("prov:")
-        }
         for generation_id, generation in store.generations.items():
             if generation_id in store.retired_generations:
                 continue
@@ -1172,10 +1160,17 @@ class SemanticTransactionStore:
                 raise InvalidTransactionError(
                     "retained generation has missing provenance"
                 )
-            _present, missing = store._provenance_lineage(
+            present, missing = store._provenance_lineage(
                 generation.provenance_head
             )
-            if not missing.issubset(erasures):
+            lineage_erasures = {
+                link.target[5:]
+                for record_id in present
+                for link in store.provenance[record_id].links
+                if link.relation == "erases"
+                and link.target.startswith("prov:")
+            }
+            if not missing.issubset(lineage_erasures):
                 raise InvalidTransactionError(
                     "retained generation has unexplained provenance gap"
                 )
@@ -1192,7 +1187,3 @@ class SemanticTransactionStore:
             symbol: tuple(sorted(node_ids))
             for symbol, node_ids in sorted(index.items())
         }
-
-
-def parent_roots(generation: Generation) -> tuple[str, ...]:
-    return generation.active_roots
