@@ -74,6 +74,14 @@ def base_correction_store():
     return store, old, semantic_id(old)
 
 
+def transfer_spec() -> InterventionSpec:
+    return InterventionSpec(
+        "cross-task-project-eligibility",
+        frozenset({"allow_cross_task", "projected_roots"}),
+        frozenset({"allow_cross_task", "projected_roots"}),
+    )
+
+
 def test_d1_projection_eligibility_ablation_changes_only_declared_scope():
     base, local_id, reusable_id = base_transfer_store()
     blocked = clone(base)
@@ -104,24 +112,51 @@ def test_d1_projection_eligibility_ablation_changes_only_declared_scope():
         projection_result=reusable_projection,
         policy_id="transfer-projection",
     )
-    diff = assert_clean_intervention(
-        left,
-        right,
-        spec=InterventionSpec(
-            "cross-task-project-eligibility",
-            frozenset({"projection_eligibility", "projected_roots"}),
-        ),
-    )
+    diff = assert_clean_intervention(left, right, spec=transfer_spec())
 
-    assert diff.all_differences == (
-        "projection_eligibility",
-        "projected_roots",
-    )
+    assert diff.all_differences == ("allow_cross_task", "projected_roots")
     assert blocked.canonical_snapshot() == reusable.canonical_snapshot()
     assert tuple(sorted(blocked.provenance)) == tuple(sorted(reusable.provenance))
+    assert left.projection_local_roots == right.projection_local_roots
+    assert left.cross_task_candidates == right.cross_task_candidates
     assert reusable_id in blocked.active_generation().active_roots
     assert reusable_id not in blocked_projection.projected_roots
     assert reusable_id in reusable_projection.projected_roots
+
+
+def test_d1_candidate_set_change_is_detected_as_hidden_intervention():
+    base, local_id, reusable_id = base_transfer_store()
+    extra = apply("source_structure", literal("different-rule"))
+    transact(base, proposals=(Proposal(extra),))
+    extra_id = semantic_id(extra)
+    left_store = clone(base)
+    right_store = clone(base)
+
+    left_policy = ProjectionPolicy(
+        local_roots=(local_id,),
+        cross_task_roots=(reusable_id,),
+        allow_cross_task=False,
+    )
+    right_policy = ProjectionPolicy(
+        local_roots=(local_id,),
+        cross_task_roots=(extra_id,),
+        allow_cross_task=True,
+    )
+    left = snapshot_arm(
+        left_store,
+        projection_policy=left_policy,
+        projection_result=project_scope(left_store, left_policy),
+    )
+    right = snapshot_arm(
+        right_store,
+        projection_policy=right_policy,
+        projection_result=project_scope(right_store, right_policy),
+    )
+
+    diff = compare_arms(left, right, spec=transfer_spec())
+    assert "cross_task_candidates" in diff.unexpected_differences
+    with pytest.raises(InterventionError, match="invalid arm differences"):
+        assert_clean_intervention(left, right, spec=transfer_spec())
 
 
 def test_d2_revision_arms_receive_identical_correction_evidence():
@@ -179,7 +214,7 @@ def test_d3_allocator_policy_substitution_uses_one_operation_surface_and_ledger(
     )
     envelope = ResourceVector(
         calls=2,
-        latency_units=5,
+        latency_units=7,
         observation_units=2,
     )
 
@@ -198,7 +233,11 @@ def test_d3_allocator_policy_substitution_uses_one_operation_surface_and_ledger(
     adaptive_run = run_operation_plan(
         store,
         operations=operations,
-        policy=OperationPolicy("adaptive", ("meta_observe", "think")),
+        policy=OperationPolicy(
+            "adaptive",
+            ("meta_observe", "think"),
+            decision_cost=ResourceVector(latency_units=1),
+        ),
         ledger=adaptive_ledger,
         trace=adaptive_trace,
     )
@@ -208,6 +247,7 @@ def test_d3_allocator_policy_substitution_uses_one_operation_surface_and_ledger(
     assert adaptive_run.selected_operations == ("meta_observe", "think")
     assert adaptive_run.resource_total.observation_units == 1
     assert adaptive_run.resource_total.latency_units > fixed_run.resource_total.latency_units
+    assert adaptive_ledger.entries[0].label == "policy:adaptive:decision"
 
     empty_projection_policy = ProjectionPolicy()
     empty_projection = project_scope(store, empty_projection_policy)
@@ -233,6 +273,7 @@ def test_d3_allocator_policy_substitution_uses_one_operation_surface_and_ledger(
         spec=InterventionSpec(
             "allocator-policy-substitution",
             frozenset({"policy_id", "resource_total", "measurement_events"}),
+            frozenset({"policy_id", "resource_total", "measurement_events"}),
         ),
     )
     assert diff.clean
@@ -240,7 +281,11 @@ def test_d3_allocator_policy_substitution_uses_one_operation_surface_and_ledger(
 
 def test_d3_oracle_privilege_and_resource_limits_are_explicit():
     store = SemanticTransactionStore()
-    operation = Operation("oracle_hint", ResourceVector(observation_units=1), privileged=True)
+    operation = Operation(
+        "oracle_hint",
+        ResourceVector(observation_units=1),
+        privileged=True,
+    )
     policy = OperationPolicy("oracle", ("oracle_hint",), privileged=True)
 
     with pytest.raises(InterventionError, match="privileged policy"):
@@ -383,10 +428,7 @@ def test_d7_arm_diff_rejects_hidden_evidence_contamination():
     )
     left_projection = project_scope(clean_left, left_policy)
     right_projection = project_scope(clean_right, right_policy)
-    clean_spec = InterventionSpec(
-        "projection-only",
-        frozenset({"projection_eligibility", "projected_roots"}),
-    )
+    clean_spec = transfer_spec()
     assert assert_clean_intervention(
         snapshot_arm(
             clean_left,
@@ -425,12 +467,41 @@ def test_d7_arm_diff_rejects_hidden_evidence_contamination():
     diff = compare_arms(clean_snapshot, contaminated_snapshot, spec=clean_spec)
     assert "canonical_digest" in diff.unexpected_differences
     assert "provenance_ids" in diff.unexpected_differences
-    with pytest.raises(InterventionError, match="undeclared arm differences"):
+    with pytest.raises(InterventionError, match="invalid arm differences"):
         assert_clean_intervention(
             clean_snapshot,
             contaminated_snapshot,
             spec=clean_spec,
         )
+
+
+def test_arm_diff_rejects_a_noop_when_difference_is_required():
+    base, local_id, reusable_id = base_transfer_store()
+    left_store = clone(base)
+    right_store = clone(base)
+    policy = ProjectionPolicy(
+        local_roots=(local_id,),
+        cross_task_roots=(reusable_id,),
+        allow_cross_task=False,
+    )
+    left = snapshot_arm(
+        left_store,
+        projection_policy=policy,
+        projection_result=project_scope(left_store, policy),
+    )
+    right = snapshot_arm(
+        right_store,
+        projection_policy=policy,
+        projection_result=project_scope(right_store, policy),
+    )
+
+    diff = compare_arms(left, right, spec=transfer_spec())
+    assert diff.missing_required_differences == (
+        "allow_cross_task",
+        "projected_roots",
+    )
+    with pytest.raises(InterventionError, match="missing_required"):
+        assert_clean_intervention(left, right, spec=transfer_spec())
 
 
 def test_projection_rejects_endogenous_trace_as_evidence_packet():
