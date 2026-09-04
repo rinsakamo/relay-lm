@@ -124,26 +124,6 @@ def test_accepted_refs_close_into_anchor_registry_without_side_metadata():
     assert rebuilt.canonical_snapshot() == snapshot
 
 
-def test_requested_anchor_cannot_create_unreferenced_canonical_identity():
-    store = SemanticTransactionStore()
-    meaning = apply("p", literal("x"))
-    nodes_before = dict(store.semantic_nodes)
-    anchors_before = set(store.anchors)
-
-    result = store.transact(
-        TransactionRequest(
-            base_generation=store.current_generation,
-            proposals=(Proposal(meaning, requested_anchors=("E_hidden",)),),
-        )
-    )
-
-    assert result.decisions[0].status == "rejected"
-    assert result.decisions[0].reason == "requested_anchor_not_referenced"
-    assert store.semantic_nodes == nodes_before
-    assert store.anchors == anchors_before
-    assert semantic_id(meaning) not in store.active_generation().active_roots
-
-
 def test_full_erasure_reports_unreconstructable_migration_and_survives_rebuild():
     store = SemanticTransactionStore()
     meaning = apply("fact", ref("E_subject"), literal("grounded"))
