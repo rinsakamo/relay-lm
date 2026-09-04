@@ -127,6 +127,8 @@ class FakeClient:
         content = self.responses.pop(0)
         if content == "__FAIL__":
             raise StructureProposalError("synthetic provider failure")
+        if content == "__CRASH__":
+            raise RuntimeError("synthetic provider client crash")
         return ExperimentCompletion(
             content=content,
             input_tokens=11,
@@ -291,6 +293,40 @@ def test_r1_host_rechecks_full_physical_binding_before_every_model_call(tmp_path
     assert state_payload["status"] == "INCOMPLETE"
 
 
+def test_r1_host_live_binding_probe_crash_is_terminal_after_manifest_creation(tmp_path: Path):
+    family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
+    stable = _live_binding(state)
+    calls = 0
+
+    def probe() -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return stable
+        raise RuntimeError("synthetic physical probe crash")
+
+    client = FakeClient(responses)
+    root = tmp_path / "probe-crash"
+    with pytest.raises(R1HostError, match="physical binding probe failure"):
+        run_r1_host_smoke(
+            artifact_root=root,
+            identity=_identity(state),
+            repository_root=repository_root,
+            live_binding_probe=probe,
+            client=client,
+            family=family,
+            step_index=0,
+            examples_visible=0,
+        )
+
+    assert client.calls == []
+    state_payload = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
+    assert state_payload["status"] == "INCOMPLETE"
+    evidence = (root / "request-evidence.jsonl").read_text(encoding="utf-8")
+    assert "physical_binding_probe_failure" in evidence
+
+
 def test_r1_host_provider_failure_is_terminal_and_never_retried_with_changed_settings(tmp_path: Path):
     family, responses = _responses()
     repository_root, state = _git_repo(tmp_path / "repo")
@@ -315,6 +351,32 @@ def test_r1_host_provider_failure_is_terminal_and_never_retried_with_changed_set
     assert state_payload["status"] == "INCOMPLETE"
     evidence = (root / "request-evidence.jsonl").read_text(encoding="utf-8")
     assert "provider_failure" in evidence
+
+
+def test_r1_host_unexpected_provider_client_crash_is_terminal(tmp_path: Path):
+    family, responses = _responses()
+    repository_root, state = _git_repo(tmp_path / "repo")
+    responses[1] = "__CRASH__"
+    client = FakeClient(responses)
+    root = tmp_path / "provider-crash"
+
+    with pytest.raises(R1HostError, match="provider client failure"):
+        run_r1_host_smoke(
+            artifact_root=root,
+            identity=_identity(state),
+            repository_root=repository_root,
+            live_binding_probe=lambda: _live_binding(state),
+            client=client,
+            family=family,
+            step_index=0,
+            examples_visible=0,
+        )
+
+    assert len(client.calls) == 2
+    state_payload = json.loads((root / "run-state.json").read_text(encoding="utf-8"))
+    assert state_payload["status"] == "INCOMPLETE"
+    evidence = (root / "request-evidence.jsonl").read_text(encoding="utf-8")
+    assert "provider_client_failure" in evidence
 
 
 def test_r1_host_records_non_authoritative_raw_outputs_without_promoting_a_transfer_claim(tmp_path: Path):
