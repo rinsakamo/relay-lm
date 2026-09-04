@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import subprocess
 
 from relaylm.v2_transfer_actual_model import (
     ExperimentClient,
@@ -88,6 +89,34 @@ def _mapping(value: object, label: str) -> Mapping[str, object]:
     if not isinstance(value, Mapping):
         raise R1HostError(f"{label} must be an object")
     return value
+
+
+def _git_output(repository_root: str | Path, *args: str) -> str:
+    root = Path(repository_root)
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise R1HostError(f"repository git attestation failed: {' '.join(args)}") from exc
+    return completed.stdout.strip()
+
+
+def probe_git_repository(repository_root: str | Path) -> RepositoryState:
+    """Observe current commit/tree/cleanliness directly from the supplied checkout."""
+
+    commit = _git_output(repository_root, "rev-parse", "--verify", "HEAD")
+    tree = _git_output(repository_root, "rev-parse", "HEAD^{tree}")
+    status = _git_output(
+        repository_root,
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=normal",
+    )
+    return RepositoryState(commit=commit, tree=tree, clean=not bool(status))
 
 
 def _validate_static_contract(identity: Mapping[str, object]) -> None:
@@ -278,7 +307,7 @@ def run_r1_host_smoke(
     *,
     artifact_root: str | Path,
     identity: Mapping[str, object],
-    repository_probe: Callable[[], RepositoryState],
+    repository_root: str | Path,
     live_binding_probe: Callable[[], Mapping[str, object]],
     client: ExperimentClient,
     family: TransferFamily,
@@ -287,19 +316,18 @@ def run_r1_host_smoke(
 ) -> R1HostResult:
     """Execute one fresh, non-citable R1 smoke under a frozen physical identity.
 
-    This function owns orchestration and evidence durability only.  It does not
-    discover or invent host facts: the caller must provide live repository and
-    physical-binding probes.  Any drift or provider/protocol failure stops the
-    run; there is deliberately no automatic or semantic retry path.
+    The runner owns repository observation directly through Git.  Physical
+    model/runtime facts still come from a live host probe because there is no
+    provider-independent way to discover those facts.  Any drift or provider/
+    protocol failure stops the run; there is deliberately no automatic or
+    semantic retry path.
     """
 
     if not isinstance(identity, Mapping):
         raise R1HostError("frozen experiment identity must be an object")
     _validate_static_contract(identity)
 
-    observed_repository = repository_probe()
-    if not isinstance(observed_repository, RepositoryState):
-        raise R1HostError("repository probe must return RepositoryState")
+    observed_repository = probe_git_repository(repository_root)
     _validate_repository(identity, observed_repository)
 
     expected_binding = _expected_binding(identity)
