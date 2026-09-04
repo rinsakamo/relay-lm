@@ -1,15 +1,18 @@
 schema_version: 1
 id: relaylm2_transfer_experiment
 owner_issue: 2157
-summary: RelayLM 2.0 cross-task Structure transfer experiment with deterministic R0 integrity and bounded R1 actual-model substrate.
+summary: RelayLM 2.0 cross-task Structure transfer experiment with deterministic R0 integrity, bounded R1 actual-model substrate, and fail-closed physical host orchestration.
 canonical_surfaces:
 - docs/research/relaylm2-transfer-experiment.md
 implementation:
 - src/relaylm/v2_transfer_experiment.py
 - src/relaylm/v2_transfer_actual_model.py
+- tools/v2_transfer_r1_host.py
 tests:
 - tests/unit/test_v2_transfer_experiment.py
 - tests/unit/test_v2_transfer_actual_model.py
+- tests/unit/test_v2_transfer_r1_host.py
 depends_on:
 - relaylm2_intervention_harness
 - relaylm2_semantic_transaction
+- external_qualification
