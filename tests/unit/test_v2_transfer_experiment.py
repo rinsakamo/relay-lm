@@ -6,6 +6,8 @@ import pytest
 
 from relaylm.v2_interventions import (
     InterventionError,
+    ResourceLedger,
+    ResourceLimitError,
     ResourceVector,
     assert_clean_intervention,
     compare_arms,
@@ -141,7 +143,7 @@ def test_r0_shift_t1_t2_receive_identical_contradictory_evidence_identity():
     assert tuple(sorted(arms.t1.store.provenance)) == tuple(sorted(arms.t2.store.provenance))
 
 
-def test_r0_hidden_extra_model_work_is_detected_by_matched_arm_diff():
+def test_r0_hidden_extra_model_work_is_detected_and_ledgered():
     family = generate_transfer_family(seed=505, regime="shared")
     arms = prepare_r0_arms(family)
 
@@ -153,9 +155,16 @@ def test_r0_hidden_extra_model_work_is_detected_by_matched_arm_diff():
         spec=r0_transfer_spec(),
     ).clean
 
+    envelope = ResourceVector(calls=1, observation_units=1)
+    ledger = ResourceLedger(envelope)
+    ledger.spend("model-call", ResourceVector(calls=1))
+    ledger.spend("feedback-observation", ResourceVector(observation_units=1))
+    with pytest.raises(ResourceLimitError):
+        ledger.spend("hidden-extra-call", ResourceVector(calls=1))
+
     contaminated_t1 = snapshot_r0_arm(
         arms.t1,
-        resource_total=ResourceVector(calls=1, observation_units=1),
+        resource_total=ledger.total,
     )
     diff = compare_arms(clean_t0, contaminated_t1, spec=r0_transfer_spec())
     assert "resource_total" in diff.unexpected_differences
