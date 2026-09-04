@@ -27,6 +27,15 @@ class ProjectionPolicy:
     allow_cross_task: bool = False
     evidence_packet_ids: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        if len(set(self.local_roots)) != len(self.local_roots):
+            raise ValueError("local projection roots must be unique")
+        if len(set(self.cross_task_roots)) != len(self.cross_task_roots):
+            raise ValueError("cross-task projection roots must be unique")
+        overlap = set(self.local_roots) & set(self.cross_task_roots)
+        if overlap:
+            raise ValueError(f"local/cross-task roots overlap: {sorted(overlap)}")
+
     @property
     def eligible_roots(self) -> tuple[str, ...]:
         roots = set(self.local_roots)
@@ -86,6 +95,9 @@ class ResourceVector:
     def as_tuple(self) -> tuple[int, ...]:
         return tuple(getattr(self, item.name) for item in fields(self))
 
+    def is_zero(self) -> bool:
+        return all(value == 0 for value in self.as_tuple())
+
 
 @dataclass(frozen=True, slots=True)
 class ResourceSpend:
@@ -132,6 +144,7 @@ class Operation:
 class OperationPolicy:
     policy_id: str
     plan: tuple[str, ...]
+    decision_cost: ResourceVector = ResourceVector()
     privileged: bool = False
 
     def __post_init__(self) -> None:
@@ -165,7 +178,9 @@ class ArmSnapshot:
     canonical_digest: str
     active_roots: tuple[str, ...]
     provenance_ids: tuple[str, ...]
-    projection_eligibility: tuple[str, ...]
+    projection_local_roots: tuple[str, ...]
+    cross_task_candidates: tuple[str, ...]
+    allow_cross_task: bool
     projected_roots: tuple[str, ...]
     evidence_packet_ids: tuple[str, ...]
     policy_id: str
@@ -178,20 +193,28 @@ class ArmSnapshot:
 class InterventionSpec:
     name: str
     allowed_differences: frozenset[str]
+    required_differences: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if not self.name:
             raise ValueError("intervention name must not be empty")
+        undeclared_required = self.required_differences - self.allowed_differences
+        if undeclared_required:
+            raise ValueError(
+                "required differences must also be allowed: "
+                f"{sorted(undeclared_required)}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
 class ArmDiff:
     all_differences: tuple[str, ...]
     unexpected_differences: tuple[str, ...]
+    missing_required_differences: tuple[str, ...]
 
     @property
     def clean(self) -> bool:
-        return not self.unexpected_differences
+        return not self.unexpected_differences and not self.missing_required_differences
 
 
 def canonical_digest(store: SemanticTransactionStore) -> str:
@@ -294,6 +317,10 @@ def run_operation_plan(
     if policy.privileged and not allow_privileged:
         raise InterventionError("privileged policy is quarantined")
 
+    if not policy.decision_cost.is_zero():
+        ledger.spend(f"policy:{policy.policy_id}:decision", policy.decision_cost)
+        trace.record(f"policy:{policy.policy_id}:decision")
+
     for operation_name in policy.plan:
         operation = registry.get(operation_name)
         if operation is None:
@@ -329,7 +356,9 @@ def snapshot_arm(
         canonical_digest=canonical_digest(store),
         active_roots=tuple(store.active_generation().active_roots),
         provenance_ids=tuple(sorted(store.provenance)),
-        projection_eligibility=projection_policy.eligible_roots,
+        projection_local_roots=tuple(sorted(projection_policy.local_roots)),
+        cross_task_candidates=tuple(sorted(projection_policy.cross_task_roots)),
+        allow_cross_task=projection_policy.allow_cross_task,
         projected_roots=projection_result.projected_roots,
         evidence_packet_ids=projection_result.evidence_packet_ids,
         policy_id=policy_id,
@@ -349,7 +378,9 @@ def compare_arms(
         "canonical_digest",
         "active_roots",
         "provenance_ids",
-        "projection_eligibility",
+        "projection_local_roots",
+        "cross_task_candidates",
+        "allow_cross_task",
         "projected_roots",
         "evidence_packet_ids",
         "policy_id",
@@ -365,7 +396,10 @@ def compare_arms(
     unexpected = tuple(
         surface for surface in differences if surface not in spec.allowed_differences
     )
-    return ArmDiff(differences, unexpected)
+    missing_required = tuple(
+        sorted(spec.required_differences - set(differences))
+    )
+    return ArmDiff(differences, unexpected, missing_required)
 
 
 def assert_clean_intervention(
@@ -377,6 +411,8 @@ def assert_clean_intervention(
     diff = compare_arms(left, right, spec=spec)
     if not diff.clean:
         raise InterventionError(
-            f"undeclared arm differences for {spec.name}: {diff.unexpected_differences}"
+            f"invalid arm differences for {spec.name}: "
+            f"unexpected={diff.unexpected_differences}, "
+            f"missing_required={diff.missing_required_differences}"
         )
     return diff
