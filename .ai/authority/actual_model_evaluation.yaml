@@ -53,6 +53,7 @@ implementation:
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
 - src/relaylm/actual_model_vllm_profiler.py
 - src/relaylm/actual_model_vllm_launch_preflight.py
+- src/relaylm/actual_model_vllm_listener_procfs.py
 - src/relaylm/actual_model_vllm_live_owner_preflight.py
 - src/relaylm/actual_model_vllm_qualification_launcher.py
 - src/relaylm/actual_model_host.py
@@ -120,6 +121,7 @@ tests:
 - tests/unit/test_actual_model_vllm_profiler.py
 - tests/unit/test_actual_model_vllm_kv_allocation_geometry.py
 - tests/unit/test_actual_model_vllm_launch_preflight.py
+- tests/unit/test_actual_model_vllm_listener_procfs.py
 - tests/unit/test_actual_model_vllm_live_owner_preflight.py
 - tests/unit/test_actual_model_vllm_qualification_launcher.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
