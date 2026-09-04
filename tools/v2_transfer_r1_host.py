@@ -91,6 +91,13 @@ def _mapping(value: object, label: str) -> Mapping[str, object]:
     return value
 
 
+def _json_object_copy(value: Mapping[str, object], label: str) -> dict[str, object]:
+    copied = json.loads(_canonical_json(dict(value)))
+    if not isinstance(copied, dict):
+        raise R1HostError(f"{label} must be an object")
+    return copied
+
+
 def _git_output(repository_root: str | Path, *args: str) -> str:
     root = Path(repository_root)
     try:
@@ -151,13 +158,32 @@ def _validate_repository(
         raise R1HostError("repository tree does not match frozen identity")
 
 
+def _validate_artifact_root_outside_repository(
+    *,
+    artifact_root: str | Path,
+    repository_root: str | Path,
+) -> None:
+    repository = Path(repository_root).resolve()
+    artifact = Path(artifact_root).resolve()
+    try:
+        artifact.relative_to(repository)
+    except ValueError:
+        return
+    raise R1HostError(
+        "artifact root must resolve outside the repository checkout"
+    )
+
+
 def _expected_binding(identity: Mapping[str, object]) -> dict[str, object]:
     missing = [name for name in _MATERIAL_BINDING_FIELDS if name not in identity]
     if missing:
         raise R1HostError(
             "physical binding is missing frozen fields: " + ", ".join(missing)
         )
-    return {name: identity[name] for name in _MATERIAL_BINDING_FIELDS}
+    return _json_object_copy(
+        {name: identity[name] for name in _MATERIAL_BINDING_FIELDS},
+        "physical binding",
+    )
 
 
 def _validate_live_binding(
@@ -226,7 +252,10 @@ class _BoundExperimentClient:
         self._client = client
         self._durable_run = durable_run
         self._live_binding_probe = live_binding_probe
-        self._expected_binding = dict(expected_binding)
+        self._expected_binding = _json_object_copy(
+            expected_binding,
+            "physical binding",
+        )
         self._question_id: str | None = None
 
     def bind_question(self, question_id: str) -> None:
@@ -324,21 +353,28 @@ def run_r1_host_smoke(
 ) -> R1HostResult:
     """Execute one fresh, non-citable R1 smoke under a frozen physical identity.
 
-    The runner owns repository observation directly through Git.  Physical
+    The runner owns repository observation directly through Git. Physical
     model/runtime facts still come from a live host probe because there is no
-    provider-independent way to discover those facts.  Any drift or provider/
+    provider-independent way to discover those facts. The supplied identity is
+    deep-snapshotted before any live probe is invoked, and generated run
+    artifacts must stay outside the clean checkout. Any drift or provider/
     protocol failure stops the run; there is deliberately no automatic or
     semantic retry path.
     """
 
     if not isinstance(identity, Mapping):
         raise R1HostError("frozen experiment identity must be an object")
-    _validate_static_contract(identity)
+    identity_snapshot = _json_object_copy(identity, "frozen experiment identity")
+    _validate_static_contract(identity_snapshot)
 
     observed_repository = probe_git_repository(repository_root)
-    _validate_repository(identity, observed_repository)
+    _validate_repository(identity_snapshot, observed_repository)
+    _validate_artifact_root_outside_repository(
+        artifact_root=artifact_root,
+        repository_root=repository_root,
+    )
 
-    expected_binding = _expected_binding(identity)
+    proposed_binding = _expected_binding(identity_snapshot)
     try:
         initial_live_binding = live_binding_probe()
     except Exception as exc:
@@ -346,11 +382,11 @@ def run_r1_host_smoke(
         raise R1HostError(f"physical binding probe failure during preflight: {error}") from exc
     if not isinstance(initial_live_binding, Mapping):
         raise R1HostError("physical binding drift: live probe did not return an object")
-    _validate_live_binding(expected_binding, initial_live_binding)
+    _validate_live_binding(proposed_binding, initial_live_binding)
 
     try:
         frozen_identity: FrozenExperimentIdentity = freeze_experiment_identity(
-            identity=identity,
+            identity=identity_snapshot,
             live_attestation=_mapping(
                 initial_live_binding["launch_admission"],
                 "live launch admission",
@@ -359,6 +395,7 @@ def run_r1_host_smoke(
     except ExternalQualificationError as exc:
         raise R1HostError(f"physical frozen identity is invalid: {exc}") from exc
 
+    expected_binding = _expected_binding(frozen_identity.to_mapping())
     questions = _questions(
         family,
         step_index=step_index,
