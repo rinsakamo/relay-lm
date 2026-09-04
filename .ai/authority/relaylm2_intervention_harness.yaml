@@ -8,3 +8,5 @@ implementation:
 - src/relaylm/v2_interventions.py
 tests:
 - tests/unit/test_v2_interventions.py
+depends_on:
+- relaylm2_semantic_transaction
