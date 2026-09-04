@@ -367,12 +367,21 @@ class SemanticTransactionStore:
         if payload is not None:
             payload_ref = _digest(["payload", payload])
             self.payloads[payload_ref] = payload
+
+        effective_links = list(links)
+        previous = self._latest_provenance_head()
+        if previous is not None:
+            effective_links.append(ProvenanceLink("previous", previous))
+        canonical_links = tuple(
+            sorted(effective_links, key=lambda link: (link.relation, link.target))
+        )
+
         record_id = self._provenance_record_id(
             origin=origin,
             time=time,
             source=source,
             payload_ref=payload_ref,
-            links=links,
+            links=canonical_links,
         )
         self.provenance.setdefault(
             record_id,
@@ -382,7 +391,7 @@ class SemanticTransactionStore:
                 time=time,
                 source=source,
                 payload_ref=payload_ref,
-                links=links,
+                links=canonical_links,
             ),
         )
         return record_id
@@ -390,10 +399,43 @@ class SemanticTransactionStore:
     def _latest_provenance_head(self) -> str | None:
         if not self.provenance:
             return None
-        return max(
-            self.provenance.values(),
-            key=lambda record: (record.time, record.id),
-        ).id
+        previous_targets = {
+            link.target
+            for record in self.provenance.values()
+            for link in record.links
+            if link.relation == "previous"
+        }
+        heads = set(self.provenance) - previous_targets
+        if len(heads) != 1:
+            raise InvalidTransactionError("provenance chain has ambiguous head")
+        return next(iter(heads))
+
+    def _provenance_lineage(
+        self,
+        head: str | None,
+    ) -> tuple[set[str], set[str]]:
+        present: set[str] = set()
+        missing: set[str] = set()
+        current = head
+        while current is not None:
+            if current in present:
+                raise InvalidTransactionError("provenance chain has a cycle")
+            record = self.provenance.get(current)
+            if record is None:
+                missing.add(current)
+                break
+            present.add(current)
+            previous = [
+                link.target
+                for link in record.links
+                if link.relation == "previous"
+            ]
+            if len(previous) > 1:
+                raise InvalidTransactionError(
+                    "provenance record has multiple previous links"
+                )
+            current = previous[0] if previous else None
+        return present, missing
 
     def _transaction_id(
         self,
@@ -505,7 +547,7 @@ class SemanticTransactionStore:
                 time=self._proposal_time(request, proposal_index),
                 source=f"semantic-transaction:{tx_id}",
                 payload=None,
-                links=tuple(sorted(links, key=lambda link: (link.relation, link.target))),
+                links=tuple(links),
             )
 
         self.anchors.update(accepted_anchors)
@@ -669,9 +711,13 @@ class SemanticTransactionStore:
                 missing_symbols,
             )
 
-        missing_provenance: set[str] = set()
+        lineage_ids, missing_provenance = self._provenance_lineage(
+            generation.provenance_head
+        )
         for root in generation.active_roots:
-            missing_provenance.update(self._missing_supports_for_root(root))
+            missing_provenance.update(
+                self._missing_supports_for_root(root, lineage_ids)
+            )
 
         return MigrationCheck(
             ok=not missing_symbols and not missing_provenance,
@@ -706,31 +752,48 @@ class SemanticTransactionStore:
         for arg in expr.args:
             self._find_missing_symbols(arg, native, defined, missing)
 
-    def _missing_supports_for_root(self, root_id: str) -> set[str]:
+    def _missing_supports_for_root(
+        self,
+        root_id: str,
+        allowed_record_ids: set[str],
+    ) -> set[str]:
         target = f"sem:{root_id}"
         producer_ids = [
             record.id
             for record in self.provenance.values()
-            if any(
+            if record.id in allowed_record_ids
+            and any(
                 link.relation == "produces" and link.target == target
                 for link in record.links
             )
         ]
+        if not producer_ids:
+            return {f"producer:{root_id}"}
+
         missing: set[str] = set()
         visited: set[str] = set()
         for producer_id in producer_ids:
-            self._collect_missing_supports(producer_id, visited, missing)
+            self._collect_missing_supports(
+                producer_id,
+                allowed_record_ids,
+                visited,
+                missing,
+            )
         return missing
 
     def _collect_missing_supports(
         self,
         record_id: str,
+        allowed_record_ids: set[str],
         visited: set[str],
         missing: set[str],
     ) -> None:
         if record_id in visited:
             return
         visited.add(record_id)
+        if record_id not in allowed_record_ids:
+            missing.add(record_id)
+            return
         record = self.provenance.get(record_id)
         if record is None:
             missing.add(record_id)
@@ -743,10 +806,18 @@ class SemanticTransactionStore:
                 if link.target.startswith("prov:")
                 else link.target
             )
-            if support_id not in self.provenance:
+            if (
+                support_id not in allowed_record_ids
+                or support_id not in self.provenance
+            ):
                 missing.add(support_id)
                 continue
-            self._collect_missing_supports(support_id, visited, missing)
+            self._collect_missing_supports(
+                support_id,
+                allowed_record_ids,
+                visited,
+                missing,
+            )
 
     def retire_generation(self, generation_id: str) -> None:
         if generation_id == self.current_generation:
@@ -792,7 +863,17 @@ class SemanticTransactionStore:
         if full_erasure:
             del self.provenance[record_id]
             for generation_id, generation in self.generations.items():
-                if generation.provenance_head == record_id:
+                lineage_ids, missing = self._provenance_lineage(
+                    generation.provenance_head
+                )
+                affected = record_id in missing
+                if not affected:
+                    affected = any(
+                        record_id
+                        in self._missing_supports_for_root(root, lineage_ids)
+                        for root in generation.active_roots
+                    )
+                if affected:
                     self.retired_generations.add(generation_id)
             relation = "erases"
         else:
@@ -976,6 +1057,13 @@ class SemanticTransactionStore:
                 )
             ):
                 raise InvalidTransactionError("invalid provenance snapshot entry")
+            previous_links = [
+                link for link in record.links if link.relation == "previous"
+            ]
+            if len(previous_links) > 1:
+                raise InvalidTransactionError(
+                    "provenance record has multiple previous links"
+                )
             expected_id = store._provenance_record_id(
                 origin=record.origin,
                 time=record.time,
@@ -1079,7 +1167,21 @@ class SemanticTransactionStore:
                 raise InvalidTransactionError(
                     "retained generation has missing provenance"
                 )
+            self_lineage = store._provenance_lineage(generation.provenance_head)
+            if self_lineage[1]:
+                erasures = {
+                    link.target[5:]
+                    for record in store.provenance.values()
+                    for link in record.links
+                    if link.relation == "erases"
+                    and link.target.startswith("prov:")
+                }
+                if not self_lineage[1].issubset(erasures):
+                    raise InvalidTransactionError(
+                        "retained generation has unexplained provenance gap"
+                    )
 
+        store._latest_provenance_head()
         return store
 
     def derived_symbol_index(self) -> dict[str, tuple[str, ...]]:
