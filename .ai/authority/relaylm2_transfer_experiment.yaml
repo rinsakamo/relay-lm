@@ -12,6 +12,7 @@ tests:
 - tests/unit/test_v2_transfer_experiment.py
 - tests/unit/test_v2_transfer_actual_model.py
 - tests/unit/test_v2_transfer_r1_host.py
+- tests/unit/test_v2_transfer_r1_host_hardening.py
 depends_on:
 - relaylm2_intervention_harness
 - relaylm2_semantic_transaction
