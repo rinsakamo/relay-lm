@@ -363,12 +363,13 @@ The R1 host runner reuses the existing `external_qualification` frozen-identity 
 
 Before the first model request it must:
 
-1. observe the local repository commit/tree and require a clean checkout;
-2. compare that observation with the frozen experiment identity;
-3. obtain a **live** physical binding covering model, artifact, tokenizer, template, backend, runtime, decoding, reasoning, structured-output mode, context capacity, hardware, and launch/admission facts;
-4. compare every material binding field with the proposed frozen identity;
-5. freeze the identity against the live launch/admission attestation;
-6. create a fresh empty durable artifact root, which writes `run-manifest.json` before any model request.
+1. deep-snapshot the proposed experiment identity before invoking any live probe, so caller mutation cannot alter the later frozen contract;
+2. observe the local repository commit/tree and require a clean checkout;
+3. require the fresh durable artifact root to resolve **outside** that checkout, so the runner cannot dirty its own frozen repository while generating evidence;
+4. obtain a **live** physical binding covering model, artifact, tokenizer, template, backend, runtime, decoding, reasoning, structured-output mode, context capacity, hardware, and launch/admission facts;
+5. compare every material binding field with the snapshotted proposed identity;
+6. freeze the identity against the live launch/admission attestation;
+7. derive the per-call expected physical binding from that frozen identity and create the fresh empty durable artifact root, which writes `run-manifest.json` before any model request.
 
 The host execution order is fixed:
 
@@ -379,7 +380,7 @@ source-learning
   -> T2
 ```
 
-One client is used across the four calls. The full physical binding is reacquired and compared immediately before every call. Binding drift fails closed before the request.
+One client is used across the four calls. The full physical binding is reacquired and compared immediately before every call. Binding drift fails closed before the request. The per-call expectation comes from the already frozen identity; later mutation of the caller's original identity object cannot change it.
 
 The physical probes are authority boundaries, not convenience inputs. A local execution wrapper must derive repository state from the current checkout and physical binding from the current loaded runtime/model/hardware. It must **not** satisfy a probe by copying values back out of the proposed manifest or a historical handoff.
 
