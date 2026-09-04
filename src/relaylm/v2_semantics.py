@@ -355,6 +355,7 @@ class SemanticTransactionStore:
     def _append_provenance(
         self,
         *,
+        previous_head: str | None,
         origin: Origin,
         time: str,
         source: str,
@@ -369,9 +370,8 @@ class SemanticTransactionStore:
             self.payloads[payload_ref] = payload
 
         effective_links = list(links)
-        previous = self._latest_provenance_head()
-        if previous is not None:
-            effective_links.append(ProvenanceLink("previous", previous))
+        if previous_head is not None:
+            effective_links.append(ProvenanceLink("previous", previous_head))
         canonical_links = tuple(
             sorted(effective_links, key=lambda link: (link.relation, link.target))
         )
@@ -395,20 +395,6 @@ class SemanticTransactionStore:
             ),
         )
         return record_id
-
-    def _latest_provenance_head(self) -> str | None:
-        if not self.provenance:
-            return None
-        previous_targets = {
-            link.target
-            for record in self.provenance.values()
-            for link in record.links
-            if link.relation == "previous"
-        }
-        heads = set(self.provenance) - previous_targets
-        if len(heads) != 1:
-            raise InvalidTransactionError("provenance chain has ambiguous head")
-        return next(iter(heads))
 
     def _provenance_lineage(
         self,
@@ -489,15 +475,20 @@ class SemanticTransactionStore:
                 raise InvalidTransactionError("anchor must not be empty")
 
         tx_id = self._transaction_id(request, policy)
+        parent_generation = self.active_generation()
+        pending_head = parent_generation.provenance_head
 
         observation_records: dict[str, str] = {}
         for obs in request.observations:
-            observation_records[obs.slot] = self._append_provenance(
+            record_id = self._append_provenance(
+                previous_head=pending_head,
                 origin="observed",
                 time=obs.time,
                 source=obs.source,
                 payload=obs.payload,
             )
+            observation_records[obs.slot] = record_id
+            pending_head = record_id
 
         staged: list[tuple[int, Proposal, ProposalDecision]] = []
         decisions: list[ProposalDecision] = []
@@ -516,7 +507,7 @@ class SemanticTransactionStore:
             staged.append((proposal_index, proposal, decision))
             decisions.append(decision)
 
-        active_roots = set(self.active_generation().active_roots)
+        active_roots = set(parent_generation.active_roots)
         accepted_anchors: set[str] = set()
         for _proposal_index, proposal, decision in staged:
             if decision.status != "accepted":
@@ -542,39 +533,42 @@ class SemanticTransactionStore:
             for revised in proposal.revision_of:
                 links.append(ProvenanceLink("revises", f"sem:{revised}"))
             links.append(ProvenanceLink("produces", f"sem:{root_id}"))
-            self._append_provenance(
+            record_id = self._append_provenance(
+                previous_head=pending_head,
                 origin="endogenous",
                 time=self._proposal_time(request, proposal_index),
                 source=f"semantic-transaction:{tx_id}",
                 payload=None,
                 links=tuple(links),
             )
+            pending_head = record_id
 
         self.anchors.update(accepted_anchors)
+
+        action_records: list[str] = []
+        for action_index, action in enumerate(request.actions):
+            record_id = self._append_provenance(
+                previous_head=pending_head,
+                origin="endogenous",
+                time=self._action_time(request, action_index),
+                source=f"action:{tx_id}",
+                payload=action.payload,
+                links=(ProvenanceLink("attempts", f"action:{action.name}"),),
+            )
+            action_records.append(record_id)
+            pending_head = record_id
 
         generation = self._make_generation(
             parent=request.base_generation,
             roots=active_roots,
             anchors=self.anchors,
-            provenance_head=self._latest_provenance_head(),
-            target_cognition=self.active_generation().target_cognition,
-            horizon=self.active_generation().horizon,
+            provenance_head=pending_head,
+            target_cognition=parent_generation.target_cognition,
+            horizon=parent_generation.horizon,
             tx_id=tx_id,
         )
         self.generations[generation.generation_id] = generation
         self.current_generation = generation.generation_id
-
-        action_records: list[str] = []
-        for action_index, action in enumerate(request.actions):
-            action_records.append(
-                self._append_provenance(
-                    origin="endogenous",
-                    time=self._action_time(request, action_index),
-                    source=f"action:{tx_id}",
-                    payload=action.payload,
-                    links=(ProvenanceLink("attempts", f"action:{action.name}"),),
-                )
-            )
 
         return TransactionResult(
             generation_id=generation.generation_id,
@@ -641,7 +635,7 @@ class SemanticTransactionStore:
                 return ProposalDecision("rejected", "outcome_requires_observed_support")
 
         for root_id in proposal.deactivate_roots:
-            if root_id not in self.active_generation().active_roots:
+            if root_id not in parent_roots(self.active_generation()):
                 return ProposalDecision("rejected", "deactivate_root_not_active")
         for revised in proposal.revision_of:
             if revised not in self.semantic_nodes:
@@ -857,6 +851,11 @@ class SemanticTransactionStore:
             raise KeyError(record_id)
         if record.origin != "observed":
             raise InvalidTransactionError("only observed payloads are erasable evidence")
+
+        parent_id = self.current_generation
+        parent = self.active_generation()
+        pending_head = parent.provenance_head
+
         if record.payload_ref is not None:
             self.payloads.pop(record.payload_ref, None)
 
@@ -880,27 +879,26 @@ class SemanticTransactionStore:
             relation = "deletes_payload"
 
         tombstone = self._append_provenance(
+            previous_head=pending_head,
             origin="endogenous",
             time=time,
             source="governance",
             payload=None,
             links=(ProvenanceLink(relation, f"prov:{record_id}"),),
         )
-        if full_erasure and self.current_generation in self.retired_generations:
-            parent = self.current_generation
-            old = self.active_generation()
-            tx_id = _digest(["erasure-rebase", parent, tombstone])
-            generation = self._make_generation(
-                parent=parent,
-                roots=old.active_roots,
-                anchors=self.anchors,
-                provenance_head=self._latest_provenance_head(),
-                target_cognition=old.target_cognition,
-                horizon=old.horizon,
-                tx_id=tx_id,
-            )
-            self.generations[generation.generation_id] = generation
-            self.current_generation = generation.generation_id
+
+        tx_id = _digest(["evidence-governance", parent_id, tombstone])
+        generation = self._make_generation(
+            parent=parent_id,
+            roots=parent.active_roots,
+            anchors=self.anchors,
+            provenance_head=tombstone,
+            target_cognition=parent.target_cognition,
+            horizon=parent.horizon,
+            tx_id=tx_id,
+        )
+        self.generations[generation.generation_id] = generation
+        self.current_generation = generation.generation_id
         return tombstone
 
     def canonical_snapshot(self) -> bytes:
@@ -1153,6 +1151,13 @@ class SemanticTransactionStore:
         if current.anchor_root != _digest(["anchors", tuple(sorted(store.anchors))]):
             raise InvalidTransactionError("current anchor root mismatch")
 
+        erasures = {
+            link.target[5:]
+            for record in store.provenance.values()
+            for link in record.links
+            if link.relation == "erases"
+            and link.target.startswith("prov:")
+        }
         for generation_id, generation in store.generations.items():
             if generation_id in store.retired_generations:
                 continue
@@ -1167,21 +1172,14 @@ class SemanticTransactionStore:
                 raise InvalidTransactionError(
                     "retained generation has missing provenance"
                 )
-            self_lineage = store._provenance_lineage(generation.provenance_head)
-            if self_lineage[1]:
-                erasures = {
-                    link.target[5:]
-                    for record in store.provenance.values()
-                    for link in record.links
-                    if link.relation == "erases"
-                    and link.target.startswith("prov:")
-                }
-                if not self_lineage[1].issubset(erasures):
-                    raise InvalidTransactionError(
-                        "retained generation has unexplained provenance gap"
-                    )
+            _present, missing = store._provenance_lineage(
+                generation.provenance_head
+            )
+            if not missing.issubset(erasures):
+                raise InvalidTransactionError(
+                    "retained generation has unexplained provenance gap"
+                )
 
-        store._latest_provenance_head()
         return store
 
     def derived_symbol_index(self) -> dict[str, tuple[str, ...]]:
@@ -1194,3 +1192,7 @@ class SemanticTransactionStore:
             symbol: tuple(sorted(node_ids))
             for symbol, node_ids in sorted(index.items())
         }
+
+
+def parent_roots(generation: Generation) -> tuple[str, ...]:
+    return generation.active_roots
