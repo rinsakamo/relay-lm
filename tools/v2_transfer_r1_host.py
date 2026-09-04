@@ -232,6 +232,19 @@ class _BoundExperimentClient:
     def bind_question(self, question_id: str) -> None:
         self._question_id = question_id
 
+    def _stop_with_evidence(self, *, kind: str, error: str) -> None:
+        if self._question_id is None:
+            raise R1HostError("terminal failure has no durable R1 question")
+        self._durable_run.append_request_evidence(
+            question_id=self._question_id,
+            evidence={
+                "kind": kind,
+                "authority": "instrumentation_only",
+                "error": error,
+            },
+        )
+        self._durable_run.mark_stopped()
+
     def complete(self, messages: tuple[dict[str, str], ...]) -> ExperimentCompletion:
         if self._question_id is None:
             raise R1HostError("model call attempted without a durable R1 question")
@@ -241,30 +254,25 @@ class _BoundExperimentClient:
                 raise R1HostError("physical binding drift: live probe did not return an object")
             _validate_live_binding(self._expected_binding, observed)
         except R1HostError as exc:
-            self._durable_run.append_request_evidence(
-                question_id=self._question_id,
-                evidence={
-                    "kind": "physical_binding_drift",
-                    "authority": "instrumentation_only",
-                    "error": str(exc),
-                },
-            )
-            self._durable_run.mark_stopped()
+            self._stop_with_evidence(kind="physical_binding_drift", error=str(exc))
             raise
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            self._stop_with_evidence(
+                kind="physical_binding_probe_failure",
+                error=error,
+            )
+            raise R1HostError(f"physical binding probe failure: {error}") from exc
 
         try:
             completion = self._client.complete(messages)
         except StructureProposalError as exc:
-            self._durable_run.append_request_evidence(
-                question_id=self._question_id,
-                evidence={
-                    "kind": "provider_failure",
-                    "authority": "instrumentation_only",
-                    "error": str(exc),
-                },
-            )
-            self._durable_run.mark_stopped()
+            self._stop_with_evidence(kind="provider_failure", error=str(exc))
             raise R1HostError(f"provider failure: {exc}") from exc
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            self._stop_with_evidence(kind="provider_client_failure", error=error)
+            raise R1HostError(f"provider client failure: {error}") from exc
 
         self._durable_run.append_request_evidence(
             question_id=self._question_id,
@@ -331,7 +339,11 @@ def run_r1_host_smoke(
     _validate_repository(identity, observed_repository)
 
     expected_binding = _expected_binding(identity)
-    initial_live_binding = live_binding_probe()
+    try:
+        initial_live_binding = live_binding_probe()
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        raise R1HostError(f"physical binding probe failure during preflight: {error}") from exc
     if not isinstance(initial_live_binding, Mapping):
         raise R1HostError("physical binding drift: live probe did not return an object")
     _validate_live_binding(expected_binding, initial_live_binding)
