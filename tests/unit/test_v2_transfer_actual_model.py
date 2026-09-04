@@ -5,7 +5,6 @@ import json
 import httpx
 import pytest
 
-from relaylm.v2_semantics import SemanticTransactionStore
 from relaylm.v2_transfer_actual_model import (
     ExperimentCompletion,
     OpenAICompatibleExperimentClient,
@@ -52,13 +51,23 @@ def test_r1_source_learning_prompt_exposes_examples_but_not_evaluator_metadata()
     messages = build_source_learning_messages(family)
 
     assert tuple(message["role"] for message in messages) == ("system", "user")
+    payload = json.loads(messages[1]["content"])
+    assert payload == {
+        "modulus": family.source_rule.modulus,
+        "examples": [
+            {
+                "input": list(example.input_values),
+                "output": list(example.output_values),
+            }
+            for example in family.source_examples
+        ],
+    }
+
     encoded = json.dumps(messages, ensure_ascii=False).lower()
     assert family.regime not in encoded
     assert family.source_rule.fingerprint() not in encoded
     assert all(rule.fingerprint() not in encoded for rule in family.target_rules)
     assert "target" not in encoded
-    for example in family.source_examples:
-        assert list(example.input_values) in json.loads(messages[1]["content"])["examples"] or True
 
 
 def test_r1_model_learned_structure_is_endogenous_and_supported_by_observed_source_evidence():
@@ -96,7 +105,9 @@ def test_r1_model_learned_structure_is_endogenous_and_supported_by_observed_sour
 
 def test_r1_invalid_structure_response_fails_closed_without_structure_commit():
     family = generate_transfer_family(seed=32, regime="shared")
-    client = FakeClient('{"permutation":[0,1,2,3],"offsets":[0,0,0,0],"modulus":10,"truth":true}')
+    client = FakeClient(
+        '{"permutation":[0,1,2,3],"offsets":[0,0,0,0],"modulus":10,"truth":true}'
+    )
 
     with pytest.raises(StructureProposalError):
         run_source_learning(client, family)
@@ -213,7 +224,9 @@ def test_r1_openai_compatible_client_parses_exact_single_choice_and_usage():
         http_client=http_client,
         temperature=0,
     )
-    completion = client.complete(({"role": "system", "content": "x"}, {"role": "user", "content": "y"}))
+    completion = client.complete(
+        ({"role": "system", "content": "x"}, {"role": "user", "content": "y"})
+    )
 
     assert completion.content == "[1,2,3,4]"
     assert completion.input_tokens == 12
