@@ -180,7 +180,7 @@ def test_probe_receipt_is_content_addressed_and_rejects_tampering(tmp_path) -> N
     raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["receipt_id"] == result.receipt_id
 
-    raw["returncode"] = 9
+    raw["stdout_bytes"] += 1
     path.write_text(json.dumps(raw), encoding="utf-8")
     with pytest.raises(VLLMCapabilityProbeError, match="receipt id mismatch"):
         load_vllm_capability_probe_receipt(path)
