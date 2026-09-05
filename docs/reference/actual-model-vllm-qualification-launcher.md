@@ -74,6 +74,16 @@ When the same controller orchestration is reused across transactions, prefer a r
 
 Such orchestration must preserve the authority boundaries above: it may sequence and bind current inputs, but it must not duplicate another owner's validation logic or strengthen its predicate. The repository-owned primitives remain the acceptance authority.
 
+### Capability-surface acquisition is repository-owned
+
+Live vLLM capability discovery is part of that reusable orchestration. A controller must not hand-run `vllm serve --help=all` and then invent its own timeout, cleanup, exit classification, or help parsing rules.
+
+Use `probe_vllm_capability_surface(...)` from `relaylm.actual_model_vllm_capability_probe` for the exact prepared absolute vLLM callable. The capsule owns the direct command shape, process-local environment overlay, bounded probe-child cleanup, structured result classification, and `discover_vllm_supported_flags(...)` parsing. Its current contract is documented in `docs/reference/actual-model-vllm-capability-probe.md`.
+
+An operational convergence / LAB3 controller may choose an already-justified process-local environment candidate and ask the capsule to execute it. Candidate choice remains exploratory and non-citable; historical procedure hints may suggest a candidate but cannot authorize one. A later citable Qualification reacquires the current exact callable and environment authority and invokes the same repository-owned capsule again. It does not promote a LAB3 receipt into current physical authority.
+
+`provider launches = 0` during this capability probe does not imply that upstream vLLM performed zero CUDA/NVML/platform-device discovery. Foreign-resource isolation therefore remains required even though the probe does not start or reserve a serving listener.
+
 > **A qualification controller proves the repository contract; it does not get to invent a stricter one while proving it.**
 
 ## Required launch path
@@ -82,6 +92,9 @@ When RelayLM tooling starts a vLLM process for a citable actual-model or externa
 
 ```text
 fresh host facts
+  -> repository-owned capability probe
+       -> exact prepared `<vllm> serve --help=all`
+       -> supported flags
   -> prepare_vllm_qualification_launch(...)
        -> validate direct `vllm serve <model>` topology
        -> negotiate_gpu_memory_utilization(...)
@@ -119,7 +132,7 @@ fixed scientific condition
        -> semantic execution
 ```
 
-The convergence transaction may use the same repository-owned preparation, negotiation, launch, readiness, capacity, ownership, and cleanup primitives repeatedly. Multiple mechanical attempts are allowed **inside that convergence transaction** when each attempt is a deliberate correction grounded in an observable previous failure. Blind Cartesian sweeps, retry-until-semantic-PASS, and unbounded parameter search remain prohibited. Once one complete owned readiness + capacity recipe succeeds, convergence stops; do not continue trying alternatives to optimize throughput, headroom, or convenience.
+The convergence transaction may use the same repository-owned preparation, negotiation, launch, readiness, capacity, ownership, cleanup, and capability-probe primitives repeatedly. Multiple mechanical attempts are allowed **inside that convergence transaction** when each attempt is a deliberate correction grounded in an observable previous failure. Blind Cartesian sweeps, retry-until-semantic-PASS, and unbounded parameter search remain prohibited. Once one complete owned readiness + capacity recipe succeeds, convergence stops; do not continue trying alternatives to optimize throughput, headroom, or convenience.
 
 The convergence transaction must keep the qualification-significant scientific condition fixed. It must not vary or tune:
 
