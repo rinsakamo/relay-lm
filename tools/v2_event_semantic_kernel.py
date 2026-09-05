@@ -300,22 +300,53 @@ class EventSemanticKernel:
             content=None,
             redacted=True,
         )
+
+        current = self.cells()
+        scrubbed_current = self._scrub_cells_for_deleted_occurrence(
+            current, occurrence_id
+        )
         writes: dict[str, Cell | None] = {}
-        for key, cell in self.cells().items():
+        for key in set(current) | set(scrubbed_current):
+            before = current.get(key)
+            after = scrubbed_current.get(key)
+            if before != after:
+                writes[key] = after
+        result = self.settle(self.proposal(writes))
+
+        # Privacy erasure is allowed to redact content-bearing historical
+        # snapshots. Preserve lineage identities/parents while removing the
+        # deleted occurrence as a recoverable semantic source.
+        for head_id, head in tuple(self.heads.items()):
+            if head_id == self.current_head:
+                continue
+            scrubbed = self._scrub_cells_for_deleted_occurrence(
+                dict(head.cells), occurrence_id
+            )
+            self.heads[head_id] = replace(head, cells=tuple(sorted(scrubbed.items())))
+        return result
+
+    @staticmethod
+    def _scrub_cells_for_deleted_occurrence(
+        cells: dict[str, Cell], occurrence_id: str
+    ) -> dict[str, Cell]:
+        scrubbed = dict(cells)
+        for key, cell in tuple(cells.items()):
             if occurrence_id in cell.derived_from:
-                writes[key] = None
-            elif occurrence_id in cell.supports:
-                remaining = frozenset(s for s in cell.supports if s != occurrence_id)
-                if remaining:
-                    writes[key] = replace(cell, supports=remaining)
-                else:
-                    writes[key] = replace(
-                        cell,
-                        value=None,
-                        supports=frozenset(),
-                        supported=False,
-                    )
-        return self.settle(self.proposal(writes))
+                scrubbed.pop(key, None)
+                continue
+            if occurrence_id not in cell.supports:
+                continue
+            remaining = frozenset(s for s in cell.supports if s != occurrence_id)
+            if remaining:
+                scrubbed[key] = replace(cell, supports=remaining)
+            else:
+                scrubbed[key] = replace(
+                    cell,
+                    value=None,
+                    supports=frozenset(),
+                    supported=False,
+                )
+        return scrubbed
 
     def hot_projection(self) -> dict[str, object]:
         return {
