@@ -253,9 +253,15 @@ def _write_json_exclusive(path: Path, value: Mapping[str, object]) -> None:
 
 
 def _append_jsonl(path: Path, value: Mapping[str, object]) -> None:
+    record = dict(value)
+    envelope_keys = {"run_id", "identity_fingerprint", "question_id", "order"}
+    if "evidence" not in record and "authority" in record:
+        envelope = {key: record.pop(key) for key in list(record) if key in envelope_keys}
+        envelope["evidence"] = record
+        record = envelope
     try:
         with path.open("a", encoding="utf-8", newline="\n") as handle:
-            handle.write(_canonical_json(dict(value)))
+            handle.write(_canonical_json(record))
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
