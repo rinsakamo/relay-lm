@@ -75,11 +75,13 @@ class Factory:
 
 def test_probe_rejects_noncanonical_command_shape() -> None:
     with pytest.raises(VLLMCapabilityProbeError, match="exactly"):
-        probe_vllm_capability_surface(("vllm", "--help=all"))
+        probe_vllm_capability_surface(("/runtime/bin/vllm", "--help=all"))
+    with pytest.raises(VLLMCapabilityProbeError, match="absolute"):
+        probe_vllm_capability_surface(("vllm", "serve", "--help=all"))
     with pytest.raises(VLLMCapabilityProbeError, match="basename"):
-        probe_vllm_capability_surface(("python", "serve", "--help=all"))
+        probe_vllm_capability_surface(("/runtime/bin/python", "serve", "--help=all"))
     with pytest.raises(VLLMCapabilityProbeError, match="exactly"):
-        probe_vllm_capability_surface(("vllm", "serve", "--help"))
+        probe_vllm_capability_surface(("/runtime/bin/vllm", "serve", "--help"))
 
 
 def test_probe_runs_directly_with_explicit_process_local_env_only() -> None:
@@ -202,6 +204,16 @@ def test_probe_receipt_is_content_addressed_and_rejects_tampering(tmp_path) -> N
     raw["stdout_bytes"] += 1
     path.write_text(json.dumps(raw), encoding="utf-8")
     with pytest.raises(VLLMCapabilityProbeError, match="receipt id mismatch"):
+        load_vllm_capability_probe_receipt(path)
+
+
+def test_probe_receipt_requires_content_address(tmp_path) -> None:
+    result = probe_vllm_capability_surface(COMMAND, popen_factory=Factory(FakeProcess()))
+    path = write_vllm_capability_probe_receipt(result, artifact_root=tmp_path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("receipt_id")
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(VLLMCapabilityProbeError, match="receipt id is required"):
         load_vllm_capability_probe_receipt(path)
 
 
