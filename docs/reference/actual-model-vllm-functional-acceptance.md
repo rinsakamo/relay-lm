@@ -2,6 +2,32 @@
 
 Status: launch/runtime capability is owned by completed #1959 authority; current Stage R execution/evidence is owned by #1386. Pre-final release routing requires one current citable same-launch-class memory reference under the heterogeneous shared-pool geometry contract, followed only after `REFERENCE_READY` by a fresh final Core semantic qualification owner. Numeric Cognitive Budget selection remains #1388 authority and blocked until that later final qualification PASS.
 
+## Reference production precedes fixed-window Stage R
+
+The citable `VLLMTokenCapacityReference` producer and the fixed-window Stage R consumer are separate authority phases.
+
+A zero-semantic launch-capability/reference-acquisition transaction does **not** select or require the later Stage R execution token window. Its job is to establish one successful same-launch-class physical reference containing the stable launch identity, conservative non-KV envelope, explicit reference KV bytes, attested KV token capacity, and current heterogeneous shared-pool allocation geometry. The profiler/final pair may use only the current repository-authorized capability-profiling / capacity-measurement representation needed to observe that launch class; it must not invent a semantic target window merely to satisfy Stage R.
+
+Only after a compatible citable reference exists does a bounded semantic Stage R owner select one legal experiment token window. That caller-supplied target is then converted through `VLLMTokenCapacityReference` into conservative physical KV demand and combined with fresh host free-memory evidence for final admission.
+
+Therefore the fixed-window rules in this document — including the requirement to stop when no legal target window is selected — apply to **Stage R semantic consumption**, not to the prerequisite zero-semantic token-capacity reference producer.
+
+This ordering is intentional:
+
+```text
+launch-capability/reference acquisition
+  -> successful profiler/final capacity observation
+  -> citable same-launch-class VLLMTokenCapacityReference
+  -> bounded evaluation owner selects legal Stage R experiment window
+  -> reference converts selected window to conservative KV demand
+  -> fresh host admission
+  -> fixed-window Stage R capacity + semantic execution
+  -> final semantic PASS
+  -> #1388 release calibration/default selection
+```
+
+The reference is a physical ruler, not a Cognitive Budget. Producing it neither chooses a release default nor unblocks #1388. Conversely, #1388 release-default ownership must not be made a prerequisite for producing the reference that the preceding semantic qualification requires.
+
 Stage R exists first to answer a product question:
 
 > Does the exact current two-pass RelayLM path work end-to-end with a real model?
@@ -10,7 +36,7 @@ Capacity, token usage, latency and KV observations support that question. Transi
 
 ## Functional acceptance identity
 
-Functional acceptance uses:
+For fixed-window semantic Stage R, functional acceptance uses:
 
 - the current canonical Stage R semantic plan;
 - one exact target/runtime/runner launch class;
@@ -32,7 +58,7 @@ The canonical vLLM runtime is the runtime bound by the frozen target/runtime pro
 
 The execution token window is **not** selected from the current free-VRAM ratio and is **not** automatically the largest window the host can fit. #1388 owns release Cognitive Budget selection. A bounded comparison/evaluation owner may bind an explicit experiment window where current authority permits that use, but must not silently promote it to a release default.
 
-If current authority supplies no legal target window, stop on that authority gap. Do not replace it with `--max-model-len auto` merely to consume available VRAM.
+When entering fixed-window semantic Stage R, if current authority supplies no legal target window, stop on that authority gap. Do not replace it with `--max-model-len auto` merely to consume available VRAM. This rule does not apply to the preceding zero-semantic reference-acquisition phase described above.
 
 ## Token-capacity-based physical admission
 
@@ -145,6 +171,8 @@ The existing profiler parser remains valid for **launch-capability acquisition**
 
 `python -m relaylm.actual_model_vllm_profiler --log <profiler-log>` still parses the pinned runtime's unambiguous “fully utilize GPU memory” KV recommendation for that capability transaction. The launch-class reference must additionally bind the exact shared-pool block byte cost and conservative heterogeneous allocation-demand terms from the pinned runtime/configuration; the recommendation parser alone does not manufacture or guess that geometry.
 
+This capability/reference transaction is intentionally independent of a later Stage R target window. It may use the current canonical profiling/capacity-measurement representation to attest the launch class, but it must not borrow a Stage R template window, a historical FastCal recommendation, or transient free-VRAM maximization as semantic-window authority.
+
 Ordinary Stage R does not repeat that maximize-free-VRAM profiler merely because desktop/WSL/driver VRAM occupancy changed.
 
 Historical #1959 evidence remains immutable under its historical launch contract. #2033 changes how later Stage R consumes a qualified launch class; it does not rewrite the historical PASS.
@@ -208,7 +236,7 @@ This fixture exists to detect durability/epistemic-strength regression after mod
 
 Use one clean exact RelayLM checkout and an isolated environment for the canonical vLLM source runtime. Do not downgrade or otherwise mutate the user's global vLLM installation merely to satisfy the evidence identity.
 
-Before launch:
+For fixed-window semantic Stage R, before launch:
 
 1. bind the current legal target token window;
 2. bind one citable same-launch-class reference with exact shared-pool block bytes and conservative heterogeneous allocation-demand terms;
@@ -217,7 +245,9 @@ Before launch:
 5. fail closed if the required envelope does not fit;
 6. launch the final runtime with `final_memory_args()`.
 
-After that runtime is serving, acquire current external capacity evidence with the canonical Stage R plan:
+The preceding reference-acquisition transaction follows its launch-capability producer contract instead; it does not execute steps 1–6 as Stage R and does not require a target token window.
+
+After that fixed-window Stage R runtime is serving, acquire current external capacity evidence with the canonical Stage R plan:
 
 ```text
 python -m relaylm.actual_model_host \
