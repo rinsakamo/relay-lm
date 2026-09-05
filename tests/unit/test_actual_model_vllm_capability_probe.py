@@ -30,30 +30,32 @@ class FakeProcess:
         stdout: str = HELP,
         stderr: str = "",
         returncode: int = 0,
-        timeout_once: bool = False,
+        timeout_calls: int = 0,
     ) -> None:
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
-        self.timeout_once = timeout_once
+        self.timeout_calls = timeout_calls
         self.communicate_calls = 0
         self.terminated = False
         self.killed = False
 
     def communicate(self, *, timeout: float):
         self.communicate_calls += 1
-        if self.timeout_once and self.communicate_calls == 1:
+        if self.communicate_calls <= self.timeout_calls:
             self.returncode = None
             raise subprocess.TimeoutExpired(COMMAND, timeout)
         return self.stdout, self.stderr
 
     def terminate(self) -> None:
         self.terminated = True
-        self.returncode = -15
+        if self.timeout_calls < 2:
+            self.returncode = -15
 
     def kill(self) -> None:
         self.killed = True
-        self.returncode = -9
+        if self.timeout_calls < 3:
+            self.returncode = -9
 
     def poll(self):
         return self.returncode
@@ -147,7 +149,7 @@ def test_probe_classifies_empty_help() -> None:
 
 
 def test_probe_timeout_terminates_only_probe_child() -> None:
-    process = FakeProcess(timeout_once=True)
+    process = FakeProcess(timeout_calls=1)
     result = probe_vllm_capability_surface(
         COMMAND,
         timeout_seconds=0.1,
@@ -161,6 +163,23 @@ def test_probe_timeout_terminates_only_probe_child() -> None:
     assert process.terminated is True
     assert process.killed is False
     assert process.communicate_calls == 2
+
+
+def test_probe_timeout_escalates_to_kill_and_still_returns_classification() -> None:
+    process = FakeProcess(timeout_calls=3)
+    result = probe_vllm_capability_surface(
+        COMMAND,
+        timeout_seconds=0.1,
+        cleanup_timeout_seconds=0.1,
+        popen_factory=Factory(process),
+    )
+
+    assert result.status == "TIMEOUT"
+    assert result.timed_out is True
+    assert result.cleanup_complete is False
+    assert process.terminated is True
+    assert process.killed is True
+    assert process.communicate_calls == 3
 
 
 def test_probe_classifies_spawn_error() -> None:
