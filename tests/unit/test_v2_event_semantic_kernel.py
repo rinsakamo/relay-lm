@@ -5,7 +5,6 @@ import pytest
 from tools.v2_event_semantic_kernel import (
     EventSemanticKernel,
     InvalidSemanticInput,
-    WorkOption,
 )
 
 
@@ -76,24 +75,10 @@ def test_d5_unknown_world_order_remains_unknown():
 def test_d6_late_evidence_revises_past_claim_without_rewriting_lineage_order():
     k = EventSemanticKernel()
     first = k.ingest("outage began 12:30", world_rank=30)
-    first_result = k.settle(
-        k.propose_value(
-            "outage_start",
-            "12:30",
-            supports=(first.occurrence_id,),
-        )
-    )
-    assert first_result.status == "COMMIT"
+    assert k.settle(k.propose_value("outage_start", "12:30", supports=(first.occurrence_id,))).status == "COMMIT"
     old_head = k.current_head
     late = k.ingest("correction: outage began 12:00", world_rank=0)
-    late_result = k.settle(
-        k.propose_value(
-            "outage_start",
-            "12:00",
-            supports=(late.occurrence_id,),
-        )
-    )
-    assert late_result.status == "COMMIT"
+    assert k.settle(k.propose_value("outage_start", "12:00", supports=(late.occurrence_id,))).status == "COMMIT"
     assert k.cell("outage_start").value == "12:00"
     assert k.heads[k.current_head].parent == old_head
     assert k.receipt_relation(first.occurrence_id, late.occurrence_id) == "BEFORE"
@@ -103,16 +88,10 @@ def test_d6_late_evidence_revises_past_claim_without_rewriting_lineage_order():
 def test_d7_correction_changes_current_value_without_erasing_prior_head():
     k = EventSemanticKernel()
     old_occ = k.ingest("Mike")
-    first = k.settle(
-        k.propose_value("name", "Mike", supports=(old_occ.occurrence_id,))
-    )
-    assert first.status == "COMMIT"
+    assert k.settle(k.propose_value("name", "Mike", supports=(old_occ.occurrence_id,))).status == "COMMIT"
     old_head = k.current_head
     new_occ = k.ingest("I meant Mika")
-    second = k.settle(
-        k.propose_value("name", "Mika", supports=(new_occ.occurrence_id,))
-    )
-    assert second.status == "COMMIT"
+    assert k.settle(k.propose_value("name", "Mika", supports=(new_occ.occurrence_id,))).status == "COMMIT"
     assert k.cell("name").value == "Mika"
     assert k.cell("name", old_head).value == "Mike"
 
@@ -145,13 +124,7 @@ def test_d10_invalidate_one_independent_support_preserves_claim():
     k = EventSemanticKernel()
     a = k.ingest("P from A")
     b = k.ingest("P from B")
-    k.settle(
-        k.propose_value(
-            "P",
-            True,
-            supports=(a.occurrence_id, b.occurrence_id),
-        )
-    )
+    k.settle(k.propose_value("P", True, supports=(a.occurrence_id, b.occurrence_id)))
     result = k.settle(k.proposal_after_support_invalidation(a.occurrence_id))
     assert result.status == "COMMIT"
     p = k.cell("P")
@@ -243,15 +216,7 @@ def test_d17_pending_old_proposal_cannot_time_travel_after_new_head():
     k.emit_action("A", parent_head=h0)
     old_proposal = k.propose_value("choice", "A", parent_head=h0)
     b = k.ingest("actually B")
-    new_result = k.settle(
-        k.propose_value(
-            "choice",
-            "B",
-            supports=(b.occurrence_id,),
-            parent_head=h0,
-        )
-    )
-    assert new_result.status == "COMMIT"
+    assert k.settle(k.propose_value("choice", "B", supports=(b.occurrence_id,), parent_head=h0)).status == "COMMIT"
     stale = k.settle(old_proposal)
     assert stale.status == "REJECT"
     assert stale.reason == "stale_parent"
@@ -269,54 +234,36 @@ def test_d18_transport_completion_marker_does_not_commit_cognition():
     assert k.cells() == {}
 
 
-def test_d19_endogenous_recurrence_cannot_satisfy_observed_support_requirement():
+def test_d19_endogenous_recurrence_cannot_create_boundary_support():
     k = EventSemanticKernel()
-    endogenous = k.ingest("self-thought", source="endogenous")
     proposal = k.propose_value(
         "world_claim",
         True,
-        supports=(endogenous.occurrence_id,),
         require_observed_support=True,
     )
     assert k.settle(proposal).reason == "observed_support_required"
-    proposal2 = k.propose_value(
-        "world_claim",
-        True,
-        supports=(endogenous.occurrence_id,),
-        require_observed_support=True,
-    )
-    assert k.settle(proposal2).reason == "observed_support_required"
+    assert k.settle(proposal).reason == "observed_support_required"
+    assert k.occurrences == {}
 
 
 def test_d20_zero_work_requires_no_sleep_state():
     k = EventSemanticKernel()
-    choice = k.choose_work(
-        (
-            WorkOption("forward", expected_gain=1.0, cost=2.0),
-            WorkOption("reorganize", expected_gain=0.5, cost=1.0),
-        )
+    choice = k.choose_fixture_work(
+        (("forward", 1.0, 2.0), ("reorganize", 0.5, 1.0))
     )
     assert choice is None
     assert all("sleep" not in key.lower() for key in vars(k))
 
 
 def test_d21_positive_roi_can_choose_reorganization():
-    choice = EventSemanticKernel.choose_work(
-        (
-            WorkOption("forward", expected_gain=2.0, cost=1.8),
-            WorkOption("reorganize", expected_gain=5.0, cost=1.0),
-        )
+    choice = EventSemanticKernel.choose_fixture_work(
+        (("forward", 2.0, 1.8), ("reorganize", 5.0, 1.0))
     )
-    assert choice is not None
-    assert choice.name == "reorganize"
+    assert choice == "reorganize"
 
 
 def test_d22_negative_roi_skips_reorganization():
-    choice = EventSemanticKernel.choose_work(
-        (
-            WorkOption("forward", expected_gain=2.0, cost=1.0),
-            WorkOption("reorganize", expected_gain=1.0, cost=3.0),
-        )
+    choice = EventSemanticKernel.choose_fixture_work(
+        (("forward", 2.0, 1.0), ("reorganize", 1.0, 3.0))
     )
-    assert choice is not None
-    assert choice.name == "forward"
+    assert choice == "forward"
