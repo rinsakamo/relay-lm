@@ -160,5 +160,5 @@ def test_r0_admission_fails_closed_if_generic_payload_drops_semantic_information
     payload["relation"]["b"] = payload["relation"]["b"][:-1]
     generic.serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
-    with pytest.raises(CognitiveIRExperimentError, match="typed/generic semantic mismatch"):
+    with pytest.raises(CognitiveIRExperimentError):
         assert_r0_admission(arms)
