@@ -102,6 +102,20 @@ def _validate_timeout(value: object) -> float:
     return timeout
 
 
+def _optional_int(value: object, name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise VLLMCapabilityProbeError(f"{name} must be an integer or null")
+    return value
+
+
+def _required_nonnegative_int(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise VLLMCapabilityProbeError(f"{name} must be a non-negative integer")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class VLLMCapabilityProbeResult:
     """Content-free result of exactly one direct vLLM help-surface probe."""
@@ -202,11 +216,11 @@ class VLLMCapabilityProbeResult:
             command_digest=str(value.get("command_digest")),
             environment_keys=tuple(environment_keys),
             environment_key_digest=str(value.get("environment_key_digest")),
-            returncode=value.get("returncode") if isinstance(value.get("returncode"), int) else None,
+            returncode=_optional_int(value.get("returncode"), "returncode"),
             stdout_digest=str(value.get("stdout_digest")),
             stderr_digest=str(value.get("stderr_digest")),
-            stdout_bytes=value.get("stdout_bytes") if isinstance(value.get("stdout_bytes"), int) else -1,
-            stderr_bytes=value.get("stderr_bytes") if isinstance(value.get("stderr_bytes"), int) else -1,
+            stdout_bytes=_required_nonnegative_int(value.get("stdout_bytes"), "stdout_bytes"),
+            stderr_bytes=_required_nonnegative_int(value.get("stderr_bytes"), "stderr_bytes"),
             help_digest=value.get("help_digest") if isinstance(value.get("help_digest"), str) else None,
             supported_flags=tuple(supported_flags),
             supported_flags_digest=(
@@ -267,6 +281,34 @@ def _result(
     )
 
 
+def _cleanup_timed_out_probe(
+    process: subprocess.Popen[object],
+    *,
+    cleanup_timeout: float,
+) -> tuple[str, str, bool]:
+    stdout = ""
+    stderr = ""
+    try:
+        process.terminate()
+        try:
+            tail_stdout, tail_stderr = process.communicate(timeout=cleanup_timeout)
+        except subprocess.TimeoutExpired as exc:
+            stdout += _decode_stream(exc.stdout)
+            stderr += _decode_stream(exc.stderr)
+            process.kill()
+            try:
+                tail_stdout, tail_stderr = process.communicate(timeout=cleanup_timeout)
+            except subprocess.TimeoutExpired as kill_exc:
+                stdout += _decode_stream(kill_exc.stdout)
+                stderr += _decode_stream(kill_exc.stderr)
+                return stdout, stderr, process.poll() is not None
+        stdout += _decode_stream(tail_stdout)
+        stderr += _decode_stream(tail_stderr)
+    except (OSError, subprocess.SubprocessError):
+        return stdout, stderr, process.poll() is not None
+    return stdout, stderr, process.poll() is not None
+
+
 def probe_vllm_capability_surface(
     command: Sequence[str],
     *,
@@ -317,19 +359,12 @@ def probe_vllm_capability_surface(
     except subprocess.TimeoutExpired as exc:
         stdout = _decode_stream(exc.stdout)
         stderr = _decode_stream(exc.stderr)
-        cleanup_complete = False
-        try:
-            process.terminate()
-            try:
-                tail_stdout, tail_stderr = process.communicate(timeout=cleanup_timeout)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                tail_stdout, tail_stderr = process.communicate(timeout=cleanup_timeout)
-            stdout += _decode_stream(tail_stdout)
-            stderr += _decode_stream(tail_stderr)
-            cleanup_complete = process.poll() is not None
-        except (OSError, subprocess.SubprocessError):
-            cleanup_complete = process.poll() is not None
+        tail_stdout, tail_stderr, cleanup_complete = _cleanup_timed_out_probe(
+            process,
+            cleanup_timeout=cleanup_timeout,
+        )
+        stdout += tail_stdout
+        stderr += tail_stderr
         return _result(
             status="TIMEOUT",
             command=normalized_command,
