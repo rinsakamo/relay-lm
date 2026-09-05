@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 
-from relaylm.v2_interventions import Operation, ResourceLedger, ResourceVector
+from relaylm.v2_interventions import (
+    Operation,
+    ResourceLedger,
+    ResourceLimitError,
+    ResourceVector,
+)
 from tools.v2_event_semantic_kernel import EventSemanticKernel
 
 
@@ -183,9 +188,7 @@ def admit_arm(
                     f"deployable arm selected privileged operation: {operation_name}"
                 )
             ledger.spend(operation_name, operation.cost)
-    except CognitiveWorkAdmissionError:
-        raise
-    except Exception as exc:
+    except ResourceLimitError as exc:
         raise CognitiveWorkAdmissionError(
             f"resource envelope rejected arm {arm.arm_id}: {exc}"
         ) from exc
