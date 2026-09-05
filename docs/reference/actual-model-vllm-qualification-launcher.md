@@ -4,6 +4,78 @@ Status: current #1386 execution binding for repository-owned vLLM process launch
 
 This surface composes the already-owned #2045/#2051 preflight primitives. It does not choose cognition semantics, benchmark answers, model quality, release context defaults, or final capacity authority.
 
+## Controller authority boundary
+
+The qualification controller is a **consumer and orchestrator of repository-owned authority**. It is not a second execution-contract writer.
+
+A controller may:
+
+- re-fetch live facts required by the current owner;
+- call current repository-owned loaders, verifiers, planners, launchers, ownership guards, capacity producers, compatibility checks, and evidence writers;
+- provide current operational values for inputs those contracts explicitly require;
+- stop when a current repository-owned acceptance predicate fails; and
+- route a genuinely unresolved provider-launch mechanic to separate operational convergence / LAB3 when physical execution is required to discover the procedure.
+
+It may not invent, strengthen, or silently substitute an acceptance predicate merely because a stricter check appears safer. Issue prose, handoff prompts, local scripts, shell wrappers, controller helpers, and remembered successful commands are procedure consumers; they do not become new authority by restating or extending this contract.
+
+Examples of prohibited controller-only prerequisites include:
+
+- requiring optional or diagnostic metadata when the owning contract explicitly permits it to be unavailable;
+- requiring lexical path spellings to match when the owning identity contract is canonical, digest-based, or otherwise path-independent;
+- requiring ambient parent environment variables to be absent when the owning launcher defines how runtime-owned child values are composed;
+- requiring bare ambient/system-Python importability when exact repository-helper provenance can be established through a current supported source/artifact import context;
+- requiring one globally unique filesystem path when the owning Lab/cache contract identifies immutable content independently of location;
+- treating filename, size, path, metadata, or another inexpensive candidate discriminator as a terminal gate before the owning full verifier is reached; or
+- adding new host-cleanliness, dependency, admission, capacity, evidence, or compatibility rules that no current canonical owner declares.
+
+### Discriminators are not acceptance predicates
+
+A cheap observation may narrow candidates, choose which repository verifier to call, or classify why one candidate is unsuitable. It becomes terminal only when current canonical authority makes that observation itself an acceptance predicate.
+
+When a current repository-owned acceptance primitive can decide the question without prohibited mutation or semantic/physical execution, the controller continues to that primitive instead of stopping at the cheaper discriminator.
+
+For example:
+
+```text
+multiple size-matching cache roots
+  -> fresh digest / whole-snapshot verification
+  -> zero, one, or multiple current exact locations
+  -> apply current Lab/cache policy
+
+bare system Python misses a project dependency
+  -> that interpreter is unsuitable
+  -> use a bounded already-existing dependency-complete context when current authority permits it
+
+optional GPU auxiliary field is unavailable
+  -> retain the supported owned presence/identity evidence that the current GPU contract actually requires
+```
+
+Multiple filesystem locations that independently verify as the same immutable cache/model content are not multiple model identities merely because their paths differ. Conversely, a convenient historical path, filename, or size match never replaces current content verification.
+
+### Fail closed on owned predicates, not hidden ones
+
+Fail-closed discipline remains mandatory. It means that ambiguity or failure in a **declared repository-owned predicate** never gets converted into success.
+
+It does not authorize a controller to create a stricter hidden contract. If a proposed terminal check cannot be traced to current repository authority, the controller must not use it to classify the model, runtime, host, or product as having failed Qualification. The condition is instead a controller/procedure defect or a candidate requirement that must first be promoted through the responsible repository owner.
+
+Promoting a genuinely necessary new requirement means changing the canonical owner and, where practical, its executable guard/regression before a later Qualification consumes it. Repeated Issue-specific exceptions are not a substitute for that convergence.
+
+### Stable setup closes before citable Qualification
+
+Operational convergence exists to make the mechanical procedure known before proof. Once the stable/pre-provider procedure is declared ready, a later citable reference or semantic Qualification begins from that current canonical procedure and may not prepend new controller-only setup gates.
+
+A fresh Qualification still reacquires every live fact its owner requires and remains one-shot under its declared recipe. Repository-owned failures are terminal for that Qualification. No retry-until-pass, semantic tuning, alternate model/runtime, evidence laundering, or benchmark-answer-guided mechanical selection is introduced by this rule.
+
+If a fresh run exposes a genuinely new provider-launch mechanical unknown, stop and route that unknown back to convergence / LAB3. If it exposes only an ad-hoc controller condition that current authority does not require, correct the controller rather than spending another Qualification or inventing another acceptance rule.
+
+### Reusable orchestration should crystallize
+
+When the same controller orchestration is reused across transactions, prefer a repository-owned deterministic procedure or executable surface that composes the existing owner-local primitives. Do not repeatedly reconstruct validation semantics from Issue prose.
+
+Such orchestration must preserve the authority boundaries above: it may sequence and bind current inputs, but it must not duplicate another owner's validation logic or strengthen its predicate. The repository-owned primitives remain the acceptance authority.
+
+> **A qualification controller proves the repository contract; it does not get to invent a stricter one while proving it.**
+
 ## Required launch path
 
 When RelayLM tooling starts a vLLM process for a citable actual-model or external-qualification transaction, it must use the repository-owned qualification launcher rather than issue a remembered `vllm serve` command directly.
