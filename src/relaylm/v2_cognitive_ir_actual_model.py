@@ -102,14 +102,14 @@ def build_s2_formation_messages(
             "Produce a faithful concise recap of the observed episodes for possible later use. "
             "Preserve important conditions, recurring patterns, exceptions, and outcomes when "
             "they are supported by the observations. Do not assume evaluator-hidden rules. "
-            "Return only one JSON object with exactly one non-empty string field named summary."
+            "Return only the recap text; no special schema is required."
         )
     elif kind == "P3_SEMANTIC_CACHE":
         instruction = (
             "Produce a compact future-reusable semantic gist of the observed episodes. Infer "
             "regularities only when supported by the observations and preserve uncertainty where "
-            "needed. Do not use special Memory, Structure, or Crystal role labels. Return only one "
-            "JSON object with exactly one non-empty string field named gist."
+            "needed. Do not use special Memory, Structure, or Crystal role labels. Return only "
+            "the gist text; no special schema is required."
         )
     else:
         instruction = (
@@ -129,16 +129,18 @@ def _parse_text_representation(
     *,
     key: str,
 ) -> str:
-    payload = _require_mapping(
-        _load_strict_json(completion.content, label=f"{key} formation"),
-        label=f"{key} formation",
-    )
-    if set(payload) != {key}:
-        raise S2ExperimentError(f"{key} formation must contain exactly {key}")
-    value = payload[key]
-    if not isinstance(value, str) or not value.strip():
-        raise S2ExperimentError(f"{key} must be a non-empty string")
-    return _json_text({key: value.strip()})
+    """Normalize text controls without making incidental JSON syntax an admission gate."""
+
+    text = completion.content.strip()
+    try:
+        payload = _load_strict_json(text, label=f"{key} formation")
+    except S2ExperimentError:
+        return _json_text({key: text})
+    if isinstance(payload, Mapping) and set(payload) == {key}:
+        value = payload[key]
+        if isinstance(value, str) and value.strip():
+            return _json_text({key: value.strip()})
+    return _json_text({key: text})
 
 
 def _parse_learned_rule(
@@ -432,6 +434,7 @@ def build_s2_target_messages(
     )
     task_packet = {
         "instruction": "Infer the vector transformation and return only a JSON integer array.",
+        "modulus": family.modulus,
         "examples": [
             {
                 "input": list(example.input_values),

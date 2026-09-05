@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -15,6 +16,7 @@ from relaylm.v2_cognitive_ir_actual_model import (
 from relaylm.v2_cognitive_ir_experiment import (
     REPRESENTATION_KINDS,
     prepare_r0_representation_arms,
+    semantic_digest,
 )
 from relaylm.v2_transfer_actual_model import (
     ExperimentClient,
@@ -22,34 +24,19 @@ from relaylm.v2_transfer_actual_model import (
     StructureProposalError,
 )
 from relaylm.v2_transfer_experiment import TransferFamily
-from tools.external_qualification import (
-    DurableQuestion,
-    DurableQuestionRun,
-    ExternalQualificationError,
-    FrozenExperimentIdentity,
-    freeze_experiment_identity,
-)
 
 
 _FORMATION_ORDER = ("form-p2", "form-p3", "form-p4")
 _PROBE_ORDER = tuple(f"probe-p{index}" for index in range(len(REPRESENTATION_KINDS)))
 _EXECUTION_ORDER = _FORMATION_ORDER + _PROBE_ORDER
-_MATERIAL_BINDING_FIELDS = (
-    "model",
-    "artifact",
-    "tokenizer",
-    "template",
-    "backend",
-    "runtime",
-    "decoding",
-    "reasoning",
-    "structured_output",
-    "context_capacity",
-    "hardware",
-    "launch_admission",
-)
+_REQUIRED_STABLE_IDENTITY_FIELDS = ("model", "backend", "runtime")
+_DEFAULT_LIVE_BINDING_FIELDS = ("model",)
 _CLAIM_STATUS = "NON_CITABLE_S2_SMOKE"
 _RESULT_NAME = "s2-smoke-result.json"
+_MANIFEST_NAME = "run-manifest.json"
+_STATE_NAME = "run-state.json"
+_EVIDENCE_NAME = "request-evidence.jsonl"
+_SECRET_KEY_FRAGMENTS = ("api_key", "password", "secret", "authorization", "bearer")
 
 
 class S2HostError(ValueError):
@@ -80,6 +67,8 @@ class S2HostResult:
     citable: bool
     provider_calls: int
     arm_correctness: tuple[bool, ...]
+    mechanical_classification: str
+    typed_generic_semantic_equal: bool
 
 
 def _canonical_json(value: object) -> str:
@@ -108,6 +97,22 @@ def _json_object_copy(value: Mapping[str, object], label: str) -> dict[str, obje
     return copied
 
 
+def _sha256(value: object) -> str:
+    return "sha256:" + hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _reject_secret_keys(value: object, *, path: str = "identity") -> None:
+    if isinstance(value, Mapping):
+        for raw_key, child in value.items():
+            key = str(raw_key).lower()
+            if any(fragment in key for fragment in _SECRET_KEY_FRAGMENTS):
+                raise S2HostError(f"{path} must not persist secret-bearing field {raw_key}")
+            _reject_secret_keys(child, path=f"{path}.{raw_key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_secret_keys(child, path=f"{path}[{index}]")
+
+
 def _git_output(repository_root: str | Path, *args: str) -> str:
     root = Path(repository_root)
     try:
@@ -134,7 +139,29 @@ def probe_s2_git_repository(repository_root: str | Path) -> S2RepositoryState:
     return S2RepositoryState(commit=commit, tree=tree, clean=not bool(status))
 
 
-def _validate_static_contract(identity: Mapping[str, object]) -> None:
+def _live_binding_fields(identity: Mapping[str, object]) -> tuple[str, ...]:
+    raw = identity.get("live_binding_fields")
+    if raw is None:
+        fields = _DEFAULT_LIVE_BINDING_FIELDS
+    else:
+        if not isinstance(raw, list) or not raw:
+            raise S2HostError("live_binding_fields must be a non-empty string array")
+        if any(not isinstance(item, str) or not item.strip() for item in raw):
+            raise S2HostError("live_binding_fields must contain only non-empty strings")
+        fields = tuple(raw)
+        if len(set(fields)) != len(fields):
+            raise S2HostError("live_binding_fields must not contain duplicates")
+    if "model" not in fields:
+        raise S2HostError("live_binding_fields must include model")
+    missing = [name for name in fields if name not in identity]
+    if missing:
+        raise S2HostError(
+            "live binding fields are absent from stable identity: " + ", ".join(missing)
+        )
+    return fields
+
+
+def _validate_static_contract(identity: Mapping[str, object]) -> tuple[str, ...]:
     if identity.get("execution_order") != list(_EXECUTION_ORDER):
         raise S2HostError(
             "execution order must be form-p2 -> form-p3 -> form-p4 -> probe-p0..p6"
@@ -142,6 +169,17 @@ def _validate_static_contract(identity: Mapping[str, object]) -> None:
     retry_policy = _mapping(identity.get("retry_policy"), "retry policy")
     if retry_policy != {"automatic_retry": False, "semantic_retry": False}:
         raise S2HostError("retry policy must disable automatic retry and semantic retry")
+    missing = [name for name in _REQUIRED_STABLE_IDENTITY_FIELDS if name not in identity]
+    if missing:
+        raise S2HostError(
+            "stable experiment identity is missing fields: " + ", ".join(missing)
+        )
+    for name in _REQUIRED_STABLE_IDENTITY_FIELDS:
+        value = identity[name]
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise S2HostError(f"stable experiment identity {name} must be non-empty")
+    _reject_secret_keys(identity)
+    return _live_binding_fields(identity)
 
 
 def _validate_repository(
@@ -177,15 +215,67 @@ def _validate_artifact_root_outside_repository(
     raise S2HostError("artifact root must resolve outside the repository checkout")
 
 
-def _expected_binding(identity: Mapping[str, object]) -> dict[str, object]:
-    missing = [name for name in _MATERIAL_BINDING_FIELDS if name not in identity]
-    if missing:
-        raise S2HostError(
-            "physical binding is missing frozen fields: " + ", ".join(missing)
-        )
+def _prepare_artifact_root(root: Path) -> None:
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        if any(root.iterdir()):
+            raise S2HostError("fresh S2 artifact root must be empty")
+    except OSError as exc:
+        raise S2HostError(f"cannot prepare S2 artifact root: {exc}") from exc
+
+
+def _write_json_atomically(path: Path, value: Mapping[str, object]) -> None:
+    payload = _canonical_json(dict(value)) + "\n"
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except OSError as exc:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise S2HostError(f"cannot persist S2 durable state: {exc}") from exc
+
+
+def _write_json_exclusive(path: Path, value: Mapping[str, object]) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(_canonical_json(dict(value)))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise S2HostError(f"cannot persist S2 artifact: {exc}") from exc
+
+
+def _append_jsonl(path: Path, value: Mapping[str, object]) -> None:
+    record = dict(value)
+    envelope_keys = {"run_id", "identity_fingerprint", "question_id", "order"}
+    if "evidence" not in record and "authority" in record:
+        envelope = {key: record.pop(key) for key in list(record) if key in envelope_keys}
+        envelope["evidence"] = record
+        record = envelope
+    try:
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(_canonical_json(record))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise S2HostError(f"cannot persist S2 request evidence: {exc}") from exc
+
+
+def _expected_binding(
+    identity: Mapping[str, object],
+    fields: tuple[str, ...],
+) -> dict[str, object]:
     return _json_object_copy(
-        {name: identity[name] for name in _MATERIAL_BINDING_FIELDS},
-        "physical binding",
+        {name: identity[name] for name in fields},
+        "live physical binding",
     )
 
 
@@ -193,10 +283,13 @@ def _validate_live_binding(
     expected: Mapping[str, object],
     observed: Mapping[str, object],
 ) -> None:
-    if set(observed) != set(_MATERIAL_BINDING_FIELDS):
-        raise S2HostError("physical binding drift: live binding field set changed")
-    for name in _MATERIAL_BINDING_FIELDS:
-        if _canonical_json(observed[name]) != _canonical_json(expected[name]):
+    missing = [name for name in expected if name not in observed]
+    if missing:
+        raise S2HostError(
+            "physical binding drift: live probe omitted " + ", ".join(missing)
+        )
+    for name, value in expected.items():
+        if _canonical_json(observed[name]) != _canonical_json(value):
             raise S2HostError(f"physical binding drift: {name} changed")
 
 
@@ -217,114 +310,166 @@ def _validate_probe_coordinates(
         raise S2HostError("examples_visible is outside the declared evidence range")
 
 
-def _questions(
+def _run_identity(
+    identity: Mapping[str, object],
     family: TransferFamily,
     *,
     step_index: int,
     examples_visible: int,
-) -> tuple[DurableQuestion, ...]:
+) -> tuple[str, str]:
+    fingerprint = _sha256(["relaylm2-cognitive-ir-s2-identity", identity])
+    run_id = "s2-" + _sha256(
+        [
+            fingerprint,
+            family.seed,
+            family.regime,
+            step_index,
+            examples_visible,
+            family.public_target_digest,
+        ]
+    ).split(":", 1)[1]
+    return fingerprint, run_id
+
+
+def _initial_manifest(
+    *,
+    identity: Mapping[str, object],
+    identity_fingerprint: str,
+    run_id: str,
+    family: TransferFamily,
+    step_index: int,
+    examples_visible: int,
+    live_binding_fields: tuple[str, ...],
+) -> dict[str, object]:
     r0 = prepare_r0_representation_arms(family)
-    source_history_digest = r0["P0_RAW_HISTORY"].source_history_digest
-    questions: list[DurableQuestion] = []
-    for question_id, representation_kind in (
-        ("form-p2", "P2_ORDINARY_SUMMARY"),
-        ("form-p3", "P3_SEMANTIC_CACHE"),
-        ("form-p4", "P4_MEMORY_PLUS_STRUCTURE"),
-    ):
-        questions.append(
-            DurableQuestion.from_content(
-                question_id,
-                {
-                    "phase": "formation",
-                    "representation_kind": representation_kind,
-                    "source_history_digest": source_history_digest,
-                },
-                session_id="s2",
-            )
-        )
-    for index, representation_kind in enumerate(REPRESENTATION_KINDS):
-        questions.append(
-            DurableQuestion.from_content(
-                f"probe-p{index}",
-                {
-                    "phase": "target_probe",
-                    "representation_kind": representation_kind,
-                    "public_target_digest": family.public_target_digest,
-                    "step_index": step_index,
-                    "examples_visible": examples_visible,
-                },
-                session_id="s2",
-            )
-        )
-    return tuple(questions)
+    return {
+        "format_version": 1,
+        "kind": "relaylm2_cognitive_ir_s2_smoke",
+        "run_id": run_id,
+        "identity": _json_object_copy(identity, "frozen S2 identity"),
+        "identity_fingerprint": identity_fingerprint,
+        "claim_status": _CLAIM_STATUS,
+        "citable": False,
+        "family": {
+            "seed": family.seed,
+            "regime": family.regime,
+            "step_index": step_index,
+            "examples_visible": examples_visible,
+            "source_history_digest": r0["P0_RAW_HISTORY"].source_history_digest,
+            "public_target_digest": family.public_target_digest,
+        },
+        "execution_order": list(_EXECUTION_ORDER),
+        "live_binding_fields": list(live_binding_fields),
+    }
 
 
-class _DurableS2Client:
+def _state_payload(
+    *,
+    run_id: str,
+    identity_fingerprint: str,
+    status: str,
+    provider_calls: int,
+    next_call: int,
+    failure: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "format_version": 1,
+        "run_id": run_id,
+        "identity_fingerprint": identity_fingerprint,
+        "status": status,
+        "claim_status": _CLAIM_STATUS,
+        "citable": False,
+        "provider_calls": provider_calls,
+        "next_call": next_call,
+    }
+    if failure is not None:
+        payload["failure"] = _json_object_copy(failure, "S2 failure")
+    return payload
+
+
+def _record_failure(
+    *,
+    root: Path,
+    run_id: str,
+    identity_fingerprint: str,
+    provider_calls: int,
+    next_call: int,
+    question_id: str,
+    kind: str,
+    error: str,
+) -> None:
+    failure = {"kind": kind, "question_id": question_id, "error": error}
+    try:
+        _append_jsonl(
+            root / _EVIDENCE_NAME,
+            {
+                "run_id": run_id,
+                "identity_fingerprint": identity_fingerprint,
+                "question_id": question_id,
+                "kind": kind,
+                "authority": "instrumentation_only",
+                "error": error,
+            },
+        )
+    finally:
+        _write_json_atomically(
+            root / _STATE_NAME,
+            _state_payload(
+                run_id=run_id,
+                identity_fingerprint=identity_fingerprint,
+                status="INCOMPLETE",
+                provider_calls=provider_calls,
+                next_call=next_call,
+                failure=failure,
+            ),
+        )
+
+
+class _BoundS2Client:
     def __init__(
         self,
         *,
         client: ExperimentClient,
-        durable_run: DurableQuestionRun,
+        root: Path,
+        run_id: str,
+        identity_fingerprint: str,
         live_binding_probe: Callable[[], Mapping[str, object]],
         expected_binding: Mapping[str, object],
     ) -> None:
         self._client = client
-        self._durable_run = durable_run
+        self._root = root
+        self._run_id = run_id
+        self._identity_fingerprint = identity_fingerprint
         self._live_binding_probe = live_binding_probe
-        self._expected_binding = _json_object_copy(expected_binding, "physical binding")
+        self._expected_binding = _json_object_copy(expected_binding, "live physical binding")
         self._call_index = 0
-        self._active_question: str | None = None
 
     @property
     def call_count(self) -> int:
         return self._call_index
 
-    def _append_failure(self, *, kind: str, error: str) -> None:
-        if self._active_question is not None:
-            self._durable_run.append_request_evidence(
-                question_id=self._active_question,
-                evidence={
-                    "kind": kind,
-                    "authority": "instrumentation_only",
-                    "error": error,
-                },
-            )
-        self._durable_run.mark_stopped()
-
-    def _commit_previous_if_protocol_advanced(self) -> None:
-        if self._active_question is None:
-            return
-        try:
-            self._durable_run.commit_question(
-                question_id=self._active_question,
-                result={
-                    "status": "MODEL_EXCHANGE_ACCEPTED_BY_PROTOCOL",
-                    "claim_status": _CLAIM_STATUS,
-                    "citable": False,
-                },
-            )
-        except ExternalQualificationError as exc:
-            self._durable_run.mark_stopped()
-            raise S2HostError(f"durable question commit failed: {exc}") from exc
-        self._active_question = None
+    def _fail(self, *, question_id: str, kind: str, error: str) -> None:
+        _record_failure(
+            root=self._root,
+            run_id=self._run_id,
+            identity_fingerprint=self._identity_fingerprint,
+            provider_calls=self._call_index,
+            next_call=self._call_index,
+            question_id=question_id,
+            kind=kind,
+            error=error,
+        )
 
     def complete(self, messages: tuple[dict[str, str], ...]) -> ExperimentCompletion:
         if self._call_index >= len(_EXECUTION_ORDER):
-            self._append_failure(
+            self._fail(
+                question_id="undeclared-extra-call",
                 kind="undeclared_extra_model_call",
                 error="S2 protocol attempted more than ten provider calls",
             )
             raise S2HostError("S2 protocol attempted an undeclared extra model call")
 
-        self._commit_previous_if_protocol_advanced()
         question_id = _EXECUTION_ORDER[self._call_index]
-        try:
-            self._durable_run.begin_question(question_id)
-        except ExternalQualificationError as exc:
-            self._durable_run.mark_stopped()
-            raise S2HostError(f"durable question begin failed: {exc}") from exc
-        self._active_question = question_id
-
         try:
             observed = self._live_binding_probe()
             if not isinstance(observed, Mapping):
@@ -333,28 +478,34 @@ class _DurableS2Client:
                 )
             _validate_live_binding(self._expected_binding, observed)
         except S2HostError as exc:
-            self._append_failure(kind="physical_binding_drift", error=str(exc))
+            self._fail(question_id=question_id, kind="physical_binding_drift", error=str(exc))
             raise
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
-            self._append_failure(kind="physical_binding_probe_failure", error=error)
+            self._fail(
+                question_id=question_id,
+                kind="physical_binding_probe_failure",
+                error=error,
+            )
             raise S2HostError(f"physical binding probe failure: {error}") from exc
 
         try:
             completion = self._client.complete(messages)
         except StructureProposalError as exc:
-            self._append_failure(kind="provider_failure", error=str(exc))
+            self._fail(question_id=question_id, kind="provider_failure", error=str(exc))
             raise S2HostError(f"provider failure: {exc}") from exc
-        except S2HostError:
-            raise
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
-            self._append_failure(kind="provider_client_failure", error=error)
+            self._fail(question_id=question_id, kind="provider_client_failure", error=error)
             raise S2HostError(f"provider client failure: {error}") from exc
 
-        self._durable_run.append_request_evidence(
-            question_id=question_id,
-            evidence={
+        _append_jsonl(
+            self._root / _EVIDENCE_NAME,
+            {
+                "run_id": self._run_id,
+                "identity_fingerprint": self._identity_fingerprint,
+                "question_id": question_id,
+                "order": self._call_index,
                 "kind": "model_exchange",
                 "authority": "instrumentation_only",
                 "messages": messages,
@@ -367,15 +518,31 @@ class _DurableS2Client:
             },
         )
         self._call_index += 1
+        _write_json_atomically(
+            self._root / _STATE_NAME,
+            _state_payload(
+                run_id=self._run_id,
+                identity_fingerprint=self._identity_fingerprint,
+                status="RUNNING",
+                provider_calls=self._call_index,
+                next_call=self._call_index,
+            ),
+        )
         return completion
 
     def stop_after_protocol_failure(self, exc: Exception) -> None:
-        error = f"{type(exc).__name__}: {exc}"
-        self._append_failure(kind="model_protocol_failure", error=error)
+        index = max(0, self._call_index - 1)
+        question_id = _EXECUTION_ORDER[index] if self._call_index else "pre-model-protocol"
+        self._fail(
+            question_id=question_id,
+            kind="model_protocol_failure",
+            error=f"{type(exc).__name__}: {exc}",
+        )
 
     def finish_exchanges(self) -> None:
         if self._call_index != len(_EXECUTION_ORDER):
-            self._append_failure(
+            self._fail(
+                question_id="call-count",
                 kind="model_call_count_mismatch",
                 error=(
                     f"expected {len(_EXECUTION_ORDER)} provider calls, "
@@ -383,14 +550,51 @@ class _DurableS2Client:
                 ),
             )
             raise S2HostError("S2 provider call count does not match frozen protocol")
-        self._commit_previous_if_protocol_advanced()
-        if self._durable_run.next_question() is not None:
-            self._durable_run.mark_stopped()
-            raise S2HostError("S2 durable question sequence did not fully complete")
 
 
 def _representation_digest(serialized: str) -> str:
     return "sha256:" + hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _protocol_assessment(result: S2SmokeResult) -> dict[str, object]:
+    verifications = [result.arms[kind].verification for kind in REPRESENTATION_KINDS]
+    all_outputs_protocol_valid = all(item.error is None for item in verifications)
+    correctness = [item.correct for item in verifications]
+    if not all_outputs_protocol_valid:
+        classification = "OUTPUT_PROTOCOL_DEFECT"
+    elif all(correctness):
+        classification = "CEILING"
+    elif not any(correctness):
+        classification = "FLOOR"
+    else:
+        classification = "MECHANICALLY_DISCRIMINATING"
+
+    p4 = result.arms["P4_MEMORY_PLUS_STRUCTURE"].representation
+    p5 = result.arms["P5_STRUCTURE_ONLY_RECONSTRUCTABLE"].representation
+    p6 = result.arms["P6_GENERIC_EQUAL_INFORMATION"].representation
+    p4_payload = _mapping(json.loads(p4.serialized), "P4 representation")
+    p6_payload = _mapping(json.loads(p6.serialized), "P6 representation")
+    p4_semantic_digest = semantic_digest(p4.kind, p4_payload)
+    p6_semantic_digest = semantic_digest(p6.kind, p6_payload)
+    semantic_equal = p4_semantic_digest == p6_semantic_digest
+    if not semantic_equal:
+        raise S2HostError("completed S2 smoke lost P4/P6 semantic identity")
+    shared_formation = (
+        p4.formation_completion is not None
+        and p4.formation_completion is p5.formation_completion
+        and p4.formation_completion is p6.formation_completion
+    )
+    if not shared_formation:
+        raise S2HostError("P4/P5/P6 do not share the one declared formation completion")
+
+    return {
+        "classification": classification,
+        "all_outputs_protocol_valid": all_outputs_protocol_valid,
+        "typed_generic_semantic_equal": semantic_equal,
+        "typed_generic_semantic_digest": p4_semantic_digest,
+        "p4_p5_p6_shared_formation": shared_formation,
+        "s3_preregistration_allowed": classification == "MECHANICALLY_DISCRIMINATING",
+    }
 
 
 def _result_payload(
@@ -400,6 +604,7 @@ def _result_payload(
     run_id: str,
     identity_fingerprint: str,
 ) -> dict[str, object]:
+    assessment = _protocol_assessment(result)
     arms: list[dict[str, object]] = []
     for kind in REPRESENTATION_KINDS:
         arm = result.arms[kind]
@@ -446,19 +651,13 @@ def _result_payload(
         "seed": family.seed,
         "regime": family.regime,
         "provider_calls": result.physical_provider_calls,
+        "protocol_assessment": assessment,
+        "cost_accounting": {
+            "physical_provider_calls": result.physical_provider_calls,
+            "p5_p6_formation_cost_is_counterfactual_shared_p4_cost": True,
+        },
         "arms": arms,
     }
-
-
-def _write_result_exclusive(root: Path, payload: Mapping[str, object]) -> None:
-    path = root / _RESULT_NAME
-    try:
-        with path.open("x", encoding="utf-8") as handle:
-            handle.write(_canonical_json(payload))
-            handle.write("\n")
-            handle.flush()
-    except OSError as exc:
-        raise S2HostError(f"cannot persist S2 smoke result: {exc}") from exc
 
 
 def run_s2_host_smoke(
@@ -472,12 +671,12 @@ def run_s2_host_smoke(
     step_index: int,
     examples_visible: int,
 ) -> S2HostResult:
-    """Execute one fresh NON_CITABLE #2211 S2 smoke under frozen host authority."""
+    """Execute one fresh NON_CITABLE #2211 S2 smoke under minimum sufficient host binding."""
 
     if not isinstance(identity, Mapping):
         raise S2HostError("frozen experiment identity must be an object")
     identity_snapshot = _json_object_copy(identity, "frozen experiment identity")
-    _validate_static_contract(identity_snapshot)
+    live_fields = _validate_static_contract(identity_snapshot)
     _validate_probe_coordinates(
         family,
         step_index=step_index,
@@ -491,50 +690,76 @@ def run_s2_host_smoke(
         repository_root=repository_root,
     )
 
-    proposed_binding = _expected_binding(identity_snapshot)
-    try:
-        initial_live_binding = live_binding_probe()
-    except Exception as exc:
-        error = f"{type(exc).__name__}: {exc}"
-        raise S2HostError(
-            f"physical binding probe failure during preflight: {error}"
-        ) from exc
-    if not isinstance(initial_live_binding, Mapping):
-        raise S2HostError(
-            "physical binding drift: live probe did not return an object"
-        )
-    _validate_live_binding(proposed_binding, initial_live_binding)
-
-    try:
-        frozen_identity: FrozenExperimentIdentity = freeze_experiment_identity(
-            identity=identity_snapshot,
-            live_attestation=_mapping(
-                initial_live_binding["launch_admission"],
-                "live launch admission",
-            ),
-        )
-    except ExternalQualificationError as exc:
-        raise S2HostError(f"physical frozen identity is invalid: {exc}") from exc
-
-    expected_binding = _expected_binding(frozen_identity.to_mapping())
-    questions = _questions(
+    root = Path(artifact_root)
+    _prepare_artifact_root(root)
+    identity_fingerprint, run_id = _run_identity(
+        identity_snapshot,
         family,
         step_index=step_index,
         examples_visible=examples_visible,
     )
-    try:
-        durable_run = DurableQuestionRun.start(
-            artifact_root=artifact_root,
-            identity=frozen_identity,
-            questions=questions,
-            run_mode="fresh_run",
-        )
-    except ExternalQualificationError as exc:
-        raise S2HostError(f"artifact root or durable identity rejected: {exc}") from exc
+    _write_json_exclusive(
+        root / _MANIFEST_NAME,
+        _initial_manifest(
+            identity=identity_snapshot,
+            identity_fingerprint=identity_fingerprint,
+            run_id=run_id,
+            family=family,
+            step_index=step_index,
+            examples_visible=examples_visible,
+            live_binding_fields=live_fields,
+        ),
+    )
+    _write_json_atomically(
+        root / _STATE_NAME,
+        _state_payload(
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            status="RUNNING",
+            provider_calls=0,
+            next_call=0,
+        ),
+    )
 
-    bound_client = _DurableS2Client(
+    expected_binding = _expected_binding(identity_snapshot, live_fields)
+    try:
+        initial_live_binding = live_binding_probe()
+        if not isinstance(initial_live_binding, Mapping):
+            raise S2HostError(
+                "physical binding drift: live probe did not return an object"
+            )
+        _validate_live_binding(expected_binding, initial_live_binding)
+    except S2HostError as exc:
+        _record_failure(
+            root=root,
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            provider_calls=0,
+            next_call=0,
+            question_id="preflight",
+            kind="physical_binding_drift",
+            error=str(exc),
+        )
+        raise
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        _record_failure(
+            root=root,
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            provider_calls=0,
+            next_call=0,
+            question_id="preflight",
+            kind="physical_binding_probe_failure",
+            error=error,
+        )
+        raise S2HostError(f"physical binding probe failure during preflight: {error}") from exc
+
+    bound_client = _BoundS2Client(
         client=client,
-        durable_run=durable_run,
+        root=root,
+        run_id=run_id,
+        identity_fingerprint=identity_fingerprint,
         live_binding_probe=live_binding_probe,
         expected_binding=expected_binding,
     )
@@ -558,30 +783,53 @@ def run_s2_host_smoke(
 
     bound_client.finish_exchanges()
     if smoke.physical_provider_calls != len(_EXECUTION_ORDER):
-        durable_run.mark_stopped()
+        _record_failure(
+            root=root,
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            provider_calls=bound_client.call_count,
+            next_call=bound_client.call_count,
+            question_id="reported-call-count",
+            kind="model_call_count_mismatch",
+            error="S2 result reports an unexpected physical provider call count",
+        )
         raise S2HostError("S2 result reports an unexpected physical provider call count")
 
     result_payload = _result_payload(
         result=smoke,
         family=family,
-        run_id=durable_run.run_id,
-        identity_fingerprint=frozen_identity.fingerprint,
+        run_id=run_id,
+        identity_fingerprint=identity_fingerprint,
     )
     try:
-        _write_result_exclusive(Path(artifact_root), result_payload)
-    except S2HostError:
-        durable_run.mark_stopped()
+        _write_json_exclusive(root / _RESULT_NAME, result_payload)
+    except S2HostError as exc:
+        _record_failure(
+            root=root,
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            provider_calls=bound_client.call_count,
+            next_call=bound_client.call_count,
+            question_id="result-persistence",
+            kind="artifact_persistence_failure",
+            error=str(exc),
+        )
         raise
 
-    try:
-        durable_run.mark_completed()
-    except ExternalQualificationError as exc:
-        durable_run.mark_stopped()
-        raise S2HostError(f"S2 durable run completion failed: {exc}") from exc
-
+    _write_json_atomically(
+        root / _STATE_NAME,
+        _state_payload(
+            run_id=run_id,
+            identity_fingerprint=identity_fingerprint,
+            status="COMPLETED",
+            provider_calls=bound_client.call_count,
+            next_call=bound_client.call_count,
+        ),
+    )
+    assessment = _mapping(result_payload["protocol_assessment"], "protocol assessment")
     return S2HostResult(
-        run_id=durable_run.run_id,
-        identity_fingerprint=frozen_identity.fingerprint,
+        run_id=run_id,
+        identity_fingerprint=identity_fingerprint,
         status="COMPLETED",
         claim_status=_CLAIM_STATUS,
         citable=False,
@@ -589,4 +837,6 @@ def run_s2_host_smoke(
         arm_correctness=tuple(
             smoke.arms[kind].verification.correct for kind in REPRESENTATION_KINDS
         ),
+        mechanical_classification=str(assessment["classification"]),
+        typed_generic_semantic_equal=bool(assessment["typed_generic_semantic_equal"]),
     )

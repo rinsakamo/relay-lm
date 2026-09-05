@@ -51,6 +51,12 @@ P6_GENERIC_EQUAL_INFORMATION
 P6 is the strongest type-elimination control. P4 beating raw history or summary
 is insufficient to earn a typed IR if P6 matches it at equal or lower total cost.
 
+The S2 P1 fixture currently exposes all source records plus deterministic
+selection metadata. It is sufficient to prove retrieval-only representation
+transport, but it is **not** a mature target-dependent retrieval baseline. A later
+citable comparison that makes retrieval efficacy a primary claim must use a real
+predeclared target-dependent selector without leaking evaluator truth.
+
 ## R0 deterministic admission
 
 R0 is mechanics-only. It reuses #2157's deterministic generated transfer family
@@ -62,37 +68,18 @@ prove representation integrity. Every R0 arm is marked ineligible for empirical
 claims. Model-facing source extraction must instead use the matched learning
 budget owned by #2211; evaluator truth cannot be promoted into primary evidence.
 
-R0 proves the following before any physical model request:
+R0 proves before any physical model request that all seven arms share source and
+target identity, P4 neutralizes deterministically into P6 without semantic loss,
+P5 retains reconstruction lineage, raw/retrieval arms do not receive compiled
+rule fields, and malformed/information-losing generic forms fail closed.
 
-1. all seven arms share the exact source-history identity;
-2. all seven arms share the exact public target-task identity;
-3. all seven arms preserve the same source provenance handles;
-4. P4 deterministically neutralizes into P6 without semantic loss;
-5. P6 contains no privileged `memory`, `structure`, or `crystal` role labels;
-6. semantically irrelevant object ordering and neutral key substitution preserve
-   the canonical semantic digest;
-7. changing a real reusable-rule component changes the semantic digest;
-8. P5 retains an out-of-band reconstruction path while not projecting episode
-   handles directly;
-9. P0/P1 preserve episode records without receiving compiled rule fields;
-10. the deterministic P2 fixture remains an episode recap rather than an oracle
-    rule dump;
-11. serialized byte size is recorded as representation cost rather than forced
-    equal through filler.
-
-R0 does **not** prove:
-
-- that an LLM can infer a useful reusable rule;
-- that a summary or semantic cache is good;
-- that P4/P5/P6 change model behavior;
-- that typed IR syntax is semantically invariant for a real model;
-- that crystallization reduces Cognitive Work;
-- that any representation deserves architecture authority.
+R0 does **not** prove that an LLM can infer or benefit from a reusable rule, that
+a summary/cache is good, that typed IR syntax is behaviorally invariant, or that
+any representation deserves architecture authority.
 
 ## Typed vs generic semantic identity
 
-R0 defines one exact reversible semantic payload for the deterministic upper-bound
-fixture:
+P4 and P6 encode one exact reusable semantic payload:
 
 ```text
 operation
@@ -102,22 +89,10 @@ modulus
 provenance handles
 ```
 
-P4 serializes this payload using explicit Memory/Structure roles. P6 is produced
-only by a deterministic meaning-preserving neutralizer:
-
-```text
-P4 typed payload
-  -> validate exact fields and values
-  -> remove privileged role labels
-  -> neutral relation/context keys
-  -> P6 generic payload
-```
-
-Both forms decode to the same canonical semantic payload and therefore the same
-semantic digest. If any field is dropped, malformed, or changed, R0 fails closed.
-
-This digest is an experiment-integrity device, not a universal semantic-equivalence
-oracle for natural language or LLM behavior.
+P6 is produced only by a deterministic meaning-preserving neutralizer. Both forms
+decode to the same canonical semantic payload and therefore the same semantic
+digest. This digest is an experiment-integrity device, not a universal
+semantic-equivalence oracle for natural language or LLM behavior.
 
 ## S2 bounded actual-model smoke
 
@@ -148,20 +123,9 @@ TOTAL
   10 physical provider calls / family-seed
 ```
 
-This deliberately separates two questions:
-
-```text
-semantic compilation efficacy
-  source episodes -> a reusable semantic quotient
-
-representation-type efficacy
-  same learned quotient as typed P4 vs neutralized P6
-```
-
-P4 and P6 **must not** be generated independently. They share one exact learned
-semantic payload, and P6 is produced only by deterministic neutralization. P5 is
-derived from that same learned rule while keeping episode provenance available
-only through its reconstruction handles.
+P4 and P6 must not be generated independently. P5 and P6 are deterministic
+derivatives of the one P4 formation completion, so representation syntax is not
+confounded with independent extraction quality.
 
 ### Formation fairness
 
@@ -173,48 +137,90 @@ source input/output examples
 ```
 
 The packet contains no evaluator rule identity, source-rule fingerprint,
-`permutation`, or `offsets` fields. Their system instructions differ only as the
-representation-forming treatment requires:
+`permutation`, or `offsets` fields. Their instructions differ only as the
+representation-forming treatment requires.
 
-```text
-P2
-  strong faithful concise recap; may preserve supported recurring patterns
+P2 and P3 are semantic-text controls, not JSON-schema capability tests. Their
+non-empty model text is normalized deterministically into the internal
+`summary`/`gist` envelope. A model that writes useful recap/gist text without the
+requested serialization must not make the entire smoke `INCOMPLETE` merely for
+incidental formatting. P4 remains structurally parsed because the explicit
+reusable-rule representation is the treatment being instantiated.
 
-P3
-  compact future-reusable semantic gist; may infer supported regularity
-
-P4
-  explicit reusable vector-rule hypothesis
-```
-
-All three use the same physical model/runtime during a smoke and one maximum
-formation call each. The provider-reported input/output token costs are charged.
-
-P0/P1 pay no semantic-formation call because avoiding compilation is part of their
-natural-cost advantage. P4/P5/P6 each carry the counterfactual one-call formation
-cost in per-arm accounting even though the paired smoke physically reuses the one
-P4 completion to isolate representation syntax.
+P0/P1 pay no semantic-formation call because avoiding compilation is part of
+their natural-cost advantage. P4/P5/P6 each carry the counterfactual one-call
+formation cost in per-arm accounting even though the physical smoke reuses the
+one P4 completion.
 
 ### Target fairness
 
-Every representation is placed under the same neutral target wrapper:
+Every arm receives the same public task domain and target packet:
+
+```text
+modulus
+visible target examples
+query
+```
+
+This is important: `modulus` is legal public information and must not be present
+only inside compiled representations. The target wrapper is identical across
+arms except for `prior_context`:
 
 ```text
 prior_context
   fallible material derived from earlier observations
 
 task
-  same target examples/query
+  same public modulus / examples / query
 ```
 
-The wrapper does not tell the model that a particular arm is preferred. Target
-examples explicitly override stale prior context on conflict. Only
+Current target examples override stale prior context on conflict. Only
 `prior_context` differs across arms; the target task packet and task digest remain
 identical.
 
-The first bounded smoke may use zero or a small number of visible target examples
-to avoid ceiling saturation. Exact vector verification remains evaluator-side.
-A wrong answer is a measured model result, not new Evidence.
+### What S2 can actually establish
+
+S2 can establish only that:
+
+- each representation can be formed or directly constructed as declared;
+- each representation is serialized and projected into a real provider request;
+- the provider returns a bounded response under that request;
+- P4/P6 semantic identity survives model-authored formation plus deterministic neutralization;
+- output parsing/verifying and token accounting work;
+- no arm is mechanically broken or silently receiving evaluator truth.
+
+Projection into a provider request is **not proof that model behavior causally
+used the representation**. The Issue phrase "every representation is actually
+consumed" is interpreted at S2 as transport/projection acceptance, not behavioral
+causal dependence. Behavioral consumption requires later intervention/ablation
+and belongs to S3 rather than adding extra smoke calls.
+
+### Output and mechanical classification
+
+Target answers use the formal vector-answer contract. Invalid JSON, invalid
+shape, or out-of-range values are measured verifier outcomes rather than host
+crashes. After all ten calls, classify the smoke mechanically:
+
+```text
+any target output has verifier protocol error
+  -> OUTPUT_PROTOCOL_DEFECT
+  -> S3 blocked
+
+all seven protocol-valid outputs correct
+  -> CEILING
+  -> S3 blocked
+
+all seven protocol-valid outputs wrong
+  -> FLOOR
+  -> S3 blocked
+
+mixed correct/wrong, all protocol-valid
+  -> MECHANICALLY_DISCRIMINATING
+  -> S3 preregistration may begin
+```
+
+This prevents malformed output transport from being misreported as a cognitive
+floor. None of these S2 classifications is a representation winner verdict.
 
 ### S2 cost accounting
 
@@ -230,76 +236,96 @@ exact target task digest
 formal verifier result
 ```
 
-The physical smoke also records the fixed provider-call count. No hidden
-chain-of-thought steps are estimated.
+The result separately records the physical ten-call count and that P5/P6's
+formation cost is the counterfactual shared P4 build cost. Summing arm-level
+natural costs must not be mistaken for physical provider-call count.
 
-P5/P6 sharing the physical P4 formation completion does not make their build cost
-zero. Their arm-level natural cost remains the cost required to produce the
-learned semantic payload they consume.
+## Physical host: minimum sufficient harness
 
-### S2 interpretation boundary
+S2 is non-citable protocol smoke, not release Qualification. Its host controller
+must therefore enforce only predicates needed for causal validity,
+reproducibility, or evidence honesty.
 
-S2 can establish only that:
+Hard requirements are:
 
-- all representation protocols can be formed/serialized/projected;
-- the model/provider can consume the bounded task protocol;
-- P4/P6 semantic identity survives real model-authored formation followed by
-  deterministic neutralization;
-- output parsing/verifying and token accounting work;
-- no arm is mechanically broken, context-overflowing, or silently receiving
-  evaluator truth.
+```text
+exact repository commit/tree + clean checkout
+one stable model/backend/runtime identity for the transaction
+exact ten-call semantic schedule
+retry_policy = automatic_retry:false, semantic_retry:false
+same public task across arms
+P4/P6 same learned semantic payload
+no hidden evaluator truth
+terminal stop on material live model-binding drift
+repo-external fresh bounded artifact root
+truthful NON_CITABLE_S2_SMOKE result
+```
 
-S2 is not preregistered citable evidence. A P4 win in S2 does not earn a typed IR,
-and a P6 win does not yet reject one. Protocol-level defects may be fixed after
-the smoke; semantic tuning to rescue a favored arm is prohibited.
+Stable facts may be loaded directly from an existing trustworthy local
+machine-readable configuration or prepared-environment manifest. They do not
+need to be rediscovered through host probing merely because the harness can probe
+them.
+
+Per-call live binding is deliberately a declared subset of stable identity. The
+default required live field is the loaded `model` identity. A host may add fields
+such as backend/runtime when they are independently observable and materially
+capable of changing the semantic transaction. Extra observed diagnostic fields
+are allowed and do not become acceptance predicates.
+
+The S2 host **does not require** the v1 citable-Qualification
+`LiveLaunchAdmissionAttestation`, GPU reservation geometry, capacity-evidence
+object, launch-evidence reference, runtime-ownership reference, NVML mechanism,
+or a particular process/listener proof. Those may be recorded when material, but
+their absence is not an S2 failure.
+
+Operational rule:
+
+```text
+freeze semantic/material identity
+  !=
+freeze every implementation detail
+
+fresh observation only for facts that can actually drift
+and materially change the experiment
+```
+
+A live-binding failure after the artifact manifest exists is durably recorded as
+`INCOMPLETE` with zero or partial provider calls. A repository mismatch/dirty
+checkout still fails before a model request. Harness/admission failure is not a
+model-performance result.
 
 ## Provenance and Grounding boundary
 
 Source handles identify the exact generated source episodes used by all arms.
-They are lineage handles only. They do not assert that a derived semantic rule is
-new Evidence or Grounding.
+They are lineage handles only. Model-authored summary/gist/rule is derived
+semantics, not new Evidence or Grounding. Neutralization and serialization never
+escalate authority. The formal verifier remains evaluator instrumentation unless
+a later protocol explicitly exposes a matched feedback occurrence.
 
-Required invariant:
+## S2 interpretation boundary
 
-```text
-source episode occurrence
-  -> may be referenced by a derived representation
+S2 is not preregistered citable evidence. A P4 win does not earn a typed IR and a
+P6 win does not reject one. Protocol-level defects may be fixed after the smoke;
+semantic tuning to rescue a favored arm is prohibited.
 
-derived semantic representation
-  != new grounded occurrence
-
-model-authored summary/gist/rule
-  != Evidence
-
-neutralization / serialization
-  != authority escalation
-```
-
-The formal verifier remains evaluator instrumentation unless a later protocol
-explicitly exposes a feedback occurrence identically across matched arms.
-
-## Cost boundary
-
-Natural-cost comparisons charge actual representation formation, projection, and
-model costs. Matched hard budgets constrain the maximum envelope without adding
-meaningless filler solely to equalize token counts.
-
-Later S3/S4 work may add:
-
-```text
-retrieval/selection latency
-wall-clock request latency
-revision/invalidation work
-storage lifecycle cost
-resource-pressure variants
-```
-
-but S2 stays bounded to protocol viability.
+If a smoke stops because the harness required an incidental/unavailable host
+fact that is not material to the causal comparison, classify that as a
+**harness/protocol defect**. Relax/generalize the predicate in a separate fresh
+repository transaction before any new smoke. Do not reinterpret it as model
+failure and do not silently rescue the same transaction.
 
 ## Next gate after S2
 
-Only after a bounded physical S2 smoke succeeds should #2211 freeze a
-preregistered S3 semantic-invariance × held-out-reuse campaign.
+Only `MECHANICALLY_DISCRIMINATING` S2 with stable P4/P6 semantic identity may
+admit a separately frozen, preregistered S3 semantic-invariance × held-out-reuse
+campaign. `OUTPUT_PROTOCOL_DEFECT`, `FLOOR`, `CEILING`, or `INCOMPLETE` blocks S3
+and permits only protocol/mechanical diagnosis.
+
+S3 must add the controls that S2 intentionally does not try to prove, including
+meaning-preserving surface perturbations versus meaning-changing interventions,
+real behavioral-use tests, and a mature target-dependent retrieval-only control
+when retrieval efficacy is part of the claim. Arm order should be randomized or
+counterbalanced before latency is treated as an outcome.
 
 A later typed-IR claim requires at minimum:
 
@@ -310,15 +336,13 @@ semantic intervention effect >> meaning-preserving surface perturbation effect
 ```
 
 If P6 matches P4, the appropriate result is generic reusable semantics rather
-than a dedicated Memory/Structure IR type.
-
-If P2 or retrieval matches the reusable representations at lower total cost, the
-appropriate result may be crystallization reducible to ordinary
-retrieval/summary within that declared workload.
+than a dedicated Memory/Structure IR type. If summary or retrieval matches the
+reusable representations at lower total cost, crystallization may be reducible
+to ordinary retrieval/summary within the declared workload.
 
 ## Architecture consequence
 
 **None.**
 
-R0 PASS and S2 protocol readiness earn only a clean experiment surface. A later
-non-citable smoke also does not change #2132 or RelayLM 1.0 semantics.
+R0, S2 protocol readiness, and a later non-citable smoke do not change #2132 or
+RelayLM 1.0 semantics.
