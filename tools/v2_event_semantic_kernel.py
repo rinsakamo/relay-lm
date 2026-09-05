@@ -77,13 +77,6 @@ class ActionReceipt:
     completion_marker: str | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class WorkOption:
-    name: str
-    expected_gain: float
-    cost: float
-
-
 class EventSemanticKernel:
     """Small LLM-free falsifier for the post-Turn-elimination semantics."""
 
@@ -230,8 +223,7 @@ class EventSemanticKernel:
                 occurrence = self.occurrences.get(support_id)
                 if occurrence is None:
                     return Settlement("REJECT", self.current_head, "missing_support")
-                if occurrence.source != "endogenous":
-                    observed_support = True
+                observed_support = True
         if proposal.require_observed_support and not observed_support:
             return Settlement("REJECT", self.current_head, "observed_support_required")
 
@@ -386,11 +378,15 @@ class EventSemanticKernel:
         return receipt
 
     @staticmethod
-    def choose_work(options: tuple[WorkOption, ...]) -> WorkOption | None:
-        profitable = [option for option in options if option.expected_gain > option.cost]
+    def choose_fixture_work(
+        options: tuple[tuple[str, float, float], ...],
+    ) -> str | None:
+        """Choose a local test action; not a universal Cognitive Work utility."""
+        profitable = [
+            (name, expected_gain - cost)
+            for name, expected_gain, cost in options
+            if expected_gain > cost
+        ]
         if not profitable:
             return None
-        return max(
-            profitable,
-            key=lambda option: (option.expected_gain - option.cost, option.name),
-        )
+        return max(profitable, key=lambda item: (item[1], item[0]))[0]
