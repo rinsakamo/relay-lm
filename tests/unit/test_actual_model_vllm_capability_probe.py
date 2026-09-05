@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from dataclasses import replace
 
 import pytest
 
@@ -31,11 +32,15 @@ class FakeProcess:
         stderr: str = "",
         returncode: int = 0,
         timeout_calls: int = 0,
+        timeout_stdout: str | None = None,
+        timeout_stderr: str | None = None,
     ) -> None:
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
         self.timeout_calls = timeout_calls
+        self.timeout_stdout = timeout_stdout
+        self.timeout_stderr = timeout_stderr
         self.communicate_calls = 0
         self.terminated = False
         self.killed = False
@@ -44,7 +49,12 @@ class FakeProcess:
         self.communicate_calls += 1
         if self.communicate_calls <= self.timeout_calls:
             self.returncode = None
-            raise subprocess.TimeoutExpired(COMMAND, timeout)
+            raise subprocess.TimeoutExpired(
+                COMMAND,
+                timeout,
+                output=self.timeout_stdout,
+                stderr=self.timeout_stderr,
+            )
         return self.stdout, self.stderr
 
     def terminate(self) -> None:
@@ -105,6 +115,7 @@ def test_probe_runs_directly_with_explicit_process_local_env_only() -> None:
     assert os.environ.get("RELAYLM_PROBE_TEST") == before
     assert "--max-model-len" in result.supported_flags
     assert "--gpu-memory-utilization" in result.supported_flags
+    assert result.transient_diagnostic is None
 
 
 def test_probe_receipt_never_serializes_environment_values(tmp_path) -> None:
@@ -136,6 +147,28 @@ def test_probe_classifies_nonzero_exit_without_parsing_help() -> None:
     assert result.help_digest is None
     assert result.supported_flags == ()
     assert result.failure_type == "NonZeroExit"
+    assert result.transient_diagnostic == "device failure"
+
+
+def test_probe_transient_diagnostic_normalizes_controls_and_is_bounded() -> None:
+    result = probe_vllm_capability_surface(
+        COMMAND,
+        popen_factory=Factory(
+            FakeProcess(
+                stdout="partial help",
+                stderr="  device\t discovery\n\x07failed  " + ("x" * 600),
+                returncode=1,
+            )
+        ),
+    )
+
+    assert result.status == "NONZERO_EXIT"
+    assert result.transient_diagnostic is not None
+    assert result.transient_diagnostic.startswith("device discovery failed")
+    assert "\n" not in result.transient_diagnostic
+    assert "\t" not in result.transient_diagnostic
+    assert "\x07" not in result.transient_diagnostic
+    assert len(result.transient_diagnostic) == 512
 
 
 def test_probe_classifies_empty_help() -> None:
@@ -148,6 +181,7 @@ def test_probe_classifies_empty_help() -> None:
     assert result.returncode == 0
     assert result.supported_flags == ()
     assert result.failure_type == "EmptyHelpSurface"
+    assert result.transient_diagnostic is None
 
 
 def test_probe_timeout_terminates_only_probe_child() -> None:
@@ -165,6 +199,23 @@ def test_probe_timeout_terminates_only_probe_child() -> None:
     assert process.terminated is True
     assert process.killed is False
     assert process.communicate_calls == 2
+
+
+def test_probe_timeout_exposes_captured_transient_diagnostic() -> None:
+    process = FakeProcess(
+        timeout_calls=1,
+        timeout_stderr=" platform\n discovery stalled ",
+        stderr="",
+    )
+    result = probe_vllm_capability_surface(
+        COMMAND,
+        timeout_seconds=0.1,
+        cleanup_timeout_seconds=0.1,
+        popen_factory=Factory(process),
+    )
+
+    assert result.status == "TIMEOUT"
+    assert result.transient_diagnostic == "platform discovery stalled"
 
 
 def test_probe_timeout_escalates_to_kill_and_still_returns_classification() -> None:
@@ -186,13 +237,39 @@ def test_probe_timeout_escalates_to_kill_and_still_returns_classification() -> N
 
 def test_probe_classifies_spawn_error() -> None:
     def missing(*args, **kwargs):
-        raise FileNotFoundError("missing")
+        raise FileNotFoundError("missing prepared vllm")
 
     result = probe_vllm_capability_surface(COMMAND, popen_factory=missing)
 
     assert result.status == "SPAWN_ERROR"
     assert result.returncode is None
     assert result.failure_type == "FileNotFoundError"
+    assert result.transient_diagnostic == "missing prepared vllm"
+
+
+def test_transient_diagnostic_is_not_durable_or_content_addressed(tmp_path) -> None:
+    result = probe_vllm_capability_surface(
+        COMMAND,
+        popen_factory=Factory(
+            FakeProcess(stderr="private local diagnostic", returncode=1)
+        ),
+    )
+    assert result.transient_diagnostic == "private local diagnostic"
+    changed = replace(result, transient_diagnostic="different local diagnostic")
+
+    assert changed == result
+    assert changed.receipt_id == result.receipt_id
+    assert "transient_diagnostic" not in result.to_mapping()
+
+    path = write_vllm_capability_probe_receipt(result, artifact_root=tmp_path)
+    encoded = path.read_text(encoding="utf-8")
+    assert "private local diagnostic" not in encoded
+    assert "transient_diagnostic" not in encoded
+
+    reloaded = load_vllm_capability_probe_receipt(path)
+    assert reloaded == result
+    assert reloaded.receipt_id == result.receipt_id
+    assert reloaded.transient_diagnostic is None
 
 
 def test_probe_receipt_is_content_addressed_and_rejects_tampering(tmp_path) -> None:
