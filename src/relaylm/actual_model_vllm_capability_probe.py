@@ -66,7 +66,10 @@ def _normalize_command(command: Sequence[str]) -> tuple[str, str, str]:
     executable = _validate_text_token(tokens[0], "capability executable")
     subcommand = _validate_text_token(tokens[1], "capability subcommand")
     help_flag = _validate_text_token(tokens[2], "capability help flag")
-    if Path(executable).name != "vllm":
+    executable_path = Path(executable)
+    if not executable_path.is_absolute():
+        raise VLLMCapabilityProbeError("capability executable must be an absolute path")
+    if executable_path.name != "vllm":
         raise VLLMCapabilityProbeError("capability executable basename must be 'vllm'")
     if subcommand != "serve" or help_flag != "--help=all":
         raise VLLMCapabilityProbeError(
@@ -150,11 +153,19 @@ class VLLMCapabilityProbeResult:
             raise VLLMCapabilityProbeError("capability command digest mismatch")
         if self.environment_key_digest != _sha256_json(list(self.environment_keys)):
             raise VLLMCapabilityProbeError("capability environment-key digest mismatch")
+        if self.supported_flags:
+            expected_flags_digest = _sha256_json(list(self.supported_flags))
+            if self.supported_flags_digest != expected_flags_digest:
+                raise VLLMCapabilityProbeError("supported-flags digest mismatch")
+        elif self.supported_flags_digest is not None:
+            raise VLLMCapabilityProbeError("empty supported flags must not carry a digest")
         if self.status == "CAPABILITY_READY":
             if self.returncode != 0 or not self.help_digest or not self.supported_flags_digest:
                 raise VLLMCapabilityProbeError("ready capability probe is incomplete")
             if not self.supported_flags:
                 raise VLLMCapabilityProbeError("ready capability probe requires supported flags")
+        elif self.supported_flags:
+            raise VLLMCapabilityProbeError("non-ready capability probe must not expose flags")
         if self.status == "TIMEOUT" and not self.timed_out:
             raise VLLMCapabilityProbeError("timeout status requires timed_out")
         if self.status == "SPAWN_ERROR" and self.returncode is not None:
@@ -233,7 +244,9 @@ class VLLMCapabilityProbeResult:
             failure_type=value.get("failure_type") if isinstance(value.get("failure_type"), str) else None,
         )
         receipt_id = value.get("receipt_id")
-        if receipt_id is not None and receipt_id != result.receipt_id:
+        if not isinstance(receipt_id, str) or not receipt_id:
+            raise VLLMCapabilityProbeError("capability probe receipt id is required")
+        if receipt_id != result.receipt_id:
             raise VLLMCapabilityProbeError("capability probe receipt id mismatch")
         return result
 
