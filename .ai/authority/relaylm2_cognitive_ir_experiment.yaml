@@ -1,0 +1,12 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_experiment
+owner_issue: 2211
+summary: RelayLM 2.0 matched LLM-facing Cognitive IR experiment with deterministic R0 representation identity, typed-vs-generic neutralization, provenance preservation, and oracle quarantine.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-experiment.md
+implementation:
+- src/relaylm/v2_cognitive_ir_experiment.py
+tests:
+- tests/unit/test_v2_cognitive_ir_experiment.py
+depends_on:
+- relaylm2_transfer_experiment
