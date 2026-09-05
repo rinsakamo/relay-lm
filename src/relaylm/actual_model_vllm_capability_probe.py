@@ -6,7 +6,7 @@ import math
 import os
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -24,6 +24,8 @@ VLLMCapabilityProbeStatus = Literal[
     "TIMEOUT",
     "SPAWN_ERROR",
 ]
+
+_TRANSIENT_DIAGNOSTIC_LIMIT = 512
 
 
 def _canonical_json(value: object) -> bytes:
@@ -119,9 +121,32 @@ def _required_nonnegative_int(value: object, name: str) -> int:
     return value
 
 
+def _bounded_transient_diagnostic(
+    *,
+    status: VLLMCapabilityProbeStatus,
+    stdout: str,
+    stderr: str,
+    source: str | None = None,
+) -> str | None:
+    if status == "CAPABILITY_READY":
+        return None
+    candidate = source
+    if candidate is None:
+        candidate = stderr if stderr.strip() else stdout
+    if not candidate:
+        return None
+    printable = "".join(
+        char if char.isprintable() or char.isspace() else " " for char in candidate
+    )
+    normalized = " ".join(printable.split())
+    if not normalized:
+        return None
+    return normalized[:_TRANSIENT_DIAGNOSTIC_LIMIT]
+
+
 @dataclass(frozen=True, slots=True)
 class VLLMCapabilityProbeResult:
-    """Content-free result of exactly one direct vLLM help-surface probe."""
+    """Durable-content-free probe result with optional transient local diagnostics."""
 
     status: VLLMCapabilityProbeStatus
     command: tuple[str, str, str]
@@ -139,6 +164,7 @@ class VLLMCapabilityProbeResult:
     timed_out: bool
     cleanup_complete: bool
     failure_type: str | None
+    transient_diagnostic: str | None = field(default=None, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.status not in {
@@ -164,6 +190,8 @@ class VLLMCapabilityProbeResult:
                 raise VLLMCapabilityProbeError("ready capability probe is incomplete")
             if not self.supported_flags:
                 raise VLLMCapabilityProbeError("ready capability probe requires supported flags")
+            if self.transient_diagnostic is not None:
+                raise VLLMCapabilityProbeError("ready capability probe must not carry a diagnostic")
         elif self.supported_flags:
             raise VLLMCapabilityProbeError("non-ready capability probe must not expose flags")
         if self.status == "TIMEOUT" and not self.timed_out:
@@ -172,6 +200,15 @@ class VLLMCapabilityProbeResult:
             raise VLLMCapabilityProbeError("spawn error must not expose a returncode")
         if self.stdout_bytes < 0 or self.stderr_bytes < 0:
             raise VLLMCapabilityProbeError("probe byte counts must be non-negative")
+        if self.transient_diagnostic is not None:
+            if not isinstance(self.transient_diagnostic, str):
+                raise TypeError("transient_diagnostic must be a string or None")
+            if not self.transient_diagnostic:
+                raise VLLMCapabilityProbeError("transient diagnostic must not be empty")
+            if len(self.transient_diagnostic) > _TRANSIENT_DIAGNOSTIC_LIMIT:
+                raise VLLMCapabilityProbeError("transient diagnostic exceeds bound")
+            if " ".join(self.transient_diagnostic.split()) != self.transient_diagnostic:
+                raise VLLMCapabilityProbeError("transient diagnostic must be normalized")
 
     @property
     def receipt_id(self) -> str:
@@ -272,6 +309,7 @@ def _result(
     timed_out: bool = False,
     cleanup_complete: bool = True,
     failure_type: str | None = None,
+    transient_diagnostic_source: str | None = None,
 ) -> VLLMCapabilityProbeResult:
     flags = tuple(sorted(set(supported_flags)))
     return VLLMCapabilityProbeResult(
@@ -291,6 +329,12 @@ def _result(
         timed_out=timed_out,
         cleanup_complete=cleanup_complete,
         failure_type=failure_type,
+        transient_diagnostic=_bounded_transient_diagnostic(
+            status=status,
+            stdout=stdout,
+            stderr=stderr,
+            source=transient_diagnostic_source,
+        ),
     )
 
 
@@ -332,10 +376,11 @@ def probe_vllm_capability_surface(
 ) -> VLLMCapabilityProbeResult:
     """Run exactly one direct provider-free ``vllm serve --help=all`` probe.
 
-    The caller chooses the exploratory environment candidate.  This function owns
-    only direct execution, bounded cleanup, classification, help parsing, and the
-    content-free result.  It never treats a probe failure as semantic/model-quality
-    evidence and never mutates the caller's process environment.
+    The caller chooses the exploratory environment candidate. This function owns
+    direct execution, bounded cleanup, classification, help parsing, durable
+    content-free identity, and one bounded transient local diagnostic. It never
+    treats a probe failure as semantic/model-quality evidence and never mutates
+    the caller's process environment.
     """
 
     normalized_command = _normalize_command(command)
@@ -363,6 +408,7 @@ def probe_vllm_capability_surface(
             stdout="",
             stderr="",
             failure_type=type(exc).__name__,
+            transient_diagnostic_source=str(exc),
         )
 
     try:
