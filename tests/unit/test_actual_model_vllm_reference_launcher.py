@@ -261,6 +261,7 @@ def test_reference_launch_uses_owned_runtime_and_native_environment(
         calls["wait_kwargs"] = kwargs
         return ownership
 
+    monkeypatch.setattr(reference_launcher, "_validate_vllm_unix_ipc_path", lambda _paths: None)
     monkeypatch.setattr(reference_launcher, "launch_owned_vllm_runtime", fake_launch)
     monkeypatch.setattr(reference_launcher, "wait_for_vllm_runtime_readiness", fake_wait)
 
@@ -307,6 +308,7 @@ def test_reference_launch_cleans_owned_runtime_on_readiness_failure(
             calls["cleanup"] = True
 
     runtime = FakeRuntime()
+    monkeypatch.setattr(reference_launcher, "_validate_vllm_unix_ipc_path", lambda _paths: None)
     monkeypatch.setattr(
         reference_launcher,
         "launch_owned_vllm_runtime",
