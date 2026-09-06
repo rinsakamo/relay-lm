@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from relaylm.actual_model_fast_screening import SCREENING_CONDITION_ROLES
 from relaylm.actual_model_host import main as _host_main
+from relaylm.actual_model_stage_r_lm_studio import main as _lm_studio_stage_r_main
 
 
 CURRENT_STAGE_R_AUTHORITY_PATH = Path(
@@ -27,6 +28,8 @@ class StageRAuthorityError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class CurrentStageRAuthority:
+    """Legacy/current vLLM physical admission authority for Stage R."""
+
     authority_id: str
     execution_template_path: str
     context_window_source: str
@@ -40,21 +43,23 @@ class CurrentStageRAuthority:
             raise StageRAuthorityError("unexpected current Stage R authority_id")
         if self.context_window_source != CURRENT_CONTEXT_WINDOW_SOURCE:
             raise StageRAuthorityError(
-                "current Stage R context window must come from fresh external capacity evidence"
+                "current Stage R vLLM context window must come from fresh external capacity evidence"
             )
         if self.hardware_capability_source != CURRENT_HARDWARE_CAPABILITY_SOURCE:
             raise StageRAuthorityError(
-                "current Stage R hardware capability must come from a qualified "
+                "current Stage R vLLM hardware capability must come from a qualified "
                 "vLLM token-capacity reference"
             )
         template = Path(self.execution_template_path)
         if template.is_absolute() or ".." in template.parts:
             raise StageRAuthorityError(
-                "current Stage R execution template path must be repository-relative"
+                "current Stage R vLLM execution template path must be repository-relative"
             )
 
 
 def load_current_stage_r_authority(path: str | Path) -> CurrentStageRAuthority:
+    """Load the backend-specific vLLM physical admission descriptor."""
+
     try:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -77,9 +82,8 @@ def load_current_stage_r_authority(path: str | Path) -> CurrentStageRAuthority:
         if unknown:
             detail.append("unknown: " + ", ".join(unknown))
         raise StageRAuthorityError(
-            "current Stage R authority fields are not exact" + (
-                ": " + "; ".join(detail) if detail else ""
-            )
+            "current Stage R authority fields are not exact"
+            + (": " + "; ".join(detail) if detail else "")
         )
     try:
         return CurrentStageRAuthority(
@@ -104,9 +108,14 @@ def load_current_stage_r_authority(path: str | Path) -> CurrentStageRAuthority:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run current Stage R through a small authority surface that always "
-            "binds screening capacity from fresh external evidence."
+            "Run current provider-neutral Stage R semantics through a selected "
+            "backend-specific physical admission path."
         )
+    )
+    parser.add_argument(
+        "--backend",
+        choices=("vllm", "lm_studio"),
+        default="vllm",
     )
     parser.add_argument(
         "--operation",
@@ -119,11 +128,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         required=True,
     )
     parser.add_argument("--repo-root", required=True)
-    parser.add_argument("--snapshot-root", required=True)
+    parser.add_argument("--snapshot-root")
     parser.add_argument("--provider-base-url", required=True)
     parser.add_argument("--workspace-root", required=True)
     parser.add_argument("--artifact-root", required=True)
-    parser.add_argument("--model-runner", required=True, choices=("v1", "v2"))
+    parser.add_argument("--model-runner", choices=("v1", "v2"))
+    parser.add_argument("--request-model")
+    parser.add_argument("--loaded-instance-id")
     parser.add_argument("--replicate-id", default="0")
     parser.add_argument("--provider-api-key-env")
     parser.add_argument("--cognitive-budget")
@@ -131,7 +142,70 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--capacity-evidence-root")
     args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
 
+    if args.backend == "lm_studio":
+        return _run_lm_studio(args)
+    return _run_vllm(args)
+
+
+def _run_lm_studio(args: argparse.Namespace) -> int:
+    if args.operation != "screening":
+        raise StageRAuthorityError(
+            "LM Studio Stage R consumes its observed loaded context directly and "
+            "does not run vLLM capacity acquisition"
+        )
+    if args.condition != "reference_baseline":
+        raise StageRAuthorityError(
+            "LM Studio current Stage R exposes only the reference_baseline semantic run"
+        )
+    if not isinstance(args.request_model, str) or not args.request_model.strip():
+        raise StageRAuthorityError(
+            "LM Studio Stage R requires --request-model for unambiguous run evidence"
+        )
+    if args.snapshot_root is not None or args.model_runner is not None:
+        raise StageRAuthorityError(
+            "LM Studio Stage R must not consume vLLM snapshot/model-runner arguments"
+        )
+    if args.capacity_evidence_id is not None or args.capacity_evidence_root is not None:
+        raise StageRAuthorityError(
+            "LM Studio Stage R must not consume vLLM capacity evidence"
+        )
+    if args.cognitive_budget is not None:
+        raise StageRAuthorityError(
+            "LM Studio observed-context Stage R does not accept the vLLM screening cognitive-budget facade"
+        )
+
+    delegated = [
+        "--repo-root",
+        args.repo_root,
+        "--provider-base-url",
+        args.provider_base_url,
+        "--request-model",
+        args.request_model,
+        "--workspace-root",
+        args.workspace_root,
+        "--artifact-root",
+        args.artifact_root,
+        "--replicate-id",
+        args.replicate_id,
+    ]
+    if args.loaded_instance_id is not None:
+        delegated.extend(["--loaded-instance-id", args.loaded_instance_id])
+    if args.provider_api_key_env is not None:
+        delegated.extend(["--provider-api-key-env", args.provider_api_key_env])
+    return _lm_studio_stage_r_main(delegated)
+
+
+def _run_vllm(args: argparse.Namespace) -> int:
     _require_vllm_openai_api_base_url(args.provider_base_url)
+    if not isinstance(args.snapshot_root, str) or not args.snapshot_root.strip():
+        raise StageRAuthorityError("vLLM Stage R requires --snapshot-root")
+    if args.model_runner not in {"v1", "v2"}:
+        raise StageRAuthorityError("vLLM Stage R requires --model-runner v1 or v2")
+    if args.request_model is not None or args.loaded_instance_id is not None:
+        raise StageRAuthorityError(
+            "vLLM Stage R does not consume LM Studio request-model/instance arguments"
+        )
+
     repo_root = Path(args.repo_root).resolve()
     authority = load_current_stage_r_authority(
         repo_root / CURRENT_STAGE_R_AUTHORITY_PATH
@@ -158,15 +232,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if args.operation == "screening" and not all(capacity_pair):
         raise StageRAuthorityError(
-            "current Stage R screening requires fresh external capacity evidence"
+            "current Stage R vLLM screening requires fresh external capacity evidence"
         )
     if args.operation == "capacity" and any(capacity_pair):
         raise StageRAuthorityError(
-            "current Stage R capacity acquisition must not consume prior capacity evidence"
+            "current Stage R vLLM capacity acquisition must not consume prior capacity evidence"
         )
     if args.operation == "capacity" and args.cognitive_budget is not None:
         raise StageRAuthorityError(
-            "--cognitive-budget is valid only for current Stage R screening"
+            "--cognitive-budget is valid only for current Stage R vLLM screening"
         )
 
     delegated = [

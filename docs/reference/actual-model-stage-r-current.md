@@ -1,8 +1,8 @@
 # Current Stage R execution authority
 
-Status: current bounded execution entrypoint for RelayLM 1.0 Stage R actual-model qualification.
+Status: current bounded execution entrypoint for RelayLM 1.0 Stage R actual-model evaluation.
 
-Long-lived Issue history is evidence, not an execution prompt. #1386 owns the actual-model evaluation authority; the active bounded physical semantic transaction is routed separately by current #1386 authority.
+Long-lived Issue history is evidence, not an execution prompt. #1386 owns actual-model evaluation authority. Backend-specific physical transactions remain separately owned.
 
 ## Current entrypoint
 
@@ -12,96 +12,154 @@ Use:
 python -m relaylm.actual_model_stage_r
 ```
 
-The machine-readable current descriptor is:
+Select the physical provider explicitly:
+
+```text
+--backend lm_studio
+--backend vllm
+```
+
+The current **provider-neutral semantic descriptor** is:
+
+```text
+evaluation/actual_model/screenings/stage-r-current-v1.json
+```
+
+It freezes only the Stage R distinctions that should remain invariant across supported providers:
+
+- foundation-v3 scenario path and exact semantic revision;
+- exact current scenario IDs;
+- buffered two-pass execution;
+- Continuity Runtime identity;
+- temperature 0 / top_p 1 / seed null;
+- reasoning preference OFF;
+- ordinary Pass 1 output;
+- native structured Pass 2 output.
+
+Backend-specific launch, model-file provenance and capacity machinery do not belong in this descriptor.
+
+## Current semantic reference
+
+The current scenario set is:
+
+```text
+evaluation/actual_model/scenario_sets/foundation-v3.json
+```
+
+with:
+
+- `response-transcript-fidelity-v1`;
+- `response-false-attribution-resistance-v1`;
+- `continuity-lifecycle-v1`.
+
+The fixture is executed exactly once per qualification transaction. Each declared ordinary turn gets at most one Pass 1 and one Pass 2 model generation; semantic retry is not part of Stage R.
+
+Proposal scoring is scenario-owned and explicit in foundation-v3. `scored + []` means exactly zero expected proposals; `unscored` preserves raw observations while excluding that channel from FP/FN/precision/recall.
+
+## LM Studio admission
+
+For LM Studio, current Stage R consumes the externally managed serving condition directly rather than manufacturing a vLLM-style capacity prerequisite.
+
+Invoke the current entrypoint with at least:
+
+```text
+--backend lm_studio
+--operation screening
+--condition reference_baseline
+--provider-base-url http://<host>:<port>/v1
+--request-model <LM Studio model key>
+--repo-root <exact checkout>
+--workspace-root <fresh workspace>
+--artifact-root <fresh artifact root>
+```
+
+Use `--loaded-instance-id` when one request model has more than one loaded instance and an exact instance must be selected.
+
+The LM Studio Stage R runner:
+
+1. reads current native `/api/v1/models` metadata from the same server origin;
+2. binds the requested model to one loaded instance;
+3. accepts the current #2255 product-class condition, presently Gemma-4 12B with Q4-class quantization;
+4. records the strongest live observable model condition, including model key, instance ID, display/parameter identity, quantization, size, effective context and exposed load/reasoning metadata;
+5. uses that observed condition as run evidence rather than equality-checking one historical artifact SHA/filename/source revision;
+6. executes the provider-neutral Stage R fixture through the production OpenAI-compatible two-pass provider;
+7. writes generic execution evidence plus deterministic-boundary sidecars.
+
+A compatible already-loaded model is valid input. Stage R does not require unload/reload merely to match one historical repository artifact.
+
+Unknown optional artifact provenance is recorded as unknown rather than converted into `INCONCLUSIVE`. Routing ambiguity, incompatible model class, provider unavailability or inability to execute the actual semantic path still fail closed.
+
+### Context
+
+LM Studio's observed effective context is part of run identity. There is no vLLM token-capacity-reference prerequisite. If the provider cannot carry an actual Stage R request within that context, the semantic transaction fails at that real provider boundary; Stage R does not sweep context sizes after seeing results.
+
+### Reasoning / Thinking
+
+OFF remains the preferred reference condition.
+
+Current LM Studio native model metadata may expose the loaded model's reasoning options/default. The Stage R run records those facts.
+
+If the production Chat Completions path truthfully carries an explicit OFF override in future #1545 authority, that exact applied control may be used and recorded. Until then, the LM Studio Stage R runner does not invent a per-request reasoning wire. It omits the reasoning field and records the observed model/runtime default condition truthfully, for example `omitted_default_off`, `omitted_default_on`, or unknown.
+
+A run using default ON must not be described as OFF evidence. The absence of an explicit OFF wire is not, by itself, a reason to prevent the performance experiment from executing; matched reasoning comparisons belong to separate provider/evaluation work.
+
+### Structured output
+
+Pass 1 remains ordinary conversation. Pass 2 still uses the exact current native JSON-schema structured-output contract. Failure of that real production path is execution evidence; there is no plain-text retry or parser-relaxation rescue.
+
+## vLLM admission remains backend-specific
+
+The existing descriptor:
 
 ```text
 evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
 ```
 
-It deliberately contains no numeric context window. It points to one current execution template and declares:
+remains the vLLM physical-admission authority. It still binds:
 
-- `context_window_source = fresh_external_capacity_evidence`;
-- `hardware_capability_source = qualified_vllm_token_capacity_reference`.
+- fresh external capacity evidence;
+- qualified `VLLMTokenCapacityReference` evidence;
+- fixed-window vLLM launch/admission semantics;
+- the existing vLLM execution template.
 
-The current template is:
+`--backend vllm` therefore preserves the previous capacity acquisition and screening contract. This work does not weaken or alias vLLM physical evidence into LM Studio.
 
-```text
-evaluation/actual_model/screenings/stage-r0-vllm-reference-v3.json
-```
-
-The v3 template binds its scenario set by repository-relative path and exact semantic revision. The current execution chain therefore has one derivation:
+The key separation is:
 
 ```text
-stage-r0-vllm-current-v1
-  -> stage-r0-vllm-reference-v3
-  -> foundation-v3 path + revision
-  -> exact v3 scenario IDs
+Stage R semantics
+  -> provider-neutral current descriptor
+
+LM Studio physical condition
+  -> observed loaded model/context + production provider path
+
+vLLM physical condition
+  -> vLLM token-capacity / launch authority
 ```
 
-Historical v2 plans remain loadable evidence/templates and are not rewritten as v3.
+## Exact request and review evidence
 
-`--provider-base-url` is the OpenAI-compatible API base, not the bare vLLM server origin. For the canonical local vLLM server it must therefore be shaped like `http://127.0.0.1:8000/v1` (a trailing slash is harmless). Current Stage R rejects an origin-only value such as `http://127.0.0.1:8000` before delegating to the host, because the production provider appends `/chat/completions` to this API base while vLLM serves that route under `/v1/chat/completions`.
+The #2029 exact-request evidence contract continues to apply to the canonical two-pass execution path. Preserve per-turn Pass 1 / Pass 2 request records, raw model output, typed proposals and deterministic decisions where current generic execution authority requires them.
 
-## Physical admission bootstrap
+A deterministic-boundary PASS is not by itself a semantic-quality PASS. Product-quality review remains the provider-neutral `actual_model_review` / current Stage R review protocol; provider migration does not change those review dimensions.
 
-Before capacity acquisition or semantic screening:
-
-1. use the exact canonical vLLM source/runtime and frozen target;
-2. bind one legal target token window from the current bounded evaluation/calibration owner; if no owner has selected a legal window, stop;
-3. bind citable compatible `VLLMTokenCapacityReference` evidence from a successful launch of the same target/runtime/runner/host capability class;
-4. acquire fresh GPU `free_bytes` and `total_bytes`;
-5. construct `VLLMLaunchMemoryAdmission.for_token_window(...)` from the fixed target window, the qualified token-capacity reference, and the fresh GPU bytes;
-6. fail closed before launch if fresh free memory is below the token-derived required envelope;
-7. launch the final runtime with `final_memory_args()`, which renders an envelope-derived `--gpu-memory-utilization`, explicit `--kv-cache-memory-bytes`, and explicit `--max-model-len`;
-8. attest the final live backend/model/root/runner/max-model-length identity;
-9. keep this final runtime unchanged through capacity acquisition and screening.
-
-Ordinary Stage R does not choose its token window by maximizing transient free VRAM and does not use `--max-model-len auto` as a substitute for a missing evaluation/calibration-owned target.
-
-The existing vLLM profiler/parser remains available only for a separate launch-capability acquisition transaction when launch-significant target/runtime/runner/host identity changes or compatible token-capacity geometry is otherwise unavailable. Historical profiler values are evidence for their original runs only and are not ordinary Stage R launch controls.
-
-The physical-admission contract is defined in `docs/reference/actual-model-vllm-functional-acceptance.md`. A bounded comparison may use an explicitly authorized experiment-only token window without making that value a #1388 release default.
-
-## Capacity
-
-After the fixed-window final runtime is serving, run `actual_model_stage_r --operation capacity` first. The launcher delegates to the existing production capacity path and rejects caller-supplied prior capacity evidence. Capacity acquisition therefore observes the live explicit `max_model_len` directly.
-
-The resulting external immutable capacity artifact must be complete for the selected current condition and exact current scenario-set revision. On this path it attests the already-selected physical window; it does not choose that window.
-
-## Screening
-
-Run `actual_model_stage_r --operation screening` with the fresh external capacity evidence ID and root from the immediately preceding exact-head capacity run.
-
-The launcher refuses screening without the complete ID/root pair and injects `--context-window-from-capacity-evidence`. The template's historical numeric `effective_context_window` is template data, not current physical capacity authority.
-
-All target, checkout, model-runner, scenario, pass-request, capacity-coverage, live-runtime, exact-request-evidence and source-validation gates remain in force.
-
-## Current semantic reference
-
-For the Stage R0 reference baseline:
-
-- buffered two-pass;
-- Pass 1 reasoning OFF;
-- Pass 1 no structured-output control;
-- Pass 2 reasoning OFF;
-- Pass 2 explicit native structured output;
-- temperature 0;
-- top_p 1;
-- seed null;
-- `response-transcript-fidelity-v1`;
-- `response-false-attribution-resistance-v1`;
-- `continuity-lifecycle-v1`.
-
-Proposal scoring is scenario-owned and explicit in foundation-v3. `scored + []` means exactly zero expected proposals; `unscored` preserves raw observations while excluding that channel from FP/FN/precision/recall.
-
-## Exact request evidence
-
-The #2029 request-evidence contract applies to the same canonical two-pass execution path used by current Stage R. Future semantic evidence must preserve citable per-turn Pass 1 and Pass 2 request records, including exact request body/messages, generation-affecting controls, request-body SHA and request evidence identity. Canonical execution fails closed when required request evidence is absent. Historical evidence is not retrofitted.
+Token/timing facts should be recorded when the provider exposes them authoritatively. Missing optional performance metadata is unknown, not a semantic failure.
 
 ## Evidence boundaries
 
-A physical admission failure before screening is not semantic evidence. A deterministic-boundary PASS is not a semantic-quality PASS. Keep raw model output, request evidence, typed proposals, deterministic decisions, semantic review, capacity and timing evidence separately citable.
+Keep distinct:
+
+```text
+model/runtime observation
+actual semantic execution
+protocol/deterministic-boundary verdict
+proposal scoring
+human/product-quality review
+timing/token observations
+```
+
+Do not transform imperfect reproducibility metadata into a substitute for running the semantic questions.
 
 ## Principle
 
-> Current execution starts from a small current authority surface; token demand comes from cognitive/evaluation authority, qualified launch geometry carries it physically, and transient free VRAM answers only whether the host can carry it.
+> Freeze the semantic test and record the machine. Backend-specific admission belongs to the backend; Stage R semantics belong to RelayLM.
