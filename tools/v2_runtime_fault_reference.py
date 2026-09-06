@@ -14,7 +14,7 @@ from tools.v2_event_semantic_kernel import (
 )
 
 ExternalMode = Literal["IDEMPOTENT", "NON_IDEMPOTENT"]
-ExternalStatus = Literal["DISPATCHED", "SUCCEEDED", "OUTCOME_UNKNOWN"]
+ExternalStatus = Literal["ATTEMPT_REGISTERED", "SUCCEEDED", "OUTCOME_UNKNOWN"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +155,14 @@ class CrashSafeRuntime:
     def begin_external_dispatch(
         self, action_id: str, *, mode: ExternalMode
     ) -> ExternalReceipt:
+        """Register a stable action attempt identity before calling the sink.
+
+        The receipt intentionally does not claim that dispatch already occurred.
+        A crash after registration but before/after the external call is
+        therefore ambiguous for non-idempotent actions and safely retryable only
+        when the receiver's identity contract is idempotent.
+        """
+
         if action_id not in self.kernel.actions:
             raise KeyError(f"unknown action: {action_id}")
         if mode not in ("IDEMPOTENT", "NON_IDEMPOTENT"):
@@ -164,7 +172,11 @@ class CrashSafeRuntime:
             if existing.mode != mode:
                 raise ValueError("external dispatch mode changed")
             return existing
-        receipt = ExternalReceipt(action_id=action_id, mode=mode, status="DISPATCHED")
+        receipt = ExternalReceipt(
+            action_id=action_id,
+            mode=mode,
+            status="ATTEMPT_REGISTERED",
+        )
         self.store.external_receipts[action_id] = receipt
         return receipt
 
@@ -180,14 +192,15 @@ class CrashSafeRuntime:
         self, action_id: str, sink: FakeActionSink
     ) -> ExternalReceipt:
         receipt = self.external_receipt(action_id)
-        if receipt.status != "DISPATCHED":
+        if receipt.status != "ATTEMPT_REGISTERED":
             return receipt
         if receipt.mode == "IDEMPOTENT":
             sink.invoke(action_id, idempotent=True)
             updated = replace(receipt, status="SUCCEEDED")
         else:
-            # Dispatch happened, but no trustworthy result receipt survived.
-            # Repeating a non-idempotent action could duplicate reality.
+            # The attempt identity was registered, but after a crash there is no
+            # trustworthy fact saying whether the external call happened. A
+            # non-idempotent retry could duplicate reality.
             updated = replace(receipt, status="OUTCOME_UNKNOWN")
         self.store.external_receipts[action_id] = updated
         return updated
