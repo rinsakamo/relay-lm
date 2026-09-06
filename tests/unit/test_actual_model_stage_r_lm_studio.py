@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 import relaylm.actual_model_stage_r as stage_r
