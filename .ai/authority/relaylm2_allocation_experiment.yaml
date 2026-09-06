@@ -1,0 +1,12 @@
+schema_version: 1
+id: relaylm2_allocation_experiment
+owner_issue: 2187
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment with deterministic paid-information R0 admission and oracle quarantine.
+canonical_surfaces:
+- docs/research/relaylm2-allocation-experiment.md
+implementation:
+- src/relaylm/v2_allocation_experiment.py
+tests:
+- tests/unit/test_v2_allocation_experiment.py
+depends_on:
+- relaylm2_intervention_harness
