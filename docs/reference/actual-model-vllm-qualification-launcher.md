@@ -25,7 +25,8 @@ Examples of prohibited controller-only prerequisites include:
 - requiring ambient parent environment variables to be absent when the owning launcher defines how runtime-owned child values are composed;
 - requiring bare ambient/system-Python importability when exact repository-helper provenance can be established through a current supported source/artifact import context;
 - requiring one globally unique filesystem path when the owning Lab/cache contract identifies immutable content independently of location;
-- treating filename, size, path, metadata, or another inexpensive candidate discriminator as a terminal gate before the owning full verifier is reached; or
+- treating filename, size, path, metadata, or another inexpensive candidate discriminator as a terminal gate before the owning full verifier is reached;
+- requiring sandbox-local CUDA/NVML/GPU visibility when the current workflow already defines an authorized elevated/non-sandbox physical execution path for those observations; or
 - adding new host-cleanliness, dependency, admission, capacity, evidence, or compatibility rules that no current canonical owner declares.
 
 ### Discriminators are not acceptance predicates
@@ -83,6 +84,24 @@ Use `probe_vllm_capability_surface(...)` from `relaylm.actual_model_vllm_capabil
 An operational convergence / LAB3 controller may choose an already-justified process-local environment candidate and ask the capsule to execute it. Candidate choice remains exploratory and non-citable; historical procedure hints may suggest a candidate but cannot authorize one. A later citable Qualification reacquires the current exact callable and environment authority and invokes the same repository-owned capsule again. It does not promote a LAB3 receipt into current physical authority.
 
 `provider launches = 0` during this capability probe does not imply that upstream vLLM performed zero CUDA/NVML/platform-device discovery. Foreign-resource isolation therefore remains required even though the probe does not start or reserve a serving listener.
+
+### Physical GPU authority uses the authorized execution context
+
+Controller/sandbox execution contexts may intentionally lack access to CUDA, NVML, `nvidia-smi`, or the physical GPU even when the same host has an established authorized elevated/non-sandbox execution path for physical qualification work.
+
+When the current workflow already defines that authorized physical path:
+
+- sandbox-local CUDA/NVML/GPU invisibility is an **observation-context limitation**, not evidence that the physical host lacks the GPU or that the exact prepared runtime is broken;
+- acquire fresh GPU/NVML/CUDA live facts through the current authorized physical execution context required by the workflow;
+- run a repository-owned capability probe in that same authorized GPU-visible context when the exact upstream vLLM invocation performs device discovery and therefore requires physical visibility;
+- preserve the same exact repository checkout, Lab/runtime/callable identity, process-local candidate environment, and repository-owned probe/launcher semantics across the routing boundary;
+- do not invent arbitrary privilege, a different runtime, CUDA library/path repairs, device overrides, or alternate environment substitutions merely to obtain visibility;
+- an observation/query/transport failure **inside the authorized physical context** remains unavailable/fail-closed for the fact being acquired and must never be rewritten as an empty or clean GPU observation; and
+- the elevated/non-sandbox placement is only the route to the correct physical observation surface. It is not itself acceptance authority, does not weaken foreign-resource isolation, and does not make volatile GPU facts reusable across transactions.
+
+If the workflow requires physical GPU authority and its established authorized physical execution path is unavailable, stop on that missing physical authority. Do not rediscover the same host procedure through environment tuning inside the sandbox.
+
+> **Route physical observations to the authorized physical context; do not mistake a sandbox blind spot for a machine failure.**
 
 > **A qualification controller proves the repository contract; it does not get to invent a stricter one while proving it.**
 
@@ -166,7 +185,7 @@ If the fresh qualification cannot reproduce the declared recipe, it stops before
 
 ## Bounded GPU reservation correction
 
-`requested_utilization` is part of the declared preflight request. The launcher accepts at most one explicitly supplied `fallback_utilization`.
+`requested_utilization` is part of the declared preflight request. The launcher accepts at most one explicitly supplied lower `fallback_utilization`.
 
 The fallback:
 
