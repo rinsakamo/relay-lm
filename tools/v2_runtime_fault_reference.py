@@ -64,6 +64,14 @@ class ExternalReceipt:
     status: ExternalStatus
 
 
+@dataclass(frozen=True, slots=True)
+class FakeActionResult:
+    """Ephemeral stand-in for an observed successful external result."""
+
+    action_id: str
+    succeeded: bool = True
+
+
 @dataclass(slots=True)
 class DurableStore:
     """Small durable surface: canonical image plus irreversible-effect receipts."""
@@ -83,12 +91,13 @@ class FakeActionSink:
         self._calls: dict[str, int] = {}
         self._effects: dict[str, int] = {}
 
-    def invoke(self, action_id: str, *, idempotent: bool) -> None:
+    def invoke(self, action_id: str, *, idempotent: bool) -> FakeActionResult:
         self._calls[action_id] = self._calls.get(action_id, 0) + 1
         if idempotent:
             self._effects.setdefault(action_id, 1)
         else:
             self._effects[action_id] = self._effects.get(action_id, 0) + 1
+        return FakeActionResult(action_id=action_id)
 
     def call_count(self, action_id: str) -> int:
         return self._calls.get(action_id, 0)
@@ -127,9 +136,18 @@ class CrashSafeRuntime:
     def propose_value(self, *args: object, **kwargs: object) -> Proposal:
         return self.kernel.propose_value(*args, **kwargs)
 
-    def settle(self, proposal: Proposal, *, persist: bool = True) -> Settlement:
+    def preview_settlement(self, proposal: Proposal) -> Settlement:
+        """Evaluate the would-be settlement without changing accepted cognition."""
+
+        shadow = self.store.kernel_image.restore()
+        return shadow.settle(proposal)
+
+    def settle(self, proposal: Proposal) -> Settlement:
         result = self.kernel.settle(proposal)
-        if persist and result.status == "COMMIT":
+        if result.status == "COMMIT":
+            # The deterministic reference models accepted canonical settlement
+            # as one image replacement. A physical storage implementation must
+            # separately prove an equivalent atomic durability boundary.
             self._persist_kernel()
         return result
 
@@ -180,12 +198,16 @@ class CrashSafeRuntime:
         self.store.external_receipts[action_id] = receipt
         return receipt
 
-    def record_external_success(self, action_id: str) -> ExternalReceipt:
-        receipt = self.external_receipt(action_id)
+    def record_external_success(self, result: FakeActionResult) -> ExternalReceipt:
+        if not result.succeeded:
+            raise ValueError("only successful observed results are modeled here")
+        receipt = self.external_receipt(result.action_id)
         if receipt.status == "OUTCOME_UNKNOWN":
             raise ValueError("cannot retroactively assert success from unknown outcome")
+        if receipt.status == "SUCCEEDED":
+            return receipt
         updated = replace(receipt, status="SUCCEEDED")
-        self.store.external_receipts[action_id] = updated
+        self.store.external_receipts[result.action_id] = updated
         return updated
 
     def recover_external(
@@ -195,13 +217,13 @@ class CrashSafeRuntime:
         if receipt.status != "ATTEMPT_REGISTERED":
             return receipt
         if receipt.mode == "IDEMPOTENT":
-            sink.invoke(action_id, idempotent=True)
-            updated = replace(receipt, status="SUCCEEDED")
-        else:
-            # The attempt identity was registered, but after a crash there is no
-            # trustworthy fact saying whether the external call happened. A
-            # non-idempotent retry could duplicate reality.
-            updated = replace(receipt, status="OUTCOME_UNKNOWN")
+            result = sink.invoke(action_id, idempotent=True)
+            return self.record_external_success(result)
+
+        # The attempt identity was registered, but after a crash there is no
+        # trustworthy fact saying whether the external call happened. A
+        # non-idempotent retry could duplicate reality.
+        updated = replace(receipt, status="OUTCOME_UNKNOWN")
         self.store.external_receipts[action_id] = updated
         return updated
 
