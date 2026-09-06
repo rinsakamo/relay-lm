@@ -151,6 +151,8 @@ class R1HostResult:
     claim_status: str
     citable: bool
     provider_calls: int
+    provider_attempts: int
+    provider_completions: int
     classification: str
     outcomes: tuple[ArmOutcome, ...]
 
@@ -420,12 +422,17 @@ class _BoundClient:
         self._run_id = run_id
         self._identity_fingerprint = identity_fingerprint
         self._max_calls = max_calls
-        self._calls = 0
+        self._attempts = 0
+        self._completions = 0
         self._question_ids: set[str] = set()
 
     @property
     def call_count(self) -> int:
-        return self._calls
+        return self._completions
+
+    @property
+    def attempt_count(self) -> int:
+        return self._attempts
 
     def _state(self, *, status: str, failure: dict[str, object] | None = None) -> None:
         payload: dict[str, object] = {
@@ -435,7 +442,9 @@ class _BoundClient:
             "status": status,
             "claim_status": _CLAIM_STATUS,
             "citable": False,
-            "provider_calls": self._calls,
+            "provider_calls": self._completions,
+            "provider_attempts": self._attempts,
+            "provider_completions": self._completions,
         }
         if failure is not None:
             payload["failure"] = failure
@@ -452,6 +461,8 @@ class _BoundClient:
                 "kind": kind,
                 "authority": "instrumentation_only",
                 "error": error,
+                "provider_attempts": self._attempts,
+                "provider_completions": self._completions,
             },
         )
         self._state(status="INCOMPLETE", failure=failure)
@@ -463,7 +474,7 @@ class _BoundClient:
     ) -> ExperimentCompletion:
         if not question_id or question_id in self._question_ids:
             raise CognitiveWorkR1HostError("R1 question ids must be unique and non-empty")
-        if self._calls >= self._max_calls:
+        if self._attempts >= self._max_calls:
             self.fail(
                 question_id=question_id,
                 kind="undeclared_extra_model_call",
@@ -489,6 +500,8 @@ class _BoundClient:
                 f"physical binding probe failure: {error}"
             ) from exc
 
+        self._attempts += 1
+        self._state(status="RUNNING")
         try:
             completion = self._client.complete(messages)
         except StructureProposalError as exc:
@@ -499,13 +512,14 @@ class _BoundClient:
             self.fail(question_id=question_id, kind="provider_client_failure", error=error)
             raise CognitiveWorkR1HostError(f"provider client failure: {error}") from exc
 
+        self._completions += 1
         _append_jsonl(
             self._root / _EVIDENCE_NAME,
             {
                 "run_id": self._run_id,
                 "identity_fingerprint": self._identity_fingerprint,
                 "question_id": question_id,
-                "order": self._calls,
+                "order": self._attempts - 1,
                 "kind": "model_exchange",
                 "authority": "instrumentation_only",
                 "messages": messages,
@@ -515,9 +529,10 @@ class _BoundClient:
                     "output_tokens": completion.output_tokens,
                     "response_id": completion.response_id,
                 },
+                "provider_attempts": self._attempts,
+                "provider_completions": self._completions,
             },
         )
-        self._calls += 1
         self._state(status="RUNNING")
         return completion
 
@@ -643,6 +658,8 @@ def run_r1_host_smoke(
             "claim_status": _CLAIM_STATUS,
             "citable": False,
             "provider_calls": 0,
+            "provider_attempts": 0,
+            "provider_completions": 0,
         },
     )
 
@@ -670,6 +687,8 @@ def run_r1_host_smoke(
                 "claim_status": _CLAIM_STATUS,
                 "citable": False,
                 "provider_calls": 0,
+                "provider_attempts": 0,
+                "provider_completions": 0,
                 "failure": failure,
             },
         )
@@ -781,6 +800,8 @@ def run_r1_host_smoke(
         "citable": False,
         "suite_digest": suite.digest,
         "provider_calls": bound.call_count,
+        "provider_attempts": bound.attempt_count,
+        "provider_completions": bound.call_count,
         "classification": classification,
         "physical_base_completion_shared_across_arms": True,
         "base_cost_charged_counterfactually_to_each_arm": True,
@@ -797,6 +818,8 @@ def run_r1_host_smoke(
             "claim_status": _CLAIM_STATUS,
             "citable": False,
             "provider_calls": bound.call_count,
+            "provider_attempts": bound.attempt_count,
+            "provider_completions": bound.call_count,
         },
     )
     return R1HostResult(
@@ -806,6 +829,8 @@ def run_r1_host_smoke(
         claim_status=_CLAIM_STATUS,
         citable=False,
         provider_calls=bound.call_count,
+        provider_attempts=bound.attempt_count,
+        provider_completions=bound.call_count,
         classification=classification,
         outcomes=frozen_outcomes,
     )
