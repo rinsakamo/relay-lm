@@ -6,7 +6,7 @@ R0 is model-free. It proves only that allocation arms can be assembled without g
 
 ## R0 question
 
-> **Can fixed, cheap-heuristic, adaptive, and privileged-oracle allocation arms share one public task, operation surface, canonical cognition, and hard resource envelope while adaptive meta-information is available only after its declared cost is actually charged?**
+> **Can fixed, cheap-heuristic, adaptive, and privileged-oracle allocation arms share one public task, operation surface, canonical cognition, and hard resource envelope while adaptive meta-information is available only after its declared cost is actually charged for that case?**
 
 ## Public task versus evaluator case
 
@@ -21,6 +21,7 @@ AllocationTask
 
 AllocationCase
   public AllocationTask
+  evaluator-only case identity
   evaluator-only sealed regime
 ```
 
@@ -45,7 +46,7 @@ trap
   additional work should stop
 ```
 
-The regime is experiment apparatus. It is not Evidence, State, Structure, a model prompt field, or a deployable routing label.
+The regime and case identity are experiment apparatus. They are not Evidence, State, Structure, model prompt fields, or deployable routing labels.
 
 ## Operation surface and hard envelope
 
@@ -82,24 +83,25 @@ public task
   -> adaptive pre-probe policy
        plan = meta_probe only
        + explicit allocator decision cost
-  -> run_operation_plan charges decision + meta_probe
-  -> paid_meta_probe_result verifies the completed paid run
-  -> evaluator-only synthetic probe result becomes available
+  -> run_paid_meta_probe
+       -> run_operation_plan charges decision + meta_probe
+       -> only after successful charge, read this case's sealed evaluator regime
+       -> emit PaidMetaProbeReceipt bound to this case_id
   -> selected work operation executes under the same ledger
 ```
 
 Before the paid boundary, A2 cannot select the hidden ideal operation because its pre-probe policy receives no regime and contains only `meta_probe`.
 
-`paid_meta_probe_result` fails closed unless the preceding `PolicyRun` proves all of:
+A probe attempt that cannot fit within the resource envelope fails before returning any hidden result. A successful `PaidMetaProbeReceipt` records the exact evaluator case identity for which the probe was purchased, so one case's paid result is not a generic reusable ticket for another case.
+
+The only non-oracle code path that reads the sealed evaluator regime is after the probe run has recorded both:
 
 ```text
-policy identity = adaptive
-selected operations = meta_probe only
-measurement trace = decision then meta_probe
-resource total includes decision + observation/probe cost
+policy:adaptive:decision
+policy:adaptive:operation:meta_probe
 ```
 
-Only after these conditions hold may the evaluator-side sealed regime determine the synthetic probe result.
+and the corresponding resource spend.
 
 This remains a synthetic R0 mechanism. R1 must replace the evaluator-provided probe result with a real bounded inference/observation path and charge its measured physical cost.
 
@@ -137,8 +139,9 @@ An undeclared Evidence occurrence or canonical mutation in one arm fails the int
 These are experiment apparatus only:
 
 ```text
+evaluator case identity
 evaluator regime
-paid probe result
+paid probe receipt / result
 ideal operation
 policy identity
 selected operations
@@ -165,13 +168,14 @@ R0 is repository-PASS only when deterministic tests prove:
 2. public `AllocationTask` contains no regime;
 3. A0/A1 are regime-blind;
 4. A2 pre-probe policy contains only `meta_probe` and is regime-blind;
-5. an unpaid/fake adaptive run cannot reveal the hidden probe result;
-6. a valid paid probe charges decision and meta-probe resources before result revelation;
-7. selected adaptive work occurs after that paid boundary under the same ledger;
-8. A0/A1/A2 share task, operation surface, hard envelope, canonical cognition and provenance;
-9. A3 privilege fails closed without explicit privileged admission;
-10. policy/resource/measurement instrumentation does not mutate canonical cognition;
-11. hidden Evidence contamination fails the matched-arm diff.
+5. an unpaid probe cannot return hidden evaluator result;
+6. a valid paid probe charges decision and meta-probe resources before regime revelation;
+7. the paid receipt is bound to the exact evaluator case identity;
+8. selected adaptive work occurs after that paid boundary under the same ledger;
+9. A0/A1/A2 share task, operation surface, hard envelope, canonical cognition and provenance;
+10. A3 privilege fails closed without explicit privileged admission;
+11. policy/resource/measurement instrumentation does not mutate canonical cognition;
+12. hidden Evidence contamination fails the matched-arm diff.
 
 ## What R0 does not establish
 
@@ -203,5 +207,7 @@ R1 must freeze a real model/runtime/hardware identity, replace the synthetic pai
 > **Metacognition must pay rent.**
 
 > **Do not give the adaptive arm the answer and charge it afterward.**
+
+> **A paid observation is episode-local evidence for allocation, not a reusable oracle coupon.**
 
 > **Oracle headroom tells us whether allocation matters; A2 tells us whether our allocator matters.**
