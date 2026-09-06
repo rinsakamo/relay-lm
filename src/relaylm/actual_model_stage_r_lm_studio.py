@@ -331,7 +331,7 @@ async def _run_stage_r(
         character_fixture_revision=character_fixture_revision(fixture_root),
         provider_identity=(
             "lm_studio_observed:"
-            f"{request_model}:{observed.loaded_instance_id}:reasoning_effort=off"
+            f"{request_model}:{observed.loaded_instance_id}:reasoning_effort=none"
         ),
         adapter_identity=identity.adapter_identity,
         model_artifact=observed.observed_identity,
@@ -395,7 +395,7 @@ async def _run_stage_r(
         "model_observed_identity": observed.observed_identity,
         "reasoning_preference": authority.reasoning_preference,
         "reasoning_realization": "explicit_off",
-        "reasoning_wire_control": "reasoning_effort=off",
+        "reasoning_wire_control": "reasoning_effort=none",
         "reasoning_capability": reasoning_capability.to_mapping(),
         "executions": executions,
     }
