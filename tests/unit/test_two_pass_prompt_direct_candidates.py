@@ -132,8 +132,21 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
         "New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical."
         in extraction_content
     )
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
+    assert (
+        "For every kind, decide `set`, no candidate, or `resolve`; finish all three kind "
+        "decisions before concluding the array is empty."
+        in extraction_content
+    )
+    assert (
+        "New useful meanings emit `set` with a new stable key. Changed or resolved accepted "
+        "meanings reuse their existing lifecycle key."
+        in extraction_content
+    )
+    assert (
+        "For each Continuity kind, compare the current Input with the accepted item independently: "
+        "`set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning."
+        in extraction_content
+    )
     assert (
         "every new set/resolve transition must include the current Input Event ID `evt-now` in `sources`"
         in extraction_content
@@ -178,31 +191,25 @@ def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
     extraction_content = extraction_messages[1]["content"]
     assert isinstance(extraction_content, str)
 
-    assert "Continuity transition decision:" in extraction_content
-    assert "new useful meaning -> emit `set` with a new stable key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
+    scan = (
+        "Continuity lifecycle scan: before emitting `continuity_candidates`, scan `referent`, "
+        "`unresolved`, and `active_task` independently in that order. For every kind, decide "
+        "`set`, no candidate, or `resolve`; finish all three kind decisions before concluding "
+        "the array is empty."
+    )
+    assert extraction_content.count(scan) == 1
     assert (
-        "Before concluding there are no Continuity candidates, check `unresolved` independently"
+        "One kind's unchanged/no-candidate decision never suppresses a distinct transition for another kind."
         in extraction_content
     )
     assert (
-        "newly establishes an explicit open question or unknown value" in extraction_content
-    )
-    assert (
-        "emit a new `unresolved` set when no accepted unresolved item already represents that open issue"
+        "An explicit open question or unknown value, including one explicitly maintained as unknown, "
+        "is an `unresolved` meaning when no accepted unresolved item already represents it."
         in extraction_content
     )
     assert (
-        "even when related accepted `referent` or `active_task` meanings are unchanged"
-        in extraction_content
-    )
-    assert (
-        "An explicitly maintained unknown value is itself an `unresolved` meaning"
-        in extraction_content
-    )
-    assert (
-        "Do not require a new `active_task`, a question form, or a change to an existing task before emitting it."
+        "It does not require a question form, a new `active_task`, a task change, or a related "
+        "referent transition before emitting `unresolved`."
         in extraction_content
     )
     assert (

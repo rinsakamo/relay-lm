@@ -36,13 +36,21 @@ def test_pass2_prompt_keeps_continuity_resolve_kind_local() -> None:
     content = messages[1]["content"]
     assert isinstance(content, str)
 
-    assert "Evaluate resolution or completion independently for each Continuity kind." in content
+    assert (
+        "scan `referent`, `unresolved`, and `active_task` independently in that order"
+        in content
+    )
+    assert (
+        "For every kind, decide `set`, no candidate, or `resolve`; finish all three kind "
+        "decisions before concluding the array is empty."
+        in content
+    )
     assert (
         "Resolving an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`."
         in content
     )
     assert (
-        "If that referent meaning is unchanged, emit no referent candidate."
+        "One kind's unchanged/no-candidate decision never suppresses a distinct transition for another kind."
         in content
     )
     assert (
