@@ -84,7 +84,7 @@ def test_stage_r_binary_default_on_model_realizes_explicit_off_wire() -> None:
     )
 
     assert attestation.default == "on"
-    assert application.to_mapping()["wire_fields"] == {"reasoning_effort": "off"}
+    assert application.to_mapping()["wire_fields"] == {"reasoning_effort": "none"}
 
 
 def test_observed_stage_r_rejects_non_q4_model() -> None:
