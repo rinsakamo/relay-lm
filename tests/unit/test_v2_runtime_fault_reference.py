@@ -118,6 +118,21 @@ def test_stale_parent_proposal_rejects_after_recovery_and_new_commit():
     assert recovered.kernel.cell("choice").value == "B"
 
 
+def test_crash_before_external_attempt_registration_can_still_dispatch():
+    runtime = CrashSafeRuntime.fresh()
+    sink = FakeActionSink()
+    action = runtime.emit_response("send")
+
+    recovered = runtime.crash_and_recover()
+    assert action.id not in recovered.store.external_receipts
+    receipt = recovered.begin_external_dispatch(action.id, mode="NON_IDEMPOTENT")
+    assert receipt.status == "ATTEMPT_REGISTERED"
+    sink.invoke(action.id, idempotent=False)
+    receipt = recovered.record_external_success(action.id)
+    assert receipt.status == "SUCCEEDED"
+    assert sink.effect_count(action.id) == 1
+
+
 def test_non_idempotent_unknown_dispatch_is_not_blindly_retried():
     runtime = CrashSafeRuntime.fresh()
     sink = FakeActionSink()
@@ -164,9 +179,9 @@ def test_external_success_is_not_fabricated_before_result_receipt():
     runtime = CrashSafeRuntime.fresh()
     action = runtime.emit_response("send")
     receipt = runtime.begin_external_dispatch(action.id, mode="NON_IDEMPOTENT")
-    assert receipt.status == "DISPATCHED"
+    assert receipt.status == "ATTEMPT_REGISTERED"
     recovered = runtime.crash_and_recover()
-    assert recovered.external_receipt(action.id).status == "DISPATCHED"
+    assert recovered.external_receipt(action.id).status == "ATTEMPT_REGISTERED"
 
 
 def test_runtime_receipts_store_identity_not_semantic_payload():
