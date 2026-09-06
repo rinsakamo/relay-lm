@@ -7,11 +7,10 @@ import json
 import os
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Mapping, Sequence
 from urllib.parse import urlsplit, urlunsplit
 
 from relaylm.actual_model_artifacts import character_fixture_revision
@@ -22,13 +21,13 @@ from relaylm.actual_model_boundary import (
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_execution import run_actual_model_scenario_definition
 from relaylm.actual_model_execution_artifacts import write_actual_model_execution_result
+from relaylm.actual_model_scenarios import ActualModelScenarioSet
 from relaylm.actual_model_stage_r_semantics import (
     CURRENT_STAGE_R_SEMANTIC_AUTHORITY_PATH,
     StageRSemanticAuthority,
     load_current_stage_r_scenario_set,
     load_stage_r_semantic_authority,
 )
-from relaylm.cognition_execution import CognitionReasoningMode
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -72,34 +71,16 @@ class ObservedLMStudioModel:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise LMStudioStageRError(f"{name} must be a non-empty string")
-        if self.params_string is not None and (
-            not isinstance(self.params_string, str) or not self.params_string.strip()
-        ):
+        if self.params_string is not None and not self.params_string.strip():
             raise LMStudioStageRError("params_string must be non-empty or null")
-        if isinstance(self.size_bytes, bool) or not isinstance(self.size_bytes, int):
-            raise LMStudioStageRError("size_bytes must be an integer")
-        if self.size_bytes <= 0:
-            raise LMStudioStageRError("size_bytes must be positive")
-        if isinstance(self.context_length, bool) or not isinstance(
-            self.context_length, int
-        ):
-            raise LMStudioStageRError("context_length must be an integer")
-        if self.context_length <= 0:
-            raise LMStudioStageRError("context_length must be positive")
-        if self.flash_attention is not None and not isinstance(
-            self.flash_attention, bool
-        ):
-            raise LMStudioStageRError("flash_attention must be bool or null")
-        if self.offload_kv_cache_to_gpu is not None and not isinstance(
-            self.offload_kv_cache_to_gpu, bool
-        ):
-            raise LMStudioStageRError(
-                "offload_kv_cache_to_gpu must be bool or null"
-            )
-        if self.reasoning_default is not None and (
-            not isinstance(self.reasoning_default, str)
-            or not self.reasoning_default.strip()
-        ):
+        _require_positive_integer(self.size_bytes, "size_bytes")
+        _require_positive_integer(self.context_length, "context_length")
+        _require_optional_bool(self.flash_attention, "flash_attention")
+        _require_optional_bool(
+            self.offload_kv_cache_to_gpu,
+            "offload_kv_cache_to_gpu",
+        )
+        if self.reasoning_default is not None and not self.reasoning_default.strip():
             raise LMStudioStageRError("reasoning_default must be non-empty or null")
         if tuple(sorted(self.reasoning_allowed_options)) != self.reasoning_allowed_options:
             raise LMStudioStageRError("reasoning_allowed_options must be sorted")
@@ -185,46 +166,31 @@ def observe_compatible_lm_studio_model(
         raise LMStudioStageRError(
             "selected LM Studio model must use Q4-class quantization"
         )
-    size_bytes = _integer(model.get("size_bytes"), "size_bytes")
 
     loaded = model.get("loaded_instances")
     if not isinstance(loaded, list) or not loaded:
         raise LMStudioStageRError("selected LM Studio model is not loaded")
     candidates = [item for item in loaded if isinstance(item, Mapping)]
     if loaded_instance_id is not None:
-        candidates = [item for item in candidates if item.get("id") == loaded_instance_id]
+        candidates = [
+            item for item in candidates if item.get("id") == loaded_instance_id
+        ]
     if len(candidates) != 1:
         raise LMStudioStageRError(
             "selected LM Studio request routing is ambiguous; specify one loaded instance"
         )
+
     instance = candidates[0]
-    instance_id = _string(instance.get("id"), "loaded instance id")
     config = _mapping(instance.get("config"), "loaded instance config")
-    context_length = _integer(config.get("context_length"), "context_length")
-
-    capabilities = model.get("capabilities")
-    reasoning_default: str | None = None
-    reasoning_allowed: tuple[str, ...] = ()
-    if isinstance(capabilities, Mapping):
-        reasoning = capabilities.get("reasoning")
-        if isinstance(reasoning, Mapping):
-            allowed = reasoning.get("allowed_options")
-            default = reasoning.get("default")
-            if isinstance(allowed, list) and all(
-                isinstance(item, str) and item.strip() for item in allowed
-            ):
-                reasoning_allowed = tuple(sorted(allowed))
-            if isinstance(default, str) and default.strip():
-                reasoning_default = default
-
+    reasoning_default, reasoning_allowed = _reasoning_metadata(model)
     return ObservedLMStudioModel(
         request_model=request_model,
-        loaded_instance_id=instance_id,
+        loaded_instance_id=_string(instance.get("id"), "loaded instance id"),
         display_name=display_name,
         params_string=params_string,
         quantization=quantization_name,
-        size_bytes=size_bytes,
-        context_length=context_length,
+        size_bytes=_integer(model.get("size_bytes"), "size_bytes"),
+        context_length=_integer(config.get("context_length"), "context_length"),
         flash_attention=_optional_bool(config.get("flash_attention"), "flash_attention"),
         offload_kv_cache_to_gpu=_optional_bool(
             config.get("offload_kv_cache_to_gpu"),
@@ -238,8 +204,8 @@ def observe_compatible_lm_studio_model(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the provider-neutral current Stage R semantic fixture against an "
-            "observed compatible LM Studio Gemma-4 12B Q4 condition."
+            "Run current provider-neutral Stage R semantics against an observed "
+            "LM Studio Gemma-4 12B Q4 condition."
         )
     )
     parser.add_argument("--repo-root", required=True)
@@ -266,12 +232,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         repo_root=repo_root,
         authority=authority,
     )
-    models_response = _fetch_models(
-        provider_base_url=provider_base_url,
-        api_key_env=args.provider_api_key_env,
-    )
     observed = observe_compatible_lm_studio_model(
-        models_response=models_response,
+        models_response=_fetch_models(
+            provider_base_url=provider_base_url,
+            api_key_env=args.provider_api_key_env,
+        ),
         request_model=args.request_model,
         loaded_instance_id=args.loaded_instance_id,
     )
@@ -280,7 +245,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         observed.to_mapping(),
     )
 
-    result = asyncio.run(
+    summary = asyncio.run(
         _run_stage_r(
             repo_root=repo_root,
             provider_base_url=provider_base_url,
@@ -296,9 +261,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     _write_json_create_once(
         artifact_root / "stage-r-lm-studio-summary.json",
-        result,
+        summary,
     )
-    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -312,27 +277,25 @@ async def _run_stage_r(
     replicate_id: str,
     api_key_env: str | None,
     authority: StageRSemanticAuthority,
-    scenario_set: Any,
+    scenario_set: ActualModelScenarioSet,
     observed: ObservedLMStudioModel,
 ) -> dict[str, object]:
     api_key = os.environ.get(api_key_env) if api_key_env else None
-    decoding = OpenAICompatibleDecodingConfig(
-        temperature=authority.temperature,
-        top_p=authority.top_p,
-        seed=authority.seed,
-    )
     provider = OpenAICompatibleTwoPassProvider(
         base_url=provider_base_url,
         model=request_model,
         api_key=api_key,
-        decoding_config=decoding,
+        decoding_config=OpenAICompatibleDecodingConfig(
+            temperature=authority.temperature,
+            top_p=authority.top_p,
+            seed=authority.seed,
+        ),
         decoding_capabilities=OpenAICompatibleDecodingCapabilities(
             supported_controls=frozenset({"temperature", "top_p"})
         ),
     )
     identity = describe_openai_compatible_provider(provider)
     fixture_root = repo_root / CANONICAL_FIXTURE_PATH
-    pass_requests = authority.pass_requests(reasoning_mode=None)
     manifest = ActualModelRunManifest(
         relaylm_commit=_git_head(repo_root),
         character_fixture_id=scenario_set.character_fixture_id,
@@ -358,7 +321,7 @@ async def _run_stage_r(
         provider_capabilities=identity.provider_capabilities,
         replicate_id=replicate_id,
         cognition_execution=authority.cognition_execution,
-        cognition_pass_requests=pass_requests,
+        cognition_pass_requests=authority.pass_requests(reasoning_mode=None),
     )
 
     executions: list[dict[str, object]] = []
@@ -407,6 +370,29 @@ async def _run_stage_r(
     }
 
 
+def _reasoning_metadata(
+    model: Mapping[str, object],
+) -> tuple[str | None, tuple[str, ...]]:
+    capabilities = model.get("capabilities")
+    if not isinstance(capabilities, Mapping):
+        return None, ()
+    reasoning = capabilities.get("reasoning")
+    if not isinstance(reasoning, Mapping):
+        return None, ()
+    default_raw = reasoning.get("default")
+    default = (
+        default_raw
+        if isinstance(default_raw, str) and default_raw.strip()
+        else None
+    )
+    allowed_raw = reasoning.get("allowed_options")
+    if not isinstance(allowed_raw, list) or not all(
+        isinstance(item, str) and item.strip() for item in allowed_raw
+    ):
+        return default, ()
+    return default, tuple(sorted(allowed_raw))
+
+
 def _fetch_models(
     *,
     provider_base_url: str,
@@ -428,7 +414,7 @@ def _fetch_models(
     try:
         with urllib.request.urlopen(request, timeout=15.0) as response:
             raw = json.loads(response.read().decode("utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError, urllib.error.URLError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise LMStudioStageRError(
             f"cannot fetch LM Studio model inventory: {exc}"
         ) from exc
@@ -455,7 +441,10 @@ def _require_openai_api_base(base_url: str) -> str:
 
 
 def _require_gemma_4_12b(
-    *, request_model: str, display_name: str, params_string: str | None
+    *,
+    request_model: str,
+    display_name: str,
+    params_string: str | None,
 ) -> None:
     names = " ".join((request_model, display_name)).casefold().replace("_", "-")
     if "gemma-4" not in names and "gemma 4" not in names:
@@ -513,8 +502,6 @@ def _string(value: object, label: str) -> str:
 def _integer(value: object, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise LMStudioStageRError(f"{label} must be an integer")
-    if value <= 0:
-        raise LMStudioStageRError(f"{label} must be positive")
     return value
 
 
@@ -524,6 +511,16 @@ def _optional_bool(value: object, label: str) -> bool | None:
     if not isinstance(value, bool):
         raise LMStudioStageRError(f"{label} must be bool or null")
     return value
+
+
+def _require_positive_integer(value: object, label: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise LMStudioStageRError(f"{label} must be a positive integer")
+
+
+def _require_optional_bool(value: object, label: str) -> None:
+    if value is not None and not isinstance(value, bool):
+        raise LMStudioStageRError(f"{label} must be bool or null")
 
 
 if __name__ == "__main__":
