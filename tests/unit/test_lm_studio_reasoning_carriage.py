@@ -77,7 +77,7 @@ def _cognitive_input() -> CognitiveInput:
 
 
 def _assert_explicit_off(body: dict[str, object]) -> None:
-    assert body["reasoning_effort"] == "off"
+    assert body["reasoning_effort"] == "none"
     assert "reasoning_tokens" not in body
     assert "thinking_token_budget" not in body
     assert "chat_template_kwargs" not in body
