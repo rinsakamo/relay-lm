@@ -8,6 +8,11 @@ from relaylm.actual_model_stage_r_lm_studio import (
     LMStudioStageRError,
     observe_compatible_lm_studio_model,
 )
+from relaylm.providers.lm_studio_reasoning import (
+    attest_lm_studio_reasoning_capabilities,
+    realize_lm_studio_reasoning_request,
+)
+from relaylm.providers.openai_compatible_reasoning import OpenAICompatibleReasoningRequest
 
 
 def _models(*, quantization: str = "Q4_K_M") -> dict[str, object]:
@@ -54,11 +59,32 @@ def test_observed_stage_r_accepts_gemma4_12b_q4_without_artifact_sha() -> None:
     assert observed.flash_attention is True
     assert observed.offload_kv_cache_to_gpu is True
     assert observed.reasoning_default == "on"
-    assert observed.reasoning_condition == "omitted_default_on"
+    assert observed.reasoning_condition == "default_on"
     mapping = observed.to_mapping()
     assert "artifact_sha256" not in mapping
     assert "artifact_repository_revision" not in mapping
     assert "target_id" not in mapping
+    reasoning = mapping["reasoning"]
+    assert isinstance(reasoning, dict)
+    assert reasoning["default"] == "on"
+    assert reasoning["wire_control"] == "request_owned"
+
+
+def test_stage_r_binary_default_on_model_realizes_explicit_off_wire() -> None:
+    models = _models()
+    attestation = attest_lm_studio_reasoning_capabilities(
+        models_response=models,
+        request_model="google/gemma-4-12b",
+        loaded_instance_id="gemma-live-1",
+    )
+
+    application = realize_lm_studio_reasoning_request(
+        request=OpenAICompatibleReasoningRequest(mode="off"),
+        capability=attestation,
+    )
+
+    assert attestation.default == "on"
+    assert application.to_mapping()["wire_fields"] == {"reasoning_effort": "off"}
 
 
 def test_observed_stage_r_rejects_non_q4_model() -> None:
