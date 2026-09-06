@@ -52,6 +52,10 @@ def _learned_rule_json(family) -> str:
     )
 
 
+def _fenced_json(payload: str) -> str:
+    return f"```json\n{payload}\n```"
+
+
 def _formation_client(family) -> QueueClient:
     return QueueClient(
         [
@@ -104,6 +108,52 @@ def test_s2_forms_all_arms_with_three_physical_build_calls_and_no_oracle_fixture
     assert representations["P4_MEMORY_PLUS_STRUCTURE"].formation_calls == 1
     assert representations["P5_STRUCTURE_ONLY_RECONSTRUCTABLE"].formation_calls == 1
     assert representations["P6_GENERIC_EQUAL_INFORMATION"].formation_calls == 1
+
+
+def test_s2_accepts_single_fenced_json_learned_rule_as_surface_wrapper():
+    family = generate_transfer_family(seed=43, regime="shared")
+    client = QueueClient(
+        [
+            _completion('{"summary":"faithful recap"}'),
+            _completion('{"gist":"compact gist"}'),
+            _completion(_fenced_json(_learned_rule_json(family))),
+        ]
+    )
+
+    representations = form_s2_representations(client, family)
+
+    p4 = representations["P4_MEMORY_PLUS_STRUCTURE"]
+    p6 = representations["P6_GENERIC_EQUAL_INFORMATION"]
+    assert semantic_digest(p4.kind, json.loads(p4.serialized)) == semantic_digest(
+        p6.kind,
+        json.loads(p6.serialized),
+    )
+    assert len(client.messages) == 3
+
+
+@pytest.mark.parametrize(
+    "wrapped",
+    [
+        "Here is the answer:\n{rule}",
+        "```json\n{rule}\n```\nextra prose",
+        "```python\n{rule}\n```",
+        "```json\n{rule}\n```\n```json\n{rule}\n```",
+    ],
+)
+def test_s2_rejects_non_single_json_envelopes_for_learned_rule(wrapped: str):
+    family = generate_transfer_family(seed=44, regime="shared")
+    content = wrapped.format(rule=_learned_rule_json(family))
+    client = QueueClient(
+        [
+            _completion('{"summary":"faithful recap"}'),
+            _completion('{"gist":"compact gist"}'),
+            _completion(content),
+        ]
+    )
+
+    with pytest.raises(S2ExperimentError):
+        form_s2_representations(client, family)
+    assert len(client.messages) == 3
 
 
 def test_s2_p4_and_p6_share_one_learned_semantic_payload_but_different_surface_type():
@@ -175,6 +225,20 @@ def test_s2_smoke_runs_three_build_calls_plus_exactly_one_target_probe_per_arm()
     assert len({arm.target_task_digest for arm in result.arms.values()}) == 1
     assert all(arm.verification.correct for arm in result.arms.values())
     assert all(arm.target_calls == 1 for arm in result.arms.values())
+
+
+def test_s2_accepts_single_fenced_json_target_answers_as_surface_wrapper():
+    family = generate_transfer_family(seed=809, regime="shared")
+    expected = json.dumps(list(family.expected_output(0)), separators=(",", ":"))
+    client = QueueClient(
+        _formation_client(family).completions
+        + [_completion(_fenced_json(expected)) for _ in REPRESENTATION_KINDS]
+    )
+
+    result = run_s2_smoke(client, family, step_index=0, examples_visible=0)
+
+    assert len(client.messages) == S2_TOTAL_CALLS_PER_FAMILY == 10
+    assert all(arm.verification.correct for arm in result.arms.values())
 
 
 def test_s2_target_wrapper_is_identical_across_arms_except_prior_context():
