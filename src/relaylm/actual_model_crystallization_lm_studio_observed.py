@@ -104,7 +104,7 @@ def build_observed_manifest(
         provider_identity=(
             "lm_studio_observed:"
             f"{observed.request_model}:{observed.loaded_instance_id}:"
-            f"{observed.observed_identity}:reasoning_effort=off"
+            f"{observed.observed_identity}:reasoning_effort=none"
         ),
         adapter_identity=ADAPTER_IDENTITY,
         model_artifact=observed.observed_identity,
@@ -282,7 +282,7 @@ async def _execute(
         "model_observed_identity": observed.observed_identity,
         "model": observed.to_mapping(),
         "reasoning_realization": "explicit_off",
-        "reasoning_wire_control": "reasoning_effort=off",
+        "reasoning_wire_control": "reasoning_effort=none",
         "reasoning_capability": reasoning_capability.to_mapping(),
         "result": {
             "case_id": CASE_ID,
