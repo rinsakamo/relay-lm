@@ -58,6 +58,7 @@ tests:
 - tests/unit/test_vllm_reasoning_target_boundary.py
 - tests/unit/test_vllm_reasoning_realization.py
 - tests/unit/test_cognition_pass_request_carriage.py
+- tests/unit/test_lm_studio_reasoning_carriage.py
 - tests/unit/test_openai_compatible_budget.py
 - tests/unit/test_openai_compatible_two_pass_budget.py
 - tests/unit/test_openai_compatible_streaming_parity.py
