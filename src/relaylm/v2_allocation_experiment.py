@@ -6,13 +6,13 @@ import json
 
 from relaylm.v2_interventions import (
     ArmSnapshot,
-    InterventionError,
     InterventionSpec,
     MeasurementTrace,
     Operation,
     OperationPolicy,
     PolicyRun,
     ProjectionPolicy,
+    ProjectionResult,
     ResourceLedger,
     ResourceVector,
     assert_clean_intervention,
@@ -114,6 +114,15 @@ class AllocationCase:
             raise ValueError(f"unsupported allocation regime: {self._regime}")
         if not self.case_id:
             raise ValueError("allocation case id must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
+class PaidMetaProbeReceipt:
+    """Evaluator-only result of one charged meta-probe for one case."""
+
+    case_id: str
+    run: PolicyRun
+    selected_operation: str
 
 
 @dataclass(slots=True)
@@ -231,30 +240,44 @@ def adaptive_preprobe_policy() -> OperationPolicy:
     )
 
 
-def paid_meta_probe_result(case: AllocationCase, probe_run: PolicyRun) -> str:
-    """Reveal evaluator-only synthetic probe output after the paid boundary.
+def run_paid_meta_probe(
+    case: AllocationCase,
+    *,
+    store: SemanticTransactionStore,
+    operations: tuple[Operation, ...],
+    ledger: ResourceLedger,
+    trace: MeasurementTrace,
+) -> PaidMetaProbeReceipt:
+    """Charge one case-bound probe before evaluator-only regime revelation."""
 
-    R0 intentionally makes this verifier strict: hidden work-value regime is not
-    available through AllocationTask and may be consulted only after a completed
-    adaptive run records both allocator decision cost and the meta-probe operation.
-    """
-
+    probe_run = run_operation_plan(
+        store,
+        operations=operations,
+        policy=adaptive_preprobe_policy(),
+        ledger=ledger,
+        trace=trace,
+    )
     required_events = (
         "policy:adaptive:decision",
         "policy:adaptive:operation:meta_probe",
     )
-    if probe_run.policy_id != "adaptive":
-        raise InterventionError("paid meta-probe requires adaptive policy identity")
     if probe_run.selected_operations != ("meta_probe",):
-        raise InterventionError("paid meta-probe requires a completed probe-only run")
+        raise RuntimeError("adaptive pre-probe run did not remain probe-only")
     if probe_run.measurement_events != required_events:
-        raise InterventionError("paid meta-probe requires charged decision/probe trace")
+        raise RuntimeError("adaptive probe trace is not the declared paid boundary")
     if (
         probe_run.resource_total.latency_units < 2
         or probe_run.resource_total.observation_units < 1
     ):
-        raise InterventionError("paid meta-probe requires charged resources")
-    return _IDEAL_OPERATION[case._regime]
+        raise RuntimeError("adaptive probe completed without declared resource charge")
+
+    # This is the first non-oracle point where evaluator regime may be read.
+    # The returned receipt is bound to this exact AllocationCase identity.
+    return PaidMetaProbeReceipt(
+        case_id=case.case_id,
+        run=probe_run,
+        selected_operation=_IDEAL_OPERATION[case._regime],
+    )
 
 
 def oracle_policy(case: AllocationCase) -> OperationPolicy:
@@ -285,7 +308,7 @@ def _snapshot_run_arm(
     operations: tuple[Operation, ...],
     envelope: ResourceVector,
     projection_policy: ProjectionPolicy,
-    projection_result: object,
+    projection_result: ProjectionResult,
     run: PolicyRun,
 ) -> AllocationR0Arm:
     return AllocationR0Arm(
@@ -353,24 +376,23 @@ def _run_adaptive_arm(
     ledger = ResourceLedger(envelope)
     trace = MeasurementTrace()
 
-    probe_run = run_operation_plan(
-        store,
+    paid_probe = run_paid_meta_probe(
+        case,
+        store=store,
         operations=operations,
-        policy=adaptive_preprobe_policy(),
         ledger=ledger,
         trace=trace,
     )
-    selected_operation = paid_meta_probe_result(case, probe_run)
     work_run = run_operation_plan(
         store,
         operations=operations,
-        policy=OperationPolicy("adaptive", (selected_operation,)),
+        policy=OperationPolicy("adaptive", (paid_probe.selected_operation,)),
         ledger=ledger,
         trace=trace,
     )
     run = PolicyRun(
         policy_id="adaptive",
-        selected_operations=("meta_probe", selected_operation),
+        selected_operations=("meta_probe", paid_probe.selected_operation),
         resource_total=work_run.resource_total,
         measurement_events=work_run.measurement_events,
     )
