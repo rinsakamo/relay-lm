@@ -14,10 +14,11 @@ from relaylm.v2_transfer_actual_model import (
     ExperimentCompletion,
     StructureProposalError,
 )
-from tools.v2_cognitive_work_r0 import ExecutionBinding
+from tools.v2_cognitive_work_r0 import CognitiveWorkCampaign, ExecutionBinding
 
 
 _ALLOWED_OPERATIONS = ("ZERO", "THINK", "RETRIEVE")
+_REQUIRED_CAMPAIGN_OPERATIONS = frozenset({"THINK", "RETRIEVE"})
 _CLAIM_STATUS = "NON_CITABLE_R1_SMOKE"
 _MANIFEST_NAME = "run-manifest.json"
 _STATE_NAME = "run-state.json"
@@ -40,17 +41,12 @@ class RepositoryState:
 class R1HostIdentity:
     repository_commit: str
     repository_tree: str
-    campaign_fingerprint: str
-    execution: ExecutionBinding
+    campaign: CognitiveWorkCampaign
     automatic_retry: bool = False
     semantic_retry: bool = False
 
     def __post_init__(self) -> None:
-        for name in (
-            "repository_commit",
-            "repository_tree",
-            "campaign_fingerprint",
-        ):
+        for name in ("repository_commit", "repository_tree"):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise CognitiveWorkR1HostError(f"{name} must be non-empty")
@@ -58,6 +54,29 @@ class R1HostIdentity:
             raise CognitiveWorkR1HostError(
                 "R1 smoke must disable automatic and semantic retry"
             )
+        registry = {operation.name: operation for operation in self.campaign.operations}
+        missing = _REQUIRED_CAMPAIGN_OPERATIONS - set(registry)
+        if missing:
+            raise CognitiveWorkR1HostError(
+                "R0 campaign is missing required R1 operations: "
+                + ", ".join(sorted(missing))
+            )
+        privileged = [
+            name for name in _REQUIRED_CAMPAIGN_OPERATIONS if registry[name].privileged
+        ]
+        if privileged:
+            raise CognitiveWorkR1HostError(
+                "R1 deployable operations must not be privileged: "
+                + ", ".join(sorted(privileged))
+            )
+
+    @property
+    def campaign_fingerprint(self) -> str:
+        return self.campaign.fingerprint
+
+    @property
+    def execution(self) -> ExecutionBinding:
+        return self.campaign.execution
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -66,8 +85,24 @@ class R1HostIdentity:
                 "tree": self.repository_tree,
                 "clean_required": True,
             },
-            "campaign_fingerprint": self.campaign_fingerprint,
-            "execution": asdict(self.execution),
+            "campaign": {
+                "fingerprint": self.campaign.fingerprint,
+                "start": asdict(self.campaign.start),
+                "execution": asdict(self.campaign.execution),
+                "task_digest": self.campaign.task_digest,
+                "ordinary_information_ids": list(
+                    self.campaign.ordinary_information_ids
+                ),
+                "operations": [
+                    {
+                        "name": operation.name,
+                        "cost": asdict(operation.cost),
+                        "privileged": operation.privileged,
+                    }
+                    for operation in self.campaign.operations
+                ],
+                "envelope": asdict(self.campaign.envelope),
+            },
             "retry_policy": {
                 "automatic_retry": self.automatic_retry,
                 "semantic_retry": self.semantic_retry,
@@ -552,6 +587,7 @@ def _execute_revision(
             f"{task.task_id}:{arm_id}:think",
             _revision_messages(task, base_answer=base_answer, retrieval_packet=None),
         )
+        extra_cost = _cost(completion)
     elif operation == "RETRIEVE":
         if task.retrieval_packet is None:
             raise CognitiveWorkR1HostError("RETRIEVE requires an available packet")
@@ -563,6 +599,7 @@ def _execute_revision(
                 retrieval_packet=task.retrieval_packet,
             ),
         )
+        extra_cost = _cost(completion) + ResourceVector(retrieval_units=1)
     else:
         raise CognitiveWorkR1HostError(f"unsupported operation: {operation}")
     try:
@@ -574,7 +611,7 @@ def _execute_revision(
             error=str(exc),
         )
         raise
-    return answer, _cost(completion)
+    return answer, extra_cost
 
 
 def _outcome_mapping(outcome: ArmOutcome) -> dict[str, object]:
@@ -584,11 +621,7 @@ def _outcome_mapping(outcome: ArmOutcome) -> dict[str, object]:
         "operation": outcome.operation,
         "answer": outcome.answer,
         "correct": outcome.correct,
-        "cost": {
-            "calls": outcome.cost.calls,
-            "input_tokens": outcome.cost.input_tokens,
-            "output_tokens": outcome.cost.output_tokens,
-        },
+        "cost": asdict(outcome.cost),
     }
 
 
@@ -601,6 +634,13 @@ def _classification(outcomes: tuple[ArmOutcome, ...]) -> str:
     return "MECHANICALLY_DISCRIMINATING"
 
 
+def _arm_totals(outcomes: tuple[ArmOutcome, ...]) -> dict[str, ResourceVector]:
+    totals = {"A0": ResourceVector(), "A1": ResourceVector(), "A2": ResourceVector()}
+    for outcome in outcomes:
+        totals[outcome.arm_id] = totals[outcome.arm_id] + outcome.cost
+    return totals
+
+
 def run_r1_host_smoke(
     *,
     artifact_root: str | Path,
@@ -611,6 +651,11 @@ def run_r1_host_smoke(
     suite: SmokeSuite,
 ) -> R1HostResult:
     """Run one fresh NON_CITABLE #2187 R1 smoke; never choose a scientific winner."""
+
+    if identity.campaign.task_digest != suite.digest:
+        raise CognitiveWorkR1HostError(
+            "R1 suite does not match the exact R0 campaign task digest"
+        )
 
     observed_repository = probe_repository(repository_root)
     _validate_repository(identity, observed_repository)
@@ -790,6 +835,20 @@ def run_r1_host_smoke(
         )
 
     frozen_outcomes = tuple(outcomes)
+    arm_totals = _arm_totals(frozen_outcomes)
+    for arm_id, total in arm_totals.items():
+        if not total.fits_within(identity.campaign.envelope):
+            error = (
+                f"{arm_id} measured work exceeds the frozen R0 campaign envelope: "
+                f"total={total.as_tuple()} envelope={identity.campaign.envelope.as_tuple()}"
+            )
+            bound.fail(
+                question_id=f"budget:{arm_id}",
+                kind="resource_envelope_exceeded",
+                error=error,
+            )
+            raise CognitiveWorkR1HostError(error)
+
     classification = _classification(frozen_outcomes)
     result_payload = {
         "format_version": 1,
@@ -805,6 +864,9 @@ def run_r1_host_smoke(
         "classification": classification,
         "physical_base_completion_shared_across_arms": True,
         "base_cost_charged_counterfactually_to_each_arm": True,
+        "arm_resource_totals": {
+            arm_id: asdict(total) for arm_id, total in arm_totals.items()
+        },
         "outcomes": [_outcome_mapping(outcome) for outcome in frozen_outcomes],
     }
     _write_json_exclusive(root / _RESULT_NAME, result_payload)
