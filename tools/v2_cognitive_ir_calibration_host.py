@@ -107,7 +107,9 @@ def _reject_secret_keys(value: object, *, path: str = "identity") -> None:
         for raw_key, child in value.items():
             key = str(raw_key).lower()
             if any(fragment in key for fragment in _SECRET_KEY_FRAGMENTS):
-                raise CalibrationHostError(f"{path} must not persist secret-bearing field {raw_key}")
+                raise CalibrationHostError(
+                    f"{path} must not persist secret-bearing field {raw_key}"
+                )
             _reject_secret_keys(child, path=f"{path}.{raw_key}")
     elif isinstance(value, list):
         for index, child in enumerate(value):
@@ -282,7 +284,9 @@ def _validate_static_identity(
         raise CalibrationHostError("client transport identity does not match frozen identity")
 
     if declared_transport.get("api") != "openai-chat-completions-json-schema-v1":
-        raise CalibrationHostError("calibration transport must use OpenAI-compatible Chat Completions")
+        raise CalibrationHostError(
+            "calibration transport must use OpenAI-compatible Chat Completions"
+        )
     if declared_transport.get("structured_output") is not True:
         raise CalibrationHostError("calibration transport must require structured output")
 
@@ -372,7 +376,11 @@ def probe_lmstudio_native_calibration_binding(
         raise CalibrationHostError("LM Studio loaded instance id must be non-empty")
     config = _mapping(instance.get("config"), label="LM Studio loaded instance config")
     context_length = config.get("context_length")
-    if isinstance(context_length, bool) or not isinstance(context_length, int) or context_length <= 0:
+    if (
+        isinstance(context_length, bool)
+        or not isinstance(context_length, int)
+        or context_length <= 0
+    ):
         raise CalibrationHostError("LM Studio loaded context_length must be positive")
 
     capabilities = model_entry.get("capabilities")
