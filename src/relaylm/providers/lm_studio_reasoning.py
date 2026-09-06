@@ -15,7 +15,7 @@ LM_STUDIO_REASONING_CAPABILITY_ATTESTATION_FORMAT_VERSION = 1
 LM_STUDIO_REASONING_PUBLIC_OPTIONS = frozenset(
     {"off", "on", "low", "medium", "high"}
 )
-LM_STUDIO_CHAT_COMPLETIONS_BINARY_REASONING_OPTIONS = frozenset({"off", "on"})
+LM_STUDIO_CHAT_COMPLETIONS_OFF_EFFORT = "none"
 
 
 class LMStudioReasoningCapabilityError(ValueError):
@@ -227,13 +227,14 @@ def realize_lm_studio_reasoning_request(
     request: OpenAICompatibleReasoningRequest,
     capability: LMStudioReasoningCapabilityAttestation,
 ) -> OpenAICompatibleReasoningApplication:
-    """Serialize an attested LM Studio binary mode onto Chat Completions.
+    """Serialize current RelayLM OFF semantics onto LM Studio Chat Completions.
 
-    Current RelayLM support is intentionally narrower than LM Studio's native
-    reasoning vocabulary. For the Gemma-4 binary capability class used by the
-    release reference path, the exact OpenAI-compatible request field is
-    ``reasoning_effort`` and the attested public ``off``/``on`` value is carried
-    unchanged. Unsupported modes and token budgets fail before network I/O.
+    LM Studio native model metadata may expose a toggle-style ``off``/``on``
+    vocabulary, while its OpenAI-compatible Chat Completions request uses the
+    ``reasoning_effort`` vocabulary. Current Core needs only provider-neutral
+    OFF, which is realized as ``reasoning_effort: none`` after an exact loaded
+    model attests native ``off`` capability. Unsupported modes and token budgets
+    fail before network I/O.
     """
 
     if not isinstance(request, OpenAICompatibleReasoningRequest):
@@ -259,16 +260,16 @@ def realize_lm_studio_reasoning_request(
         raise LMStudioReasoningCapabilityError(
             f"LM Studio reasoning mode is not supported by the loaded model: {request.mode}"
         )
-    if request.mode not in LM_STUDIO_CHAT_COMPLETIONS_BINARY_REASONING_OPTIONS:
+    if request.mode != "off":
         raise LMStudioReasoningCapabilityError(
             "LM Studio Chat Completions realization is currently qualified only for "
-            "binary reasoning modes off/on"
+            "provider-neutral reasoning mode off"
         )
 
     return OpenAICompatibleReasoningApplication(
         status=OpenAICompatibleReasoningApplicationStatus.APPLIED,
         requested=request.requested,
-        wire_fields=(("reasoning_effort", request.mode),),
+        wire_fields=(("reasoning_effort", LM_STUDIO_CHAT_COMPLETIONS_OFF_EFFORT),),
     )
 
 
