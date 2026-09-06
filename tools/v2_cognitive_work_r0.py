@@ -22,6 +22,7 @@ class CognitiveStart:
     head_id: str
     canonical_digest: str
     occurrence_ids: tuple[str, ...]
+    boundary_digest: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,18 +134,34 @@ def freeze_cognitive_start(
         raise ValueError("lineage_id must not be empty")
     head = kernel.heads[kernel.current_head]
     canonical_digest = hashlib.sha256(repr(head.cells).encode("utf-8")).hexdigest()
-    occurrence_ids = tuple(
-        occurrence.id
-        for occurrence in sorted(
+    occurrences = tuple(
+        sorted(
             kernel.occurrences.values(),
             key=lambda occurrence: occurrence.receipt_index,
         )
     )
+    occurrence_ids = tuple(occurrence.id for occurrence in occurrences)
+    boundary_payload = tuple(
+        (
+            occurrence.id,
+            occurrence.source,
+            occurrence.content,
+            occurrence.receipt_index,
+            occurrence.world_rank,
+            occurrence.logical_ingress_id,
+            occurrence.redacted,
+        )
+        for occurrence in occurrences
+    )
+    boundary_digest = hashlib.sha256(
+        repr(boundary_payload).encode("utf-8")
+    ).hexdigest()
     return CognitiveStart(
         lineage_id=lineage_id,
         head_id=kernel.current_head,
         canonical_digest=canonical_digest,
         occurrence_ids=occurrence_ids,
+        boundary_digest=boundary_digest,
     )
 
 
