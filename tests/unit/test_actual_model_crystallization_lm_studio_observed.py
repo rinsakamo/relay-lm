@@ -13,10 +13,12 @@ from relaylm.actual_model_crystallization_lm_studio_observed import (
     observed_reasoning_identity,
 )
 from relaylm.actual_model_stage_r_lm_studio import ObservedLMStudioModel
+from relaylm.providers.lm_studio_reasoning import (
+    attest_lm_studio_reasoning_capabilities,
+)
 
 
-def _observed(*, reasoning_default: str | None = "on") -> ObservedLMStudioModel:
-    allowed = ("off", "on") if reasoning_default is not None else ()
+def _observed() -> ObservedLMStudioModel:
     return ObservedLMStudioModel(
         request_model="google/gemma-4-12b",
         loaded_instance_id="gemma-live-1",
@@ -27,8 +29,30 @@ def _observed(*, reasoning_default: str | None = "on") -> ObservedLMStudioModel:
         context_length=8192,
         flash_attention=True,
         offload_kv_cache_to_gpu=True,
-        reasoning_default=reasoning_default,
-        reasoning_allowed_options=allowed,
+        reasoning_default="on",
+        reasoning_allowed_options=("off", "on"),
+    )
+
+
+def _capability(*, allowed_options: tuple[str, ...] = ("off", "on")):
+    default = "on" if "on" in allowed_options else allowed_options[0]
+    return attest_lm_studio_reasoning_capabilities(
+        models_response={
+            "models": [
+                {
+                    "key": "google/gemma-4-12b",
+                    "loaded_instances": [{"id": "gemma-live-1"}],
+                    "capabilities": {
+                        "reasoning": {
+                            "allowed_options": list(allowed_options),
+                            "default": default,
+                        }
+                    },
+                }
+            ]
+        },
+        request_model="google/gemma-4-12b",
+        loaded_instance_id="gemma-live-1",
     )
 
 
@@ -38,6 +62,7 @@ def test_observed_manifest_records_model_condition_without_frozen_artifact() -> 
         relaylm_commit="a" * 40,
         fixture_revision="sha256:" + "b" * 64,
         observed=observed,
+        reasoning_capability=_capability(),
         replicate_id="0",
     )
 
@@ -47,31 +72,30 @@ def test_observed_manifest_records_model_condition_without_frozen_artifact() -> 
     assert manifest.model_artifact == observed.observed_identity
     assert manifest.tokenizer_identity == "lmstudio-observed:tokenizer-unreported"
     assert manifest.effective_context_window == 8192
-    assert manifest.reasoning_identity.effective_setting == "on"
+    assert manifest.reasoning_identity.required_setting == "off"
+    assert manifest.reasoning_identity.effective_setting == "off"
+    assert manifest.reasoning_identity.live_default == "on"
     assert "target_id" not in manifest.to_mapping()
     assert "artifact_sha256" not in manifest.to_mapping()
 
 
-def test_observed_reasoning_identity_records_default_without_wire_override() -> None:
-    identity = observed_reasoning_identity(_observed())
+def test_observed_reasoning_identity_records_explicit_off_separately_from_live_default() -> None:
+    identity = observed_reasoning_identity(_observed(), _capability())
 
-    assert identity.required_setting == "on"
-    assert identity.effective_setting == "on"
+    assert identity.required_setting == "off"
+    assert identity.effective_setting == "off"
     assert identity.live_default == "on"
     assert identity.allowed_options == ("off", "on")
-    assert identity.control_source == "lmstudio_native_model_default"
-    assert identity.control_mode == "omitted_default_observed"
+    assert identity.control_source == "lmstudio_chat_completions_reasoning_effort"
+    assert identity.control_mode == "explicit_request"
 
 
-def test_observed_reasoning_identity_can_record_unknown_metadata() -> None:
-    identity = observed_reasoning_identity(_observed(reasoning_default=None))
-
-    assert identity.required_setting == "unknown"
-    assert identity.effective_setting == "unknown"
-    assert identity.live_default == "unknown"
-    assert identity.allowed_options == ("unknown",)
-    assert identity.control_source == "lmstudio_native_metadata_unreported"
-    assert identity.control_mode == "omitted_default_unknown"
+def test_observed_reasoning_identity_rejects_runtime_without_off_capability() -> None:
+    with pytest.raises(
+        ObservedLMStudioCrystallizationError,
+        match="requires explicit LM Studio reasoning option off",
+    ):
+        observed_reasoning_identity(_observed(), _capability(allowed_options=("on",)))
 
 
 def test_observed_runner_uses_canonical_quality_case() -> None:
