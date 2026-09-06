@@ -185,7 +185,7 @@ def test_native_reasoning_metadata_does_not_attest_token_budget_support() -> Non
     assert attestation.capabilities.token_budget_supported is False
 
 
-def test_realizes_binary_off_as_exact_chat_completions_reasoning_effort() -> None:
+def test_realizes_native_off_as_chat_completions_reasoning_effort_none() -> None:
     attestation = attest_lm_studio_reasoning_capabilities(
         models_response=_models_response(
             reasoning={"allowed_options": ["off", "on"], "default": "on"}
@@ -201,8 +201,24 @@ def test_realizes_binary_off_as_exact_chat_completions_reasoning_effort() -> Non
 
     assert application.status is OpenAICompatibleReasoningApplicationStatus.APPLIED
     assert application.requested == (("mode", "off"),)
-    assert application.wire_fields == (("reasoning_effort", "off"),)
-    assert application.to_mapping()["wire_fields"] == {"reasoning_effort": "off"}
+    assert application.wire_fields == (("reasoning_effort", "none"),)
+    assert application.to_mapping()["wire_fields"] == {"reasoning_effort": "none"}
+
+
+def test_realizer_rejects_non_off_mode_even_when_native_metadata_exposes_it() -> None:
+    attestation = attest_lm_studio_reasoning_capabilities(
+        models_response=_models_response(
+            reasoning={"allowed_options": ["off", "on"], "default": "on"}
+        ),
+        request_model="google/gemma-4-12b",
+        loaded_instance_id="google/gemma-4-12b",
+    )
+
+    with pytest.raises(LMStudioReasoningCapabilityError, match="qualified only"):
+        realize_lm_studio_reasoning_request(
+            request=OpenAICompatibleReasoningRequest(mode="on"),
+            capability=attestation,
+        )
 
 
 def test_realizer_rejects_mode_absent_from_exact_loaded_model_capability() -> None:
