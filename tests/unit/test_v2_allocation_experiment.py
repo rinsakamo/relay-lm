@@ -12,16 +12,16 @@ from relaylm.v2_allocation_experiment import (
     generate_allocation_case,
     heuristic_policy,
     oracle_policy,
-    paid_meta_probe_result,
     prepare_r0_allocation_arms,
     prepare_r0_oracle_arm,
+    run_paid_meta_probe,
 )
 from relaylm.v2_interventions import (
     InterventionError,
     MeasurementTrace,
-    PolicyRun,
     ProjectionPolicy,
     ResourceLedger,
+    ResourceLimitError,
     ResourceVector,
     assert_clean_intervention,
     project_scope,
@@ -50,7 +50,7 @@ def test_r0_public_task_is_regime_free_and_byte_identical_for_same_seed() -> Non
 def test_r0_fixed_and_heuristic_are_regime_blind() -> None:
     cases = [generate_allocation_case(seed=41, regime=regime) for regime in REGIMES]
     assert {fixed_policy().plan for _case in cases} == {("think",)}
-    assert {heuristic_policy(case.task).plan for case in cases}.__len__() == 1
+    assert len({heuristic_policy(case.task).plan for case in cases}) == 1
 
 
 def test_r0_adaptive_preprobe_policy_cannot_select_hidden_ideal_operation() -> None:
@@ -64,37 +64,58 @@ def test_r0_adaptive_preprobe_policy_cannot_select_hidden_ideal_operation() -> N
     assert policy.decision_cost == ResourceVector(latency_units=1)
 
 
-def test_r0_hidden_regime_cannot_be_resolved_from_an_unpaid_fake_run() -> None:
+def test_r0_unpaid_probe_cannot_return_hidden_result() -> None:
     case = generate_allocation_case(seed=31, regime="observation_beneficial")
-    fake = PolicyRun(
-        policy_id="adaptive",
-        selected_operations=(),
-        resource_total=ResourceVector(),
-        measurement_events=(),
-    )
-    with pytest.raises(InterventionError, match="paid meta-probe"):
-        paid_meta_probe_result(case, fake)
+    ledger = ResourceLedger(ResourceVector())
+    trace = MeasurementTrace()
+    with pytest.raises(ResourceLimitError):
+        run_paid_meta_probe(
+            case,
+            store=SemanticTransactionStore(),
+            operations=allocation_operations(),
+            ledger=ledger,
+            trace=trace,
+        )
+    assert ledger.total == ResourceVector()
+    assert trace.snapshot() == ()
 
 
 def test_r0_paid_meta_probe_reveals_evaluator_result_only_after_charge() -> None:
     case = generate_allocation_case(seed=31, regime="observation_beneficial")
     ledger = ResourceLedger(allocation_envelope())
     trace = MeasurementTrace()
-    probe_run = run_operation_plan(
-        SemanticTransactionStore(),
+    receipt = run_paid_meta_probe(
+        case,
+        store=SemanticTransactionStore(),
         operations=allocation_operations(),
-        policy=adaptive_preprobe_policy(),
         ledger=ledger,
         trace=trace,
     )
-    assert probe_run.selected_operations == ("meta_probe",)
-    assert probe_run.resource_total.observation_units == 1
-    assert probe_run.resource_total.latency_units == 2
-    assert probe_run.measurement_events == (
+    assert receipt.case_id == case.case_id
+    assert receipt.run.selected_operations == ("meta_probe",)
+    assert receipt.run.resource_total.observation_units == 1
+    assert receipt.run.resource_total.latency_units == 2
+    assert receipt.run.measurement_events == (
         "policy:adaptive:decision",
         "policy:adaptive:operation:meta_probe",
     )
-    assert paid_meta_probe_result(case, probe_run) == "observe"
+    assert receipt.selected_operation == "observe"
+
+
+def test_r0_paid_probe_receipt_is_bound_to_one_case() -> None:
+    paid_case = generate_allocation_case(seed=61, regime="retrieval_beneficial")
+    other_case = generate_allocation_case(seed=61, regime="depth_beneficial")
+    receipt = run_paid_meta_probe(
+        paid_case,
+        store=SemanticTransactionStore(),
+        operations=allocation_operations(),
+        ledger=ResourceLedger(allocation_envelope()),
+        trace=MeasurementTrace(),
+    )
+    assert paid_case.task == other_case.task
+    assert receipt.case_id == paid_case.case_id
+    assert receipt.case_id != other_case.case_id
+    assert receipt.selected_operation == "retrieve"
 
 
 def test_r0_fixed_heuristic_adaptive_share_task_operations_budget_and_cognition() -> None:
