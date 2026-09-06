@@ -5,13 +5,17 @@ from dataclasses import dataclass
 from typing import Any
 
 from relaylm.providers.openai_compatible_reasoning import (
+    OpenAICompatibleReasoningApplication,
+    OpenAICompatibleReasoningApplicationStatus,
     OpenAICompatibleReasoningCapabilities,
+    OpenAICompatibleReasoningRequest,
 )
 
 LM_STUDIO_REASONING_CAPABILITY_ATTESTATION_FORMAT_VERSION = 1
 LM_STUDIO_REASONING_PUBLIC_OPTIONS = frozenset(
     {"off", "on", "low", "medium", "high"}
 )
+LM_STUDIO_CHAT_COMPLETIONS_BINARY_REASONING_OPTIONS = frozenset({"off", "on"})
 
 
 class LMStudioReasoningCapabilityError(ValueError):
@@ -215,6 +219,56 @@ def attest_lm_studio_reasoning_capabilities(
         allowed_options=allowed_options,
         default=default,
         capabilities=provider_capabilities,
+    )
+
+
+def realize_lm_studio_reasoning_request(
+    *,
+    request: OpenAICompatibleReasoningRequest,
+    capability: LMStudioReasoningCapabilityAttestation,
+) -> OpenAICompatibleReasoningApplication:
+    """Serialize an attested LM Studio binary mode onto Chat Completions.
+
+    Current RelayLM support is intentionally narrower than LM Studio's native
+    reasoning vocabulary. For the Gemma-4 binary capability class used by the
+    release reference path, the exact OpenAI-compatible request field is
+    ``reasoning_effort`` and the attested public ``off``/``on`` value is carried
+    unchanged. Unsupported modes and token budgets fail before network I/O.
+    """
+
+    if not isinstance(request, OpenAICompatibleReasoningRequest):
+        raise TypeError("request must be OpenAICompatibleReasoningRequest")
+    if not isinstance(capability, LMStudioReasoningCapabilityAttestation):
+        raise TypeError("capability must be LMStudioReasoningCapabilityAttestation")
+
+    if not request.requested:
+        return OpenAICompatibleReasoningApplication(
+            status=OpenAICompatibleReasoningApplicationStatus.OMITTED,
+            requested=(),
+            wire_fields=(),
+        )
+    if request.token_budget is not None:
+        raise LMStudioReasoningCapabilityError(
+            "LM Studio reasoning token budget is not attested for Chat Completions"
+        )
+    if request.mode is None:
+        raise LMStudioReasoningCapabilityError(
+            "LM Studio explicit reasoning request must include a mode"
+        )
+    if not capability.reasoning_exposed or request.mode not in capability.allowed_options:
+        raise LMStudioReasoningCapabilityError(
+            f"LM Studio reasoning mode is not supported by the loaded model: {request.mode}"
+        )
+    if request.mode not in LM_STUDIO_CHAT_COMPLETIONS_BINARY_REASONING_OPTIONS:
+        raise LMStudioReasoningCapabilityError(
+            "LM Studio Chat Completions realization is currently qualified only for "
+            "binary reasoning modes off/on"
+        )
+
+    return OpenAICompatibleReasoningApplication(
+        status=OpenAICompatibleReasoningApplicationStatus.APPLIED,
+        requested=request.requested,
+        wire_fields=(("reasoning_effort", request.mode),),
     )
 
 
