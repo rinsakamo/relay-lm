@@ -28,6 +28,12 @@ from relaylm.actual_model_stage_r_semantics import (
     load_current_stage_r_scenario_set,
     load_stage_r_semantic_authority,
 )
+from relaylm.cognition_execution import CognitionReasoningMode
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+    LMStudioReasoningCapabilityError,
+    attest_lm_studio_reasoning_capabilities,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -94,8 +100,8 @@ class ObservedLMStudioModel:
     @property
     def reasoning_condition(self) -> str:
         if self.reasoning_default is None:
-            return "omitted_default_unknown"
-        return f"omitted_default_{self.reasoning_default}"
+            return "default_unknown"
+        return f"default_{self.reasoning_default}"
 
     @property
     def observed_identity(self) -> str:
@@ -123,7 +129,7 @@ class ObservedLMStudioModel:
             "reasoning": {
                 "default": self.reasoning_default,
                 "allowed_options": list(self.reasoning_allowed_options),
-                "wire_control": "omitted",
+                "wire_control": "request_owned",
             },
         }
 
@@ -232,17 +238,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         repo_root=repo_root,
         authority=authority,
     )
+    models_response = _fetch_models(
+        provider_base_url=provider_base_url,
+        api_key_env=args.provider_api_key_env,
+    )
     observed = observe_compatible_lm_studio_model(
-        models_response=_fetch_models(
-            provider_base_url=provider_base_url,
-            api_key_env=args.provider_api_key_env,
-        ),
+        models_response=models_response,
         request_model=args.request_model,
         loaded_instance_id=args.loaded_instance_id,
     )
+    try:
+        reasoning_capability = attest_lm_studio_reasoning_capabilities(
+            models_response=models_response,
+            request_model=args.request_model,
+            loaded_instance_id=observed.loaded_instance_id,
+        )
+    except LMStudioReasoningCapabilityError as exc:
+        raise LMStudioStageRError(
+            f"cannot attest LM Studio reasoning capability: {exc}"
+        ) from exc
+    if "off" not in reasoning_capability.allowed_options:
+        raise LMStudioStageRError(
+            "current Stage R requires explicit LM Studio reasoning option off"
+        )
+
     _write_json_create_once(
         artifact_root / "lm-studio-model-observation.json",
         observed.to_mapping(),
+    )
+    _write_json_create_once(
+        artifact_root / "lm-studio-reasoning-capability.json",
+        reasoning_capability.to_mapping(),
     )
 
     summary = asyncio.run(
@@ -257,6 +283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             authority=authority,
             scenario_set=scenario_set,
             observed=observed,
+            reasoning_capability=reasoning_capability,
         )
     )
     _write_json_create_once(
@@ -279,6 +306,7 @@ async def _run_stage_r(
     authority: StageRSemanticAuthority,
     scenario_set: ActualModelScenarioSet,
     observed: ObservedLMStudioModel,
+    reasoning_capability: LMStudioReasoningCapabilityAttestation,
 ) -> dict[str, object]:
     api_key = os.environ.get(api_key_env) if api_key_env else None
     provider = OpenAICompatibleTwoPassProvider(
@@ -293,6 +321,7 @@ async def _run_stage_r(
         decoding_capabilities=OpenAICompatibleDecodingCapabilities(
             supported_controls=frozenset({"temperature", "top_p"})
         ),
+        lm_studio_reasoning_capability=reasoning_capability,
     )
     identity = describe_openai_compatible_provider(provider)
     fixture_root = repo_root / CANONICAL_FIXTURE_PATH
@@ -302,8 +331,7 @@ async def _run_stage_r(
         character_fixture_revision=character_fixture_revision(fixture_root),
         provider_identity=(
             "lm_studio_observed:"
-            f"{request_model}:{observed.loaded_instance_id}:"
-            f"{observed.reasoning_condition}"
+            f"{request_model}:{observed.loaded_instance_id}:reasoning_effort=none"
         ),
         adapter_identity=identity.adapter_identity,
         model_artifact=observed.observed_identity,
@@ -321,7 +349,9 @@ async def _run_stage_r(
         provider_capabilities=identity.provider_capabilities,
         replicate_id=replicate_id,
         cognition_execution=authority.cognition_execution,
-        cognition_pass_requests=authority.pass_requests(reasoning_mode=None),
+        cognition_pass_requests=authority.pass_requests(
+            reasoning_mode=CognitionReasoningMode.OFF
+        ),
     )
 
     executions: list[dict[str, object]] = []
@@ -364,8 +394,9 @@ async def _run_stage_r(
         "model": observed.to_mapping(),
         "model_observed_identity": observed.observed_identity,
         "reasoning_preference": authority.reasoning_preference,
-        "reasoning_realization": observed.reasoning_condition,
-        "reasoning_wire_control": "omitted",
+        "reasoning_realization": "explicit_off",
+        "reasoning_wire_control": "reasoning_effort=none",
+        "reasoning_capability": reasoning_capability.to_mapping(),
         "executions": executions,
     }
 

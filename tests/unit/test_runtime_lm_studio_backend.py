@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 
 from relaylm.cognitive import CognitionExecutionMode
+from relaylm.providers.lm_studio_reasoning import (
+    attest_lm_studio_reasoning_capabilities,
+)
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.runtime_assembly import RuntimeAssemblyError, assemble_runtime
@@ -52,6 +55,28 @@ provider:
     return path
 
 
+def _reasoning_capability():
+    return attest_lm_studio_reasoning_capabilities(
+        models_response={
+            "models": [
+                {
+                    "type": "llm",
+                    "key": "model-id",
+                    "loaded_instances": [{"id": "model-id"}],
+                    "capabilities": {
+                        "reasoning": {
+                            "allowed_options": ["off", "on"],
+                            "default": "on",
+                        }
+                    },
+                }
+            ]
+        },
+        request_model="model-id",
+        loaded_instance_id="model-id",
+    )
+
+
 def test_lm_studio_default_two_pass_assembles_without_backend_specific_reasoning_wire(
     tmp_path: Path,
 ) -> None:
@@ -91,7 +116,7 @@ def test_lm_studio_explicit_single_pass_assembles_without_backend_specific_reaso
         asyncio.run(profile.provider.aclose())
 
 
-def test_lm_studio_explicit_reasoning_override_fails_before_generation(
+def test_lm_studio_explicit_reasoning_override_requires_runtime_attestation(
     tmp_path: Path,
 ) -> None:
     resolved = resolve_runtime_config(
@@ -107,4 +132,32 @@ def test_lm_studio_explicit_reasoning_override_fails_before_generation(
 
     assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
     assert caught.value.field == "runtime.cognition.pass1.reasoning_mode"
-    assert "LM Studio" in str(caught.value)
+    assert "attestation" in str(caught.value)
+
+
+def test_lm_studio_explicit_off_assembles_with_matching_runtime_attestation(
+    tmp_path: Path,
+) -> None:
+    resolved = resolve_runtime_config(
+        config_path=_write_config(
+            tmp_path / "runtime.yaml",
+            pass1_reasoning_mode="off",
+        ),
+        environ={},
+    )
+
+    capability = _reasoning_capability()
+    assembly = assemble_runtime(
+        resolved,
+        lm_studio_reasoning_capability=capability,
+    )
+    profile = assembly.profiles.resolve("relm")
+    assert profile is not None
+    try:
+        assert isinstance(profile.provider, OpenAICompatibleTwoPassProvider)
+        assert profile.provider.lm_studio_reasoning_capability is capability
+        assert assembly.pass1_request is not None
+        assert assembly.pass1_request.reasoning_mode is not None
+        assert assembly.pass1_request.reasoning_mode.value == "off"
+    finally:
+        asyncio.run(profile.provider.aclose())

@@ -15,6 +15,9 @@ from relaylm.cognition_execution import (
     CognitionPassRequest,
     CognitionStructuredOutputMode,
 )
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+)
 from relaylm.providers.openai_compatible import (
     WIRE_SCHEMA,
     OpenAICompatibleProvider,
@@ -25,10 +28,10 @@ from relaylm.providers.openai_compatible import (
     _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
+    _reasoning_fields,
     _require_candidate_sources_in_cognitive_input,
     _require_successful_finish_reason,
     _resolve_cognition_pass_request,
-    _vllm_reasoning_fields,
     serialize_cognitive_input,
 )
 from relaylm.providers.openai_compatible_cognition import (
@@ -93,17 +96,20 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+        lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
         _require_plain_pass1(pass_request)
-        effective_capability = (
-            vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_vllm = vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_lm_studio = (
+            lm_studio_reasoning_capability or self.lm_studio_reasoning_capability
         )
         decoding_config, effective_reasoning = _resolve_cognition_pass_request(
             pass_request=pass_request,
             reasoning_request=reasoning_request,
             decoding_config=self.decoding_config,
             decoding_capabilities=self.decoding_capabilities,
-            vllm_reasoning_capability=effective_capability,
+            vllm_reasoning_capability=effective_vllm,
+            lm_studio_reasoning_capability=effective_lm_studio,
         )
         envelope = await self._post_two_pass(
             body=_conversation_request_body(
@@ -112,7 +118,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 stream=False,
                 decoding=decoding_config.to_mapping(),
                 reasoning_request=effective_reasoning,
-                vllm_reasoning_capability=effective_capability,
+                vllm_reasoning_capability=effective_vllm,
+                lm_studio_reasoning_capability=effective_lm_studio,
             ),
             boundary="conversation",
         )
@@ -126,17 +133,20 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+        lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
         _require_plain_pass1(pass_request)
-        effective_capability = (
-            vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_vllm = vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_lm_studio = (
+            lm_studio_reasoning_capability or self.lm_studio_reasoning_capability
         )
         decoding_config, effective_reasoning = _resolve_cognition_pass_request(
             pass_request=pass_request,
             reasoning_request=reasoning_request,
             decoding_config=self.decoding_config,
             decoding_capabilities=self.decoding_capabilities,
-            vllm_reasoning_capability=effective_capability,
+            vllm_reasoning_capability=effective_vllm,
+            lm_studio_reasoning_capability=effective_lm_studio,
         )
         response_text = ""
         saw_done = False
@@ -154,7 +164,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     stream=True,
                     decoding=decoding_config.to_mapping(),
                     reasoning_request=effective_reasoning,
-                    vllm_reasoning_capability=effective_capability,
+                    vllm_reasoning_capability=effective_vllm,
+                    lm_studio_reasoning_capability=effective_lm_studio,
                 ),
             ) as response:
                 if not response.is_success:
@@ -209,16 +220,19 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+        lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
     ) -> CognitionExtractionOutput:
-        effective_capability = (
-            vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_vllm = vllm_reasoning_capability or self.vllm_reasoning_capability
+        effective_lm_studio = (
+            lm_studio_reasoning_capability or self.lm_studio_reasoning_capability
         )
         decoding_config, effective_reasoning = _resolve_cognition_pass_request(
             pass_request=pass_request,
             reasoning_request=reasoning_request,
             decoding_config=self.decoding_config,
             decoding_capabilities=self.decoding_capabilities,
-            vllm_reasoning_capability=effective_capability,
+            vllm_reasoning_capability=effective_vllm,
+            lm_studio_reasoning_capability=effective_lm_studio,
         )
         structured_output_mode = _resolve_extraction_structured_output_mode(
             pass_request=pass_request,
@@ -230,7 +244,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 extraction_input=extraction_input,
                 decoding=decoding_config.to_mapping(),
                 reasoning_request=effective_reasoning,
-                vllm_reasoning_capability=effective_capability,
+                vllm_reasoning_capability=effective_vllm,
+                lm_studio_reasoning_capability=effective_lm_studio,
                 structured_output_mode=structured_output_mode,
             ),
             boundary="extraction",
@@ -317,6 +332,7 @@ def _conversation_request_body(
     decoding: dict[str, int | float],
     reasoning_request: OpenAICompatibleReasoningRequest | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "model": model,
@@ -332,10 +348,11 @@ def _conversation_request_body(
     }
     body.update(decoding)
     body.update(
-        _vllm_reasoning_fields(
+        _reasoning_fields(
             model=model,
             reasoning_request=reasoning_request,
-            capability=vllm_reasoning_capability,
+            vllm_capability=vllm_reasoning_capability,
+            lm_studio_capability=lm_studio_reasoning_capability,
         )
     )
     return body
@@ -348,6 +365,7 @@ def _extraction_request_body(
     decoding: dict[str, int | float],
     reasoning_request: OpenAICompatibleReasoningRequest | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
     structured_output_mode: CognitionStructuredOutputMode = CognitionStructuredOutputMode.PLAIN,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
@@ -375,10 +393,11 @@ def _extraction_request_body(
         raise ValueError("extraction structured output mode must resolve before request")
     body.update(decoding)
     body.update(
-        _vllm_reasoning_fields(
+        _reasoning_fields(
             model=model,
             reasoning_request=reasoning_request,
-            capability=vllm_reasoning_capability,
+            vllm_capability=vllm_reasoning_capability,
+            lm_studio_capability=lm_studio_reasoning_capability,
         )
     )
     return body

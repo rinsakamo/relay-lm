@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
 )
@@ -99,6 +102,19 @@ def describe_openai_compatible_cognition_capabilities(
         raise TypeError(
             "provider vLLM reasoning capability must be VLLMReasoningCapabilityAttestation"
         )
+    lm_studio_reasoning = getattr(provider, "lm_studio_reasoning_capability", None)
+    if lm_studio_reasoning is not None and not isinstance(
+        lm_studio_reasoning, LMStudioReasoningCapabilityAttestation
+    ):
+        raise TypeError(
+            "provider LM Studio reasoning capability must be "
+            "LMStudioReasoningCapabilityAttestation"
+        )
+    if vllm_reasoning is not None and lm_studio_reasoning is not None:
+        raise ValueError(
+            "provider cannot attach vLLM and LM Studio reasoning capabilities together"
+        )
+
     reasoning_modes: tuple[str, ...] = ()
     bounded_reasoning_budget = False
     if vllm_reasoning is not None:
@@ -115,6 +131,15 @@ def describe_openai_compatible_cognition_capabilities(
             modes.append("bounded")
             bounded_reasoning_budget = True
         reasoning_modes = tuple(sorted(modes))
+    elif lm_studio_reasoning is not None:
+        # RelayLM's provider-neutral reasoning enum currently exposes OFF and
+        # bounded(N), not a generic ON/effort-level policy. LM Studio native
+        # metadata may advertise more public options, but only exact OFF is
+        # currently qualified for cognition-policy carriage.
+        reasoning_modes = (
+            ("off",) if "off" in lm_studio_reasoning.allowed_options else ()
+        )
+
     return OpenAICompatibleCognitionCapabilityFacts(
         # Canonical cognition uses ordinary message content plus RelayLM-owned IR.
         # The generic adapter has no native structured-output attestation source,

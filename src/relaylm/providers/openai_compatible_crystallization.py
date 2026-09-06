@@ -13,13 +13,23 @@ from relaylm.memory_provenance import (
     MemoryTemporalScope,
     MemoryUnit,
 )
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+)
 from relaylm.providers.openai_compatible import (
     ProviderProtocolError,
+    _reasoning_fields,
     _reject_duplicate_json_members,
 )
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
+)
+from relaylm.providers.openai_compatible_reasoning import (
+    OpenAICompatibleReasoningRequest,
+)
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
 )
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateCandidate
 
@@ -186,6 +196,9 @@ class OpenAICompatibleCrystallizer:
         timeout: float = 120.0,
         decoding_config: OpenAICompatibleDecodingConfig | None = None,
         decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+        lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not base_url.strip():
@@ -202,6 +215,43 @@ class OpenAICompatibleCrystallizer:
             raise TypeError(
                 "decoding_capabilities must be OpenAICompatibleDecodingCapabilities or None"
             )
+        if reasoning_request is not None and not isinstance(
+            reasoning_request, OpenAICompatibleReasoningRequest
+        ):
+            raise TypeError(
+                "reasoning_request must be OpenAICompatibleReasoningRequest or None"
+            )
+        if vllm_reasoning_capability is not None and not isinstance(
+            vllm_reasoning_capability, VLLMReasoningCapabilityAttestation
+        ):
+            raise TypeError(
+                "vllm_reasoning_capability must be VLLMReasoningCapabilityAttestation or None"
+            )
+        if lm_studio_reasoning_capability is not None and not isinstance(
+            lm_studio_reasoning_capability, LMStudioReasoningCapabilityAttestation
+        ):
+            raise TypeError(
+                "lm_studio_reasoning_capability must be "
+                "LMStudioReasoningCapabilityAttestation or None"
+            )
+        if vllm_reasoning_capability is not None and lm_studio_reasoning_capability is not None:
+            raise ValueError(
+                "vLLM and LM Studio reasoning capabilities cannot be attached together"
+            )
+        if (
+            vllm_reasoning_capability is not None
+            and vllm_reasoning_capability.request_model != model
+        ):
+            raise ValueError(
+                "vLLM reasoning capability request_model must match provider model"
+            )
+        if (
+            lm_studio_reasoning_capability is not None
+            and lm_studio_reasoning_capability.request_model != model
+        ):
+            raise ValueError(
+                "LM Studio reasoning capability request_model must match provider model"
+            )
 
         effective_decoding = decoding_config or OpenAICompatibleDecodingConfig()
         effective_capabilities = (
@@ -214,6 +264,9 @@ class OpenAICompatibleCrystallizer:
         self.api_key = api_key
         self.decoding_config = effective_decoding
         self.decoding_capabilities = effective_capabilities
+        self.reasoning_request = reasoning_request
+        self.vllm_reasoning_capability = vllm_reasoning_capability
+        self.lm_studio_reasoning_capability = lm_studio_reasoning_capability
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._owns_client = http_client is None
 
@@ -239,6 +292,9 @@ class OpenAICompatibleCrystallizer:
                     model=self.model,
                     crystallization_input=crystallization_input,
                     decoding_config=self.decoding_config,
+                    reasoning_request=self.reasoning_request,
+                    vllm_reasoning_capability=self.vllm_reasoning_capability,
+                    lm_studio_reasoning_capability=self.lm_studio_reasoning_capability,
                 ),
             )
             response.raise_for_status()
@@ -266,6 +322,9 @@ def _request_body(
     model: str,
     crystallization_input: CrystallizationInput,
     decoding_config: OpenAICompatibleDecodingConfig | None = None,
+    reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
     if decoding_config is not None and not isinstance(
         decoding_config, OpenAICompatibleDecodingConfig
@@ -301,6 +360,14 @@ def _request_body(
     }
     if decoding_config is not None:
         body.update(decoding_config.to_mapping())
+    body.update(
+        _reasoning_fields(
+            model=model,
+            reasoning_request=reasoning_request,
+            vllm_capability=vllm_reasoning_capability,
+            lm_studio_capability=lm_studio_reasoning_capability,
+        )
+    )
     return body
 
 

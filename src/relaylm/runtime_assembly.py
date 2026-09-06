@@ -15,8 +15,11 @@ from relaylm.budget_runtime import (
 )
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
-from relaylm.cognition_execution import CognitionPassRequest
+from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.continuity import ContinuityContext
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+)
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_backend import (
     OpenAICompatibleBackendId,
@@ -98,6 +101,7 @@ def assemble_runtime(
     *,
     token_counter_capabilities: Mapping[str, TokenCounterCapability] | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
 ) -> RuntimeAssembly:
     """Construct current owner objects from one validated runtime configuration.
 
@@ -113,6 +117,19 @@ def assemble_runtime(
     ):
         raise TypeError(
             "vllm_reasoning_capability must be VLLMReasoningCapabilityAttestation or None"
+        )
+    if lm_studio_reasoning_capability is not None and not isinstance(
+        lm_studio_reasoning_capability, LMStudioReasoningCapabilityAttestation
+    ):
+        raise TypeError(
+            "lm_studio_reasoning_capability must be "
+            "LMStudioReasoningCapabilityAttestation or None"
+        )
+    if vllm_reasoning_capability is not None and lm_studio_reasoning_capability is not None:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="provider.backend",
+            message="vLLM and LM Studio reasoning capabilities cannot be attached together",
         )
 
     config = resolved.config
@@ -142,16 +159,67 @@ def assemble_runtime(
                     "capability attestation"
                 ),
             )
-    elif vllm_reasoning_capability is not None:
-        raise RuntimeAssemblyError(
-            RuntimeConfigErrorCode.INVALID_COMBINATION,
-            field="provider.backend",
-            message="vLLM reasoning capability requires provider.backend=vllm",
-        )
-    elif config.provider.backend not in {
-        OpenAICompatibleBackendId.GENERIC,
-        OpenAICompatibleBackendId.LM_STUDIO,
-    }:
+        if lm_studio_reasoning_capability is not None:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.INVALID_COMBINATION,
+                field="provider.backend",
+                message="LM Studio reasoning capability requires provider.backend=lm_studio",
+            )
+    elif config.provider.backend is OpenAICompatibleBackendId.LM_STUDIO:
+        if vllm_reasoning_capability is not None:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.INVALID_COMBINATION,
+                field="provider.backend",
+                message="vLLM reasoning capability requires provider.backend=vllm",
+            )
+        for pass_name, pass_request in (
+            ("pass1", cognition.pass1),
+            ("pass2", cognition.pass2),
+        ):
+            if pass_request.reasoning_budget is not None:
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                    field=f"runtime.cognition.{pass_name}.reasoning_budget",
+                    message=(
+                        "LM Studio Chat Completions reasoning-token budget is not "
+                        "attested by the current provider contract"
+                    ),
+                )
+            if pass_request.reasoning_mode is not None:
+                if lm_studio_reasoning_capability is None:
+                    raise RuntimeAssemblyError(
+                        RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                        field=f"runtime.cognition.{pass_name}.reasoning_mode",
+                        message=(
+                            "LM Studio explicit reasoning requires a configured-runtime "
+                            "reasoning capability attestation"
+                        ),
+                    )
+                if pass_request.reasoning_mode is not CognitionReasoningMode.OFF:
+                    raise RuntimeAssemblyError(
+                        RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                        field=f"runtime.cognition.{pass_name}.reasoning_mode",
+                        message=(
+                            "current LM Studio release carriage qualifies only "
+                            "provider-neutral reasoning_mode=off"
+                        ),
+                    )
+                if "off" not in lm_studio_reasoning_capability.allowed_options:
+                    raise RuntimeAssemblyError(
+                        RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                        field=f"runtime.cognition.{pass_name}.reasoning_mode",
+                        message=(
+                            "loaded LM Studio model does not attest reasoning option off"
+                        ),
+                    )
+    elif config.provider.backend is OpenAICompatibleBackendId.GENERIC:
+        if vllm_reasoning_capability is not None or lm_studio_reasoning_capability is not None:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.INVALID_COMBINATION,
+                field="provider.backend",
+                message="backend-specific reasoning capability requires its matching backend",
+            )
+    else:
         raise RuntimeAssemblyError(
             RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
             field="provider.backend",
@@ -164,33 +232,6 @@ def assemble_runtime(
     provider_decoding_capabilities = decoding_capabilities_for_backend(
         config.provider.backend
     )
-
-    if config.provider.backend is OpenAICompatibleBackendId.LM_STUDIO:
-        for pass_name, pass_request in (
-            ("pass1", cognition.pass1),
-            ("pass2", cognition.pass2),
-        ):
-            if pass_request.reasoning_mode is not None:
-                raise RuntimeAssemblyError(
-                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
-                    field=f"runtime.cognition.{pass_name}.reasoning_mode",
-                    message=(
-                        "LM Studio per-request reasoning requires the unimplemented "
-                        "#1545 exact Chat Completions reasoning realizer; omit the "
-                        "reasoning override until that provider wire is proven"
-                    ),
-                )
-            if pass_request.reasoning_budget is not None:
-                raise RuntimeAssemblyError(
-                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
-                    field=f"runtime.cognition.{pass_name}.reasoning_budget",
-                    message=(
-                        "LM Studio per-request reasoning budget requires the "
-                        "unimplemented #1545 exact Chat Completions reasoning "
-                        "realizer; omit the reasoning override until that provider "
-                        "wire is proven"
-                    ),
-                )
 
     if runtime.cognitive_budget is not None and (
         runtime.memory_retrieval is not None or runtime.event_retrieval is not None
@@ -258,6 +299,7 @@ def assemble_runtime(
                 api_key=resolved.secrets.provider_api_key,
                 decoding_capabilities=provider_decoding_capabilities,
                 vllm_reasoning_capability=vllm_reasoning_capability,
+                lm_studio_reasoning_capability=lm_studio_reasoning_capability,
             )
         except (TypeError, ValueError) as exc:
             raise RuntimeAssemblyError(

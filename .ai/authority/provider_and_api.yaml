@@ -1,6 +1,6 @@
 schema_version: 1
 id: provider_and_api
-summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding including capability-gated per-pass hard output-token carriage, reasoning control, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, exact Pass-2 extraction-content normalization of one complete lowercase json Markdown fence before unchanged strict JSON/shape/source validation, backend capability attestation, identity, and public API boundary.
+summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding including capability-gated per-pass hard output-token carriage, reasoning control including attested LM Studio binary reasoning_effort carriage, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, exact Pass-2 extraction-content normalization of one complete lowercase json Markdown fence before unchanged strict JSON/shape/source validation, backend capability attestation, identity, and public API boundary.
 canonical_surfaces:
 - docs/contracts/provider-wire.md
 - docs/contracts/provider-decoding.md
@@ -39,16 +39,11 @@ qualification_inputs:
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/providers/openai_compatible_decoding.py
 - src/relaylm/providers/openai_compatible_reasoning.py
+- src/relaylm/providers/lm_studio_reasoning.py
 - src/relaylm/providers/openai_compatible_identity.py
 - src/relaylm/providers/openai_compatible_cognition.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
-qualification_exclusions:
-- path: src/relaylm/providers/lm_studio_reasoning.py
-  reason: >-
-    Native LM Studio reasoning capability attestation is not wired into the
-    current release request realization; runtime assembly fails closed on
-    per-request LM Studio reasoning overrides.
 tests:
 - tests/unit/test_openai_boundary.py
 - tests/unit/test_openai_compatible_single_pass_structure_ownership.py
@@ -63,6 +58,7 @@ tests:
 - tests/unit/test_vllm_reasoning_target_boundary.py
 - tests/unit/test_vllm_reasoning_realization.py
 - tests/unit/test_cognition_pass_request_carriage.py
+- tests/unit/test_lm_studio_reasoning_carriage.py
 - tests/unit/test_openai_compatible_budget.py
 - tests/unit/test_openai_compatible_two_pass_budget.py
 - tests/unit/test_openai_compatible_streaming_parity.py
