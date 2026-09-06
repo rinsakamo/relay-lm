@@ -6,8 +6,13 @@ import subprocess
 
 import pytest
 
+from relaylm.v2_interventions import Operation, ResourceVector
 from relaylm.v2_transfer_actual_model import ExperimentCompletion, StructureProposalError
-from tools.v2_cognitive_work_r0 import ExecutionBinding
+from tools.v2_cognitive_work_r0 import (
+    CognitiveWorkCampaign,
+    ExecutionBinding,
+    freeze_cognitive_start,
+)
 from tools.v2_cognitive_work_r1_host import (
     CognitiveWorkR1HostError,
     R1HostIdentity,
@@ -15,6 +20,7 @@ from tools.v2_cognitive_work_r1_host import (
     SmokeTask,
     run_r1_host_smoke,
 )
+from tools.v2_event_semantic_kernel import EventSemanticKernel
 
 
 class FakeClient:
@@ -74,15 +80,6 @@ def _binding(**overrides: object) -> ExecutionBinding:
     return ExecutionBinding(**values)  # type: ignore[arg-type]
 
 
-def _identity(repo: Path, binding: ExecutionBinding | None = None) -> R1HostIdentity:
-    return R1HostIdentity(
-        repository_commit=_git(repo, "rev-parse", "HEAD"),
-        repository_tree=_git(repo, "rev-parse", "HEAD^{tree}"),
-        campaign_fingerprint="campaign@r0",
-        execution=binding or _binding(),
-    )
-
-
 def _suite() -> SmokeSuite:
     return SmokeSuite(
         tasks=(
@@ -98,6 +95,57 @@ def _suite() -> SmokeSuite:
                 retrieval_packet="The current project codename is NEW-CODE.",
             ),
         )
+    )
+
+
+def _campaign(
+    binding: ExecutionBinding | None = None,
+    *,
+    suite: SmokeSuite | None = None,
+    envelope: ResourceVector | None = None,
+    operations: tuple[Operation, ...] | None = None,
+) -> CognitiveWorkCampaign:
+    binding = binding or _binding()
+    suite = suite or _suite()
+    kernel = EventSemanticKernel()
+    kernel.ingest("R1 smoke admitted", logical_ingress_id="r1-smoke")
+    return CognitiveWorkCampaign(
+        start=freeze_cognitive_start(kernel, lineage_id="r1-lineage"),
+        execution=binding,
+        task_digest=suite.digest,
+        ordinary_information_ids=("public-task", "retrieval-availability"),
+        operations=operations
+        or (
+            Operation("THINK", ResourceVector(calls=1)),
+            Operation("RETRIEVE", ResourceVector(calls=1, retrieval_units=1)),
+        ),
+        envelope=envelope
+        or ResourceVector(
+            calls=10,
+            input_tokens=500,
+            output_tokens=200,
+            retrieval_units=4,
+        ),
+    )
+
+
+def _identity(
+    repo: Path,
+    binding: ExecutionBinding | None = None,
+    *,
+    suite: SmokeSuite | None = None,
+    envelope: ResourceVector | None = None,
+    operations: tuple[Operation, ...] | None = None,
+) -> R1HostIdentity:
+    return R1HostIdentity(
+        repository_commit=_git(repo, "rev-parse", "HEAD"),
+        repository_tree=_git(repo, "rev-parse", "HEAD^{tree}"),
+        campaign=_campaign(
+            binding,
+            suite=suite,
+            envelope=envelope,
+            operations=operations,
+        ),
     )
 
 
@@ -134,22 +182,25 @@ def test_r1_successful_two_task_smoke_is_non_citable_and_mechanically_discrimina
     repo, _, _ = _repo(tmp_path)
     artifact = tmp_path / "artifacts"
     binding = _binding()
+    suite = _suite()
     probe_calls: list[int] = []
     client = FakeClient(_success_responses())
 
     result = run_r1_host_smoke(
         artifact_root=artifact,
-        identity=_identity(repo, binding),
+        identity=_identity(repo, binding, suite=suite),
         repository_root=repo,
         live_binding_probe=_probe(binding, probe_calls),
         client=client,
-        suite=_suite(),
+        suite=suite,
     )
 
     assert result.status == "COMPLETED"
     assert result.claim_status == "NON_CITABLE_R1_SMOKE"
     assert result.citable is False
     assert result.provider_calls == 8
+    assert result.provider_attempts == 8
+    assert result.provider_completions == 8
     assert len(client.calls) == 8
     assert len(probe_calls) == 9  # one preflight + one before every provider call
     assert result.classification == "MECHANICALLY_DISCRIMINATING"
@@ -169,16 +220,24 @@ def test_r1_successful_two_task_smoke_is_non_citable_and_mechanically_discrimina
     assert outcomes[("easy", "A1")].cost.calls == 1
     assert outcomes[("easy", "A2")].cost.calls == 2
     assert outcomes[("retrieval", "A1")].cost.calls == 2
+    assert outcomes[("retrieval", "A1")].cost.retrieval_units == 1
     assert outcomes[("retrieval", "A2")].cost.calls == 3
+    assert outcomes[("retrieval", "A2")].cost.retrieval_units == 1
 
     manifest = _read_json(artifact / "run-manifest.json")
     state = _read_json(artifact / "run-state.json")
     durable = _read_json(artifact / "r1-smoke-result.json")
     assert manifest["citable"] is False
+    assert manifest["identity"]["campaign"]["fingerprint"] == _identity(
+        repo, binding, suite=suite
+    ).campaign_fingerprint
     assert state["status"] == "COMPLETED"
+    assert state["provider_attempts"] == 8
+    assert state["provider_completions"] == 8
     assert durable["classification"] == "MECHANICALLY_DISCRIMINATING"
     assert durable["physical_base_completion_shared_across_arms"] is True
     assert durable["base_cost_charged_counterfactually_to_each_arm"] is True
+    assert durable["arm_resource_totals"]["A2"]["calls"] == 5
     assert (artifact / "request-evidence.jsonl").exists()
 
 
@@ -203,7 +262,7 @@ def test_r1_evaluator_answer_and_retrieval_packet_do_not_leak_before_retrieve(
 
     run_r1_host_smoke(
         artifact_root=artifact,
-        identity=_identity(repo, binding),
+        identity=_identity(repo, binding, suite=suite),
         repository_root=repo,
         live_binding_probe=lambda: binding,
         client=client,
@@ -213,7 +272,11 @@ def test_r1_evaluator_answer_and_retrieval_packet_do_not_leak_before_retrieve(
     serialized = [json.dumps(call, ensure_ascii=False) for call in client.calls]
     assert all("PRIVATE-EXPECTED" not in item for item in serialized)
     assert all("PRIVATE-NEW" not in item for item in serialized)
-    packet_calls = [index for index, item in enumerate(serialized) if "SECRET-RETRIEVAL-PACKET" in item]
+    packet_calls = [
+        index
+        for index, item in enumerate(serialized)
+        if "SECRET-RETRIEVAL-PACKET" in item
+    ]
     assert packet_calls == [5, 7]
     assert "SECRET-RETRIEVAL-PACKET" not in serialized[6]  # A2 allocator call
 
@@ -223,15 +286,16 @@ def test_r1_provider_failure_records_attempt_even_without_completion(tmp_path: P
     artifact = tmp_path / "artifacts"
     binding = _binding()
     client = FakeClient([StructureProposalError("boom")])
+    suite = _suite()
 
     with pytest.raises(CognitiveWorkR1HostError, match="provider failure"):
         run_r1_host_smoke(
             artifact_root=artifact,
-            identity=_identity(repo, binding),
+            identity=_identity(repo, binding, suite=suite),
             repository_root=repo,
             live_binding_probe=lambda: binding,
             client=client,
-            suite=_suite(),
+            suite=suite,
         )
 
     state = _read_json(artifact / "run-state.json")
@@ -241,20 +305,99 @@ def test_r1_provider_failure_records_attempt_even_without_completion(tmp_path: P
     assert state["provider_completions"] == 0
 
 
+def test_r1_suite_must_match_exact_r0_campaign_before_artifacts_or_calls(tmp_path: Path):
+    repo, _, _ = _repo(tmp_path)
+    admitted_suite = _suite()
+    other_suite = SmokeSuite(
+        (
+            SmokeTask("easy", "changed prompt", "2"),
+            SmokeTask("retrieval", "Return code", "NEW-CODE", "NEW-CODE"),
+        )
+    )
+    identity = _identity(repo, suite=admitted_suite)
+    client = FakeClient(_success_responses())
+    artifact = tmp_path / "artifacts"
+    with pytest.raises(CognitiveWorkR1HostError, match="exact R0 campaign task digest"):
+        run_r1_host_smoke(
+            artifact_root=artifact,
+            identity=identity,
+            repository_root=repo,
+            live_binding_probe=lambda: identity.execution,
+            client=client,
+            suite=other_suite,
+        )
+    assert client.calls == []
+    assert not artifact.exists()
+
+
+def test_r1_identity_requires_nonprivileged_think_and_retrieve_surface(tmp_path: Path):
+    repo, _, _ = _repo(tmp_path)
+    with pytest.raises(CognitiveWorkR1HostError, match="missing required R1 operations"):
+        _identity(
+            repo,
+            operations=(Operation("THINK", ResourceVector(calls=1)),),
+        )
+    with pytest.raises(CognitiveWorkR1HostError, match="must not be privileged"):
+        _identity(
+            repo,
+            operations=(
+                Operation("THINK", ResourceVector(calls=1)),
+                Operation(
+                    "RETRIEVE",
+                    ResourceVector(calls=1, retrieval_units=1),
+                    privileged=True,
+                ),
+            ),
+        )
+
+
+def test_r1_measured_arm_work_must_fit_frozen_campaign_envelope(tmp_path: Path):
+    repo, _, _ = _repo(tmp_path)
+    artifact = tmp_path / "artifacts"
+    binding = _binding()
+    suite = _suite()
+    identity = _identity(
+        repo,
+        binding,
+        suite=suite,
+        envelope=ResourceVector(
+            calls=4,
+            input_tokens=500,
+            output_tokens=200,
+            retrieval_units=4,
+        ),
+    )
+    client = FakeClient(_success_responses())
+    with pytest.raises(CognitiveWorkR1HostError, match="A2 measured work exceeds"):
+        run_r1_host_smoke(
+            artifact_root=artifact,
+            identity=identity,
+            repository_root=repo,
+            live_binding_probe=lambda: binding,
+            client=client,
+            suite=suite,
+        )
+    assert len(client.calls) == 8
+    state = _read_json(artifact / "run-state.json")
+    assert state["status"] == "INCOMPLETE"
+    assert state["failure"]["kind"] == "resource_envelope_exceeded"
+
+
 def test_r1_preflight_binding_drift_fails_before_provider_call(tmp_path: Path):
     repo, _, _ = _repo(tmp_path)
     artifact = tmp_path / "artifacts"
     expected = _binding()
+    suite = _suite()
     client = FakeClient(_success_responses())
 
     with pytest.raises(CognitiveWorkR1HostError, match="preflight"):
         run_r1_host_smoke(
             artifact_root=artifact,
-            identity=_identity(repo, expected),
+            identity=_identity(repo, expected, suite=suite),
             repository_root=repo,
             live_binding_probe=lambda: _binding(runtime_identity="different-runtime"),
             client=client,
-            suite=_suite(),
+            suite=suite,
         )
     assert client.calls == []
     state = _read_json(artifact / "run-state.json")
@@ -265,6 +408,7 @@ def test_r1_midrun_binding_drift_stops_without_retry(tmp_path: Path):
     repo, _, _ = _repo(tmp_path)
     artifact = tmp_path / "artifacts"
     expected = _binding()
+    suite = _suite()
     observations = [expected, expected, _binding(runtime_identity="drifted")]
     client = FakeClient(_success_responses())
 
@@ -274,15 +418,17 @@ def test_r1_midrun_binding_drift_stops_without_retry(tmp_path: Path):
     with pytest.raises(CognitiveWorkR1HostError, match="physical binding drift"):
         run_r1_host_smoke(
             artifact_root=artifact,
-            identity=_identity(repo, expected),
+            identity=_identity(repo, expected, suite=suite),
             repository_root=repo,
             live_binding_probe=probe,
             client=client,
-            suite=_suite(),
+            suite=suite,
         )
     assert len(client.calls) == 1
     state = _read_json(artifact / "run-state.json")
     assert state["status"] == "INCOMPLETE"
+    assert state["provider_attempts"] == 1
+    assert state["provider_completions"] == 1
 
 
 @pytest.mark.parametrize(
@@ -300,6 +446,7 @@ def test_r1_invalid_allocator_protocol_is_terminal(
     repo, _, _ = _repo(tmp_path)
     artifact = tmp_path / "artifacts"
     binding = _binding()
+    suite = _suite()
     client = FakeClient(
         [
             '{"answer":"2"}',
@@ -310,11 +457,11 @@ def test_r1_invalid_allocator_protocol_is_terminal(
     with pytest.raises(CognitiveWorkR1HostError, match=error):
         run_r1_host_smoke(
             artifact_root=artifact,
-            identity=_identity(repo, binding),
+            identity=_identity(repo, binding, suite=suite),
             repository_root=repo,
             live_binding_probe=lambda: binding,
             client=client,
-            suite=_suite(),
+            suite=suite,
         )
     assert _read_json(artifact / "run-state.json")["status"] == "INCOMPLETE"
 
@@ -323,6 +470,7 @@ def test_r1_allocator_cannot_retrieve_when_packet_absent(tmp_path: Path):
     repo, _, _ = _repo(tmp_path)
     artifact = tmp_path / "artifacts"
     binding = _binding()
+    suite = _suite()
     client = FakeClient(
         [
             '{"answer":"2"}',
@@ -333,11 +481,11 @@ def test_r1_allocator_cannot_retrieve_when_packet_absent(tmp_path: Path):
     with pytest.raises(CognitiveWorkR1HostError, match="no retrieval packet"):
         run_r1_host_smoke(
             artifact_root=artifact,
-            identity=_identity(repo, binding),
+            identity=_identity(repo, binding, suite=suite),
             repository_root=repo,
             live_binding_probe=lambda: binding,
             client=client,
-            suite=_suite(),
+            suite=suite,
         )
     assert _read_json(artifact / "run-state.json")["status"] == "INCOMPLETE"
 
@@ -363,11 +511,11 @@ def test_r1_dirty_repository_rejected_before_artifacts_or_model_calls(tmp_path: 
 
 def test_r1_wrong_repository_identity_rejected_before_provider_call(tmp_path: Path):
     repo, _, tree = _repo(tmp_path)
+    binding = _binding()
     identity = R1HostIdentity(
         repository_commit="0" * 40,
         repository_tree=tree,
-        campaign_fingerprint="campaign@r0",
-        execution=_binding(),
+        campaign=_campaign(binding),
     )
     client = FakeClient(_success_responses())
     with pytest.raises(CognitiveWorkR1HostError, match="commit does not match"):
@@ -425,8 +573,8 @@ def test_r1_suite_requires_retrieval_and_zero_work_mechanical_coverage():
 
 
 def test_r1_identity_rejects_any_retry_policy():
-    binding = _binding()
+    campaign = _campaign()
     with pytest.raises(CognitiveWorkR1HostError, match="disable"):
-        R1HostIdentity("c", "t", "campaign", binding, automatic_retry=True)
+        R1HostIdentity("c", "t", campaign, automatic_retry=True)
     with pytest.raises(CognitiveWorkR1HostError, match="disable"):
-        R1HostIdentity("c", "t", "campaign", binding, semantic_retry=True)
+        R1HostIdentity("c", "t", campaign, semantic_retry=True)
