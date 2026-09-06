@@ -20,14 +20,14 @@ def _extraction_input() -> CognitionExtractionInput:
         input=Event.create(
             type="message",
             actor="user",
-            payload={"content": "机の上の青い箱を確認しよう"},
+            payload={"content": "Keep the current document available for later reference."},
             event_id="evt-now",
             timestamp="2026-08-25T00:00:00+00:00",
         ),
     )
     return CognitionExtractionInput(
         cognitive_input=cognitive_input,
-        assistant_response="うん、青い箱を順番に確認しよう。",
+        assistant_response="Okay, I will keep the current document in view.",
     )
 
 
@@ -68,20 +68,28 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> No
         "`unresolved`: an explicit open question or unknown value that remains to be resolved."
         in suffix
     )
-    assert "which blue box" not in suffix
 
 
-def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_continuity() -> None:
+def test_pass2_prompt_runs_one_independent_continuity_lifecycle_scan() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
+    scan = (
+        "Continuity lifecycle scan: before emitting `continuity_candidates`, scan "
+        "`referent`, `unresolved`, and `active_task` independently in that order. For "
+        "every kind, decide `set`, no candidate, or `resolve`; finish all three kind "
+        "decisions before concluding the array is empty."
+    )
+    assert suffix.count(scan) == 1
     assert (
-        "Unchanged accepted `referent` or `active_task` meanings do not suppress a "
-        "distinct newly established `unresolved` meaning." in suffix
+        "An explicit open question or unknown value, including one explicitly maintained "
+        "as unknown, is an `unresolved` meaning when no accepted unresolved item already "
+        "represents it."
+        in suffix
     )
     assert (
-        "If related accepted referent/task meanings are unchanged and the current Event "
-        "newly establishes an unknown value with no accepted unresolved item, emit only "
-        "the new `unresolved` set as applicable." in suffix
+        "One kind's unchanged/no-candidate decision never suppresses a distinct transition "
+        "for another kind."
+        in suffix
     )
     assert "Unresolved transition example" in suffix
     assert '"kind":"unresolved"' in suffix
