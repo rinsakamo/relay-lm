@@ -58,6 +58,35 @@ def _reject_json_constant(value: str) -> None:
     raise S2ExperimentError(f"non-standard JSON numeric constant: {value}")
 
 
+def _normalize_json_envelope(text: str, *, label: str) -> str:
+    """Remove only one exact Markdown code fence around a JSON payload.
+
+    The envelope is a surface serialization detail, not semantic content. Bare JSON remains
+    unchanged. A fenced payload is accepted only when the complete visible response is one
+    fence with an empty or ``json`` info string and no surrounding prose or nested fence.
+    """
+
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+
+    lines = stripped.splitlines()
+    if len(lines) < 3:
+        raise S2ExperimentError(f"{label} has an invalid JSON fence envelope")
+    opener = lines[0].strip().lower()
+    if opener not in {"```", "```json"}:
+        raise S2ExperimentError(f"{label} has an unsupported JSON fence label")
+    if lines[-1].strip() != "```":
+        raise S2ExperimentError(f"{label} has content outside the JSON fence")
+    if any(line.strip().startswith("```") for line in lines[1:-1]):
+        raise S2ExperimentError(f"{label} contains multiple or nested JSON fences")
+
+    payload = "\n".join(lines[1:-1]).strip()
+    if not payload:
+        raise S2ExperimentError(f"{label} fenced JSON payload is empty")
+    return payload
+
+
 def _load_strict_json(text: str, *, label: str) -> object:
     try:
         return json.loads(
@@ -69,6 +98,10 @@ def _load_strict_json(text: str, *, label: str) -> object:
         raise
     except (json.JSONDecodeError, TypeError, ValueError) as exc:
         raise S2ExperimentError(f"{label} is not valid JSON") from exc
+
+
+def _load_model_json(text: str, *, label: str) -> object:
+    return _load_strict_json(_normalize_json_envelope(text, label=label), label=label)
 
 
 def _require_mapping(value: object, *, label: str) -> Mapping[str, object]:
@@ -149,7 +182,7 @@ def _parse_learned_rule(
     expected_modulus: int,
 ) -> dict[str, object]:
     payload = _require_mapping(
-        _load_strict_json(completion.content, label="reusable rule formation"),
+        _load_model_json(completion.content, label="reusable rule formation"),
         label="reusable rule formation",
     )
     if set(payload) != {"permutation", "offsets", "modulus"}:
@@ -489,7 +522,11 @@ def run_s2_smoke(
             examples_visible=examples_visible,
         )
         completion = client.complete(prompt.messages)
-        verification = family.verify_response(step_index, completion.content)
+        target_response = _normalize_json_envelope(
+            completion.content,
+            label=f"{kind} target response",
+        )
+        verification = family.verify_response(step_index, target_response)
         arms[kind] = S2ArmProbe(
             kind=kind,
             representation=representation,
