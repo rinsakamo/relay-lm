@@ -27,11 +27,17 @@ from relaylm.actual_model_stage_r_lm_studio import (
     ObservedLMStudioModel,
     observe_compatible_lm_studio_model,
 )
+from relaylm.providers.lm_studio_reasoning import (
+    LMStudioReasoningCapabilityAttestation,
+    LMStudioReasoningCapabilityError,
+    attest_lm_studio_reasoning_capabilities,
+)
 from relaylm.providers.openai_compatible_crystallization import OpenAICompatibleCrystallizer
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
 )
+from relaylm.providers.openai_compatible_reasoning import OpenAICompatibleReasoningRequest
 
 
 OBSERVED_CRYSTALLIZATION_FORMAT_VERSION = 1
@@ -55,36 +61,30 @@ class ObservedLMStudioCrystallizationError(ValueError):
 
 def observed_reasoning_identity(
     observed: ObservedLMStudioModel,
+    capability: LMStudioReasoningCapabilityAttestation,
 ) -> ActualModelCrystallizationReasoningIdentity:
-    """Represent the actually observed omitted-wire reasoning condition.
+    """Represent the explicit request-time OFF condition used by this path."""
 
-    The legacy evidence field is named `required_setting`; on this observed-condition
-    path it records the realized provider default rather than inventing a request-time
-    override that RelayLM does not currently send.
-    """
-
-    if observed.reasoning_default is None:
-        allowed = ("unknown",)
-        effective = "unknown"
-        return ActualModelCrystallizationReasoningIdentity(
-            required_setting=effective,
-            effective_setting=effective,
-            allowed_options=allowed,
-            live_default=effective,
-            control_source="lmstudio_native_metadata_unreported",
-            control_mode="omitted_default_unknown",
+    if capability.request_model != observed.request_model:
+        raise ObservedLMStudioCrystallizationError(
+            "reasoning capability request model does not match observed model"
         )
-
-    allowed = observed.reasoning_allowed_options
-    if observed.reasoning_default not in allowed:
-        allowed = tuple(sorted(set((*allowed, observed.reasoning_default))))
+    if capability.loaded_instance_id != observed.loaded_instance_id:
+        raise ObservedLMStudioCrystallizationError(
+            "reasoning capability loaded instance does not match observed model"
+        )
+    if "off" not in capability.allowed_options:
+        raise ObservedLMStudioCrystallizationError(
+            "canonical crystallization requires explicit LM Studio reasoning option off"
+        )
+    live_default = capability.default or "unknown"
     return ActualModelCrystallizationReasoningIdentity(
-        required_setting=observed.reasoning_default,
-        effective_setting=observed.reasoning_default,
-        allowed_options=allowed,
-        live_default=observed.reasoning_default,
-        control_source="lmstudio_native_model_default",
-        control_mode="omitted_default_observed",
+        required_setting="off",
+        effective_setting="off",
+        allowed_options=capability.allowed_options,
+        live_default=live_default,
+        control_source="lmstudio_chat_completions_reasoning_effort",
+        control_mode="explicit_request",
     )
 
 
@@ -93,6 +93,7 @@ def build_observed_manifest(
     relaylm_commit: str,
     fixture_revision: str,
     observed: ObservedLMStudioModel,
+    reasoning_capability: LMStudioReasoningCapabilityAttestation,
     replicate_id: str,
 ) -> ActualModelCrystallizationManifest:
     decoding = OpenAICompatibleDecodingConfig(temperature=0, top_p=1, seed=None)
@@ -103,14 +104,17 @@ def build_observed_manifest(
         provider_identity=(
             "lm_studio_observed:"
             f"{observed.request_model}:{observed.loaded_instance_id}:"
-            f"{observed.observed_identity}:{observed.reasoning_condition}"
+            f"{observed.observed_identity}:reasoning_effort=off"
         ),
         adapter_identity=ADAPTER_IDENTITY,
         model_artifact=observed.observed_identity,
         tokenizer_identity="lmstudio-observed:tokenizer-unreported",
         effective_context_window=observed.context_length,
         decoding_configuration=tuple(sorted(decoding.to_mapping().items())),
-        reasoning_identity=observed_reasoning_identity(observed),
+        reasoning_identity=observed_reasoning_identity(
+            observed,
+            reasoning_capability,
+        ),
         structured_output_schema_version=STRUCTURED_OUTPUT_SCHEMA_VERSION,
         evaluation_contract_version=EVALUATION_CONTRACT_VERSION,
         condition_id=CONDITION_ID,
@@ -167,6 +171,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ObservedLMStudioCrystallizationError(
             "live LM Studio model identity changed from the expected Phase A observation"
         )
+    try:
+        reasoning_capability = attest_lm_studio_reasoning_capabilities(
+            models_response=models_response,
+            request_model=observed.request_model,
+            loaded_instance_id=observed.loaded_instance_id,
+        )
+    except LMStudioReasoningCapabilityError as exc:
+        raise ObservedLMStudioCrystallizationError(
+            f"cannot attest LM Studio reasoning capability: {exc}"
+        ) from exc
+    if "off" not in reasoning_capability.allowed_options:
+        raise ObservedLMStudioCrystallizationError(
+            "canonical crystallization requires explicit LM Studio reasoning option off"
+        )
 
     artifact_root = Path(args.artifact_root).resolve()
     artifact_root.mkdir(parents=True, exist_ok=True)
@@ -176,6 +194,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "format_version": OBSERVED_CRYSTALLIZATION_FORMAT_VERSION,
             "observed_identity": observed.observed_identity,
             "model": observed.to_mapping(),
+            "reasoning_capability": reasoning_capability.to_mapping(),
         },
     )
 
@@ -189,6 +208,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             relaylm_commit=relaylm_commit,
             fixture_revision=observed_fixture_revision,
             observed=observed,
+            reasoning_capability=reasoning_capability,
             replicate_id=args.replicate_id,
         )
     )
@@ -210,12 +230,14 @@ async def _execute(
     relaylm_commit: str,
     fixture_revision: str,
     observed: ObservedLMStudioModel,
+    reasoning_capability: LMStudioReasoningCapabilityAttestation,
     replicate_id: str,
 ) -> dict[str, object]:
     manifest = build_observed_manifest(
         relaylm_commit=relaylm_commit,
         fixture_revision=fixture_revision,
         observed=observed,
+        reasoning_capability=reasoning_capability,
         replicate_id=replicate_id,
     )
     case = ActualModelCrystallizationCase(case_id=CASE_ID, version=CASE_VERSION)
@@ -228,6 +250,8 @@ async def _execute(
         decoding_capabilities=OpenAICompatibleDecodingCapabilities(
             supported_controls=frozenset({"temperature", "top_p"})
         ),
+        reasoning_request=OpenAICompatibleReasoningRequest(mode="off"),
+        lm_studio_reasoning_capability=reasoning_capability,
     )
     workspace = workspace_root / CONDITION_ID / replicate_id / CASE_ID
     try:
@@ -257,8 +281,9 @@ async def _execute(
         "replicate_id": replicate_id,
         "model_observed_identity": observed.observed_identity,
         "model": observed.to_mapping(),
-        "reasoning_realization": observed.reasoning_condition,
-        "reasoning_wire_control": "omitted",
+        "reasoning_realization": "explicit_off",
+        "reasoning_wire_control": "reasoning_effort=off",
+        "reasoning_capability": reasoning_capability.to_mapping(),
         "result": {
             "case_id": CASE_ID,
             "run_id": evidence.run_id,
