@@ -94,6 +94,60 @@ The native LM Studio API supports explicit `reasoning`, `max_output_tokens`, and
 
 For token accounting, native `total_output_tokens` is charged as model output work. With `reasoning=off`, `reasoning_output_tokens` must be zero for this S2 path.
 
+## Single JSON envelope normalization
+
+A later fresh S2 transaction reached all three formation calls and exposed a narrower parser defect: the model returned the required P4 JSON object inside a single Markdown JSON code fence. Treating that wrapper as a semantic failure would make an incidental formatting convention an admission gate, which conflicts with #2211's separation of semantic effects from nuisance surface effects.
+
+For model outputs whose contract is exactly one JSON value, the S2 parser therefore normalizes only this surface-equivalent pair:
+
+```text
+{"key":"value"}
+
+```json
+{"key":"value"}
+```
+```
+
+The accepted fenced form must satisfy all of the following:
+
+- the complete visible response is exactly one code fence;
+- the opening fence has either no info string or exactly `json`;
+- there is no prose before or after the fence;
+- there is no nested or second fence;
+- the payload is non-empty;
+- after unwrapping, the existing strict JSON parser and semantic validators run unchanged.
+
+The same envelope rule applies to the P4 formation JSON object and to target JSON-array responses. It does **not** turn arbitrary prose into JSON and does not inspect hidden reasoning.
+
+Still rejected:
+
+```text
+Here is the answer:
+```json
+{...}
+```
+
+```python
+{...}
+```
+
+```json
+{...}
+```
+extra prose
+
+multiple fenced values
+malformed JSON
+duplicate JSON members
+non-standard numeric constants
+wrong P4 keys
+non-bijective permutation
+invalid offset range
+wrong modulus
+```
+
+This normalization is a protocol-surface repair only. It does not retroactively reinterpret the historical failed transaction as a successful arm result and does not authorize semantic retry.
+
 ## No semantic retry
 
 This host repair does not authorize changing:
