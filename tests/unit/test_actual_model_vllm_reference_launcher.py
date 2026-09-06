@@ -33,8 +33,6 @@ def _reference_command(*extra: str) -> tuple[str, ...]:
         "model",
         "--max-model-len",
         "auto",
-        "--gpu-memory-utilization",
-        "0.92",
         "--port",
         "8000",
         *extra,
@@ -60,65 +58,100 @@ def _gpu_value(command: tuple[str, ...]) -> float:
     return float(command[index + 1])
 
 
-def test_reference_plan_accepts_auto_fit_without_semantic_window_recheck(
+def test_reference_plan_derives_reservation_without_semantic_or_caller_choice(
     tmp_path: Path,
 ) -> None:
     signature = inspect.signature(prepare_vllm_reference_launch)
-    assert "required_context_window" not in signature.parameters
-    assert "capacity_recheck" not in signature.parameters
+    for prohibited in (
+        "required_context_window",
+        "capacity_recheck",
+        "requested_utilization",
+        "fallback_utilization",
+    ):
+        assert prohibited not in signature.parameters
 
     plan = prepare_vllm_reference_launch(
         command=_reference_command(),
         supported_flags=SUPPORTED_FLAGS,
-        requested_utilization=0.92,
-        fallback_utilization=0.90,
         fresh_free_memory_bytes=10_980,
         total_memory_bytes=12_000,
-        run_id="reference-auto",
+        run_id="reference-derived",
         native_root=tmp_path,
     )
 
-    assert plan.admission.requested_utilization == 0.92
+    assert plan.admission.available_percent == 91
+    assert plan.admission.headroom_percent_points == 1
     assert plan.admission.selected_utilization == 0.90
-    assert plan.admission.changed is True
-    assert plan.admission.reason == "reference_gpu_reservation_reduced_before_measurement"
+    assert plan.admission.reason == "fresh_reference_gpu_reservation_derived"
     assert plan.admission.reattest_required is True
     assert _gpu_value(plan.launch.command) == 0.90
+    assert plan.launch.command.count("--gpu-memory-utilization") == 1
     max_len_index = plan.launch.command.index("--max-model-len")
     assert plan.launch.command[max_len_index + 1] == "auto"
 
 
-def test_reference_plan_keeps_requested_reservation_when_freshly_available(
+@pytest.mark.parametrize(
+    ("free_bytes", "total_bytes", "expected"),
+    [
+        (9_149, 10_000, 0.90),
+        (9_200, 10_000, 0.91),
+        (10_000, 10_000, 0.99),
+    ],
+)
+def test_reference_plan_uses_two_decimal_floor_with_one_point_headroom(
     tmp_path: Path,
+    free_bytes: int,
+    total_bytes: int,
+    expected: float,
 ) -> None:
     plan = prepare_vllm_reference_launch(
         command=_reference_command(),
         supported_flags=SUPPORTED_FLAGS,
-        requested_utilization=0.92,
-        fallback_utilization=None,
-        fresh_free_memory_bytes=11_500,
-        total_memory_bytes=12_000,
-        run_id="reference-requested",
+        fresh_free_memory_bytes=free_bytes,
+        total_memory_bytes=total_bytes,
+        run_id="reference-headroom",
         native_root=tmp_path,
     )
-
-    assert plan.admission.selected_utilization == 0.92
-    assert plan.admission.changed is False
-    assert plan.admission.reason == "requested_reference_gpu_reservation_admitted"
+    assert plan.admission.selected_utilization == expected
+    assert _gpu_value(plan.launch.command) == expected
 
 
-def test_reference_plan_fails_when_declared_reservation_is_not_available(
+@pytest.mark.parametrize(
+    ("free_bytes", "total_bytes", "match"),
+    [
+        (0, 10_000, "positive integer"),
+        (10_001, 10_000, "cannot exceed"),
+        (100, 10_000, "no positive reference reservation"),
+    ],
+)
+def test_reference_plan_fails_closed_on_invalid_or_insufficient_fresh_memory(
     tmp_path: Path,
+    free_bytes: int,
+    total_bytes: int,
+    match: str,
 ) -> None:
-    with pytest.raises(VLLMHostPreflightError, match="not currently available"):
+    with pytest.raises(VLLMHostPreflightError, match=match):
         prepare_vllm_reference_launch(
             command=_reference_command(),
             supported_flags=SUPPORTED_FLAGS,
-            requested_utilization=0.92,
-            fallback_utilization=None,
-            fresh_free_memory_bytes=10_980,
-            total_memory_bytes=12_000,
-            run_id="reference-unavailable",
+            fresh_free_memory_bytes=free_bytes,
+            total_memory_bytes=total_bytes,
+            run_id="reference-invalid-memory",
+            native_root=tmp_path,
+        )
+
+
+def test_reference_plan_rejects_caller_selected_gpu_reservation(
+    tmp_path: Path,
+) -> None:
+    command = _reference_command("--gpu-memory-utilization", "0.90")
+    with pytest.raises(VLLMHostPreflightError, match="producer owns"):
+        prepare_vllm_reference_launch(
+            command=command,
+            supported_flags=SUPPORTED_FLAGS,
+            fresh_free_memory_bytes=9_149,
+            total_memory_bytes=10_000,
+            run_id="reference-caller-reservation",
             native_root=tmp_path,
         )
 
@@ -130,8 +163,6 @@ def test_reference_plan_fails_when_declared_reservation_is_not_available(
             "/tmp/prepared/bin/vllm",
             "serve",
             "model",
-            "--gpu-memory-utilization",
-            "0.92",
             "--port",
             "8000",
         ),
@@ -141,8 +172,6 @@ def test_reference_plan_fails_when_declared_reservation_is_not_available(
             "model",
             "--max-model-len",
             "4096",
-            "--gpu-memory-utilization",
-            "0.92",
             "--port",
             "8000",
         ),
@@ -157,10 +186,8 @@ def test_reference_plan_rejects_missing_numeric_or_duplicate_auto_fit(
         prepare_vllm_reference_launch(
             command=command,
             supported_flags=SUPPORTED_FLAGS,
-            requested_utilization=0.92,
-            fallback_utilization=None,
-            fresh_free_memory_bytes=11_500,
-            total_memory_bytes=12_000,
+            fresh_free_memory_bytes=9_500,
+            total_memory_bytes=10_000,
             run_id="reference-invalid-auto",
             native_root=tmp_path,
         )
@@ -174,23 +201,20 @@ def test_reference_plan_accepts_equal_form_auto_fit_without_lexical_gate(
         "serve",
         "model",
         "--max-model-len=auto",
-        "--gpu-memory-utilization=0.92",
         "--port",
         "8000",
     )
     plan = prepare_vllm_reference_launch(
         command=command,
         supported_flags=SUPPORTED_FLAGS,
-        requested_utilization=0.92,
-        fallback_utilization=None,
-        fresh_free_memory_bytes=11_500,
-        total_memory_bytes=12_000,
+        fresh_free_memory_bytes=9_500,
+        total_memory_bytes=10_000,
         run_id="reference-equal-form",
         native_root=tmp_path,
     )
 
     assert "--max-model-len=auto" in plan.launch.command
-    assert "--gpu-memory-utilization=0.92" in plan.launch.command
+    assert _gpu_value(plan.launch.command) == 0.94
 
 
 def test_reference_plan_fails_closed_on_unsupported_required_flag(
@@ -200,10 +224,8 @@ def test_reference_plan_fails_closed_on_unsupported_required_flag(
         prepare_vllm_reference_launch(
             command=_reference_command("--kv-cache-memory-bytes", "123456"),
             supported_flags=SUPPORTED_FLAGS,
-            requested_utilization=0.92,
-            fallback_utilization=None,
-            fresh_free_memory_bytes=11_500,
-            total_memory_bytes=12_000,
+            fresh_free_memory_bytes=9_500,
+            total_memory_bytes=10_000,
             run_id="reference-unsupported",
             native_root=tmp_path,
         )
@@ -234,10 +256,8 @@ def test_reference_launch_uses_owned_runtime_and_native_environment(
     plan = prepare_vllm_reference_launch(
         command=_reference_command(),
         supported_flags=SUPPORTED_FLAGS,
-        requested_utilization=0.92,
-        fallback_utilization=0.90,
-        fresh_free_memory_bytes=10_980,
-        total_memory_bytes=12_000,
+        fresh_free_memory_bytes=9_149,
+        total_memory_bytes=10_000,
         run_id="reference-launch",
         requested_rpc_base_path="/mnt/c/relay-rpc",
         native_root=tmp_path,
@@ -294,10 +314,8 @@ def test_reference_launch_cleans_owned_runtime_on_readiness_failure(
     plan = prepare_vllm_reference_launch(
         command=_reference_command(),
         supported_flags=SUPPORTED_FLAGS,
-        requested_utilization=0.92,
-        fallback_utilization=None,
-        fresh_free_memory_bytes=11_500,
-        total_memory_bytes=12_000,
+        fresh_free_memory_bytes=9_500,
+        total_memory_bytes=10_000,
         run_id="reference-cleanup",
         native_root=tmp_path,
     )

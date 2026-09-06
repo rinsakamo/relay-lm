@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -23,34 +22,30 @@ from relaylm.actual_model_vllm_launch_preflight import (
 _GPU_MEMORY_FLAG = "--gpu-memory-utilization"
 _MAX_MODEL_LEN_FLAG = "--max-model-len"
 _AUTO_MODEL_LEN = "auto"
+_REFERENCE_GPU_HEADROOM_PERCENT_POINTS = 1
 _UNIX_IPC_PATH_MAX_BYTES = 107
 _VLLM_IPC_SUFFIX_BYTES = 37
 
 
 @dataclass(frozen=True, slots=True)
 class VLLMReferenceGPUAdmissionDecision:
-    """Mechanical GPU-reservation feasibility for reference production.
+    """Fresh physical GPU reservation for zero-semantic reference production."""
 
-    Unlike semantic Stage R admission, this decision carries no declared token
-    window and performs no context-capacity recheck. The producer is measuring
-    the launch class through the runtime's repository-authorized auto-fit mode.
-    """
-
-    requested_utilization: float
     selected_utilization: float
     fresh_free_memory_bytes: int
     total_memory_bytes: int
-    changed: bool
-    reason: str
+    available_percent: int
+    headroom_percent_points: int = _REFERENCE_GPU_HEADROOM_PERCENT_POINTS
+    reason: str = "fresh_reference_gpu_reservation_derived"
     reattest_required: bool = True
 
     def to_mapping(self) -> dict[str, object]:
         return {
-            "requested_utilization": self.requested_utilization,
             "selected_utilization": self.selected_utilization,
             "fresh_free_memory_bytes": self.fresh_free_memory_bytes,
             "total_memory_bytes": self.total_memory_bytes,
-            "changed": self.changed,
+            "available_percent": self.available_percent,
+            "headroom_percent_points": self.headroom_percent_points,
             "reason": self.reason,
             "reattest_required": self.reattest_required,
         }
@@ -85,8 +80,6 @@ def prepare_vllm_reference_launch(
     *,
     command: Sequence[str],
     supported_flags: Iterable[str],
-    requested_utilization: float,
-    fallback_utilization: float | None,
     fresh_free_memory_bytes: int,
     total_memory_bytes: int,
     run_id: str,
@@ -96,29 +89,20 @@ def prepare_vllm_reference_launch(
 ) -> VLLMReferenceLaunchPlan:
     """Prepare one window-independent launch-capability/reference condition.
 
-    This surface is intentionally separate from
-    ``prepare_vllm_qualification_launch``. It requires the repository-authorized
-    auto-fit max-model-length representation and never accepts or derives a
-    semantic target context window. GPU reservation selection is purely
-    mechanical: a candidate must fit inside the freshly observed free/total
-    memory fraction. Capacity is measured by the launched profiler/final runtime.
+    The caller supplies no semantic token window and no numeric GPU reservation.
+    The producer requires the repository-authorized auto-fit model-length mode and
+    derives exactly one mechanical GPU reservation from fresh free/total bytes.
     """
 
     _validate_direct_vllm_serve_command(command)
     _validate_reference_auto_fit_model_len(command)
-    candidates = _reservation_candidates(
-        requested_utilization=requested_utilization,
-        fallback_utilization=fallback_utilization,
-    )
-    admission = _select_reference_gpu_reservation(
-        requested_utilization=requested_utilization,
+    _reject_caller_gpu_memory_utilization(command)
+    admission = _derive_reference_gpu_reservation(
         fresh_free_memory_bytes=fresh_free_memory_bytes,
         total_memory_bytes=total_memory_bytes,
-        candidate_utilizations=candidates,
     )
-    rewritten_command = _rewrite_gpu_memory_utilization(
+    rewritten_command = _append_gpu_memory_utilization(
         command=command,
-        expected_requested_utilization=requested_utilization,
         selected_utilization=admission.selected_utilization,
     )
     launch = negotiate_vllm_launch(
@@ -232,34 +216,19 @@ def _validate_reference_auto_fit_model_len(command: Sequence[str]) -> None:
         )
 
 
-def _reservation_candidates(
-    *,
-    requested_utilization: float,
-    fallback_utilization: float | None,
-) -> tuple[float, ...]:
-    _validate_utilization(requested_utilization, "requested_utilization")
-    if fallback_utilization is None:
-        return (float(requested_utilization),)
-    _validate_utilization(fallback_utilization, "fallback_utilization")
-    if fallback_utilization == requested_utilization:
-        raise VLLMHostPreflightError(
-            "fallback GPU reservation must differ from requested reservation"
-        )
-    if fallback_utilization > requested_utilization:
-        raise VLLMHostPreflightError(
-            "fallback GPU reservation cannot exceed requested reservation"
-        )
-    return (float(requested_utilization), float(fallback_utilization))
+def _reject_caller_gpu_memory_utilization(command: Sequence[str]) -> None:
+    for token in command:
+        if token == _GPU_MEMORY_FLAG or token.startswith(f"{_GPU_MEMORY_FLAG}="):
+            raise VLLMHostPreflightError(
+                "reference producer owns --gpu-memory-utilization; caller must omit it"
+            )
 
 
-def _select_reference_gpu_reservation(
+def _derive_reference_gpu_reservation(
     *,
-    requested_utilization: float,
     fresh_free_memory_bytes: int,
     total_memory_bytes: int,
-    candidate_utilizations: Iterable[float],
 ) -> VLLMReferenceGPUAdmissionDecision:
-    _validate_utilization(requested_utilization, "requested_utilization")
     for value, label in (
         (fresh_free_memory_bytes, "fresh_free_memory_bytes"),
         (total_memory_bytes, "total_memory_bytes"),
@@ -271,105 +240,31 @@ def _select_reference_gpu_reservation(
             "fresh_free_memory_bytes cannot exceed total_memory_bytes"
         )
 
-    candidates: list[float] = []
-    for value in candidate_utilizations:
-        _validate_utilization(value, "candidate_utilization")
-        if value > requested_utilization:
-            raise VLLMHostPreflightError(
-                "reference launch cannot increase the requested GPU reservation"
-            )
-        if value not in candidates:
-            candidates.append(float(value))
-    if not candidates:
+    available_percent = (fresh_free_memory_bytes * 100) // total_memory_bytes
+    selected_percent = available_percent - _REFERENCE_GPU_HEADROOM_PERCENT_POINTS
+    if selected_percent <= 0:
         raise VLLMHostPreflightError(
-            "reference launch requires at least one GPU reservation candidate"
+            "fresh GPU memory leaves no positive reference reservation after headroom"
         )
 
-    available_fraction = fresh_free_memory_bytes / total_memory_bytes
-    for candidate in sorted(candidates, reverse=True):
-        if candidate > available_fraction:
-            continue
-        return VLLMReferenceGPUAdmissionDecision(
-            requested_utilization=float(requested_utilization),
-            selected_utilization=candidate,
-            fresh_free_memory_bytes=fresh_free_memory_bytes,
-            total_memory_bytes=total_memory_bytes,
-            changed=candidate != float(requested_utilization),
-            reason=(
-                "reference_gpu_reservation_reduced_before_measurement"
-                if candidate != float(requested_utilization)
-                else "requested_reference_gpu_reservation_admitted"
-            ),
-        )
-
-    raise VLLMHostPreflightError(
-        "reference launch GPU reservation is not currently available"
+    return VLLMReferenceGPUAdmissionDecision(
+        selected_utilization=selected_percent / 100,
+        fresh_free_memory_bytes=fresh_free_memory_bytes,
+        total_memory_bytes=total_memory_bytes,
+        available_percent=available_percent,
     )
 
 
-def _rewrite_gpu_memory_utilization(
+def _append_gpu_memory_utilization(
     *,
     command: Sequence[str],
-    expected_requested_utilization: float,
     selected_utilization: float,
 ) -> tuple[str, ...]:
-    rewritten = list(command)
-    occurrences: list[tuple[int, int | None, float]] = []
-    index = 0
-    while index < len(command):
-        token = command[index]
-        if token == _GPU_MEMORY_FLAG:
-            if index + 1 >= len(command) or command[index + 1].startswith("--"):
-                raise VLLMHostPreflightError(
-                    "--gpu-memory-utilization requires one numeric value"
-                )
-            value_index = index + 1
-            value = _parse_utilization(command[value_index])
-            occurrences.append((index, value_index, value))
-            index += 2
-            continue
-        if token.startswith(f"{_GPU_MEMORY_FLAG}="):
-            value = _parse_utilization(token.split("=", 1)[1])
-            occurrences.append((index, None, value))
-        index += 1
-
-    if len(occurrences) != 1:
-        raise VLLMHostPreflightError(
-            "reference launch requires exactly one --gpu-memory-utilization"
-        )
-    flag_index, value_index, observed = occurrences[0]
-    if observed != float(expected_requested_utilization):
-        raise VLLMHostPreflightError(
-            "command GPU reservation does not match requested reservation"
-        )
-
-    rendered = _render_utilization(selected_utilization)
-    if value_index is None:
-        rewritten[flag_index] = f"{_GPU_MEMORY_FLAG}={rendered}"
-    else:
-        rewritten[value_index] = rendered
-    return tuple(rewritten)
-
-
-def _validate_utilization(value: float, label: str) -> None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise VLLMHostPreflightError(f"{label} must be a number")
-    if not math.isfinite(float(value)) or value <= 0 or value > 1:
-        raise VLLMHostPreflightError(f"{label} must be finite and in (0, 1]")
-
-
-def _parse_utilization(value: str) -> float:
-    try:
-        parsed = float(value)
-    except ValueError as exc:
-        raise VLLMHostPreflightError(
-            "--gpu-memory-utilization must be numeric"
-        ) from exc
-    if not math.isfinite(parsed) or parsed <= 0 or parsed > 1:
-        raise VLLMHostPreflightError(
-            "--gpu-memory-utilization must be finite and in (0, 1]"
-        )
-    return parsed
+    return (
+        *command,
+        _GPU_MEMORY_FLAG,
+        _render_utilization(selected_utilization),
+    )
 
 
 def _render_utilization(value: float) -> str:
