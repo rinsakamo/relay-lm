@@ -1,0 +1,21 @@
+schema_version: 1
+id: actual_model_vllm_reference_production
+summary: >-
+  Window-independent zero-semantic vLLM launch preparation for citable token-
+  capacity reference production, including the repository-authorized auto-fit
+  model-length representation, bounded mechanical GPU-reservation feasibility,
+  native runtime paths, owned readiness, and the producer/semantic-consumer
+  boundary.
+owner_issue: 1386
+canonical_surfaces:
+- docs/reference/actual-model-vllm-reference-launcher.md
+references:
+- docs/reference/actual-model-vllm-functional-acceptance.md
+- docs/reference/actual-model-vllm-qualification-launcher.md
+- docs/reference/actual-model-vllm-kv-allocation-geometry.md
+implementation:
+- src/relaylm/actual_model_vllm_reference_launcher.py
+tests:
+- tests/unit/test_actual_model_vllm_reference_launcher.py
+depends_on:
+- actual_model_evaluation
