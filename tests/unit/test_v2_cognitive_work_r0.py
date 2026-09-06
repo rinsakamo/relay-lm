@@ -94,6 +94,21 @@ def test_r0_start_preserves_repeated_equal_content_as_distinct_occurrences():
     assert a.occurrence_id != b.occurrence_id
 
 
+def test_r0_start_separately_freezes_occurrence_content_from_occurrence_ids():
+    kernel_a = EventSemanticKernel()
+    kernel_a.ingest("A", logical_ingress_id="same-logical-id")
+    start_a = freeze_cognitive_start(kernel_a, lineage_id="lineage")
+
+    kernel_b = EventSemanticKernel()
+    kernel_b.ingest("B", logical_ingress_id="same-logical-id")
+    start_b = freeze_cognitive_start(kernel_b, lineage_id="lineage")
+
+    assert start_a.occurrence_ids == start_b.occurrence_ids == ("o1",)
+    assert start_a.head_id == start_b.head_id == "h0"
+    assert start_a.canonical_digest == start_b.canonical_digest
+    assert start_a.boundary_digest != start_b.boundary_digest
+
+
 def test_r0_start_freezes_exact_parent_head_and_canonical_digest():
     kernel = EventSemanticKernel()
     before = freeze_cognitive_start(kernel, lineage_id="lineage")
@@ -247,7 +262,14 @@ def test_r0_task_information_and_operation_surface_are_part_of_campaign_identity
     changed_ops = _campaign(
         operations=(Operation("THINK", ResourceVector(calls=1)),)
     )
-    assert len({base.fingerprint, changed_task.fingerprint, changed_info.fingerprint, changed_ops.fingerprint}) == 4
+    assert len(
+        {
+            base.fingerprint,
+            changed_task.fingerprint,
+            changed_info.fingerprint,
+            changed_ops.fingerprint,
+        }
+    ) == 4
 
 
 def test_r0_matched_comparison_rejects_different_start_head():
@@ -259,6 +281,24 @@ def test_r0_matched_comparison_rejects_different_start_head():
     kernel_b.ingest("task observation", logical_ingress_id="task-ingress")
     kernel_b.settle(kernel_b.propose_value("hidden", "different"))
     campaign_b = _campaign(kernel=kernel_b)
+
+    a = admit_arm(campaign_a, _arm("A0", "fixed"))
+    b = admit_arm(campaign_b, _arm("A1", "heuristic"))
+    with pytest.raises(CognitiveWorkAdmissionError, match="differ outside allocation"):
+        assert_matched_deployable_arms(a, b)
+
+
+def test_r0_matched_comparison_rejects_same_ids_but_different_boundary_content():
+    kernel_a = EventSemanticKernel()
+    kernel_a.ingest("A", logical_ingress_id="task-ingress")
+    campaign_a = _campaign(kernel=kernel_a)
+
+    kernel_b = EventSemanticKernel()
+    kernel_b.ingest("B", logical_ingress_id="task-ingress")
+    campaign_b = _campaign(kernel=kernel_b)
+
+    assert campaign_a.start.occurrence_ids == campaign_b.start.occurrence_ids
+    assert campaign_a.start.boundary_digest != campaign_b.start.boundary_digest
 
     a = admit_arm(campaign_a, _arm("A0", "fixed"))
     b = admit_arm(campaign_b, _arm("A1", "heuristic"))
