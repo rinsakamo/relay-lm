@@ -71,15 +71,14 @@ def test_f6_atomic_commit_is_old_or_new_head_never_split():
     proposal = runtime.propose_value("x", "A")
     old_head = runtime.kernel.current_head
 
-    volatile = runtime.settle(proposal, persist=False)
-    assert volatile.status == "COMMIT"
-    assert runtime.kernel.current_head != old_head
+    preview = runtime.preview_settlement(proposal)
+    assert preview.status == "COMMIT"
+    assert runtime.kernel.current_head == old_head
     before_install_recovery = runtime.crash_and_recover()
     assert before_install_recovery.kernel.current_head == old_head
     assert before_install_recovery.kernel.cells() == {}
 
-    proposal2 = before_install_recovery.propose_value("x", "A")
-    durable = before_install_recovery.settle(proposal2)
+    durable = before_install_recovery.settle(proposal)
     assert durable.status == "COMMIT"
     new_head = before_install_recovery.kernel.current_head
     after_install_recovery = before_install_recovery.crash_and_recover()
@@ -127,8 +126,8 @@ def test_crash_before_external_attempt_registration_can_still_dispatch():
     assert action.id not in recovered.store.external_receipts
     receipt = recovered.begin_external_dispatch(action.id, mode="NON_IDEMPOTENT")
     assert receipt.status == "ATTEMPT_REGISTERED"
-    sink.invoke(action.id, idempotent=False)
-    receipt = recovered.record_external_success(action.id)
+    result = sink.invoke(action.id, idempotent=False)
+    receipt = recovered.record_external_success(result)
     assert receipt.status == "SUCCEEDED"
     assert sink.effect_count(action.id) == 1
 
@@ -166,8 +165,8 @@ def test_recorded_external_success_survives_before_cognitive_commit():
     sink = FakeActionSink()
     action = runtime.emit_response("send")
     runtime.begin_external_dispatch(action.id, mode="NON_IDEMPOTENT")
-    sink.invoke(action.id, idempotent=False)
-    runtime.record_external_success(action.id)
+    result = sink.invoke(action.id, idempotent=False)
+    runtime.record_external_success(result)
 
     recovered = runtime.crash_and_recover()
     receipt = recovered.external_receipt(action.id)
