@@ -9,6 +9,7 @@ canonical_surfaces:
 - docs/reference/actual-model-cognitive-budget-evidence.md
 - docs/reference/actual-model-crystallization-evidence.md
 - docs/reference/actual-model-crystallization-host-runner.md
+- docs/reference/actual-model-crystallization-lm-studio-observed.md
 - docs/reference/actual-model-crystallization-quality-fixture.md
 - docs/reference/actual-model-fast-screening.md
 - docs/reference/actual-model-host-runner.md
@@ -70,6 +71,7 @@ implementation:
 - src/relaylm/actual_model_fast_screening_artifacts.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
+- src/relaylm/actual_model_crystallization_lm_studio_observed.py
 tests:
 - tests/unit/test_actual_model_evaluation.py
 - tests/unit/test_actual_model_cognition_execution.py
@@ -142,6 +144,7 @@ tests:
 - tests/unit/test_actual_model_crystallization_reference.py
 - tests/unit/test_actual_model_crystallization_host_runner.py
 - tests/unit/test_actual_model_crystallization_host_runner_reference.py
+- tests/unit/test_actual_model_crystallization_lm_studio_observed.py
 - tests/unit/test_actual_model_crystallization_quality_fixture.py
 - tests/unit/test_actual_model_semantic_freeze.py
 evidence:
