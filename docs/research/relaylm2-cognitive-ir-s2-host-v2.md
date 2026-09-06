@@ -98,15 +98,21 @@ For token accounting, native `total_output_tokens` is charged as model output wo
 
 A later fresh S2 transaction reached all three formation calls and exposed a narrower parser defect: the model returned the required P4 JSON object inside a single Markdown JSON code fence. Treating that wrapper as a semantic failure would make an incidental formatting convention an admission gate, which conflicts with #2211's separation of semantic effects from nuisance surface effects.
 
-For model outputs whose contract is exactly one JSON value, the S2 parser therefore normalizes only this surface-equivalent pair:
+For model outputs whose contract is exactly one JSON value, the S2 parser therefore treats the following as surface-equivalent.
 
-```text
-{"key":"value"}
+Bare JSON:
 
 ```json
 {"key":"value"}
 ```
+
+One complete JSON fence:
+
+````text
+```json
+{"key":"value"}
 ```
+````
 
 The accepted fenced form must satisfy all of the following:
 
@@ -121,30 +127,17 @@ The same envelope rule applies to the P4 formation JSON object and to target JSO
 
 Still rejected:
 
-```text
-Here is the answer:
-```json
-{...}
-```
-
-```python
-{...}
-```
-
-```json
-{...}
-```
-extra prose
-
-multiple fenced values
-malformed JSON
-duplicate JSON members
-non-standard numeric constants
-wrong P4 keys
-non-bijective permutation
-invalid offset range
-wrong modulus
-```
+- prose followed by a fenced value;
+- a `python` or other non-JSON fence label;
+- extra prose after the closing fence;
+- multiple or nested fenced values;
+- malformed JSON;
+- duplicate JSON members;
+- non-standard numeric constants;
+- wrong P4 keys;
+- non-bijective permutation;
+- invalid offset range;
+- wrong modulus.
 
 This normalization is a protocol-surface repair only. It does not retroactively reinterpret the historical failed transaction as a successful arm result and does not authorize semantic retry.
 
