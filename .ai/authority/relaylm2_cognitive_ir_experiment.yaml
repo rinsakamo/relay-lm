@@ -1,17 +1,21 @@
 schema_version: 1
 id: relaylm2_cognitive_ir_experiment
 owner_issue: 2211
-summary: RelayLM 2.0 matched LLM-facing Cognitive IR experiment with deterministic R0 representation identity, typed-vs-generic neutralization, provenance preservation, oracle quarantine, bounded non-citable S2 same-model comparison, and minimum-sufficient fail-closed physical-host smoke packaging.
+summary: RelayLM 2.0 matched LLM-facing Cognitive IR experiment with deterministic R0 representation identity, typed-vs-generic neutralization, provenance preservation, oracle quarantine, bounded non-citable S2 same-model comparison, minimum-sufficient fail-closed physical-host smoke packaging, explicit transport identity, and truthful provider-attempt accounting.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-ir-experiment.md
+- docs/research/relaylm2-cognitive-ir-s2-host-v2.md
 implementation:
 - src/relaylm/v2_cognitive_ir_experiment.py
 - src/relaylm/v2_cognitive_ir_actual_model.py
+- src/relaylm/v2_lmstudio_native_experiment.py
 - tools/v2_cognitive_ir_s2_host.py
+- tools/v2_cognitive_ir_s2_host_v2.py
 tests:
 - tests/unit/test_v2_cognitive_ir_experiment.py
 - tests/unit/test_v2_cognitive_ir_actual_model.py
 - tests/unit/test_v2_cognitive_ir_s2_host.py
 - tests/unit/test_v2_cognitive_ir_s2_review.py
+- tests/unit/test_v2_cognitive_ir_s2_host_v2.py
 depends_on:
 - relaylm2_transfer_experiment
