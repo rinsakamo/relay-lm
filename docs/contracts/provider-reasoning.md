@@ -1,12 +1,12 @@
 # OpenAI-compatible provider reasoning control contract
 
-Status: #1545 R1–R3C provider-owned reasoning contract, LM Studio capability attestation, vLLM configured-runtime capability, exact realization, and single/two-pass carriage for RelayLM v1.
+Status: #1545 current provider-owned reasoning contract for RelayLM v1, including LM Studio configured-runtime capability attestation and exact binary Chat Completions carriage, plus vLLM configured-runtime capability and exact realization.
 
 This contract defines the deterministic provider boundary for explicit reasoning controls, backend-specific capability truth, and proven backend request spelling. It does not choose cognition policy, per-pass defaults, numeric reasoning budgets, or calibration values.
 
 ## Ownership
 
-The semantic flow remains:
+The semantic flow is:
 
 ```text
 calibration/profile/config
@@ -16,21 +16,19 @@ calibration/profile/config
   -> exact request fields
 ```
 
-`auto` is not a provider realization value. It must already be resolved by the upstream cognition policy/profile boundary before this provider contract is used.
-
-The provider does not decide that Pass 1 or Pass 2 deserves a particular reasoning mode or budget.
+`auto` is not a provider realization value. It must resolve before this boundary. The provider does not decide that Pass 1 or Pass 2 deserves a particular reasoning mode or budget.
 
 ## Capability truth
 
-`OpenAICompatibleReasoningCapabilities` distinguishes three separate facts for mode-like controls:
+`OpenAICompatibleReasoningCapabilities` distinguishes:
 
 ```text
 mode_control_supported = false
-  no mode/effort-like request control has been attested
+  no mode-like request control is attested
 
 mode_control_supported = true
 supported_mode_values = unknown
-  a control exists, but its exact accepted option set is not attested
+  a control exists but exact accepted values are unknown
   -> explicit mode requests fail closed
 
 mode_control_supported = true
@@ -38,54 +36,28 @@ supported_mode_values = exact tuple
   exact public accepted values are attested
 ```
 
-Explicit reasoning-token budget support is represented independently as `token_budget_supported`.
+Explicit reasoning-token budget support is independent as `token_budget_supported`.
 
-Unknown capability is never treated as permission to send an explicit request. The generic OpenAI-compatible contract does not infer capability from a model name, output style, or the presence of a backend-specific endpoint.
+Unknown capability is never permission to send a control. The generic OpenAI-compatible contract does not infer capability from model names, output style, or backend reputation.
 
-## Explicit request
+## Explicit request and application
 
-`OpenAICompatibleReasoningRequest` contains only explicitly supplied values:
+`OpenAICompatibleReasoningRequest` contains only explicit caller intent:
 
 ```text
 mode
 explicit token_budget
 ```
 
-Both are optional. The empty request means RelayLM does not add a reasoning control. No provider reasoning default is invented by R1.
+The empty request means RelayLM adds no reasoning control. No hidden provider default is manufactured.
 
-The request concepts are not backend wire names. Exact translation from fully resolved cognition semantics to supported backend field/value spelling belongs to backend realization.
+Capability preflight and actual application are distinct. `ready` means only that an attested capability can represent the request. `OpenAICompatibleReasoningApplicationStatus.APPLIED` is stronger and requires both the requested semantic value and non-empty exact serialized wire fields produced by the same realization path used for the network request.
 
-## Preflight versus application
+## LM Studio configured-runtime capability attestation
 
-Capability preflight and actual application are distinct.
+LM Studio-native capability discovery is isolated in `lm_studio_reasoning.py`; it is not assumed for generic OpenAI-compatible providers.
 
-`OpenAICompatibleReasoningPreflightStatus` is:
-
-```text
-omitted
-ready
-unsupported
-```
-
-`ready` means only that the attested capability can represent the explicit request. It is not evidence that any backend field was sent.
-
-`OpenAICompatibleReasoningApplicationStatus` is:
-
-```text
-omitted
-unsupported
-applied
-```
-
-`applied` is intentionally stronger. `OpenAICompatibleReasoningApplication` requires both the explicit requested values and the exact serialized wire field/value mapping. A request cannot be represented as applied with an empty wire mapping.
-
-Exact backend serialization must construct application identity from the same serializer used for the network request.
-
-## LM Studio reasoning capability attestation
-
-LM Studio-native capability discovery is isolated from the generic OpenAI-compatible protocol in `lm_studio_reasoning.py`.
-
-`LMStudioReasoningCapabilityAttestation` consumes the native `/api/v1/models` response and binds reasoning capability to:
+`LMStudioReasoningCapabilityAttestation` consumes native `/api/v1/models` data and binds capability to:
 
 ```text
 exact request_model
@@ -94,85 +66,93 @@ reasoning.allowed_options
 reasoning.default
 ```
 
-The current LM Studio public reasoning option vocabulary accepted by this attestation is:
+The accepted LM Studio public reasoning metadata vocabulary is:
 
 ```text
 off | on | low | medium | high
 ```
 
-The option set is canonicalized before it becomes `OpenAICompatibleReasoningCapabilities.supported_mode_values`. The native `default` is recorded separately as the loaded model/runtime default; it is not represented as a RelayLM per-request override and does not become a hidden provider request value.
+The native default is recorded as an observed runtime fact only. It never becomes an implicit RelayLM request value.
 
-LM Studio documents the `reasoning` capability object as optional and absent when no public reasoning configuration is exposed. Accordingly:
+Fail-closed rules include:
 
-- an exact loaded model with no reasoning capability object attests mode control as unsupported;
-- a model family/name does not create capability by inference;
-- zero or multiple matching model records fail closed;
-- zero or multiple loaded instances fail closed because the configured runtime is ambiguous;
-- a loaded-instance identity mismatch fails closed;
-- malformed, duplicate, unknown, or default-inconsistent reasoning options fail closed.
+- no reasoning capability object -> mode control unsupported;
+- model family/name never creates capability by inference;
+- zero or multiple matching model records fail;
+- zero or multiple loaded instances fail;
+- loaded-instance identity mismatch fails;
+- malformed, duplicate, unknown, or default-inconsistent options fail.
 
-The native `/api/v1/models` reasoning object attests public reasoning settings and their default. It does **not** itself attest an explicit reasoning-token budget for the exact configured model/runtime. Therefore R2 leaves `token_budget_supported = false`; a later exact-wire/runtime proof may change that fact only when the provider owner can prove it.
+Native model metadata does not attest an explicit reasoning-token budget for Chat Completions, so current LM Studio `token_budget_supported` remains false.
 
-This LM Studio-native attestation is backend-specific. The generic OpenAI-compatible adapter never assumes that another compatible backend exposes `/api/v1/models` or LM Studio's reasoning metadata shape.
+## LM Studio exact Chat Completions realization
+
+For an exact loaded LM Studio model whose native capability attests the requested binary option, the current backend realizer uses the OpenAI-compatible Chat Completions field:
+
+```text
+reasoning_effort
+```
+
+Current exact binary mapping is identity-preserving:
+
+```text
+LM Studio public off -> reasoning_effort: off
+LM Studio public on  -> reasoning_effort: on
+```
+
+The lower-level provider realizer accepts only these attested binary values. `low`, `medium`, and `high` may appear in native capability metadata but are not currently qualified by this realizer and therefore fail closed. Explicit reasoning-token budgets also fail closed.
+
+RelayLM's current provider-neutral cognition vocabulary is narrower than LM Studio's public vocabulary. Current Core cognition exposes `off` and `bounded(N)`, not a generic `on` or effort-tier semantic mode. Consequently:
+
+- an attached LM Studio attestation exposes provider-neutral `off` to current cognition capability resolution only when `off` is attested;
+- `bounded(N)` remains unsupported for LM Studio because no reasoning-token budget is attested;
+- current runtime assembly accepts explicit LM Studio `reasoning_mode=off` only;
+- an attested live default such as `on` does not satisfy an explicit OFF request.
+
+The canonical single-pass request builder, two-pass Pass 1 builder, two-pass Pass 2 builder, streaming Pass 1 builder, and off-turn Crystallization request builder all consume the same provider-owned reasoning dispatcher. For LM Studio OFF they serialize the exact same request field:
+
+```json
+{"reasoning_effort":"off"}
+```
+
+No `reasoning_tokens`, `thinking_token_budget`, or vLLM chat-template controls are added by the LM Studio OFF realization.
+
+The current LM Studio Stage R and observed-condition Crystallization runners obtain native model metadata, bind the exact loaded instance, require an attested `off` option, and attach that capability to the production OpenAI-compatible serializer. Their execution evidence records the live model default separately from the request-time explicit OFF realization. Therefore a model may truthfully report `default=on` while the qualified request is still explicitly `reasoning_effort=off`.
 
 ## vLLM exact reasoning wire vocabulary
 
-`src/relaylm/providers/vllm_reasoning.py` freezes the exact vLLM Chat Completions request field spelling that current upstream authority exposes:
+`src/relaylm/providers/vllm_reasoning.py` freezes the current vLLM Chat Completions request spelling:
 
 ```text
 reasoning_effort
 thinking_token_budget
 ```
 
-The current public `reasoning_effort` vocabulary frozen by this provider dialect is:
+The vLLM public `reasoning_effort` vocabulary represented by that wire type is:
 
 ```text
 none | minimal | low | medium | high | xhigh | max
 ```
 
-`VLLMReasoningWireControls` is deliberately a **wire-level** type. It serializes only exact vLLM public request spelling and chooses no RelayLM semantic policy. Empty controls serialize to an empty mapping, so omission remains omission.
+This is a wire-level vocabulary, not RelayLM cognition semantics. RelayLM provider-neutral values are not silently reused as vLLM wire values.
 
-RelayLM's provider-neutral mode spelling is not reused as vLLM wire spelling:
-
-```text
-RelayLM semantic: off | bounded
-vLLM wire:        none | minimal | low | medium | high | xhigh | max
-```
-
-Therefore `off` and `bounded` are rejected by the low-level vLLM wire type rather than silently rewritten. The semantic-to-wire mapping requires separate model/runtime capability proof.
-
-For `thinking_token_budget`, RelayLM's vLLM wire primitive accepts only a positive explicit integer. Current vLLM itself also has provider-specific meanings for zero and `-1`; RelayLM does not expose those through this primitive because its existing explicit provider reasoning budget is positive and omission already represents no explicit RelayLM budget. This is an intentional supported subset, not a claim about vLLM's entire public input domain.
-
-Crucially, existence of these fields does not establish that they are semantically effective for every configured model/runtime:
-
-- `reasoning_effort` may interact with model chat-template thinking controls;
-- some reasoning models/templates use different thinking switches;
-- `thinking_token_budget` requires reasoning configuration/parser support and model/runtime compatibility;
-- backend identity alone does not prove either control is applicable.
-
-Accordingly, this low-level wire vocabulary still chooses no RelayLM semantic policy. The R3C realizer below is the only provider-owned path that may combine it with an attested configured runtime and construct an applied application record.
-
-## Configured vLLM/model reasoning capability attestation
-
-`src/relaylm/providers/vllm_reasoning_capability.py` records explicit probe
-results for one already-attested vLLM server/model runtime. The attestation
-requires only a structural frozen target identity view carrying these four
-non-empty strings:
+For current vLLM realization:
 
 ```text
-target_id
-revision
-model_artifact_identity
-artifact_repository_revision
+RelayLM off
+  -> reasoning_effort: none
+  -> no conflicting template thinking activation
+
+RelayLM bounded(N)
+  -> thinking_token_budget: N
+  -> chat_template_kwargs: { enable_thinking: true }
 ```
 
-The caller owns loading, verifying, and selecting the target representation.
-The provider does not import or require an actual-model evaluation target type.
-The resulting capability evidence carries the supplied target identity alongside
-the vLLM backend version and exact served model identity; it does not infer target
-identity from a model name.
+`bounded` never chooses `N`; the caller must provide it. Effort labels are not numeric-budget substitutes.
 
-Each control is classified independently as:
+## Configured vLLM/model capability attestation
+
+`vllm_reasoning_capability.py` records explicit probe results for one already-attested vLLM server/model runtime. Each control is classified independently as:
 
 ```text
 unsupported
@@ -181,76 +161,40 @@ semantically_attested
 malformed_or_ambiguous
 ```
 
-Protocol acceptance is not semantic proof. A control reaches
-`semantically_attested` only when the supplied evidence records an accepted
-exact wire, a repeatable observed effect, and the configured activation context
-required by that control. Positive bounded reasoning additionally requires the
-numeric `thinking_token_budget` field and an exact template activation kwarg;
-effort labels are not numeric budget substitutes. The exact probe wire and
-template kwargs remain separate from a later
-`OpenAICompatibleReasoningApplication`.
+Protocol acceptance is not semantic proof. A control reaches `semantically_attested` only when the supplied evidence records an accepted exact wire, repeatable observed effect, and the configured activation context required by that control. Positive bounded reasoning additionally requires the numeric `thinking_token_budget` field and exact template activation.
 
-For OFF, a probe that also activates the configured template thinking control
-is `malformed_or_ambiguous`. The attestation records the deterministic later
-realizer rule that conflicting template kwargs must be rejected. Unsupported,
-unproven, or ambiguous observations never receive an effort-tier or generic
-fallback wire.
+Unsupported, unproven, or ambiguous observations never receive a fallback wire.
 
-## vLLM semantic realization and carriage
+## Shared fail-closed rules
 
-`vllm_reasoning_realization.py` accepts only a fully resolved
-`OpenAICompatibleReasoningRequest` and the matching R3B capability attestation.
-It produces the requested, resolved, and applied identities from the same
-serializer that produces the request fields:
-
-```text
-RelayLM off
-  -> reasoning_effort: none
-  -> no template kwargs (conflicting enable_thinking kwargs fail closed)
-
-RelayLM bounded(N)
-  -> thinking_token_budget: N
-  -> chat_template_kwargs: { enable_thinking: true }
-```
-
-`bounded` never chooses `N`, and `low`/`medium`/`high` are never used as a
-substitute. If the corresponding capability status is not
-`semantically_attested`, the realizer constructs an unsupported application and
-refuses to produce request fields. An unresolved `auto`, missing bounded
-budget, mismatched target/model attestation, or conflicting template kwargs
-fails closed before network serialization.
-
-The canonical ordinary single-pass builder and both two-pass builders consume
-this same realizer. A caller may pass different fully resolved requests for
-Pass 1 and Pass 2; Pass 2 is not implicitly strengthened merely by being Pass
-2. When a vLLM capability is explicitly attached to the provider, provider
-cognition facts expose only the attested `off`/`bounded` modes and budget
-support.
-
-## Fail-closed rules
-
-- an explicit mode fails preflight when mode control is not attested;
-- an explicit mode fails preflight when mode control exists but the accepted option set is unknown;
-- an explicit mode fails preflight when the requested value is absent from the exact attested option set;
-- an explicit token budget fails preflight unless token-budget support is attested;
+- an explicit mode fails when mode control is not attested;
+- an explicit mode fails when accepted option values are unknown;
+- an explicit mode fails when its value is absent from the exact attested set;
+- an explicit token budget fails unless token-budget support is attested;
 - omitted reasoning remains omitted;
-- preflight `ready` must never be reported as `applied` without exact serialized wire fields;
-- backend-native discovery that is missing, malformed, or ambiguous cannot be converted into optimistic support;
-- a known backend wire field does not by itself establish model-specific semantic applicability;
-- provider-neutral reasoning modes must not be silently treated as backend-public effort values.
+- `ready` is never recorded as `applied` without exact serialized wire fields;
+- backend-native discovery that is missing, malformed, or ambiguous cannot become optimistic support;
+- backend wire-field existence alone does not establish model-specific applicability;
+- backend-specific capabilities are mutually exclusive on one provider instance.
 
-## Relationship to current provider cognition facts
+## Provider cognition capability bridge
 
-`OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. Without an explicitly attached configured vLLM attestation, the generic adapter remains reasoning-empty/unsupported. With one attached attestation, only the modes whose R3B status is `semantically_attested` are exposed.
+`OpenAICompatibleCognitionCapabilityFacts` is the content-free provider-to-cognition bridge.
 
-R1–R3C do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later actual-model transaction may consume the applied identity only when the same canonical request path carries the attested control.
+- generic OpenAI-compatible providers remain reasoning-empty without a backend-specific attestation;
+- attached vLLM capability exposes only semantically attested `off`/`bounded` modes;
+- attached LM Studio capability exposes current provider-neutral `off` only when the exact loaded model attests `off`;
+- no provider capability chooses a calibration default.
+
+Requested reasoning and applied reasoning remain distinct evidence. Actual-model consumers may cite an applied configuration only when the same canonical serializer carried its exact request fields.
 
 ## Deferred work
 
-Current provider authority still does not implement:
+Current provider authority still defers:
 
-- exact LM Studio Chat Completions reasoning wire;
-- runtime config or calibrated reasoning defaults;
-- actual-model COGP5 reasoning ON/OFF execution.
+- evidence-backed reasoning defaults or calibrated profiles (#1388);
+- causal actual-model reasoning ON/OFF comparison where owned by #1386/#1533;
+- LM Studio provider-neutral effort-tier semantics beyond current Core vocabulary;
+- LM Studio explicit reasoning-token-budget support unless a later exact capability contract proves it.
 
-Those remain later #1545 transactions and consumers.
+Exact LM Studio request-time OFF carriage is no longer deferred.
