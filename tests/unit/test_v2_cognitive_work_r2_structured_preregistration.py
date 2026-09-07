@@ -32,7 +32,7 @@ def test_structured_seed_domain_is_third_distinct_commit_bound_identity():
     assert root != original.derive_root_seed(_COMMIT_A)
     assert root != replacement.derive_root_seed(_COMMIT_A)
     assert root != structured.derive_root_seed(_COMMIT_B)
-    assert structured.ROOT_SEED_DOMAIN != original.ROOT_SEED_DOMAIN
+    assert structured.ROOT_SEED_DOMAIN != replacement.ORIGINAL_ROOT_SEED_DOMAIN
     assert structured.ROOT_SEED_DOMAIN != replacement.ROOT_SEED_DOMAIN
     with pytest.raises(structured.R2PreregistrationError, match="40 hex"):
         structured.derive_root_seed("not-a-commit")
@@ -214,7 +214,7 @@ def test_structured_digest_commits_to_transport_and_new_scientific_identity():
     preregistration = structured.build_preregistration(_COMMIT_A)
     assert structured.ANSWER_PROTOCOL_VERSION == "qualified-json-schema-string-v3"
     assert structured.ROOT_SEED_DOMAIN not in {
-        original.ROOT_SEED_DOMAIN,
+        replacement.ORIGINAL_ROOT_SEED_DOMAIN,
         replacement.ROOT_SEED_DOMAIN,
     }
     assert preregistration.digest.startswith("sha256:")
