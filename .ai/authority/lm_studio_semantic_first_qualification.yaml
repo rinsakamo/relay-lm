@@ -7,6 +7,8 @@ summary: >-
   request or explicit Pass-2 failures stop later scenarios without changing
   Core cognition semantics.
 owner_issue: 2297
+canonical_surfaces:
+- docs/reference/actual-model-lm-studio-semantic-first.md
 references:
 - docs/reference/actual-model-stage-r-current.md
 - docs/reference/actual-model-lm-studio-binding.md
