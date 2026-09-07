@@ -20,7 +20,6 @@ from tools.v2_cognitive_work_r2_preregistration import (
     PlannedProviderCall,
     R2Preregistration,
     R2PreregistrationError,
-    R2Task,
     TaskOperationBank,
     a0_policy,
     a1_policy,
