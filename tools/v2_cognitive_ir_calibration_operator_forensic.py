@@ -17,6 +17,7 @@ from tools.v2_cognitive_ir_calibration_forensic import FORENSIC_CLAIM_STATUS
 
 
 OPERATOR_FORENSIC_CLAIM_STATUS = "NON_CITABLE_S2_CALIBRATION_OPERATOR_FORENSIC"
+_ADJACENT_MODULI = (CALIBRATION_MODULUS - 1, CALIBRATION_MODULUS + 1)
 
 
 class CalibrationOperatorForensicError(ValueError):
@@ -157,6 +158,36 @@ def _inverse_mapping_rule(rule: VectorRule) -> VectorRule:
     return VectorRule(inverse, offsets, rule.modulus)
 
 
+def _single_swap_answer_matches(
+    *,
+    query: tuple[int, ...],
+    rule: VectorRule,
+    actual: tuple[int, ...],
+) -> list[list[int]]:
+    matches: list[list[int]] = []
+    for left in range(CALIBRATION_VECTOR_WIDTH):
+        for right in range(left + 1, CALIBRATION_VECTOR_WIDTH):
+            permutation = list(rule.permutation)
+            permutation[left], permutation[right] = permutation[right], permutation[left]
+            if _apply(query, tuple(permutation), rule.offsets, rule.modulus) == actual:
+                matches.append([left, right])
+    return matches
+
+
+def _cyclic_shift_answer_matches(
+    *,
+    query: tuple[int, ...],
+    rule: VectorRule,
+    actual: tuple[int, ...],
+) -> list[int]:
+    matches: list[int] = []
+    for shift in range(1, CALIBRATION_VECTOR_WIDTH):
+        permutation = rule.permutation[shift:] + rule.permutation[:shift]
+        if _apply(query, permutation, rule.offsets, rule.modulus) == actual:
+            matches.append(shift)
+    return matches
+
+
 def _candidate_answers(
     *,
     query: tuple[int, ...],
@@ -164,8 +195,15 @@ def _candidate_answers(
     actual: tuple[int, ...],
     reported_rule: VectorRule | None = None,
 ) -> dict[str, object]:
+    identity = tuple(range(CALIBRATION_VECTOR_WIDTH))
     candidates: dict[str, tuple[int, ...]] = {
         "TRUE_RULE": true_rule.apply(query),
+        "IDENTITY_PERMUTATION": _apply(
+            query,
+            identity,
+            true_rule.offsets,
+            true_rule.modulus,
+        ),
         "INVERSE_MAPPING_CONVENTION": _inverse_mapping_rule(true_rule).apply(query),
         "INVERSE_PERM_KEEP_OUTPUT_OFFSETS": _apply(
             query,
@@ -191,17 +229,25 @@ def _candidate_answers(
         candidates["REPORTED_RULE_INVERSE_MAPPING"] = _inverse_mapping_rule(reported_rule).apply(query)
 
     exact_matches = [name for name, answer in candidates.items() if answer == actual]
-    wrong_modulus_matches: list[int] = []
-    for modulus in range(2, 17):
-        if modulus == true_rule.modulus:
-            continue
+    adjacent_modulus_matches: list[int] = []
+    for modulus in _ADJACENT_MODULI:
         candidate = _apply(query, true_rule.permutation, true_rule.offsets, modulus)
         if candidate == actual:
-            wrong_modulus_matches.append(modulus)
+            adjacent_modulus_matches.append(modulus)
 
     return {
         "exact_named_matches": exact_matches,
-        "wrong_modulus_matches": wrong_modulus_matches,
+        "single_position_swap_permutation_matches": _single_swap_answer_matches(
+            query=query,
+            rule=true_rule,
+            actual=actual,
+        ),
+        "cyclic_shift_permutation_matches": _cyclic_shift_answer_matches(
+            query=query,
+            rule=true_rule,
+            actual=actual,
+        ),
+        "adjacent_modulus_matches": adjacent_modulus_matches,
         "reported_rule_self_consistent": (
             reported_rule is not None and reported_rule.apply(query) == actual
         ),
@@ -344,6 +390,14 @@ def analyze_operator_conventions(source: Mapping[str, object]) -> dict[str, obje
                 for cell in group
             )
 
+        def answer_explained(cell: dict[str, object], probe: str) -> bool:
+            hypotheses = cell[probe]["answer_hypotheses"]  # type: ignore[index]
+            return bool(hypotheses["exact_named_matches"]) or bool(
+                hypotheses["single_position_swap_permutation_matches"]
+            ) or bool(hypotheses["cyclic_shift_permutation_matches"]) or bool(
+                hypotheses["adjacent_modulus_matches"]
+            )
+
         wrong_c0 = [cell for cell in group if not cell["C0"]["correct"]]  # type: ignore[index]
         wrong_c2_answers = [cell for cell in group if not cell["C2"]["answer_correct"]]  # type: ignore[index]
         summaries.append(
@@ -372,12 +426,13 @@ def analyze_operator_conventions(source: Mapping[str, object]) -> dict[str, obje
                     )
                 },
                 "C0_wrong_answer_cells": len(wrong_c0),
-                "C0_wrong_answer_explained_by_named_candidate": sum(
-                    bool(cell["C0"]["answer_hypotheses"]["exact_named_matches"])  # type: ignore[index]
-                    or bool(cell["C0"]["answer_hypotheses"]["wrong_modulus_matches"])  # type: ignore[index]
-                    for cell in wrong_c0
+                "C0_wrong_answer_explained_by_bounded_candidate": sum(
+                    answer_explained(cell, "C0") for cell in wrong_c0
                 ),
                 "C2_wrong_answer_cells": len(wrong_c2_answers),
+                "C2_wrong_answer_explained_by_bounded_candidate": sum(
+                    answer_explained(cell, "C2") for cell in wrong_c2_answers
+                ),
                 "C2_reported_rule_self_consistent_answers": sum(
                     bool(cell["C2"]["answer_hypotheses"]["reported_rule_self_consistent"])  # type: ignore[index]
                     for cell in group
