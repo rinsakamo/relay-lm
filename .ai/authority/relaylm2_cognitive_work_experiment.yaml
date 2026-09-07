@@ -12,6 +12,7 @@ tests:
 - tests/unit/test_v2_cognitive_work_r0.py
 - tests/unit/test_v2_cognitive_work_r1_host.py
 - tests/unit/test_v2_cognitive_work_r2_preregistration.py
+- tests/unit/test_v2_cognitive_work_r2_oracle.py
 references:
 - docs/research/relaylm2-intervention-harness.md
 depends_on:
