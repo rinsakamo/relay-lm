@@ -125,6 +125,24 @@ def test_inverse_mapping_and_identity_collapse_are_descriptive_relations():
     assert "IDENTITY_COLLAPSE_CANDIDATE" in d2_result["C1"]["permutation_relation"]["relations"]
 
 
+def test_c0_answer_can_match_one_swapped_permutation_without_reported_rule():
+    source = _source_report()
+    difficulty = "D1_PERMUTATION_ONLY_RANDOM"
+    seed = 841092688
+    raw = _source_cell(source, difficulty, seed)
+    case = generate_calibration_case(seed=seed, difficulty=difficulty)
+    permutation = list(case.rule.permutation)
+    permutation[1], permutation[3] = permutation[3], permutation[1]
+    raw["C0"]["answer"] = [case.query[index] for index in permutation]
+
+    report = analyze_operator_conventions(source)
+    result = _cell(report, difficulty, seed)
+
+    assert [1, 3] in result["C0"]["answer_hypotheses"][
+        "single_position_swap_permutation_matches"
+    ]
+
+
 def test_c2_reports_whether_answer_is_consistent_with_its_own_wrong_rule():
     source = _source_report()
     difficulty = "D1_PERMUTATION_ONLY_RANDOM"
@@ -160,6 +178,14 @@ def test_wrong_sign_offset_answer_is_matched_without_claiming_cause():
 
     assert "NEGATIVE_OFFSETS" in result["C0"]["answer_hypotheses"]["exact_named_matches"]
     assert report["interpretation_boundary"]["operator_error_cause_proven"] is False
+
+
+def test_adjacent_modulus_search_is_bounded_to_nine_and_eleven():
+    report = analyze_operator_conventions(_source_report())
+    for cell in report["cells"]:
+        for probe in ("C0", "C2"):
+            matches = cell[probe]["answer_hypotheses"]["adjacent_modulus_matches"]
+            assert set(matches).issubset({9, 11})
 
 
 def test_source_integrity_drift_fails_closed():
