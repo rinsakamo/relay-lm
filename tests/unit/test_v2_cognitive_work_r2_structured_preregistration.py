@@ -55,7 +55,7 @@ def test_structured_suite_is_unseen_relative_to_both_prior_seed_domains():
         assert task.hidden_regime not in task.task_id
 
 
-def test_structured_preserves_scientific_constants_and_policy_functions():
+def test_structured_preserves_scientific_constants_policy_and_messages():
     assert structured.REGIMES == replacement.REGIMES == original.REGIMES
     assert structured.OPERATIONS == replacement.OPERATIONS == original.OPERATIONS
     assert structured.TASKS_PER_REGIME == replacement.TASKS_PER_REGIME == 8
@@ -71,6 +71,9 @@ def test_structured_preserves_scientific_constants_and_policy_functions():
     assert structured.interpret_r2 is replacement.interpret_r2
     assert structured.paired_bootstrap_interval is replacement.paired_bootstrap_interval
     assert structured.paired_directional_exact_pvalue is replacement.paired_directional_exact_pvalue
+    assert structured.answer_messages is replacement.answer_messages
+    assert structured.revision_messages is replacement.revision_messages
+    assert structured.allocator_messages is replacement.allocator_messages
 
 
 def test_structured_generator_preserves_balanced_regimes_and_external_units():
@@ -196,9 +199,9 @@ def test_structured_assigns_operation_schema_only_to_allocator_calls():
 
 def test_structured_parser_requires_qualified_answer_shape_and_legal_operation():
     assert structured.parse_answer('{"answer":"87"}') == "87"
-    with pytest.raises(Exception):
+    with pytest.raises(structured.R2PreregistrationError, match="non-empty string"):
         structured.parse_answer('{"answer":87}')
-    with pytest.raises(Exception):
+    with pytest.raises(structured.R2PreregistrationError, match="strict whole-response JSON"):
         structured.parse_answer('```json\n{"answer":"87"}\n```')
 
     retrieval = _task(structured.build_preregistration(_COMMIT_A), "RETRIEVAL_BENEFICIAL")
