@@ -1,7 +1,7 @@
 schema_version: 1
 id: relaylm2_cognitive_ir_experiment
 owner_issue: 2211
-summary: RelayLM 2.0 matched LLM-facing Cognitive IR experiment with deterministic R0 representation identity, typed-vs-generic neutralization, provenance preservation, oracle quarantine, bounded non-citable S2 same-model comparison, minimum-sufficient fail-closed physical-host smoke packaging, explicit transport identity, truthful provider-attempt accounting, an independent pre-S2 structured-output calibration matrix separating application, formation, and end-to-end capability before any P0-P6 comparison, a fail-closed calibration host that uses LM Studio native API only for live environment authority while routing all calibration inference through OpenAI-compatible strict JSON Schema Chat Completions, an observed reasoning-off execution contract that accepts only zero-reasoning-token OpenAI-compatible completions, a zero-provider forensic that reconstructs descriptive calibration failure geometry from completed visible instrumentation without retuning admission or authorizing S2, and a second zero-provider operator-convention forensic that matches observed wrong rules and answers against bounded alternative operator interpretations without promoting those matches to causal diagnoses.
+summary: RelayLM 2.0 matched LLM-facing Cognitive IR experiment with deterministic R0 representation identity, typed-vs-generic neutralization, provenance preservation, oracle quarantine, bounded non-citable S2 same-model comparison, minimum-sufficient fail-closed physical-host smoke packaging, explicit transport identity, truthful provider-attempt accounting, an independent pre-S2 structured-output calibration matrix separating application, formation, and end-to-end capability before any P0-P6 comparison, a fail-closed calibration host that uses LM Studio native API only for live environment authority while routing all calibration inference through OpenAI-compatible strict JSON Schema Chat Completions, an observed reasoning-off execution contract that accepts only zero-reasoning-token OpenAI-compatible completions, a zero-provider forensic that reconstructs descriptive calibration failure geometry from completed visible instrumentation without retuning admission or authorizing S2, a second zero-provider operator-convention forensic that matches observed wrong rules and answers against bounded alternative operator interpretations without promoting those matches to causal diagnoses, and a separately seeded factorized calibration-v2 preregistration that preserves the original admission thresholds while separating single-swap permutation, offset arithmetic, wrap load, and modest composition under a globally identifiable public-example contract.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-ir-experiment.md
 - docs/research/relaylm2-cognitive-ir-s2-host-v2.md
@@ -10,11 +10,13 @@ canonical_surfaces:
 - docs/research/relaylm2-cognitive-ir-calibration-reasoning-off.md
 - docs/research/relaylm2-cognitive-ir-calibration-forensic.md
 - docs/research/relaylm2-cognitive-ir-calibration-operator-forensic.md
+- docs/research/relaylm2-cognitive-ir-calibration-v2.md
 implementation:
 - src/relaylm/v2_cognitive_ir_experiment.py
 - src/relaylm/v2_cognitive_ir_actual_model.py
 - src/relaylm/v2_lmstudio_native_experiment.py
 - src/relaylm/v2_cognitive_ir_calibration.py
+- src/relaylm/v2_cognitive_ir_calibration_v2.py
 - tools/v2_cognitive_ir_s2_host.py
 - tools/v2_cognitive_ir_s2_host_v2.py
 - tools/v2_cognitive_ir_calibration_host.py
@@ -25,6 +27,7 @@ tests:
 - tests/unit/test_v2_cognitive_ir_experiment.py
 - tests/unit/test_v2_cognitive_ir_actual_model.py
 - tests/unit/test_v2_cognitive_ir_calibration.py
+- tests/unit/test_v2_cognitive_ir_calibration_v2.py
 - tests/unit/test_v2_cognitive_ir_calibration_host.py
 - tests/unit/test_v2_cognitive_ir_calibration_reasoning_off.py
 - tests/unit/test_v2_cognitive_ir_calibration_forensic.py
