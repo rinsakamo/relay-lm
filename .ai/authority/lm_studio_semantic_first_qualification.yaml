@@ -1,0 +1,23 @@
+schema_version: 1
+id: lm_studio_semantic_first_qualification
+summary: >-
+  Repository-owned minimum-sufficient LM Studio Stage R qualification capsule
+  for Core 1.0. Stable non-secret provider/model/context facts are declared by
+  the physical transaction, the first provider request is semantic work, and
+  request or explicit Pass-2 failures stop later scenarios without changing
+  Core cognition semantics.
+owner_issue: 2297
+canonical_surfaces:
+- docs/reference/actual-model-lm-studio-semantic-first.md
+references:
+- docs/reference/actual-model-stage-r-current.md
+- docs/reference/actual-model-lm-studio-binding.md
+- docs/contracts/provider-reasoning.md
+implementation:
+- src/relaylm/actual_model_stage_r_lm_studio_semantic_first.py
+tests:
+- tests/unit/test_actual_model_stage_r_lm_studio_semantic_first.py
+depends_on:
+- actual_model_evaluation
+- cognitive_turn
+- provider_and_api
