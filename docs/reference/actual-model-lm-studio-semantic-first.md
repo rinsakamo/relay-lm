@@ -27,9 +27,29 @@ A deterministic semantic boundary failure is still evidence and is not itself co
 
 The capsule performs no retry, fallback, provider restart, model reload, model substitution, prompt repair, parser relaxation, reasoning escalation, or semantic tuning.
 
+## Completion evidence
+
+Every successful non-streaming semantic completion is passively observed after the existing production provider receives and decodes the HTTP response and before the unchanged production parser consumes the returned envelope. This observation adds no provider request and does not modify the request or response envelope.
+
+For each completion, the capsule persists a create-once sanitized observation containing:
+
+- deterministic completion sequence index and Pass boundary (`conversation` or `extraction`);
+- successful HTTP-completion observation and provider finish reason when present;
+- provider-supplied prompt, completion, and total token counts when present;
+- provider-supplied `completion_tokens_details.reasoning_tokens` when present, together with whether that field was supplied;
+- only the presence class `absent`, `empty`, or `nonempty` for `message.reasoning` and `message.reasoning_content`.
+
+Hidden reasoning text is never persisted by this evidence surface. A nonempty reasoning field is recorded only as `nonempty`.
+
+The Stage R summary names every completion-observation artifact and maps each scenario to the observations produced while that scenario executed. Because observations are written immediately after successful provider responses, a later parser or evaluation boundary cannot erase already-produced runtime evidence.
+
 ## Evidence interpretation
 
-A connection failure on the first semantic request is `INCONCLUSIVE` for Core semantics because no valid model completion exists. A valid completion may proceed through the ordinary Stage R semantic review. Any terminal qualification verdict remains owned by the applicable actual-model qualification Issue; this harness only guarantees the minimum-sufficient execution contract and bounded evidence capture.
+A connection failure on the first semantic request is `INCONCLUSIVE` for Core semantics because no valid model completion exists. A valid completion may proceed through the ordinary Stage R semantic review.
+
+For a qualification whose current owner requires effective reasoning OFF to be demonstrated from completion evidence, `reasoning_effort=none` on the request is necessary but not sufficient by itself. The owner may require authoritative `reasoning_tokens == 0` plus no `nonempty` `reasoning` or `reasoning_content` observation. If the response evidence required by that owner is absent or ambiguous, the qualification fails closed as `INCONCLUSIVE`; the capsule does not infer effective OFF from output style or from the request wire alone.
+
+Any terminal qualification verdict remains owned by the applicable actual-model qualification Issue; this harness only guarantees the minimum-sufficient execution contract and bounded evidence capture.
 
 ## Scope
 
