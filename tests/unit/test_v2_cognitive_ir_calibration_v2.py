@@ -69,6 +69,31 @@ def test_every_calibration_v2_case_is_globally_identifiable(seed: int, regime: s
 
 
 @pytest.mark.parametrize("seed", CALIBRATION_V2_SEEDS)
+def test_factorized_regimes_share_rule_components_per_seed(seed: int) -> None:
+    swap_only = generate_calibration_v2_case(
+        seed=seed,
+        regime="V2_SINGLE_SWAP_ZERO_OFFSET",
+    )
+    offset_no_wrap = generate_calibration_v2_case(
+        seed=seed,
+        regime="V2_IDENTITY_OFFSET_NO_WRAP",
+    )
+    offset_wrap = generate_calibration_v2_case(
+        seed=seed,
+        regime="V2_IDENTITY_OFFSET_WRAP",
+    )
+    combined = generate_calibration_v2_case(
+        seed=seed,
+        regime="V2_SINGLE_SWAP_OFFSET_NO_WRAP",
+    )
+
+    assert swap_only.rule.permutation == combined.rule.permutation
+    assert offset_no_wrap.rule.offsets == offset_wrap.rule.offsets == combined.rule.offsets
+    assert offset_no_wrap.rule.permutation == offset_wrap.rule.permutation == (0, 1, 2, 3)
+    assert swap_only.rule.offsets == (0, 0, 0, 0)
+
+
+@pytest.mark.parametrize("seed", CALIBRATION_V2_SEEDS)
 def test_single_swap_regimes_have_exactly_two_moved_positions(seed: int) -> None:
     for regime in (
         "V2_SINGLE_SWAP_ZERO_OFFSET",
@@ -77,15 +102,6 @@ def test_single_swap_regimes_have_exactly_two_moved_positions(seed: int) -> None
         case = generate_calibration_v2_case(seed=seed, regime=regime)
         moved = sum(index != value for index, value in enumerate(case.rule.permutation))
         assert moved == 2
-
-
-@pytest.mark.parametrize("seed", CALIBRATION_V2_SEEDS)
-def test_zero_offset_regime_has_no_arithmetic_component(seed: int) -> None:
-    case = generate_calibration_v2_case(
-        seed=seed,
-        regime="V2_SINGLE_SWAP_ZERO_OFFSET",
-    )
-    assert case.rule.offsets == (0, 0, 0, 0)
 
 
 @pytest.mark.parametrize("seed", CALIBRATION_V2_SEEDS)
@@ -195,6 +211,19 @@ def test_selection_uses_predeclared_compositional_priority() -> None:
     assert select_calibration_v2_regime(all_admitted) == "V2_SINGLE_SWAP_OFFSET_NO_WRAP"
 
 
-def test_selection_rejects_incomplete_summary_set() -> None:
+def test_selection_rejects_incomplete_or_duplicate_summary_set() -> None:
     with pytest.raises(CalibrationV2Error):
         select_calibration_v2_regime(_summaries(admitted=None)[:-1])
+    with pytest.raises(CalibrationV2Error):
+        select_calibration_v2_regime(
+            _summaries(admitted=None)
+            + (
+                CalibrationV2RegimeSummary(
+                    regime=CALIBRATION_V2_REGIMES[0],
+                    sample_count=6,
+                    application_correct=6,
+                    formation_correct=3,
+                    end_to_end_joint_correct=3,
+                ),
+            )
+        )
