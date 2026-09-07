@@ -32,6 +32,7 @@ Forbidden after v2 results are observed:
 - weakening application/formation/end-to-end thresholds;
 - changing regime priority;
 - changing operator wording;
+- changing shared rule-component derivation;
 - adding retries or reasoning rescue;
 - selecting a regime that failed admission;
 - using v1 or v2 calibration cases as P0–P6 comparison evidence.
@@ -80,6 +81,21 @@ V2_SINGLE_SWAP_OFFSET_NO_WRAP
   four small nonzero offsets in {1,2,3}
   every example and query is generated so addition does not wrap modulo 10
 ```
+
+For each seed, the regimes share latent rule components rather than independently redrawing them:
+
+```text
+shared single-swap permutation
+  -> V2_SINGLE_SWAP_ZERO_OFFSET
+  -> V2_SINGLE_SWAP_OFFSET_NO_WRAP
+
+shared nonzero offset vector
+  -> V2_IDENTITY_OFFSET_NO_WRAP
+  -> V2_IDENTITY_OFFSET_WRAP
+  -> V2_SINGLE_SWAP_OFFSET_NO_WRAP
+```
+
+Thus the combined no-wrap regime is literally the seed-matched composition of the swap component and offset component, while the two identity-offset regimes use the same offsets and differ in wrap exposure. Public example/query values may differ by regime because their role is to instantiate globally identifiable no-wrap or wrap conditions.
 
 This is not declared as a single easy-to-hard scale. It separates reordering, offset arithmetic, wrap load, and their modest composition.
 
