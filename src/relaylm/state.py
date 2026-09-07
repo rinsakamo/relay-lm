@@ -9,8 +9,17 @@ from typing import Any, Literal
 
 STATE_CLASS_DEFINITIONS = MappingProxyType(
     {
-        "user.identity": "stable identity information explicitly stated about the user",
-        "user.fact": "current factual information about the user",
+        "user.identity": (
+            "stable self-identifying information explicitly stated about the user; "
+            "use this for attributes the user presents as who they are, and keep the "
+            "identity class when that same attribute is corrected; distinguish it from "
+            "ordinary current facts"
+        ),
+        "user.fact": (
+            "ordinary current factual information about the user that is not "
+            "self-identifying information; do not use this as a generic fallback for "
+            "user.identity or another more specific State class"
+        ),
         "user.preference": (
             "the user's preferences; key names a specific subject or dimension "
             "(for example tea, coffee, spicy_food, preferred_beverage) rather than a generic "
