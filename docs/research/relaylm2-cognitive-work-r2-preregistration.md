@@ -94,6 +94,8 @@ root_seed = SHA256("relaylm2-2187-r2" || exact merged PR commit SHA)
 
 The generator then derives each regime/task RNG independently from `root_seed`, regime name, and task index.
 
+Deployable task IDs are opaque hashes derived from the same frozen seed. They do not encode regime index or regime name. Hidden evaluator regimes therefore cannot leak through an otherwise ordinary task identifier.
+
 This deliberately prevents selecting a convenient seed after model outputs. The concrete 40-task suite becomes computable only from the immutable merged package identity.
 
 Changing the merged commit changes the generated suite and preregistration digest. A physical campaign must record the exact merged commit, root seed, generated task digest, and physical binding before its first model call.
@@ -103,7 +105,7 @@ Changing the merged commit changes the generated suite and preregistration diges
 Before an external operation is selected, a deployable arm may receive only:
 
 ```text
-task_id
+opaque task_id
 public prompt
 retrieval_available
 observation_available
@@ -182,13 +184,23 @@ ZERO < THINK < RETRIEVE < OBSERVE
 
 If no legal result is correct, A3 records `oracle_no_headroom=true` rather than inventing success.
 
-## Shared operation-result bank
+## Shared operation-result bank and frozen physical order
 
 Every task has one physical base completion and one physical completion for each legal non-ZERO operation. Those completions form a frozen evaluator/instrumentation bank.
 
 A0/A1/A2 are evaluated counterfactually from the same bank. This prevents different stochastic completion draws from masquerading as allocator quality.
 
-The bank must not leak into A2. A physical host should order each task so A2's allocator choice is obtained from the base answer before any non-public bank result can become policy input. Bank results may be generated before or after that decision only if deterministic tests prove they are quarantined from the allocator request; the canonical physical host should prefer the clearer base → allocator → bank sequence.
+The physical provider call order is frozen per task as:
+
+```text
+BASE
+  → A2_ALLOCATE
+  → BANK:THINK
+  → BANK:RETRIEVE   if retrieval is available
+  → BANK:OBSERVE    if observation is available
+```
+
+The allocator therefore commits its operation before any non-public operation-bank result exists. A later physical host must execute exactly this plan; it may not precompute hidden bank results and merely promise not to show them to A2.
 
 Physical evaluator cost and counterfactual treatment cost are separate ledgers:
 
@@ -259,7 +271,7 @@ Allocator calls return exactly:
 {"operation":"ZERO|THINK|RETRIEVE|OBSERVE"}
 ```
 
-Duplicate keys, extra keys, invalid operations, provider failure, binding drift, undeclared calls, and retries fail closed. There is no semantic retry.
+The repository parser rejects duplicate members, extra keys, empty answers, and operations that are not legal for that exact task. Provider failure, binding drift, undeclared calls, and retries fail closed. There is no semantic retry.
 
 ## Primary measurements
 
@@ -270,9 +282,9 @@ exact task correctness
 success count
 A2 - A0 paired correctness difference
 A2 - A1 paired correctness difference
-A3 headroom over A0/A1
+A3 headroom over fixed A0
 A2 regret vs A3
-best cheap-baseline regret vs A3
+A1 regret vs A3
 model calls
 input tokens
 output tokens
@@ -315,6 +327,19 @@ No statistical method or favorable regime subset may be chosen after results.
 
 A material task gain is frozen at 4/40 tasks. A1 is considered essentially at the oracle accuracy frontier when its gap to A3 is at most 2/40 tasks.
 
+Oracle headroom is measured against **A0 fixed allocation**, not against the best deployable arm. This preserves the distinction:
+
+```text
+A3 - A0
+  whether allocation has useful headroom at all
+
+A3 - A1
+  whether the cheap heuristic already captures that headroom
+
+A2 vs A1/A0
+  whether the adaptive allocator captures enough headroom to justify itself
+```
+
 ### INCONCLUSIVE
 
 Any incomplete resource accounting, hard-constraint violation, or protocol-invalid result prevents a positive scientific category.
@@ -322,7 +347,7 @@ Any incomplete resource accounting, hard-constraint violation, or protocol-inval
 ### NO_ORACLE_HEADROOM
 
 ```text
-A3 - max(A0, A1) < 4 tasks
+A3 - A0 < 4 tasks
 ```
 
 Allocation does not have enough observed headroom for this R2 campaign to test the metareasoner meaningfully.
@@ -345,7 +370,7 @@ This is only an R2 constituent signal; it does not authorize a production schedu
 
 ### HEURISTIC_SUFFICIENT
 
-Oracle headroom is material, A2 does not meet `ADAPTIVE_SIGNAL`, and:
+Oracle headroom over A0 is material, A2 does not meet `ADAPTIVE_SIGNAL`, and:
 
 ```text
 A3 - A1 <= 2 tasks
@@ -355,7 +380,7 @@ The cheap heuristic captures essentially all observed accuracy headroom.
 
 ### ALLOCATOR_FAILURE
 
-Oracle headroom is material, neither `ADAPTIVE_SIGNAL` nor `HEURISTIC_SUFFICIENT` holds, and A2 fails to capture the available headroom strongly enough under the frozen rules.
+Oracle headroom over A0 is material, neither `ADAPTIVE_SIGNAL` nor `HEURISTIC_SUFFICIENT` holds, and A2 fails to capture the available headroom strongly enough under the frozen rules.
 
 ## Required anti-cheat tests
 
@@ -365,16 +390,19 @@ Before any physical R2 authorization, deterministic tests must prove:
 40 unique tasks; 8 per hidden regime
 suite is deterministic from the merged commit identity
 same generated suite is used by all arms
+task IDs do not encode hidden regimes
 hidden regime absent from deployable messages
 expected answer absent as a deployable field
 retrieval packet hidden until RETRIEVE
 observation packet hidden until OBSERVE
 A3 data absent from deployable messages
 A0/A1 policies are deterministic
+A2 allocator call happens before non-public bank generation
 A2 allocator overhead is charged
 A1 has no allocator call
 ZERO has no task-work call
 shared base is charged to every arm
+strict JSON rejects duplicate/extra fields and illegal operations
 A3 tie-break is deterministic
 136-call physical maximum is structurally derived
 120-call common treatment ceiling is structurally derived
