@@ -1,0 +1,19 @@
+schema_version: 1
+id: relaylm2_cognitive_work_experiment
+owner_issue: 2187
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, and frozen R2 heterogeneous preregistration with oracle quarantine and complete allocator-cost accounting.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-work-r2-preregistration.md
+implementation:
+- tools/v2_cognitive_work_r0.py
+- tools/v2_cognitive_work_r1_host.py
+- tools/v2_cognitive_work_r2_preregistration.py
+tests:
+- tests/unit/test_v2_cognitive_work_r0.py
+- tests/unit/test_v2_cognitive_work_r1_host.py
+- tests/unit/test_v2_cognitive_work_r2_preregistration.py
+- tests/unit/test_v2_cognitive_work_r2_oracle.py
+references:
+- docs/research/relaylm2-intervention-harness.md
+depends_on:
+- relaylm2_intervention_harness
