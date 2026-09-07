@@ -63,7 +63,7 @@ A current Input that denies an assistant statement or action is not evidence tha
 
 Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
-Preserve user-provided names and normally use the user's language."""
+Preserve user-provided names and meaning-bearing referential terms; when changing a term would change the referenced entity, keep the user's established referential meaning rather than substituting a similar-looking or similar-sounding term. Normally use the user's language."""
 
 CONVERSATION_PASS_SUFFIX = """CONVERSATION
 
@@ -508,6 +508,7 @@ Projection rules:
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
+- A new or existing `referent` must identify the same target the user established. Preserve meaning-bearing lexical distinctions; do not normalize, transliterate, or substitute a similar-looking or similar-sounding but semantically different term when that would change the referenced entity.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
