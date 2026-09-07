@@ -11,7 +11,6 @@ from tools.v2_cognitive_work_r0 import ExecutionBinding
 from tools import v2_cognitive_work_r2_host as historical_host
 from tools.v2_cognitive_work_r2_replacement_preregistration import (
     ANSWER_PROTOCOL_VERSION,
-    BOOTSTRAP_RESAMPLES,
     CONTEXT_LIMIT,
     CounterfactualOutcome,
     OperationResult,
