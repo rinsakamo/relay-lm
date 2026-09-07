@@ -444,6 +444,14 @@ class OracleDecision:
     oracle_no_headroom: bool
 
 
+def _pareto_dominates(left: ResourceVector, right: ResourceVector) -> bool:
+    left_values = left.as_tuple()
+    right_values = right.as_tuple()
+    return all(a <= b for a, b in zip(left_values, right_values, strict=True)) and any(
+        a < b for a, b in zip(left_values, right_values, strict=True)
+    )
+
+
 def a3_oracle(task: R2Task, bank: TaskOperationBank) -> OracleDecision:
     candidates: list[tuple[str, bool, ResourceVector]] = [
         ("ZERO", bank.base_correct, ResourceVector())
@@ -453,16 +461,25 @@ def a3_oracle(task: R2Task, bank: TaskOperationBank) -> OracleDecision:
             continue
         result = bank.result_for(operation)
         candidates.append((operation, result.correct, result.extra_cost))
+
     correct = [item for item in candidates if item[1]]
-    pool = correct or candidates
-    chosen = min(
-        pool,
-        key=lambda item: (item[2].as_tuple(), _OPERATION_PRIORITY[item[0]]),
-    )
+    if not correct:
+        return OracleDecision(operation="ZERO", correct=False, oracle_no_headroom=True)
+
+    frontier = [
+        candidate
+        for candidate in correct
+        if not any(
+            _pareto_dominates(other[2], candidate[2])
+            for other in correct
+            if other is not candidate
+        )
+    ]
+    chosen = min(frontier, key=lambda item: _OPERATION_PRIORITY[item[0]])
     return OracleDecision(
         operation=chosen[0],
-        correct=chosen[1],
-        oracle_no_headroom=not bool(correct),
+        correct=True,
+        oracle_no_headroom=False,
     )
 
 
@@ -648,6 +665,7 @@ class R2Preregistration:
                 "heuristic_oracle_gap_max": HEURISTIC_ORACLE_GAP_MAX,
                 "budget": self.budget.__dict__,
                 "physical_call_plan": [item.__dict__ for item in physical_call_plan(self.tasks)],
+                "oracle_tie_break": "pareto-frontier-then-fixed-operation-priority",
             },
         )
 
