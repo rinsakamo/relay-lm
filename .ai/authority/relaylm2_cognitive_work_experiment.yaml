@@ -1,7 +1,7 @@
 schema_version: 1
 id: relaylm2_cognitive_work_experiment
 owner_issue: 2187
-summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, separately versioned replacement preregistration/host after representation-only protocol defects, a non-R2 structured-output transport qualification, and a third fresh-seed R2 preregistration that hard-binds the qualified transport without changing the scientific question.
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, separately versioned replacement preregistration/host after representation-only protocol defects, a non-R2 structured-output transport qualification, a third fresh-seed R2 preregistration, and its hard-bound fail-closed structured-output physical host packaging.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r2-preregistration.md
 - docs/research/relaylm2-cognitive-work-r2-host.md
@@ -9,6 +9,7 @@ canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r2-replacement-host.md
 - docs/research/relaylm2-cognitive-work-structured-output-protocol-qualification.md
 - docs/research/relaylm2-cognitive-work-r2-structured-preregistration.md
+- docs/research/relaylm2-cognitive-work-r2-structured-host.md
 implementation:
 - tools/v2_cognitive_work_r0.py
 - tools/v2_cognitive_work_r1_host.py
@@ -18,6 +19,7 @@ implementation:
 - tools/v2_cognitive_work_r2_replacement_host.py
 - tools/v2_cognitive_work_structured_output_qualification.py
 - tools/v2_cognitive_work_r2_structured_preregistration.py
+- tools/v2_cognitive_work_r2_structured_host.py
 tests:
 - tests/unit/test_v2_cognitive_work_r0.py
 - tests/unit/test_v2_cognitive_work_r1_host.py
@@ -28,6 +30,7 @@ tests:
 - tests/unit/test_v2_cognitive_work_r2_replacement_host.py
 - tests/unit/test_v2_cognitive_work_structured_output_qualification.py
 - tests/unit/test_v2_cognitive_work_r2_structured_preregistration.py
+- tests/unit/test_v2_cognitive_work_r2_structured_host.py
 references:
 - docs/research/relaylm2-intervention-harness.md
 depends_on:
