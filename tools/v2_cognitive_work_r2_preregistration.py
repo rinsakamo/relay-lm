@@ -65,6 +65,11 @@ def _rng(root_seed: str, regime: str, index: int) -> random.Random:
     return random.Random(int(seed.split(":", 1)[1], 16))
 
 
+def _opaque_task_id(root_seed: str, regime: str, index: int) -> str:
+    digest = _sha256(root_seed, "task-id", regime, index).split(":", 1)[1]
+    return "r2-" + digest[:16]
+
+
 @dataclass(frozen=True)
 class R2Task:
     task_id: str
@@ -87,8 +92,8 @@ class R2Task:
             raise R2PreregistrationError("observation availability must match packet presence")
         if self.retrieval_available and self.observation_available:
             raise R2PreregistrationError("a primary R2 task exposes at most one external packet")
-        if self.hidden_regime in self.public_prompt:
-            raise R2PreregistrationError("hidden regime leaked into public prompt")
+        if self.hidden_regime in self.public_prompt or self.hidden_regime in self.task_id:
+            raise R2PreregistrationError("hidden regime leaked into deployable task identity")
         for hidden in (self.retrieval_packet, self.observation_packet):
             if hidden is not None and hidden in self.public_prompt:
                 raise R2PreregistrationError("external packet leaked into public prompt")
@@ -125,7 +130,7 @@ class R2Task:
 
 def _make_task(root_seed: str, regime: str, index: int) -> R2Task:
     rng = _rng(root_seed, regime, index)
-    task_id = f"r2-{REGIMES.index(regime)}-{index}"
+    task_id = _opaque_task_id(root_seed, regime, index)
 
     if regime == "EASY_SATURATED":
         a = rng.randint(11, 89)
@@ -204,6 +209,44 @@ def generate_tasks(merged_pr_commit_sha: str) -> tuple[R2Task, ...]:
     if len(tasks) != TOTAL_TASKS or len({task.task_id for task in tasks}) != TOTAL_TASKS:
         raise R2PreregistrationError("R2 generator did not produce 40 unique tasks")
     return tasks
+
+
+def _strict_json_object(text: str) -> dict[str, object]:
+    def reject_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise R2PreregistrationError(f"duplicate JSON member: {key}")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(text, object_pairs_hook=reject_duplicates)
+    except (json.JSONDecodeError, R2PreregistrationError) as exc:
+        raise R2PreregistrationError("model output is not strict JSON") from exc
+    if not isinstance(value, dict):
+        raise R2PreregistrationError("model output must be a JSON object")
+    return value
+
+
+def parse_answer(text: str) -> str:
+    payload = _strict_json_object(text)
+    if set(payload) != {"answer"}:
+        raise R2PreregistrationError("answer output must contain exactly answer")
+    answer = payload["answer"]
+    if not isinstance(answer, str) or not answer.strip():
+        raise R2PreregistrationError("answer must be a non-empty string")
+    return answer.strip()
+
+
+def parse_operation(text: str, *, task: R2Task) -> str:
+    payload = _strict_json_object(text)
+    if set(payload) != {"operation"}:
+        raise R2PreregistrationError("allocator output must contain exactly operation")
+    operation = payload["operation"]
+    if not isinstance(operation, str) or operation not in task.legal_operations():
+        raise R2PreregistrationError("allocator selected an illegal operation")
+    return operation
 
 
 def answer_messages(task: R2Task) -> tuple[dict[str, str], ...]:
@@ -291,6 +334,28 @@ def a1_policy(task: R2Task) -> str:
     if task.observation_available:
         return "OBSERVE"
     return "ZERO"
+
+
+@dataclass(frozen=True)
+class PlannedProviderCall:
+    task_id: str
+    role: str
+    operation: str | None
+
+
+def physical_call_plan(tasks: Sequence[R2Task]) -> tuple[PlannedProviderCall, ...]:
+    if len(tasks) != TOTAL_TASKS:
+        raise R2PreregistrationError("physical call plan requires the exact 40-task suite")
+    plan: list[PlannedProviderCall] = []
+    for task in tasks:
+        plan.append(PlannedProviderCall(task.task_id, "BASE", None))
+        plan.append(PlannedProviderCall(task.task_id, "A2_ALLOCATE", None))
+        plan.append(PlannedProviderCall(task.task_id, "BANK", "THINK"))
+        if task.retrieval_available:
+            plan.append(PlannedProviderCall(task.task_id, "BANK", "RETRIEVE"))
+        if task.observation_available:
+            plan.append(PlannedProviderCall(task.task_id, "BANK", "OBSERVE"))
+    return tuple(plan)
 
 
 @dataclass(frozen=True)
@@ -420,19 +485,15 @@ class R2BudgetContract:
 def derive_budget_contract(tasks: Sequence[R2Task]) -> R2BudgetContract:
     if len(tasks) != TOTAL_TASKS:
         raise R2PreregistrationError("budget contract requires the exact 40-task suite")
-    external_calls = sum(
-        int(task.retrieval_available) + int(task.observation_available) for task in tasks
-    )
-    bank_calls = 2 * len(tasks) + external_calls
-    allocator_calls = len(tasks)
-    physical_max = bank_calls + allocator_calls
-    treatment_call_ceiling = 3 * len(tasks)
+    plan = physical_call_plan(tasks)
+    bank_calls = sum(item.role != "A2_ALLOCATE" for item in plan)
+    allocator_calls = sum(item.role == "A2_ALLOCATE" for item in plan)
     return R2BudgetContract(
         task_count=len(tasks),
         bank_provider_call_max=bank_calls,
         a2_allocator_call_max=allocator_calls,
-        physical_provider_call_max=physical_max,
-        treatment_call_ceiling_per_arm=treatment_call_ceiling,
+        physical_provider_call_max=len(plan),
+        treatment_call_ceiling_per_arm=3 * len(tasks),
         retrieval_unit_ceiling_per_arm=sum(task.retrieval_available for task in tasks),
         observation_unit_ceiling_per_arm=sum(task.observation_available for task in tasks),
         context_limit=CONTEXT_LIMIT,
@@ -492,7 +553,7 @@ class R2Interpretation:
     counts: Mapping[str, int]
     a2_minus_a0: int
     a2_minus_a1: int
-    oracle_headroom_over_best_cheap: int
+    oracle_headroom_over_fixed: int
     a2_vs_a0_pvalue: float
     a2_vs_a1_pvalue: float
 
@@ -516,7 +577,7 @@ def interpret_r2(
 
     a2_minus_a0 = counts["A2"] - counts["A0"]
     a2_minus_a1 = counts["A2"] - counts["A1"]
-    oracle_headroom = counts["A3"] - max(counts["A0"], counts["A1"])
+    oracle_headroom = counts["A3"] - counts["A0"]
     p_a0 = paired_directional_exact_pvalue(vectors["A2"], vectors["A0"])
     p_a1 = paired_directional_exact_pvalue(vectors["A2"], vectors["A1"])
 
@@ -545,7 +606,7 @@ def interpret_r2(
         counts=counts,
         a2_minus_a0=a2_minus_a0,
         a2_minus_a1=a2_minus_a1,
-        oracle_headroom_over_best_cheap=oracle_headroom,
+        oracle_headroom_over_fixed=oracle_headroom,
         a2_vs_a0_pvalue=p_a0,
         a2_vs_a1_pvalue=p_a1,
     )
@@ -586,6 +647,7 @@ class R2Preregistration:
                 "material_task_gain": MATERIAL_TASK_GAIN,
                 "heuristic_oracle_gap_max": HEURISTIC_ORACLE_GAP_MAX,
                 "budget": self.budget.__dict__,
+                "physical_call_plan": [item.__dict__ for item in physical_call_plan(self.tasks)],
             },
         )
 
