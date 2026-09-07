@@ -116,8 +116,9 @@ new independent cases after the failure geometry is understood.
 
 ## Invocation
 
-Run against the historical artifact **read-only** and write any report outside
-that artifact root:
+Run the analyzer against the historical artifact without rewriting either source
+evidence file, and keep any explicitly requested report outside that artifact
+root:
 
 ```bash
 python -m tools.v2_cognitive_ir_calibration_forensic \
@@ -126,6 +127,7 @@ python -m tools.v2_cognitive_ir_calibration_forensic \
 ```
 
 Omit `--output` to print canonical JSON to stdout. The output path is opened
-exclusively and is never allowed to overwrite an existing report.
-
-The source artifact is not modified.
+exclusively and is never allowed to overwrite an existing report. The analyzer
+itself only reads `calibration-result.json` and `request-evidence.jsonl`; the
+outside-output placement is an operator procedure rather than a second
+scientific admission gate.
