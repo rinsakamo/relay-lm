@@ -63,7 +63,9 @@ A current Input that denies an assistant statement or action is not evidence tha
 
 Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
-Preserve user-provided names and normally use the user's language."""
+Preserve user-provided names.
+When you name a specific entity established by the user, copy the user's own lexical form for that entity. Do not silently normalize, correct, transliterate, respell, or substitute that entity wording. Paraphrase surrounding prose freely. Change an entity's lexical anchor only when the current Input explicitly supplies a replacement or CognitiveInput already provides an unambiguous accepted alias for the same target.
+Normally use the user's language."""
 
 CONVERSATION_PASS_SUFFIX = """CONVERSATION
 
@@ -508,6 +510,8 @@ Projection rules:
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
+- Referent lexical anchoring is copy-first: when current Input establishes a referent with explicit entity wording, preserve that user wording in the referent value rather than normalize, correct, transliterate, respell, or substitute it. This constraint applies to the identity-bearing referential token, not to surrounding prose.
+- Change a referent lexical anchor only when the current Input explicitly replaces it or accepted Continuity context provides an unambiguous alias for the same target.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
