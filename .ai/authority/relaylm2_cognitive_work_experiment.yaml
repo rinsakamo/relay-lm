@@ -1,21 +1,24 @@
 schema_version: 1
 id: relaylm2_cognitive_work_experiment
 owner_issue: 2187
-summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, frozen R2 heterogeneous preregistration, and a separately gated fail-closed R2 physical host with exact-plan, live-binding, durable-attempt, shared-bank, and complete allocator-cost accounting.
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, and a separately versioned zero-provider replacement preregistration after the first R2 transaction exposed a representation-only answer protocol defect.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r2-preregistration.md
 - docs/research/relaylm2-cognitive-work-r2-host.md
+- docs/research/relaylm2-cognitive-work-r2-replacement-preregistration.md
 implementation:
 - tools/v2_cognitive_work_r0.py
 - tools/v2_cognitive_work_r1_host.py
 - tools/v2_cognitive_work_r2_preregistration.py
 - tools/v2_cognitive_work_r2_host.py
+- tools/v2_cognitive_work_r2_replacement_preregistration.py
 tests:
 - tests/unit/test_v2_cognitive_work_r0.py
 - tests/unit/test_v2_cognitive_work_r1_host.py
 - tests/unit/test_v2_cognitive_work_r2_preregistration.py
 - tests/unit/test_v2_cognitive_work_r2_oracle.py
 - tests/unit/test_v2_cognitive_work_r2_host.py
+- tests/unit/test_v2_cognitive_work_r2_replacement_preregistration.py
 references:
 - docs/research/relaylm2-intervention-harness.md
 depends_on:
