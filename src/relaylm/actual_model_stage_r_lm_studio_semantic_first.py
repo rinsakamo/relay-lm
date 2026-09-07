@@ -8,6 +8,7 @@ import subprocess
 import sys
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_boundary import (
@@ -42,10 +43,45 @@ from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPass
 
 CANONICAL_FIXTURE_PATH = Path("evaluation/actual_model/characters/foundation-v1")
 SEMANTIC_FIRST_STAGE_R_FORMAT_VERSION = 1
+COMPLETION_OBSERVATION_FORMAT_VERSION = 1
 
 
 class SemanticFirstStageRError(ValueError):
     """The declared semantic-first Stage R condition is not internally valid."""
+
+
+class _CompletionObservingTwoPassProvider(OpenAICompatibleTwoPassProvider):
+    """Passively persist sanitized metadata from real semantic completions."""
+
+    def __init__(
+        self,
+        *args: Any,
+        completion_observation_root: Path,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._completion_observation_root = completion_observation_root
+        self.completion_observation_artifacts: list[Path] = []
+
+    async def _post_two_pass(
+        self,
+        *,
+        body: dict[str, Any],
+        boundary: str,
+    ) -> Any:
+        envelope = await super()._post_two_pass(body=body, boundary=boundary)
+        sequence_index = len(self.completion_observation_artifacts) + 1
+        observation = _sanitized_completion_observation(
+            envelope=envelope,
+            boundary=boundary,
+            sequence_index=sequence_index,
+        )
+        path = self._completion_observation_root / (
+            f"{sequence_index:04d}-{boundary}.json"
+        )
+        _write_json_create_once(path, observation)
+        self.completion_observation_artifacts.append(path)
+        return envelope
 
 
 ScenarioExecutor = Callable[
@@ -195,7 +231,7 @@ async def _run_stage_r(
         raise SemanticFirstStageRError(
             f"provider API key environment variable is empty: {api_key_env}"
         )
-    provider = OpenAICompatibleTwoPassProvider(
+    provider = _CompletionObservingTwoPassProvider(
         base_url=provider_base_url,
         model=request_model,
         api_key=api_key,
@@ -208,6 +244,9 @@ async def _run_stage_r(
             supported_controls=frozenset({"temperature", "top_p"})
         ),
         lm_studio_reasoning_capability=reasoning_capability,
+        completion_observation_root=(
+            artifact_root / "lm-studio-semantic-first-completion-observations"
+        ),
     )
     identity = describe_openai_compatible_provider(provider)
     fixture_root = repo_root / CANONICAL_FIXTURE_PATH
@@ -243,6 +282,7 @@ async def _run_stage_r(
     async def execute_scenario(
         scenario_id: str,
     ) -> tuple[dict[str, object], str | None]:
+        observation_start = len(provider.completion_observation_artifacts)
         result = await run_actual_model_scenario_definition(
             scenario_set=scenario_set,
             scenario_id=scenario_id,
@@ -261,6 +301,9 @@ async def _run_stage_r(
             artifact_root=artifact_root,
         )
         stop_reason = _material_execution_failure(result)
+        scenario_completion_artifacts = provider.completion_observation_artifacts[
+            observation_start:
+        ]
         return (
             {
                 "scenario_id": scenario_id,
@@ -269,6 +312,9 @@ async def _run_stage_r(
                 "execution_artifact": str(execution_path),
                 "boundary_verdict": verdict.outcome,
                 "boundary_artifact": str(boundary_path),
+                "completion_observation_artifacts": [
+                    str(path) for path in scenario_completion_artifacts
+                ],
                 "material_execution_failure": stop_reason,
             },
             stop_reason,
@@ -290,6 +336,10 @@ async def _run_stage_r(
         "reasoning_preference": authority.reasoning_preference,
         "reasoning_realization": "declared_off_plus_actual_completion_evidence_required",
         "reasoning_wire_control": "reasoning_effort=none",
+        "completion_observation_count": len(provider.completion_observation_artifacts),
+        "completion_observation_artifacts": [
+            str(path) for path in provider.completion_observation_artifacts
+        ],
         "stop_reason": stop_reason,
         "executions": executions,
     }
@@ -324,6 +374,86 @@ def _material_execution_failure(
         if observation is not None and observation.pass2_status == "failed":
             return f"pass2_failed_turn_{turn.turn_index}"
     return None
+
+
+def _sanitized_completion_observation(
+    *,
+    envelope: Any,
+    boundary: str,
+    sequence_index: int,
+) -> dict[str, object]:
+    choice: dict[str, Any] = {}
+    message: dict[str, Any] = {}
+    usage: dict[str, Any] = {}
+    details: dict[str, Any] = {}
+
+    if isinstance(envelope, dict):
+        choices = envelope.get("choices")
+        if isinstance(choices, list) and len(choices) == 1 and isinstance(choices[0], dict):
+            choice = choices[0]
+        raw_usage = envelope.get("usage")
+        if isinstance(raw_usage, dict):
+            usage = raw_usage
+            raw_details = raw_usage.get("completion_tokens_details")
+            if isinstance(raw_details, dict):
+                details = raw_details
+    raw_message = choice.get("message")
+    if isinstance(raw_message, dict):
+        message = raw_message
+
+    return {
+        "format_version": COMPLETION_OBSERVATION_FORMAT_VERSION,
+        "sequence_index": sequence_index,
+        "boundary": boundary,
+        "provider_http_success": True,
+        "finish_reason": (
+            choice["finish_reason"]
+            if isinstance(choice.get("finish_reason"), str)
+            else None
+        ),
+        "usage": {
+            "prompt_tokens": _optional_nonnegative_int(usage.get("prompt_tokens")),
+            "completion_tokens": _optional_nonnegative_int(
+                usage.get("completion_tokens")
+            ),
+            "total_tokens": _optional_nonnegative_int(usage.get("total_tokens")),
+            "reasoning_tokens": _optional_nonnegative_int(
+                details.get("reasoning_tokens")
+            ),
+            "reasoning_tokens_supplied": "reasoning_tokens" in details,
+        },
+        "reasoning": {
+            "status": _sensitive_reasoning_field_status(message, "reasoning"),
+        },
+        "reasoning_content": {
+            "status": _sensitive_reasoning_field_status(
+                message,
+                "reasoning_content",
+            ),
+        },
+    }
+
+
+def _sensitive_reasoning_field_status(
+    message: dict[str, Any],
+    key: str,
+) -> str:
+    if key not in message:
+        return "absent"
+    value = message[key]
+    if value is None:
+        return "empty"
+    if isinstance(value, str):
+        return "empty" if not value.strip() else "nonempty"
+    if isinstance(value, (list, tuple, dict, set, frozenset, bytes, bytearray)):
+        return "empty" if len(value) == 0 else "nonempty"
+    return "nonempty"
+
+
+def _optional_nonnegative_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
 
 
 def _declared_reasoning_capability(
