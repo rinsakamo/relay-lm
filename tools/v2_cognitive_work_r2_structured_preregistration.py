@@ -71,7 +71,6 @@ interpret_r2 = r2_v2.interpret_r2
 answer_messages = r2_v2.answer_messages
 revision_messages = r2_v2.revision_messages
 allocator_messages = r2_v2.allocator_messages
-parse_answer = sopq.parse_answer
 
 _HEX40 = re.compile(r"^[0-9a-fA-F]{40}$")
 
@@ -154,8 +153,18 @@ def generate_tasks(merged_pr_commit_sha: str) -> tuple[R2Task, ...]:
     return tasks
 
 
+def parse_answer(text: str) -> str:
+    try:
+        return sopq.parse_answer(text)
+    except sopq.StructuredOutputQualificationError as exc:
+        raise R2PreregistrationError(str(exc)) from exc
+
+
 def parse_operation(text: str, *, task: R2Task) -> str:
-    sopq.parse_operation(text)
+    try:
+        sopq.parse_operation(text)
+    except sopq.StructuredOutputQualificationError as exc:
+        raise R2PreregistrationError(str(exc)) from exc
     return r2_v1.parse_operation(text, task=task)
 
 
