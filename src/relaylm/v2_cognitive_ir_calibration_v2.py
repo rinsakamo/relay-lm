@@ -39,6 +39,8 @@ CALIBRATION_V2_SELECTION_PRIORITY = (
 CALIBRATION_V2_PROVIDER_CALLS = (
     CALIBRATION_V2_SEED_COUNT * len(CALIBRATION_V2_REGIMES) * len(CALIBRATION_V2_PROBES)
 )
+_SHARED_SWAP_LABEL = "factor:single-swap"
+_SHARED_OFFSET_LABEL = "factor:offsets"
 
 _OPERATOR_CONTRACT = (
     "Use source-index-for-output semantics exactly: for every output position i, "
@@ -111,20 +113,14 @@ def _small_nonzero_offsets(seed: int, label: str) -> tuple[int, ...]:
 
 def _rule_for_regime(seed: int, regime: str) -> VectorRule:
     zeros = (0,) * CALIBRATION_V2_VECTOR_WIDTH
+    shared_swap = _single_swap(seed, _SHARED_SWAP_LABEL)
+    shared_offsets = _small_nonzero_offsets(seed, _SHARED_OFFSET_LABEL)
     if regime == "V2_SINGLE_SWAP_ZERO_OFFSET":
-        return VectorRule(_single_swap(seed, regime), zeros, CALIBRATION_V2_MODULUS)
+        return VectorRule(shared_swap, zeros, CALIBRATION_V2_MODULUS)
     if regime in {"V2_IDENTITY_OFFSET_NO_WRAP", "V2_IDENTITY_OFFSET_WRAP"}:
-        return VectorRule(
-            _identity(),
-            _small_nonzero_offsets(seed, regime),
-            CALIBRATION_V2_MODULUS,
-        )
+        return VectorRule(_identity(), shared_offsets, CALIBRATION_V2_MODULUS)
     if regime == "V2_SINGLE_SWAP_OFFSET_NO_WRAP":
-        return VectorRule(
-            _single_swap(seed, regime),
-            _small_nonzero_offsets(seed, regime),
-            CALIBRATION_V2_MODULUS,
-        )
+        return VectorRule(shared_swap, shared_offsets, CALIBRATION_V2_MODULUS)
     raise CalibrationV2Error(f"unsupported calibration-v2 regime: {regime}")
 
 
@@ -226,7 +222,6 @@ def _query_for_case(seed: int, regime: str, *, rule: VectorRule) -> tuple[int, .
                 forbid_wrap=False,
             )
         )
-        # Force two declared wrap coordinates without changing the rule itself.
         for output_index in range(2):
             input_index = rule.permutation[output_index]
             values[input_index] = CALIBRATION_V2_MODULUS - rule.offsets[output_index]
@@ -355,6 +350,8 @@ class CalibrationV2RegimeSummary:
 def select_calibration_v2_regime(
     summaries: tuple[CalibrationV2RegimeSummary, ...],
 ) -> str | None:
+    if len(summaries) != len(CALIBRATION_V2_REGIMES):
+        raise CalibrationV2Error("calibration-v2 summaries must cover every frozen regime exactly once")
     indexed = {item.regime: item for item in summaries}
     if set(indexed) != set(CALIBRATION_V2_REGIMES):
         raise CalibrationV2Error("calibration-v2 summaries must cover every frozen regime exactly once")
