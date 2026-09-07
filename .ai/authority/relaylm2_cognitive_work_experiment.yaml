@@ -1,12 +1,13 @@
 schema_version: 1
 id: relaylm2_cognitive_work_experiment
 owner_issue: 2187
-summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, a separately versioned replacement preregistration after a representation-only protocol defect, and a hard-bound fail-closed replacement physical host that preserves the historical R2 host unchanged.
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, separately versioned replacement preregistration/host after representation-only protocol defects, and a non-R2 structured-output transport qualification before any further scientific R2 seed is spent.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r2-preregistration.md
 - docs/research/relaylm2-cognitive-work-r2-host.md
 - docs/research/relaylm2-cognitive-work-r2-replacement-preregistration.md
 - docs/research/relaylm2-cognitive-work-r2-replacement-host.md
+- docs/research/relaylm2-cognitive-work-structured-output-protocol-qualification.md
 implementation:
 - tools/v2_cognitive_work_r0.py
 - tools/v2_cognitive_work_r1_host.py
@@ -14,6 +15,7 @@ implementation:
 - tools/v2_cognitive_work_r2_host.py
 - tools/v2_cognitive_work_r2_replacement_preregistration.py
 - tools/v2_cognitive_work_r2_replacement_host.py
+- tools/v2_cognitive_work_structured_output_qualification.py
 tests:
 - tests/unit/test_v2_cognitive_work_r0.py
 - tests/unit/test_v2_cognitive_work_r1_host.py
@@ -22,6 +24,7 @@ tests:
 - tests/unit/test_v2_cognitive_work_r2_host.py
 - tests/unit/test_v2_cognitive_work_r2_replacement_preregistration.py
 - tests/unit/test_v2_cognitive_work_r2_replacement_host.py
+- tests/unit/test_v2_cognitive_work_structured_output_qualification.py
 references:
 - docs/research/relaylm2-intervention-harness.md
 depends_on:
