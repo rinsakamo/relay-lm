@@ -44,17 +44,23 @@ These labels may overlap. For example an inverse permutation can also happen to 
 
 ## Answer hypotheses
 
-For wrong C0 and C2 answers, the observed answer is tested against a small frozen family of deterministic alternatives:
+For C0 and C2 answers, the observed answer is tested against a small frozen family of deterministic alternatives:
 
 - `TRUE_RULE` — the declared operator itself;
+- `IDENTITY_PERMUTATION` — retain the true offsets but ignore permutation;
 - `INVERSE_MAPPING_CONVENTION` — treat `permutation[i]` as the destination of input `i`, with offsets reindexed with that input;
 - `INVERSE_PERM_KEEP_OUTPUT_OFFSETS` — inverse the permutation but keep offsets attached to output positions;
 - `NEGATIVE_OFFSETS` — use the true permutation but subtract offsets modulo the frozen modulus;
 - `ZERO_OFFSETS` — omit offsets;
+- every single swap of two positions in the true permutation, recorded by the exact swapped pair;
+- every nonzero cyclic shift of the true permutation vector, recorded by the exact shift;
+- adjacent modulus candidates `9` and `11` only;
 - for C2 only, `REPORTED_RULE` — apply the rule that the same C2 response reported;
 - for C2 only, `REPORTED_RULE_INVERSE_MAPPING` — apply that reported rule under the inverse-mapping convention.
 
-The forensic separately checks alternative integer moduli from 2 through 16, excluding the frozen modulus 10, and records any exact matches as `wrong_modulus_matches`.
+The single-swap and cyclic-shift answer checks are important for C0 because C0 contains no reported rule to inspect directly. For example, an observed C0 answer may be exactly reproduced by one swapped permutation even though no permutation was emitted in that response.
+
+The wrong-modulus check is deliberately limited to the two adjacent values `9` and `11`. It is not an open-ended search over convenient moduli after seeing the answer.
 
 Multiple candidates may reproduce the same four-value answer. A match therefore narrows possible interpretations but does not identify a unique cognitive mechanism.
 
@@ -94,7 +100,7 @@ This forensic cannot:
 - relax the v1 calibration thresholds;
 - adopt D1 after the observed near miss;
 - declare permutation intrinsically easier or harder than offset arithmetic;
-- conclude that inverse mapping, wrap-around, wrong sign, or wrong modulus caused an error;
+- conclude that inverse mapping, identity collapse, one swapped coordinate, cyclic shift, wrong sign, or wrong modulus caused an error;
 - unblock P0-P6 / S2 / S3;
 - create architecture authority.
 
