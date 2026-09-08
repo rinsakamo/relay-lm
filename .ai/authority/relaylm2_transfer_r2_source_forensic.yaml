@@ -1,0 +1,15 @@
+schema_version: 1
+id: relaylm2_transfer_r2_source_forensic
+owner_issue: 2376
+summary: >-
+  Repository-only forensic authority for distinguishing frozen R2 source and
+  target identifiability, model-facing representation burden, and induction
+  floor without rerunning the physical experiment.
+canonical_surfaces:
+- docs/research/relaylm2-transfer-r2-source-learning-forensic.md
+implementation:
+- tools/v2_transfer_r2_source_learning_forensic.py
+tests:
+- tests/unit/test_v2_transfer_r2_source_learning_forensic.py
+depends_on:
+- relaylm2_transfer_experiment
