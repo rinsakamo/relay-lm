@@ -60,6 +60,8 @@ The diagnostic reuses the repository-owned LM Studio semantic-first contract:
 - request/explicit Pass 2 failures remain fail-fast;
 - no retry, fallback, restart, reload, model swap, prompt tuning, parser relaxation, reasoning escalation, or FastCal is performed.
 
+The generic OpenAI-compatible cognition capability descriptor is not a native-structured-output admission gate for this diagnostic. That descriptor truthfully reports `structured_output=false` when the generic adapter has no independent native capability attestation source. The fixed-slot transaction instead carries the already-explicit Pass 2 `NATIVE` request and lets the first real semantic extraction request establish whether LM Studio accepts or rejects the strict fixed-slot schema. No extra provider request is added for this capability check.
+
 Each successful Pass 2 also writes a create-once fixed-slot decision observation so the three explicit decisions can be reviewed independently of the flattened candidate result.
 
 ## Diagnostic acceptance

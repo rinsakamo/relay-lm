@@ -16,6 +16,7 @@ implementation:
 - src/relaylm/actual_model_stage_r_lm_studio_fixed_continuity_slots.py
 tests:
 - tests/unit/test_actual_model_stage_r_lm_studio_fixed_continuity_slots.py
+- tests/unit/test_fixed_continuity_slot_semantic_first_admission.py
 qualification_exclusions:
 - path: src/relaylm/actual_model_stage_r_lm_studio_fixed_continuity_slots.py
   reason: >-

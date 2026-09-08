@@ -51,9 +51,6 @@ from relaylm.providers.openai_compatible import (
     _require_candidate_sources_in_cognitive_input,
     _resolve_cognition_pass_request,
 )
-from relaylm.providers.openai_compatible_cognition import (
-    describe_openai_compatible_cognition_capabilities,
-)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -493,12 +490,6 @@ async def _run_stage_r(
             artifact_root / "lm-studio-fixed-slot-decision-observations"
         ),
     )
-    capabilities = describe_openai_compatible_cognition_capabilities(provider)
-    if not capabilities.structured_output:
-        await provider.aclose()
-        raise ValueError(
-            "fixed-slot diagnostic requires provider native structured output capability"
-        )
     identity = describe_openai_compatible_provider(provider)
     fixture_root = repo_root / CANONICAL_FIXTURE_PATH
     manifest = ActualModelRunManifest(
