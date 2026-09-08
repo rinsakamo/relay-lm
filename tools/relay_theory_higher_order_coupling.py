@@ -62,7 +62,12 @@ def validate_multi_world_model(model: MultiWorldModel) -> None:
 
 
 def _canonical_law(weights: Mapping[Outcome, Fraction]) -> MarginalLaw:
-    cleaned = tuple(sorted(((outcome, mass) for outcome, mass in weights.items() if mass), key=repr))
+    cleaned = tuple(
+        sorted(
+            ((outcome, mass) for outcome, mass in weights.items() if mass),
+            key=repr,
+        )
+    )
     if not cleaned:
         raise ValueError("marginal law must contain positive mass")
     if sum((mass for _, mass in cleaned), Fraction(0)) != 1:
@@ -256,7 +261,9 @@ def partition_is_representative_independent(
     for block in set(partition.values()):
         members = [by_name[name] for name, value in partition.items() if value == block]
         reference = frame_signature(members[0], frame)
-        if any(frame_signature(candidate, frame) != reference for candidate in members[1:]):
+        if any(
+            frame_signature(candidate, frame) != reference for candidate in members[1:]
+        ):
             return False
     return True
 
@@ -292,11 +299,15 @@ def run_higher_order_coupling_comparison() -> tuple[HigherOrderResult, ...]:
         renamed_even,
         {"Y0": "A", "Y1": "B", "Y2": "C"},
     )
-    projection_consistency = (
-        all(marginal(even, subset) == marginal(odd, subset) for subset in (("Y0",), ("Y1",), ("Y2",)))
-        and all(
-            marginal(even, subset) == marginal(odd, subset)
-            for subset in (("Y0", "Y1"), ("Y0", "Y2"), ("Y1", "Y2"))
+    projection_consistency = all(
+        marginal(even, subset) == marginal(odd, subset)
+        for subset in (
+            ("Y0",),
+            ("Y1",),
+            ("Y2",),
+            ("Y0", "Y1"),
+            ("Y0", "Y2"),
+            ("Y1", "Y2"),
         )
     )
 
