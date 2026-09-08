@@ -71,23 +71,33 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> No
     assert "which blue box" not in suffix
 
 
-def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_continuity() -> None:
+def test_pass2_prompt_uses_one_independent_continuity_kind_scan() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
     assert (
-        "Unchanged accepted `referent` or `active_task` meanings do not suppress a "
-        "distinct newly established `unresolved` meaning." in suffix
+        "Before emitting `continuity_candidates`, scan each of `referent`, `unresolved`, "
+        "and `active_task` independently." in suffix
     )
     assert (
-        "If related accepted referent/task meanings are unchanged and the current Event "
-        "newly establishes an unknown value with no accepted unresolved item, emit only "
-        "the new `unresolved` set as applicable." in suffix
+        "For each kind, decide exactly one transition: new useful meaning -> `set`; unchanged "
+        "accepted meaning -> no candidate; changed or resolved accepted meaning -> `resolve` "
+        "using its accepted lifecycle key." in suffix
+    )
+    assert (
+        "Finish all three kind decisions before emitting `continuity_candidates`; a decision "
+        "for one kind must not suppress another kind." in suffix
     )
     assert "Unresolved transition example" in suffix
     assert '"kind":"unresolved"' in suffix
     assert '"sources":["evt-now"]' in suffix
     assert "blue_box" not in suffix
     assert "box_contents_question" not in suffix
+    assert "Before concluding there are no Continuity candidates, check `unresolved` independently" not in suffix
+    assert (
+        "If related accepted referent/task meanings are unchanged and the current Event newly "
+        "establishes an unknown value with no accepted unresolved item, emit only the new "
+        "`unresolved` set as applicable." not in suffix
+    )
 
 
 def test_pass2_prompt_keeps_durable_state_independent_of_continuity_guidance() -> None:
