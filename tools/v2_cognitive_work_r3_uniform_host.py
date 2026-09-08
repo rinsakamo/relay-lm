@@ -8,7 +8,6 @@ from typing import Mapping
 from relaylm.v2_interventions import ResourceVector
 from tools.v2_cognitive_work_r0 import ExecutionBinding
 from tools import v2_cognitive_work_r2_host as historical_host
-from tools import v2_cognitive_work_r2_structured_host as structured_host
 from tools import v2_cognitive_work_structured_output_qualification as sopq
 from tools import v2_cognitive_work_r3_uniform_preregistration as r3
 
