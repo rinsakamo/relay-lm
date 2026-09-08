@@ -1,9 +1,12 @@
 from tools.v2_operational_grand_null_checker import (
+    GroundingWitness,
+    answer_probe,
     canonical_map,
     compose_maps,
     deadline_admissible,
     finite_function_exists,
     finite_sets_isomorphic,
+    grounding_probe,
     partition_refines,
     resource_transition,
     run_checks,
@@ -21,6 +24,7 @@ def test_selected_operational_grand_null_gates_pass() -> None:
         "C5",
         "C6",
         "C7",
+        "C8",
         "C11",
         "C12",
         "C13",
@@ -48,6 +52,14 @@ def test_c6_mutual_reachability_is_not_isomorphism() -> None:
 def test_c7_restricted_probe_agreement_is_not_yoneda() -> None:
     assert terminal_probe(1) == terminal_probe(2)
     assert not finite_sets_isomorphic(1, 2)
+
+
+def test_c8_answer_probe_does_not_reflect_grounding() -> None:
+    grounded = GroundingWitness("same", True, True)
+    self_authenticated = GroundingWitness("same", True, False)
+
+    assert answer_probe(grounded) == answer_probe(self_authenticated)
+    assert grounding_probe(grounded) != grounding_probe(self_authenticated)
 
 
 def test_c11_rejects_non_monotone_frame_change() -> None:
