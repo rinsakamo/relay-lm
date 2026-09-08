@@ -79,13 +79,13 @@ def test_pass2_prompt_uses_one_independent_continuity_kind_scan() -> None:
         "and `active_task` independently." in suffix
     )
     assert (
-        "For each kind, decide exactly one transition: new useful meaning -> `set`; unchanged "
-        "accepted meaning -> no candidate; changed or resolved accepted meaning -> `resolve` "
-        "using its accepted lifecycle key." in suffix
+        "Within each kind, decide all applicable transitions: new or updated useful meaning "
+        "-> `set`; unchanged accepted meaning -> no candidate; explicitly resolved or completed "
+        "accepted meaning -> `resolve`." in suffix
     )
     assert (
-        "Finish all three kind decisions before emitting `continuity_candidates`; a decision "
-        "for one kind must not suppress another kind." in suffix
+        "Finish all three kind scans before emitting `continuity_candidates`; a decision in "
+        "one kind must not suppress another kind." in suffix
     )
     assert "Unresolved transition example" in suffix
     assert '"kind":"unresolved"' in suffix
@@ -165,10 +165,9 @@ def test_pass2_projects_accepted_continuity_as_turn_local_deltas() -> None:
         in suffix
     )
     assert (
-        "For each Continuity kind, compare the current Input with the accepted item "
-        "independently: `set` for a new meaning, `resolve` for a current resolution, "
-        "and no candidate for an unchanged meaning."
-        in suffix
+        "Within each kind, decide all applicable transitions: new or updated useful meaning "
+        "-> `set`; unchanged accepted meaning -> no candidate; explicitly resolved or completed "
+        "accepted meaning -> `resolve`." in suffix
     )
     assert (
         "Never copy an accepted item's prior `sources` into a new transition; every "
