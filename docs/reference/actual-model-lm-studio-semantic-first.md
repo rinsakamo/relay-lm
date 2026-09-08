@@ -14,6 +14,30 @@ The semantic-first capsule exists to keep evaluation admission from becoming the
 - Current Core 1.0 reasoning OFF is requested through the existing production realization and must serialize as `reasoning_effort=none`.
 - Declared stable binding facts are not completion evidence. Actual request/response evidence remains authoritative for whether the provider was reachable and whether the requested runtime behavior was realized.
 
+## Physical-execution ownership boundary
+
+RelayLM v1 adopts the host-owned physical-execution invariant crystallized by the RelayLM v2 physical procedure:
+
+> **Controller observes and assembles. Host validates and freezes.**
+
+For this LM Studio semantic-first path, that invariant specializes as follows.
+
+Before host entry, the controller may reconstruct fresh repository authority, select an isolated exact checkout, assemble stable non-secret binding declarations from current non-provider-HTTP local/operator evidence, create fresh artifact roots, and validate deterministic argument/repository shape.
+
+The controller or a child evaluation harness must not implement a second host around the repository-owned semantic-first capsule. In particular it must not:
+
+- add provider HTTP model-list, health, dummy-completion, reasoning, or capability probes;
+- use a generic capability descriptor as a pre-provider admission veto for an explicit production request;
+- convert absence of an independent capability attestation into a negative live provider fact;
+- duplicate parser, source-validation, Validator, semantic-acceptance, or runtime-realization checks before the owning request path runs;
+- move a failure observed at the real semantic boundary into a new controller-side preflight on a later transaction.
+
+A child diagnostic may change only its owner-authorized diagnostic representation. If it explicitly requests `CognitionStructuredOutputMode.NATIVE`, the real Pass 2 request is the capability boundary. A generic adapter descriptor that reports `structured_output=false` because no independent native structured-output attestation source exists is not permission to stop before that request.
+
+The reusable procedure is materialized at `.ai/skills/lm-studio-semantic-first-preflight/SKILL.md`.
+
+> **Do not implement a second host outside the host.**
+
 ## Bounded execution
 
 The capsule executes the current provider-neutral Stage R semantic authority without changing prompts, fixtures, decoding, structured-output schema, Validator behavior, State semantics, Continuity semantics, or Crystallization semantics.
