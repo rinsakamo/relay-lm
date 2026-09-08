@@ -1,0 +1,27 @@
+schema_version: 1
+id: fixed_continuity_slot_diagnostic
+summary: >-
+  Evaluation-only LM Studio Stage R diagnostic that makes the existing
+  referent, unresolved, and active_task Continuity decisions mechanically
+  explicit as fixed per-kind slots before translating emitted transitions back
+  into the existing ContinuityCandidate grammar.
+owner_issue: 2358
+canonical_surfaces:
+- docs/reference/actual-model-fixed-continuity-slots.md
+references:
+- docs/reference/actual-model-lm-studio-semantic-first.md
+- docs/contracts/cognition-pass-execution.md
+- docs/architecture/continuity-context.md
+implementation:
+- src/relaylm/actual_model_stage_r_lm_studio_fixed_continuity_slots.py
+tests:
+- tests/unit/test_actual_model_stage_r_lm_studio_fixed_continuity_slots.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_stage_r_lm_studio_fixed_continuity_slots.py
+  reason: >-
+    Evaluation-only shadow transport and evidence capsule; it does not alter
+    production Pass 2 wire, cognition semantics, or product runtime behavior.
+depends_on:
+- actual_model_evaluation
+- lm_studio_semantic_first_qualification
+- cognitive_turn
