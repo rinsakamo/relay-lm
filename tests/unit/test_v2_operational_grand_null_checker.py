@@ -1,7 +1,9 @@
 from tools.v2_operational_grand_null_checker import (
     canonical_map,
     compose_maps,
+    deadline_admissible,
     partition_refines,
+    resource_transition,
     run_checks,
     threshold_counterexample,
 )
@@ -9,12 +11,27 @@ from tools.v2_operational_grand_null_checker import (
 
 def test_selected_operational_grand_null_gates_pass() -> None:
     results = run_checks()
-    assert [result.gate for result in results] == ["C0", "C3", "C4", "C11", "C12", "C15"]
+    assert [result.gate for result in results] == [
+        "C0",
+        "C3",
+        "C4",
+        "C5",
+        "C11",
+        "C12",
+        "C13",
+        "C15",
+    ]
     assert all(result.passed for result in results)
 
 
 def test_c0_threshold_closeness_is_not_forced_transitive() -> None:
     assert threshold_counterexample((0.0, 0.75, 1.5), 1.0) is not None
+
+
+def test_c5_resource_boundary_blocks_false_composition() -> None:
+    remaining = resource_transition(1, 1)
+    assert remaining == 0
+    assert resource_transition(remaining, 1) is None
 
 
 def test_c11_rejects_non_monotone_frame_change() -> None:
@@ -33,3 +50,8 @@ def test_c12_canonical_nested_quotient_maps_are_coherent() -> None:
     fine_to_coarse = canonical_map(fine, coarse)
 
     assert compose_maps(fine_to_middle, middle_to_coarse) == fine_to_coarse
+
+
+def test_c13_reachability_does_not_eliminate_deadline() -> None:
+    assert deadline_admissible(1, 10)
+    assert not deadline_admissible(100, 10)
