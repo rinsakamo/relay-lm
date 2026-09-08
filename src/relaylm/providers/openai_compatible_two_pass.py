@@ -349,7 +349,7 @@ def _accepted_continuity_baseline_block(cognitive_input: CognitiveInput) -> str:
             continue
         if continuity.get("kind") not in {"referent", "unresolved", "active_task"}:
             continue
-        baseline.append(entry)
+        baseline.append({"continuity": continuity})
 
     if not baseline:
         return ""
@@ -363,11 +363,11 @@ def _accepted_continuity_baseline_block(cognitive_input: CognitiveInput) -> str:
         f"{baseline_json}\n"
         "</ACCEPTED_CONTINUITY_BASELINE_JSON>\n\n"
         "This is a comparison-only duplicate of already accepted Continuity entries "
-        "from CognitiveInput.context; it adds no new authority. Compare each current "
-        "Continuity meaning against this baseline before proposing a transition. A new "
-        "Event source alone does not make an unchanged accepted meaning an update; emit "
-        "no candidate unless the meaning itself is new, materially updated, explicitly "
-        "resolved, or completed.\n\n"
+        "from CognitiveInput.context; it adds no new authority or source provenance. "
+        "Compare each current Continuity meaning against this baseline before proposing "
+        "a transition. A new Event source alone does not make an unchanged accepted "
+        "meaning an update; emit no candidate unless the meaning itself is new, "
+        "materially updated, explicitly resolved, or completed.\n\n"
     )
 
 
