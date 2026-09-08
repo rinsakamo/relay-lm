@@ -143,7 +143,7 @@ def uniform_pair_law() -> MarginalLaw:
 
 def fair_single_law() -> MarginalLaw:
     half = Fraction(1, 2)
-    return (("0", half), ("1", half))
+    return ((('0',), half), (('1',), half))
 
 
 def all_pairs_are_independent_fair(model: MultiWorldModel) -> bool:
