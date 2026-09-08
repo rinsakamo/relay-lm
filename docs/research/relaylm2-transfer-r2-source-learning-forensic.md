@@ -88,23 +88,63 @@ input index  -> destination output index
 
 They are inverses for a general permutation. The JSON schema constrains array shape/range but cannot communicate which convention is intended. Exact equality against the generator's canonical `permutation` therefore imposes a representation convention that was not explicitly exposed to the model.
 
-This is a real interface defect for interpreting source exact-match failures. Without the immutable raw responses, a wrong source hypothesis cannot be distinguished post hoc between an induction error and a conventionally inverted/otherwise near-equivalent representation.
+This is a real interface defect for interpreting source exact-match failures. A wrong exact source hypothesis must therefore be separated from a semantically equivalent inverse-permutation convention before it is called an induction error.
 
 It does **not**, however, explain the target endpoint floor, because target probes return transformed vectors rather than the latent factorization and all 16 target rules are uniquely determined at three examples.
 
-## Current forensic interpretation
+## Offline raw-response classification
 
-The available evidence supports a combined diagnosis:
+The forensic tool can inspect an already-existing `request-evidence.jsonl` without invoking a provider or changing the frozen scientific result:
 
-```text
-GENERATOR_UNDERDETERMINED       = rejected for the four-example source packets
-REPRESENTATION_CONVENTION_BURDEN = present
-TARGET_TASK_FLOOR              = present at the three-example endpoint
-MODEL_INDUCTION_FLOOR          = plausible, but raw source responses are needed to distinguish source near-misses
-PROTOCOL_OR_SCORING_DEFECT      = no parser/transport defect demonstrated; source semantic scoring contract is under-explained to the model
+```bash
+python -m tools.v2_transfer_r2_source_learning_forensic raw \
+  --request-evidence /path/to/request-evidence.jsonl \
+  --expected-sha256 sha256:<producer-reported-digest>
 ```
 
-Accordingly, #2355 remains a valid complete transaction and retains its frozen `NO_SOURCE_LEARNING` category, but it does not provide a clean test of cross-task reuse. The learned object to be reused was never acquired, while the target task itself was also below the tested model's demonstrated capability.
+The SHA-256 check binds the analysis to the immutable evidence named by its producer. The tool requires exactly one source-learning `model_exchange` for each of the 16 frozen families and ignores target exchanges for this classification.
+
+Each structurally valid source response is evaluated under three semantics:
+
+```text
+canonical
+  y[i] = x[permutation[i]] + offsets[i]
+
+reverse permutation, output-indexed offsets
+  permutation[input] = output
+  offset remains indexed by output
+
+reverse permutation, input-indexed offsets
+  permutation[input] = output
+  offset is indexed alongside the input entry
+```
+
+It reports one of:
+
+```text
+EXACT_CANONICAL
+SEMANTICALLY_EXACT_REVERSE_PERMUTATION_OUTPUT_OFFSETS
+SEMANTICALLY_EXACT_REVERSE_PERMUTATION_INPUT_OFFSETS
+OTHER_VALID_HYPOTHESIS
+```
+
+The two reverse categories mean the response reproduces all four observed source transformations under a natural inverse convention that the frozen prompt failed to disambiguate. `OTHER_VALID_HYPOTHESIS` means the response was structurally valid but does not reproduce all four observations under any of those three declared interpretations.
+
+This is post-hoc diagnosis only. It never changes #2355's exact-match score or category.
+
+## Current forensic interpretation
+
+Before raw-response classification, the deterministic evidence supports:
+
+```text
+GENERATOR_UNDERDETERMINED        = rejected for the four-example source packets
+REPRESENTATION_CONVENTION_BURDEN = present
+TARGET_TASK_FLOOR                = present at the three-example endpoint
+MODEL_INDUCTION_FLOOR            = plausible; source near-miss classification remains evidence-dependent
+PROTOCOL_OR_SCORING_DEFECT       = no parser/transport defect demonstrated; source semantic scoring contract is under-explained to the model
+```
+
+Accordingly, #2355 remains a valid complete transaction and retains its frozen `NO_SOURCE_LEARNING` category, but it does not provide a clean test of cross-task reuse. The learned object to be reused was never acquired under the frozen exact representation contract, while the target task itself was also below the tested model's demonstrated capability.
 
 ## Consequence
 
@@ -120,4 +160,4 @@ A mechanism upper-bound using evaluator-provided/oracle Structure may be scienti
 
 ## Raw-response boundary
 
-If immutable #2355 request/response evidence becomes available, it may be classified without any new provider call to test inverse-permutation, offset, or other near-miss hypotheses. If those raw responses are not preserved, this forensic stops at the deterministic conclusions above rather than asking the model to reproduce them.
+If immutable #2355 request/response evidence is available, classify it with the offline procedure above and reconcile the resulting counts on #2376. If it is unavailable or its producer-reported digest does not match, stop rather than asking the model to reproduce the responses.
