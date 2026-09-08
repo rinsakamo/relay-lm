@@ -1,15 +1,21 @@
 from tools.v2_operational_grand_null_checker import (
+    ClaimEvidence,
     GroundingWitness,
+    SubstrateWitness,
     answer_probe,
     canonical_map,
     compose_maps,
     deadline_admissible,
+    finite_discrete_categories_equivalent,
     finite_function_exists,
     finite_sets_isomorphic,
+    g1_non_self_authentication,
     grounding_probe,
+    minimum_grounding_gate,
     partition_refines,
     resource_transition,
     run_checks,
+    substrate_interface_probe,
     terminal_probe,
     threshold_counterexample,
 )
@@ -25,6 +31,8 @@ def test_selected_operational_grand_null_gates_pass() -> None:
         "C6",
         "C7",
         "C8",
+        "C9",
+        "C10",
         "C11",
         "C12",
         "C13",
@@ -60,6 +68,26 @@ def test_c8_answer_probe_does_not_reflect_grounding() -> None:
 
     assert answer_probe(grounded) == answer_probe(self_authenticated)
     assert grounding_probe(grounded) != grounding_probe(self_authenticated)
+
+
+def test_c9_interface_preservation_does_not_require_whole_category_equivalence() -> None:
+    substrate_a = SubstrateWitness(("task:ok",), 1)
+    substrate_b = SubstrateWitness(("task:ok",), 2)
+
+    assert substrate_interface_probe(substrate_a) == substrate_interface_probe(substrate_b)
+    assert not finite_discrete_categories_equivalent(substrate_a, substrate_b)
+
+
+def test_c10_non_self_authentication_alone_is_not_grounding() -> None:
+    nonce = ClaimEvidence(
+        "WORLD temperature > 30 C",
+        "nonce=847291",
+        True,
+        False,
+    )
+
+    assert g1_non_self_authentication(nonce)
+    assert not minimum_grounding_gate(nonce)
 
 
 def test_c11_rejects_non_monotone_frame_change() -> None:
