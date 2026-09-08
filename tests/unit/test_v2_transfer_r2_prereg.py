@@ -18,7 +18,6 @@ from tools.v2_transfer_r2_prereg import (
     MODULUS,
     PROVIDER_CALL_COUNT,
     R1_EXCLUDED_SEED,
-    REGIMES,
     SEEDS_PER_REGIME,
     R2FamilyOutcome,
     R2PlanStructuredClient,
