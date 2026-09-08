@@ -69,6 +69,8 @@ def validate_prob_lts(system: ProbLTS) -> None:
     for transition in system.transitions:
         if transition.src not in state_set or transition.dst not in state_set:
             raise ValueError("every transition endpoint must be a declared state")
+        if not isinstance(transition.probability, Fraction):
+            raise TypeError("probability must be fractions.Fraction for exact semantics")
         if transition.probability <= 0 or transition.probability > 1:
             raise ValueError("transition probabilities must lie in (0, 1]")
         if transition.duration < 0 or transition.cost < 0:
