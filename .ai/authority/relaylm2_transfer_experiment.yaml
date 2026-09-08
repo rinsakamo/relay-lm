@@ -1,21 +1,24 @@
 schema_version: 1
 id: relaylm2_transfer_experiment
 owner_issue: 2157
-summary: RelayLM 2.0 cross-task Structure transfer experiment with deterministic R0 integrity, bounded R1 actual-model substrate, fail-closed physical host orchestration, and qualified JSON-Schema transport reuse for the R1 smoke.
+summary: RelayLM 2.0 cross-task Structure transfer experiment with deterministic R0 integrity, bounded R1 actual-model substrate, fail-closed physical host orchestration, qualified JSON-Schema transport reuse, and preregistered R2 shared/null adaptation-curve mechanics.
 canonical_surfaces:
 - docs/research/relaylm2-transfer-experiment.md
 - docs/research/relaylm2-transfer-r1-structured-transport.md
+- docs/research/relaylm2-transfer-r2-preregistration.md
 implementation:
 - src/relaylm/v2_transfer_experiment.py
 - src/relaylm/v2_transfer_actual_model.py
 - tools/v2_transfer_r1_host.py
 - tools/v2_transfer_r1_structured_client.py
+- tools/v2_transfer_r2_prereg.py
 tests:
 - tests/unit/test_v2_transfer_experiment.py
 - tests/unit/test_v2_transfer_actual_model.py
 - tests/unit/test_v2_transfer_r1_host.py
 - tests/unit/test_v2_transfer_r1_host_hardening.py
 - tests/unit/test_v2_transfer_r1_structured_client.py
+- tests/unit/test_v2_transfer_r2_prereg.py
 depends_on:
 - relaylm2_intervention_harness
 - relaylm2_semantic_transaction
