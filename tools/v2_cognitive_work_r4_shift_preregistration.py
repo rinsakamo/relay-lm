@@ -49,6 +49,7 @@ response_format_for_call = r2.response_format_for_call
 validate_qualified_transport = r2.validate_qualified_transport
 
 _HEX40 = re.compile(r"^[0-9a-fA-F]{40}$")
+_AUX_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 
 def _canonical_json(value: object) -> str:
@@ -89,6 +90,10 @@ def _rng(root_seed: str, regime: str, index: int) -> random.Random:
 def _opaque_task_id(root_seed: str, regime: str, index: int) -> str:
     digest = _sha256(root_seed, "r4-task-id", regime, index).split(":", 1)[1]
     return "r4s-" + digest[:16]
+
+
+def _letters(rng: random.Random, length: int) -> str:
+    return "".join(rng.choice(_AUX_ALPHABET) for _ in range(length))
 
 
 @dataclass(frozen=True)
@@ -145,15 +150,17 @@ def _auxiliary_packets(
     expected_answer: str,
 ) -> tuple[str, str]:
     rng = _rng(root_seed, regime, index)
-    aux_key = f"AK-{rng.randrange(10_000, 99_999)}"
-    aux_value = f"AV-{rng.randrange(100_000, 999_999)}"
-    while aux_value == expected_answer:
-        aux_value = f"AV-{rng.randrange(100_000, 999_999)}"
-    aux_sensor = f"AS-{rng.randrange(1000, 9999)}"
-    aux_state = rng.choice(("BLUE", "WHITE", "STEADY", "IDLE"))
-    retrieval = f"Frozen auxiliary record: key {aux_key} has value {aux_value}."
-    observation = f"Fresh auxiliary observation: sensor {aux_sensor} currently reports {aux_state}."
-    return retrieval, observation
+    while True:
+        aux_key = f"AK-{_letters(rng, 6)}"
+        aux_value = f"AV-{_letters(rng, 8)}"
+        aux_sensor = f"AS-{_letters(rng, 6)}"
+        aux_state = rng.choice(("BLUE", "WHITE", "STEADY", "IDLE"))
+        retrieval = f"Frozen auxiliary record: key {aux_key} has value {aux_value}."
+        observation = (
+            f"Fresh auxiliary observation: sensor {aux_sensor} currently reports {aux_state}."
+        )
+        if expected_answer not in retrieval and expected_answer not in observation:
+            return retrieval, observation
 
 
 def generate_tasks(merged_pr_commit_sha: str) -> tuple[R4ShiftTask, ...]:
