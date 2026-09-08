@@ -447,10 +447,9 @@ def run_causal_substitution_comparison() -> tuple[CausalResult, ...]:
         )
     )
 
-    fixed_intervention_recovers_law = (
-        evaluate_model(hard_intervene(direct, "X", "0"))
-        == ((("X", "0"), ("Y", "0")), Fraction(1)),
-    )
+    fixed_intervention_recovers_law = evaluate_model(
+        hard_intervene(direct, "X", "0")
+    ) == (((("X", "0"), ("Y", "0")), Fraction(1)),)
 
     return (
         CausalResult(
