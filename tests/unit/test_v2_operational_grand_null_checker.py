@@ -5,10 +5,13 @@ from tools.v2_operational_grand_null_checker import (
     answer_probe,
     canonical_map,
     compose_maps,
+    compose_process_segments,
     deadline_admissible,
+    deterministic_probes_agree,
     finite_discrete_categories_equivalent,
     finite_function_exists,
     finite_sets_isomorphic,
+    free_category_morphisms,
     g1_non_self_authentication,
     grounding_probe,
     minimum_grounding_gate,
@@ -18,6 +21,7 @@ from tools.v2_operational_grand_null_checker import (
     substrate_interface_probe,
     terminal_probe,
     threshold_counterexample,
+    transition_paths,
 )
 
 
@@ -25,6 +29,8 @@ def test_selected_operational_grand_null_gates_pass() -> None:
     results = run_checks()
     assert [result.gate for result in results] == [
         "C0",
+        "C1",
+        "C2",
         "C3",
         "C4",
         "C5",
@@ -36,6 +42,7 @@ def test_selected_operational_grand_null_gates_pass() -> None:
         "C11",
         "C12",
         "C13",
+        "C14",
         "C15",
     ]
     assert all(result.passed for result in results)
@@ -43,6 +50,22 @@ def test_selected_operational_grand_null_gates_pass() -> None:
 
 def test_c0_threshold_closeness_is_not_forced_transitive() -> None:
     assert threshold_counterexample((0.0, 0.75, 1.5), 1.0) is not None
+
+
+def test_c1_sample_non_rejection_is_not_exact_identity() -> None:
+    def f(_: int) -> int:
+        return 0
+
+    def g(point: int) -> int:
+        return 1 if point == 2 else 0
+
+    assert deterministic_probes_agree((0, 1), f, g)
+    assert not deterministic_probes_agree((0, 1, 2), f, g)
+
+
+def test_c2_process_segments_compose_on_boundary_not_history_identity() -> None:
+    assert compose_process_segments((0, 1), (1, 2)) == (0, 2)
+    assert (0, 1) != (1, 2)
 
 
 def test_c5_resource_boundary_blocks_false_composition() -> None:
@@ -111,3 +134,10 @@ def test_c12_canonical_nested_quotient_maps_are_coherent() -> None:
 def test_c13_reachability_does_not_eliminate_deadline() -> None:
     assert deadline_admissible(1, 10)
     assert not deadline_admissible(100, 10)
+
+
+def test_c14_free_category_can_be_only_path_renaming() -> None:
+    nodes = ("X", "Y", "Z")
+    edges = (("X", "Y"), ("Y", "Z"))
+
+    assert transition_paths(nodes, edges, 2) == free_category_morphisms(nodes, edges, 2)
