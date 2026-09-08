@@ -71,8 +71,8 @@ def representative_independent(
 
 
 def resource_transition(remaining: int, cost: int) -> int | None:
-    if cost < 0:
-        raise ValueError("cost must be non-negative")
+    if remaining < 0 or cost < 0:
+        raise ValueError("remaining resource and cost must be non-negative")
     if cost > remaining:
         return None
     return remaining - cost
@@ -101,6 +101,9 @@ def run_checks() -> tuple[CheckResult, ...]:
     def reveal_hidden(state: State) -> int:
         return state["hidden"]
 
+    coarse_first = ("X", "X")
+    coarse_second = ("X", "X")
+    coarse_composable = coarse_first[1] == coarse_second[0]
     first_budget = resource_transition(1, 1)
     second_budget = resource_transition(first_budget, 1) if first_budget is not None else None
 
@@ -114,7 +117,8 @@ def run_checks() -> tuple[CheckResult, ...]:
     pi10 = canonical_map(e1, e0)
     pi20 = canonical_map(e2, e0)
 
-    same_reachability = ("A", "B") == ("A", "B")
+    fast_reachability = {("A", "B")}
+    slow_reachability = {("A", "B")}
     fast_admissible = deadline_admissible(1, 10)
     slow_admissible = deadline_admissible(100, 10)
 
@@ -143,8 +147,8 @@ def run_checks() -> tuple[CheckResult, ...]:
         ),
         CheckResult(
             "C5",
-            first_budget == 0 and second_budget is None,
-            "remaining-budget boundary types X_1 -> X_0 and rejects a second unit-cost action",
+            coarse_composable and first_budget == 0 and second_budget is None,
+            "coarse endpoints compose, but remaining-budget typing rejects the second unit-cost action",
         ),
         CheckResult(
             "C11",
@@ -160,7 +164,9 @@ def run_checks() -> tuple[CheckResult, ...]:
         ),
         CheckResult(
             "C13",
-            same_reachability and fast_admissible and not slow_admissible,
+            fast_reachability == slow_reachability
+            and fast_admissible
+            and not slow_admissible,
             "same A -> B reachability has different operational validity under a deadline",
         ),
         CheckResult(
