@@ -511,6 +511,7 @@ Projection rules:
 - Before emitting `continuity_candidates`, scan each of `referent`, `unresolved`, and `active_task` independently.
 - Within each kind, decide all applicable transitions: new or updated useful meaning -> `set`; unchanged accepted meaning -> no candidate; explicitly resolved or completed accepted meaning -> `resolve`.
 - Finish all three kind scans before emitting `continuity_candidates`; a decision in one kind must not suppress another kind.
+- Evaluate resolution or completion independently for each Continuity kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
 - Emit a new `referent` only when the current Input explicitly establishes a cross-turn pointer, alias, or future-reference plan.
