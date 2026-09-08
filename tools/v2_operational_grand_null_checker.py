@@ -18,6 +18,13 @@ class CheckResult:
     detail: str
 
 
+@dataclass(frozen=True)
+class GroundingWitness:
+    answer: str
+    claims_authentic: bool
+    independently_authenticated: bool
+
+
 Partition = Mapping[str, str]
 State = Mapping[str, int]
 Context = Callable[[State], int]
@@ -100,6 +107,14 @@ def terminal_probe(_: int) -> str:
     return "*"
 
 
+def answer_probe(witness: GroundingWitness) -> tuple[str, bool]:
+    return witness.answer, witness.claims_authentic
+
+
+def grounding_probe(witness: GroundingWitness) -> bool:
+    return witness.independently_authenticated
+
+
 def object_preserving_arrow_map_possible(source: Sequence[Arrow], target: Sequence[Arrow]) -> bool:
     target_endpoints = {(src, dst) for _, src, dst in target}
     return all((src, dst) in target_endpoints for _, src, dst in source)
@@ -129,6 +144,19 @@ def run_checks() -> tuple[CheckResult, ...]:
     b_reaches_a = finite_function_exists(set_b_size, set_a_size)
     a_b_isomorphic = finite_sets_isomorphic(set_a_size, set_b_size)
     restricted_probe_agrees = terminal_probe(set_a_size) == terminal_probe(set_b_size)
+
+    grounded = GroundingWitness(
+        answer="same answer",
+        claims_authentic=True,
+        independently_authenticated=True,
+    )
+    self_authenticated = GroundingWitness(
+        answer="same answer",
+        claims_authentic=True,
+        independently_authenticated=False,
+    )
+    answer_probe_agrees = answer_probe(grounded) == answer_probe(self_authenticated)
+    grounding_probe_differs = grounding_probe(grounded) != grounding_probe(self_authenticated)
 
     omega = {"z1": "a0", "z2": "a1"}
     omega_prime = {"z1": "b0", "z2": "b0"}
@@ -182,6 +210,11 @@ def run_checks() -> tuple[CheckResult, ...]:
             "C7",
             restricted_probe_agrees and not a_b_isomorphic,
             "terminal probe identifies non-isomorphic finite sets; restricted probe agreement is not Yoneda",
+        ),
+        CheckResult(
+            "C8",
+            answer_probe_agrees and grounding_probe_differs,
+            "same answer/authentic claim hides a difference in independent authentication",
         ),
         CheckResult(
             "C11",
