@@ -508,26 +508,19 @@ Projection rules:
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
-- Emit every distinct useful Continuity meaning present; do not choose only one best kind.
+- Before emitting `continuity_candidates`, scan each of `referent`, `unresolved`, and `active_task` independently.
+- Within each kind, decide all applicable transitions: new or updated useful meaning -> `set`; unchanged accepted meaning -> no candidate; explicitly resolved or completed accepted meaning -> `resolve`.
+- Finish all three kind scans before emitting `continuity_candidates`; a decision in one kind must not suppress another kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
 - Emit a new `referent` only when the current Input explicitly establishes a cross-turn pointer, alias, or future-reference plan.
 - A Context item whose content is a `continuity` JSON record is an already accepted temporary Continuity item, not a new proposal or prior assistant utterance.
-- For each Continuity kind, compare the current Input with the accepted item independently: `set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning.
 - Never copy an accepted item's prior `sources` into a new transition; every transition caused by the current turn uses the current Input Event ID.
-- Continuity transition decision:
-  - new useful meaning -> emit `set` with a new stable key.
-  - unchanged accepted meaning -> emit no candidate.
-  - changed or resolved accepted meaning -> reuse its existing lifecycle key.
-- Evaluate resolution or completion independently for each Continuity kind.
 - Resolving an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`.
 - If that referent meaning is unchanged, emit no referent candidate.
 - Completion or resolution of work about a referent, discovery of new facts about it, or an expectation that it may not be mentioned next does not end the referent.
 - Resolve a `referent` only when the current Input explicitly replaces, dismisses, or invalidates the reference target itself; do not infer referent resolution from completion of related `unresolved` or `active_task` meanings.
-- Before concluding there are no Continuity candidates, check `unresolved` independently: if this turn newly establishes an explicit open question or unknown value, emit a new `unresolved` set when no accepted unresolved item already represents that open issue, even when related accepted `referent` or `active_task` meanings are unchanged.
 - An explicitly maintained unknown value is itself an `unresolved` meaning when no accepted unresolved item already represents it. Do not require a new `active_task`, a question form, or a change to an existing task before emitting it.
-- Unchanged accepted `referent` or `active_task` meanings do not suppress a distinct newly established `unresolved` meaning.
-- If related accepted referent/task meanings are unchanged and the current Event newly establishes an unknown value with no accepted unresolved item, emit only the new `unresolved` set as applicable.
 - A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it unless the referential target itself changes.
 - For ordinary-turn Continuity, every new set/resolve transition must include the current Input Event ID `{source_id}` in `sources`; prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new transition.
 - Resolve only when the current turn actually resolves or completes an existing item; reuse that item's `kind` + `key`, set value to null, and ground the resolution in the current Input Event.
