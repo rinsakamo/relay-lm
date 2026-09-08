@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 
 from relaylm.v2_transfer_actual_model import (
-    ExperimentClient,
     ExperimentCompletion,
     StructureProposalError,
     prepare_r1_arms,
@@ -22,13 +21,9 @@ from tools.external_qualification import (
     FrozenExperimentIdentity,
     freeze_experiment_identity,
 )
-from tools.v2_transfer_r1_host import (
-    RepositoryState,
-    probe_git_repository,
-)
+from tools.v2_transfer_r1_host import RepositoryState, probe_git_repository
 from tools.v2_transfer_r2_prereg import (
     FAMILY_COUNT,
-    MODULUS,
     PROVIDER_CALL_COUNT,
     R2CallPlanEntry,
     R2FamilyOutcome,
@@ -140,7 +135,10 @@ def benchmark_identity() -> dict[str, object]:
 
 
 def execution_order() -> list[str]:
-    return [f"r2-call-{entry.call_index:03d}" for entry in call_plan(PREREGISTRATION_COMMIT)]
+    return [
+        f"r2-call-{entry.call_index:03d}"
+        for entry in call_plan(PREREGISTRATION_COMMIT)
+    ]
 
 
 def _validate_preregistration_contract() -> None:
@@ -189,9 +187,7 @@ def _validate_repository(identity: Mapping[str, object], observed: RepositorySta
 
 
 def _validate_artifact_root_outside_repository(
-    *,
-    artifact_root: str | Path,
-    repository_root: str | Path,
+    *, artifact_root: str | Path, repository_root: str | Path
 ) -> None:
     repository = Path(repository_root).resolve()
     artifact = Path(artifact_root).resolve()
@@ -215,8 +211,7 @@ def _expected_binding(identity: Mapping[str, object]) -> dict[str, object]:
 
 
 def _validate_live_binding(
-    expected: Mapping[str, object],
-    observed: Mapping[str, object],
+    expected: Mapping[str, object], observed: Mapping[str, object]
 ) -> None:
     if set(observed) != set(_MATERIAL_BINDING_FIELDS):
         raise R2TransferHostError("physical binding drift: live binding field set changed")
@@ -252,11 +247,7 @@ def _write_json_atomically(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _write_host_failure(
-    root: Path,
-    *,
-    kind: str,
-    error: str,
-    next_call_index: int,
+    root: Path, *, kind: str, error: str, next_call_index: int
 ) -> None:
     _write_json_atomically(
         root / HOST_FAILURE_NAME,
@@ -294,9 +285,8 @@ class _BoundR2Client:
     def _stop_with_evidence(self, *, kind: str, error: str) -> None:
         if self._entry is None:
             raise R2TransferHostError("terminal failure has no bound R2 plan entry")
-        question_id = _question_id(self._entry)
         self._durable_run.append_request_evidence(
-            question_id=question_id,
+            question_id=_question_id(self._entry),
             evidence={
                 "kind": kind,
                 "authority": "instrumentation_only",
@@ -353,30 +343,26 @@ class _BoundR2Client:
         return completion
 
 
-def _stop_after_semantic_failure(
+def _stop_after_protocol_failure(
     durable_run: DurableQuestionRun,
     *,
     entry: R2CallPlanEntry,
-    exc: StructureProposalError,
+    error: str,
 ) -> R2TransferHostError:
-    question_id = _question_id(entry)
     durable_run.append_request_evidence(
-        question_id=question_id,
+        question_id=_question_id(entry),
         evidence={
             "kind": "model_protocol_failure",
             "authority": "instrumentation_only",
             "plan_entry": asdict(entry),
-            "error": str(exc),
+            "error": error,
         },
     )
     durable_run.mark_stopped()
-    return R2TransferHostError(f"R2 model protocol failure: {exc}")
+    return R2TransferHostError(f"R2 model protocol failure: {error}")
 
 
 def _validate_arm_prompts(arms: object, family: object) -> None:
-    # `prepare_r1_arms` and generated TransferFamily are deliberately reused;
-    # keep this checker local to the host so invalid matched-arm wiring fails
-    # before any target provider call for the family.
     for examples_visible in (0, 1, 2, 3):
         t0 = render_target_prompt(
             arms.t0, family, step_index=0, examples_visible=examples_visible
@@ -397,7 +383,9 @@ def _validate_arm_prompts(arms: object, family: object) -> None:
             raise R2TransferHostError("R2 T1/T2 reusable Structure is not identical")
 
 
-def _resource_mapping(*, calls: int, input_tokens: int, output_tokens: int) -> dict[str, int]:
+def _resource_mapping(
+    *, calls: int, input_tokens: int, output_tokens: int
+) -> dict[str, int]:
     return {
         "calls": calls,
         "input_tokens": input_tokens,
@@ -409,12 +397,14 @@ def _reconstruct_complete_result(
     durable_run: DurableQuestionRun,
 ) -> tuple[tuple[R2FamilyOutcome, ...], dict[str, dict[str, int]]]:
     records = durable_run.rebuild_completed_results()
+    plan = call_plan(PREREGISTRATION_COMMIT)
     if len(records) != PROVIDER_CALL_COUNT:
         raise R2TransferHostError("complete R2 reconstruction requires 208 durable results")
 
     source_correct: dict[int, bool] = {}
     curves: dict[int, dict[str, dict[int, bool]]] = {
-        index: {"T0": {}, "T1": {}, "T2": {}} for index in range(FAMILY_COUNT)
+        index: {"T0": {}, "T1": {}, "T2": {}}
+        for index in range(FAMILY_COUNT)
     }
     resources = {
         "physical": {"calls": 0, "input_tokens": 0, "output_tokens": 0},
@@ -424,60 +414,67 @@ def _reconstruct_complete_result(
         "T2": {"calls": 0, "input_tokens": 0, "output_tokens": 0},
     }
 
-    for record in records:
+    for record, entry in zip(records, plan, strict=True):
+        if record.get("question_id") != _question_id(entry):
+            raise R2TransferHostError("durable R2 result order does not match call plan")
         result = _mapping(record["result"], "durable R2 result")
-        family_index = result.get("family_index")
-        if isinstance(family_index, bool) or not isinstance(family_index, int):
-            raise R2TransferHostError("durable R2 family index is invalid")
+        if (
+            result.get("family_index") != entry.family_index
+            or result.get("regime") != entry.regime
+            or result.get("seed") != entry.seed
+        ):
+            raise R2TransferHostError("durable R2 family identity does not match call plan")
+
         resource = _mapping(result.get("resource_cost"), "durable R2 resource cost")
+        calls = resource.get("calls")
         input_tokens = resource.get("input_tokens")
         output_tokens = resource.get("output_tokens")
-        calls = resource.get("calls")
         if any(
             isinstance(value, bool) or not isinstance(value, int) or value < 0
             for value in (calls, input_tokens, output_tokens)
         ):
             raise R2TransferHostError("durable R2 resource cost is invalid")
-        kind = result.get("kind")
+        if calls != 1:
+            raise R2TransferHostError("each R2 durable result must represent one provider call")
+
         bucket: str
-        if kind == "source-learning":
+        if entry.phase == "source-learning":
+            if result.get("kind") != "source-learning":
+                raise R2TransferHostError("durable source result kind is invalid")
             source_value = result.get("source_hypothesis_correct")
-            if not isinstance(source_value, bool) or family_index in source_correct:
+            if not isinstance(source_value, bool) or entry.family_index in source_correct:
                 raise R2TransferHostError("durable R2 source result is invalid or duplicate")
-            source_correct[family_index] = source_value
+            source_correct[entry.family_index] = source_value
             bucket = "source-learning"
-        elif kind == "target-probe":
-            arm = result.get("arm")
-            examples_visible = result.get("examples_visible")
-            correct = result.get("correct")
-            if (
-                arm not in {"T0", "T1", "T2"}
-                or isinstance(examples_visible, bool)
-                or not isinstance(examples_visible, int)
-                or examples_visible not in {0, 1, 2, 3}
-                or not isinstance(correct, bool)
-            ):
-                raise R2TransferHostError("durable R2 target result is invalid")
-            if examples_visible in curves[family_index][str(arm)]:
-                raise R2TransferHostError("durable R2 target result is duplicate")
-            curves[family_index][str(arm)][examples_visible] = correct
-            bucket = str(arm)
         else:
-            raise R2TransferHostError("durable R2 result kind is invalid")
+            if result.get("kind") != "target-probe":
+                raise R2TransferHostError("durable target result kind is invalid")
+            if (
+                result.get("arm") != entry.arm
+                or result.get("examples_visible") != entry.examples_visible
+                or result.get("verification_error") is not None
+            ):
+                raise R2TransferHostError("durable R2 target result disagrees with call plan")
+            correct = result.get("correct")
+            if not isinstance(correct, bool):
+                raise R2TransferHostError("durable R2 target correctness is invalid")
+            assert entry.arm is not None
+            assert entry.examples_visible is not None
+            curves[entry.family_index][entry.arm][entry.examples_visible] = correct
+            bucket = entry.arm
 
         for resource_bucket in (resources["physical"], resources[bucket]):
             resource_bucket["calls"] += calls
             resource_bucket["input_tokens"] += input_tokens
             resource_bucket["output_tokens"] += output_tokens
 
-    specs = call_plan(PREREGISTRATION_COMMIT)
+    outcomes: list[R2FamilyOutcome] = []
     family_identity: dict[int, tuple[str, int]] = {}
-    for entry in specs:
+    for entry in plan:
         family_identity.setdefault(entry.family_index, (entry.regime, entry.seed))
         if family_identity[entry.family_index] != (entry.regime, entry.seed):
             raise R2TransferHostError("R2 call plan family identity is inconsistent")
 
-    outcomes: list[R2FamilyOutcome] = []
     for family_index in range(FAMILY_COUNT):
         if family_index not in source_correct:
             raise R2TransferHostError("R2 source result is missing")
@@ -528,7 +525,8 @@ def run_r2_transfer_host_campaign(
     )
     if client.identity != transport_identity(PREREGISTRATION_COMMIT):
         raise R2TransferHostError("R2 structured client identity is not frozen")
-    if client.call_count != 0 or client.next_plan_entry != call_plan(PREREGISTRATION_COMMIT)[0]:
+    first_entry = call_plan(PREREGISTRATION_COMMIT)[0]
+    if client.call_count != 0 or client.next_plan_entry != first_entry:
         raise R2TransferHostError("R2 structured client must begin at call-plan cursor zero")
 
     proposed_binding = _expected_binding(identity_snapshot)
@@ -599,13 +597,26 @@ def run_r2_transfer_host_campaign(
         bound_client.bind_entry(source_entry)
         try:
             learned = run_source_learning(bound_client, family)
-        except R2TransferHostError:
+        except R2TransferHostError as exc:
+            _write_host_failure(
+                root,
+                kind="execution_failure",
+                error=str(exc),
+                next_call_index=cursor,
+            )
             raise
         except StructureProposalError as exc:
-            raise _stop_after_semantic_failure(
+            error = str(exc)
+            _write_host_failure(
+                root,
+                kind="model_protocol_failure",
+                error=error,
+                next_call_index=cursor,
+            )
+            raise _stop_after_protocol_failure(
                 durable_run,
                 entry=source_entry,
-                exc=exc,
+                error=error,
             ) from exc
 
         durable_run.commit_question(
@@ -677,14 +688,44 @@ def run_r2_transfer_host_campaign(
                         step_index=0,
                         examples_visible=examples_visible,
                     )
-                except R2TransferHostError:
+                except R2TransferHostError as exc:
+                    _write_host_failure(
+                        root,
+                        kind="execution_failure",
+                        error=str(exc),
+                        next_call_index=cursor,
+                    )
                     raise
                 except StructureProposalError as exc:
-                    raise _stop_after_semantic_failure(
+                    error = str(exc)
+                    _write_host_failure(
+                        root,
+                        kind="model_protocol_failure",
+                        error=error,
+                        next_call_index=cursor,
+                    )
+                    raise _stop_after_protocol_failure(
                         durable_run,
                         entry=entry,
-                        exc=exc,
+                        error=error,
                     ) from exc
+
+                if probe.verification.error is not None:
+                    error = (
+                        "target response violates the structured answer contract: "
+                        + probe.verification.error
+                    )
+                    _write_host_failure(
+                        root,
+                        kind="model_protocol_failure",
+                        error=error,
+                        next_call_index=cursor,
+                    )
+                    raise _stop_after_protocol_failure(
+                        durable_run,
+                        entry=entry,
+                        error=error,
+                    )
 
                 reusable = probe.prompt.reusable_structure
                 durable_run.commit_question(
@@ -698,7 +739,7 @@ def run_r2_transfer_host_campaign(
                         "arm": arm_name,
                         "examples_visible": examples_visible,
                         "correct": probe.verification.correct,
-                        "verification_error": probe.verification.error,
+                        "verification_error": None,
                         "task_digest": probe.prompt.task_digest,
                         "reusable_structure_present": reusable is not None,
                         "reusable_structure_digest": _sha256(reusable),
