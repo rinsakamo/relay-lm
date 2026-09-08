@@ -80,8 +80,12 @@ def run_checks() -> tuple[CheckResult, ...]:
 
     p = {"visible": 0, "hidden": 0}
     q = {"visible": 0, "hidden": 1}
-    visible: Context = lambda state: state["visible"]
-    reveal_hidden: Context = lambda state: state["hidden"]
+
+    def visible(state: State) -> int:
+        return state["visible"]
+
+    def reveal_hidden(state: State) -> int:
+        return state["hidden"]
 
     omega = {"z1": "a0", "z2": "a1"}
     omega_prime = {"z1": "b0", "z2": "b0"}
