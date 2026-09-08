@@ -25,6 +25,20 @@ class GroundingWitness:
     independently_authenticated: bool
 
 
+@dataclass(frozen=True)
+class SubstrateWitness:
+    interface_behavior: tuple[str, ...]
+    internal_iso_classes: int
+
+
+@dataclass(frozen=True)
+class ClaimEvidence:
+    claim: str
+    return_value: str
+    independently_authenticated: bool
+    claim_relevant: bool
+
+
 Partition = Mapping[str, str]
 State = Mapping[str, int]
 Context = Callable[[State], int]
@@ -115,6 +129,26 @@ def grounding_probe(witness: GroundingWitness) -> bool:
     return witness.independently_authenticated
 
 
+def substrate_interface_probe(witness: SubstrateWitness) -> tuple[str, ...]:
+    return witness.interface_behavior
+
+
+def finite_discrete_categories_equivalent(
+    left: SubstrateWitness, right: SubstrateWitness
+) -> bool:
+    if left.internal_iso_classes < 0 or right.internal_iso_classes < 0:
+        raise ValueError("finite discrete-category sizes must be non-negative")
+    return left.internal_iso_classes == right.internal_iso_classes
+
+
+def g1_non_self_authentication(evidence: ClaimEvidence) -> bool:
+    return evidence.independently_authenticated
+
+
+def minimum_grounding_gate(evidence: ClaimEvidence) -> bool:
+    return evidence.independently_authenticated and evidence.claim_relevant
+
+
 def object_preserving_arrow_map_possible(source: Sequence[Arrow], target: Sequence[Arrow]) -> bool:
     target_endpoints = {(src, dst) for _, src, dst in target}
     return all((src, dst) in target_endpoints for _, src, dst in source)
@@ -157,6 +191,24 @@ def run_checks() -> tuple[CheckResult, ...]:
     )
     answer_probe_agrees = answer_probe(grounded) == answer_probe(self_authenticated)
     grounding_probe_differs = grounding_probe(grounded) != grounding_probe(self_authenticated)
+
+    substrate_a = SubstrateWitness(interface_behavior=("task:ok",), internal_iso_classes=1)
+    substrate_b = SubstrateWitness(interface_behavior=("task:ok",), internal_iso_classes=2)
+    substrate_interface_agrees = (
+        substrate_interface_probe(substrate_a) == substrate_interface_probe(substrate_b)
+    )
+    whole_categories_equivalent = finite_discrete_categories_equivalent(
+        substrate_a, substrate_b
+    )
+
+    external_nonce = ClaimEvidence(
+        claim="WORLD temperature > 30 C",
+        return_value="nonce=847291",
+        independently_authenticated=True,
+        claim_relevant=False,
+    )
+    nonce_passes_g1 = g1_non_self_authentication(external_nonce)
+    nonce_passes_minimum_grounding = minimum_grounding_gate(external_nonce)
 
     omega = {"z1": "a0", "z2": "a1"}
     omega_prime = {"z1": "b0", "z2": "b0"}
@@ -215,6 +267,16 @@ def run_checks() -> tuple[CheckResult, ...]:
             "C8",
             answer_probe_agrees and grounding_probe_differs,
             "same answer/authentic claim hides a difference in independent authentication",
+        ),
+        CheckResult(
+            "C9",
+            substrate_interface_agrees and not whole_categories_equivalent,
+            "declared interface behavior agrees although finite discrete realization categories are not equivalent",
+        ),
+        CheckResult(
+            "C10",
+            nonce_passes_g1 and not nonce_passes_minimum_grounding,
+            "independently authenticated external nonce is claim-irrelevant; G1 alone is insufficient",
         ),
         CheckResult(
             "C11",
