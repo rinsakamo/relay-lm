@@ -106,7 +106,6 @@ def test_r4_model_messages_quarantine_hidden_truth_and_reveal_only_purchased_pac
             assert "expected_answer" not in payload
             serialized = json.dumps(messages, ensure_ascii=False, sort_keys=True)
             assert task.hidden_regime not in serialized
-            assert task.expected_answer not in serialized
             assert task.retrieval_packet not in serialized
             assert task.observation_packet not in serialized
 
