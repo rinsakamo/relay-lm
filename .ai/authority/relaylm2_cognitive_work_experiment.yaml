@@ -1,7 +1,7 @@
 schema_version: 1
 id: relaylm2_cognitive_work_experiment
 owner_issue: 2187
-summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, separately versioned replacement preregistration/host after representation-only protocol defects, a non-R2 structured-output transport qualification, a third fresh-seed R2 preregistration and hard-bound physical host, the post-R2 R3 uniform retrieval-only null preregistration and hard-bound host, plus the held-out R4 availability-cue/value shift preregistration with frozen R2-tested policies and statistics.
+summary: RelayLM 2.0 same-model Cognitive Work allocation experiment, including deterministic matched-arm admission, bounded R1 physical smoke, historical R2 heterogeneous preregistration/execution, separately versioned replacement preregistration/host after representation-only protocol defects, a non-R2 structured-output transport qualification, a third fresh-seed R2 preregistration and hard-bound physical host, the post-R2 R3 uniform retrieval-only null preregistration and hard-bound host, plus the held-out R4 availability-cue/value shift preregistration and hard-bound repository-qualified host with frozen R2-tested policies and statistics.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r2-preregistration.md
 - docs/research/relaylm2-cognitive-work-r2-host.md
@@ -13,6 +13,7 @@ canonical_surfaces:
 - docs/research/relaylm2-cognitive-work-r3-uniform-preregistration.md
 - docs/research/relaylm2-cognitive-work-r3-uniform-host.md
 - docs/research/relaylm2-cognitive-work-r4-shift-preregistration.md
+- docs/research/relaylm2-cognitive-work-r4-shift-host.md
 implementation:
 - tools/v2_cognitive_work_r0.py
 - tools/v2_cognitive_work_r1_host.py
@@ -26,6 +27,7 @@ implementation:
 - tools/v2_cognitive_work_r3_uniform_preregistration.py
 - tools/v2_cognitive_work_r3_uniform_host.py
 - tools/v2_cognitive_work_r4_shift_preregistration.py
+- tools/v2_cognitive_work_r4_shift_host.py
 tests:
 - tests/unit/test_v2_cognitive_work_r0.py
 - tests/unit/test_v2_cognitive_work_r1_host.py
@@ -40,6 +42,7 @@ tests:
 - tests/unit/test_v2_cognitive_work_r3_uniform_preregistration.py
 - tests/unit/test_v2_cognitive_work_r3_uniform_host.py
 - tests/unit/test_v2_cognitive_work_r4_shift_preregistration.py
+- tests/unit/test_v2_cognitive_work_r4_shift_host.py
 references:
 - docs/research/relaylm2-intervention-harness.md
 depends_on:
