@@ -65,7 +65,7 @@ def test_frozen_r2_target_packets_are_uniquely_identifiable_at_three_examples() 
     ]
 
 
-def test_source_prompt_does_not_define_the_permutation_direction_equation() -> None:
+def test_source_prompt_names_fields_but_not_the_permutation_direction_equation() -> None:
     family = generate_families(R2_FROZEN_PREREGISTRATION_COMMIT)[0]
     system = build_source_learning_messages(family)[0]["content"]
 
@@ -73,6 +73,7 @@ def test_source_prompt_does_not_define_the_permutation_direction_equation() -> N
     # evaluator convention y[i] = x[permutation[i]] + offsets[i] (mod modulus).
     assert "permutation" in system
     assert "offsets" in system
+    assert "modulus" in system
     assert "y[" not in system
     assert "x[" not in system
-    assert "mod" not in system.lower()
+    assert "permutation[i]" not in system
