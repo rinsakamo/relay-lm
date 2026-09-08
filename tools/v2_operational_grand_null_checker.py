@@ -84,6 +84,22 @@ def deadline_admissible(duration: int, deadline: int) -> bool:
     return duration <= deadline
 
 
+def finite_function_exists(source_size: int, target_size: int) -> bool:
+    if source_size < 0 or target_size < 0:
+        raise ValueError("finite-set cardinalities must be non-negative")
+    return source_size == 0 or target_size > 0
+
+
+def finite_sets_isomorphic(left_size: int, right_size: int) -> bool:
+    if left_size < 0 or right_size < 0:
+        raise ValueError("finite-set cardinalities must be non-negative")
+    return left_size == right_size
+
+
+def terminal_probe(_: int) -> str:
+    return "*"
+
+
 def object_preserving_arrow_map_possible(source: Sequence[Arrow], target: Sequence[Arrow]) -> bool:
     target_endpoints = {(src, dst) for _, src, dst in target}
     return all((src, dst) in target_endpoints for _, src, dst in source)
@@ -106,6 +122,13 @@ def run_checks() -> tuple[CheckResult, ...]:
     coarse_composable = coarse_first[1] == coarse_second[0]
     first_budget = resource_transition(1, 1)
     second_budget = resource_transition(first_budget, 1) if first_budget is not None else None
+
+    set_a_size = 2
+    set_b_size = 1
+    a_reaches_b = finite_function_exists(set_a_size, set_b_size)
+    b_reaches_a = finite_function_exists(set_b_size, set_a_size)
+    a_b_isomorphic = finite_sets_isomorphic(set_a_size, set_b_size)
+    restricted_probe_agrees = terminal_probe(set_a_size) == terminal_probe(set_b_size)
 
     omega = {"z1": "a0", "z2": "a1"}
     omega_prime = {"z1": "b0", "z2": "b0"}
@@ -149,6 +172,16 @@ def run_checks() -> tuple[CheckResult, ...]:
             "C5",
             coarse_composable and first_budget == 0 and second_budget is None,
             "coarse endpoints compose, but remaining-budget typing rejects the second unit-cost action",
+        ),
+        CheckResult(
+            "C6",
+            a_reaches_b and b_reaches_a and not a_b_isomorphic,
+            "finite sets of sizes 2 and 1 have morphisms both ways but are not isomorphic",
+        ),
+        CheckResult(
+            "C7",
+            restricted_probe_agrees and not a_b_isomorphic,
+            "terminal probe identifies non-isomorphic finite sets; restricted probe agreement is not Yoneda",
         ),
         CheckResult(
             "C11",
