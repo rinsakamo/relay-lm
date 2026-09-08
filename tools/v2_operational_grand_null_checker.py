@@ -70,6 +70,20 @@ def representative_independent(
     )
 
 
+def resource_transition(remaining: int, cost: int) -> int | None:
+    if cost < 0:
+        raise ValueError("cost must be non-negative")
+    if cost > remaining:
+        return None
+    return remaining - cost
+
+
+def deadline_admissible(duration: int, deadline: int) -> bool:
+    if duration < 0 or deadline < 0:
+        raise ValueError("duration and deadline must be non-negative")
+    return duration <= deadline
+
+
 def object_preserving_arrow_map_possible(source: Sequence[Arrow], target: Sequence[Arrow]) -> bool:
     target_endpoints = {(src, dst) for _, src, dst in target}
     return all((src, dst) in target_endpoints for _, src, dst in source)
@@ -87,6 +101,9 @@ def run_checks() -> tuple[CheckResult, ...]:
     def reveal_hidden(state: State) -> int:
         return state["hidden"]
 
+    first_budget = resource_transition(1, 1)
+    second_budget = resource_transition(first_budget, 1) if first_budget is not None else None
+
     omega = {"z1": "a0", "z2": "a1"}
     omega_prime = {"z1": "b0", "z2": "b0"}
 
@@ -96,6 +113,10 @@ def run_checks() -> tuple[CheckResult, ...]:
     pi21 = canonical_map(e2, e1)
     pi10 = canonical_map(e1, e0)
     pi20 = canonical_map(e2, e0)
+
+    same_reachability = ("A", "B") == ("A", "B")
+    fast_admissible = deadline_admissible(1, 10)
+    slow_admissible = deadline_admissible(100, 10)
 
     coarse_actions: tuple[Arrow, ...] = (
         ("id_X", "X", "X"),
@@ -121,6 +142,11 @@ def run_checks() -> tuple[CheckResult, ...]:
             "quotient continuation depends on representative",
         ),
         CheckResult(
+            "C5",
+            first_budget == 0 and second_budget is None,
+            "remaining-budget boundary types X_1 -> X_0 and rejects a second unit-cost action",
+        ),
+        CheckResult(
             "C11",
             not partition_refines(omega_prime, omega),
             "changed observation family merges a distinction; it is not monotone refinement",
@@ -131,6 +157,11 @@ def run_checks() -> tuple[CheckResult, ...]:
             and partition_refines(e1, e0)
             and compose_maps(pi21, pi10) == pi20,
             "canonical maps over nested exact quotients compose coherently",
+        ),
+        CheckResult(
+            "C13",
+            same_reachability and fast_admissible and not slow_admissible,
+            "same A -> B reachability has different operational validity under a deadline",
         ),
         CheckResult(
             "C15",
