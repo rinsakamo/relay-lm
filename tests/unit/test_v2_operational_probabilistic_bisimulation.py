@@ -34,6 +34,16 @@ def test_stochastic_comparison_passes() -> None:
     assert all(result.passed for result in results)
 
 
+def test_exact_probability_type_rejects_float_input() -> None:
+    invalid = ProbLTS(
+        ("s", "o"),
+        (ProbTransition("s", "respond", "o", 1.0),),  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(TypeError, match="fractions.Fraction"):
+        validate_prob_lts(invalid)
+
+
 def test_probabilities_must_normalize_per_state_and_rich_label() -> None:
     invalid = ProbLTS(
         ("s", "o0", "o1"),
