@@ -5,7 +5,8 @@ summary: >-
   for Core 1.0. Stable non-secret provider/model/context facts are declared by
   the physical transaction, the first provider request is semantic work, and
   request or explicit Pass-2 failures stop later scenarios without changing
-  Core cognition semantics.
+  Core cognition semantics. The controller/host ownership boundary follows the
+  v2-proven rule: controller observes and assembles; host validates and freezes.
 owner_issue: 2297
 canonical_surfaces:
 - docs/reference/actual-model-lm-studio-semantic-first.md
@@ -15,8 +16,10 @@ references:
 - docs/contracts/provider-reasoning.md
 implementation:
 - src/relaylm/actual_model_stage_r_lm_studio_semantic_first.py
+- .ai/skills/lm-studio-semantic-first-preflight/SKILL.md
 tests:
 - tests/unit/test_actual_model_stage_r_lm_studio_semantic_first.py
+- tests/repository/test_lm_studio_semantic_first_preflight_ownership.py
 depends_on:
 - actual_model_evaluation
 - cognitive_turn
