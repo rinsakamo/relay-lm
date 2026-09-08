@@ -1,7 +1,11 @@
 schema_version: 1
 id: relaylm2_physical_execution
 owner_issue: 2363
-summary: RelayLM 2.0 cross-experiment physical execution procedure authority: read-only controller setup, host-owned final live binding validation and freeze/authorization, exactly-once host entry, and no controller-side duplicate freeze or durable-run initialization.
+summary: >-
+  RelayLM 2.0 cross-experiment physical execution procedure authority for
+  read-only controller setup, host-owned final live binding validation and
+  freeze/authorization, exactly-once host entry, and no controller-side
+  duplicate freeze or durable-run initialization.
 canonical_surfaces:
 - docs/reference/relaylm2-physical-execution-preflight.md
 implementation:
