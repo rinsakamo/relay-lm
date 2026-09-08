@@ -125,15 +125,13 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
         in extraction_content
     )
     assert (
-        "Emit every distinct useful Continuity meaning present; do not choose only one best kind."
-        in extraction_content
+        "Before emitting `continuity_candidates`, scan each of `referent`, `unresolved`, "
+        "and `active_task` independently." in extraction_content
     )
     assert (
         "New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical."
         in extraction_content
     )
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
     assert (
         "every new set/resolve transition must include the current Input Event ID `evt-now` in `sources`"
         in extraction_content
@@ -178,24 +176,18 @@ def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
     extraction_content = extraction_messages[1]["content"]
     assert isinstance(extraction_content, str)
 
-    assert "Continuity transition decision:" in extraction_content
-    assert "new useful meaning -> emit `set` with a new stable key" in extraction_content
-    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
-    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
     assert (
-        "Before concluding there are no Continuity candidates, check `unresolved` independently"
-        in extraction_content
+        "Before emitting `continuity_candidates`, scan each of `referent`, `unresolved`, "
+        "and `active_task` independently." in extraction_content
     )
     assert (
-        "newly establishes an explicit open question or unknown value" in extraction_content
+        "Within each kind, decide all applicable transitions: new or updated useful meaning "
+        "-> `set`; unchanged accepted meaning -> no candidate; explicitly resolved or completed "
+        "accepted meaning -> `resolve`." in extraction_content
     )
     assert (
-        "emit a new `unresolved` set when no accepted unresolved item already represents that open issue"
-        in extraction_content
-    )
-    assert (
-        "even when related accepted `referent` or `active_task` meanings are unchanged"
-        in extraction_content
+        "Finish all three kind scans before emitting `continuity_candidates`; a decision in "
+        "one kind must not suppress another kind." in extraction_content
     )
     assert (
         "An explicitly maintained unknown value is itself an `unresolved` meaning"
@@ -208,6 +200,15 @@ def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
     assert (
         "A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it"
         in extraction_content
+    )
+    assert "Continuity transition decision:" not in extraction_content
+    assert (
+        "Before concluding there are no Continuity candidates, check `unresolved` independently"
+        not in extraction_content
+    )
+    assert (
+        "If related accepted referent/task meanings are unchanged and the current Event newly establishes an unknown value"
+        not in extraction_content
     )
 
 
