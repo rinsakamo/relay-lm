@@ -13,15 +13,14 @@ from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPass
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
+_ACCEPTED_CONTINUITY = {
+    "kind": "active_task",
+    "key": "prepare_release_notes",
+    "value": "prepare the release notes",
+    "epistemic_role": "user_assertion",
+}
 _ACCEPTED_CONTENT = json.dumps(
-    {
-        "continuity": {
-            "kind": "active_task",
-            "key": "prepare_release_notes",
-            "value": "prepare the release notes",
-            "epistemic_role": "user_assertion",
-        }
-    },
+    {"continuity": _ACCEPTED_CONTINUITY},
     ensure_ascii=False,
     separators=(",", ":"),
     sort_keys=True,
@@ -121,11 +120,10 @@ def test_pass2_repeats_only_accepted_continuity_as_comparison_baseline() -> None
 
     baseline_text = extraction_prompt.split(marker_open, 1)[1].split(marker_close, 1)[0]
     assert json.loads(baseline_text) == [
-        {
-            "content": _ACCEPTED_CONTENT,
-            "sources": ["evt-accepted"],
-        }
+        {"continuity": _ACCEPTED_CONTINUITY}
     ]
+    assert '"sources"' not in baseline_text
+    assert "evt-accepted" not in baseline_text
     assert "Earlier assistant wording" not in baseline_text
     assert "comparison-only duplicate" in extraction_prompt
     assert "new Event source alone does not make an unchanged accepted meaning an update" in extraction_prompt
