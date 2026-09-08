@@ -66,6 +66,19 @@ def test_non_congruent_state_merge_is_rejected_before_category_derivation() -> N
         raise AssertionError("non-congruent quotient must be rejected")
 
 
+def test_duration_difference_prevents_operational_state_merge() -> None:
+    lts = LTS(
+        ("x0", "x1", "y0", "y1"),
+        (
+            Transition("x0", "go", "y0", duration=1, cost=1),
+            Transition("x1", "go", "y1", duration=100, cost=1),
+        ),
+    )
+    partition = {"x0": "X", "x1": "X", "y0": "Y", "y1": "Y"}
+
+    assert not transition_congruence(lts, partition)
+
+
 def test_congruent_quotient_is_a_well_defined_lts() -> None:
     lts = LTS(
         ("x0", "x1", "y0", "y1"),
