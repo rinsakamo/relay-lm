@@ -1,7 +1,7 @@
 """Finite comparison of graph, LTS, category, and DAG views for #2209.
 
 This is research falsification apparatus, not RelayLM runtime or architecture
-authority.  It asks which representation is sufficient for the current finite
+authority. It asks which representation is sufficient for the current finite
 Operational Grand Null witnesses without promoting any representation to an
 ontology.
 """
@@ -38,6 +38,7 @@ class ComparisonResult:
 Path = tuple[str, ...]
 Partition = Mapping[str, str]
 TimedState = tuple[str, int]
+TransitionSignature = tuple[str, str, int, int]
 
 
 def underlying_graph(lts: LTS) -> frozenset[tuple[str, str]]:
@@ -104,14 +105,17 @@ def transition_congruence(lts: LTS, partition: Partition) -> bool:
     if set(partition) != set(lts.states):
         raise ValueError("partition must cover every LTS state exactly once")
 
-    signatures: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {}
+    signatures: dict[str, frozenset[TransitionSignature]] = {}
     for state in lts.states:
-        targets: dict[str, set[str]] = {}
-        for transition in lts.transitions:
-            if transition.src == state:
-                targets.setdefault(transition.action, set()).add(partition[transition.dst])
-        signatures[state] = tuple(
-            sorted((action, tuple(sorted(classes))) for action, classes in targets.items())
+        signatures[state] = frozenset(
+            (
+                transition.action,
+                partition[transition.dst],
+                transition.duration,
+                transition.cost,
+            )
+            for transition in lts.transitions
+            if transition.src == state
         )
 
     return all(
@@ -123,7 +127,7 @@ def transition_congruence(lts: LTS, partition: Partition) -> bool:
 
 def quotient_lts(lts: LTS, partition: Partition) -> LTS:
     if not transition_congruence(lts, partition):
-        raise ValueError("partition is not a labeled-transition congruence")
+        raise ValueError("partition is not a richly labeled-transition congruence")
 
     states = tuple(sorted(set(partition.values())))
     transitions = tuple(
@@ -240,6 +244,18 @@ def run_comparison() -> tuple[ComparisonResult, ...]:
     bad_partition = {"x0": "X", "x1": "X", "y": "Y", "z": "Z"}
     bad_congruence = transition_congruence(bad_lts, bad_partition)
 
+    label_sensitive_lts = LTS(
+        ("x0", "x1", "y0", "y1"),
+        (
+            Transition("x0", "go", "y0", duration=1, cost=1),
+            Transition("x1", "go", "y1", duration=100, cost=1),
+        ),
+    )
+    label_partition = {"x0": "X", "x1": "X", "y0": "Y", "y1": "Y"}
+    label_sensitive_congruence = transition_congruence(
+        label_sensitive_lts, label_partition
+    )
+
     good_lts = LTS(
         ("x0", "x1", "y0", "y1"),
         (
@@ -279,12 +295,12 @@ def run_comparison() -> tuple[ComparisonResult, ...]:
         ComparisonResult(
             "FREE_CATEGORY_IS_DERIVED_PATH_CLOSURE",
             lts_paths == category_paths,
-            "finite free-category morphisms equal the labeled LTS paths",
+            "finite free-category morphisms equal the action-labeled LTS paths",
         ),
         ComparisonResult(
             "QUOTIENT_REQUIRES_TRANSITION_CONGRUENCE",
-            not bad_congruence,
-            "merging x0/x1 is invalid when the same action reaches different quotient classes",
+            not bad_congruence and not label_sensitive_congruence,
+            "state merging fails when target classes or operational edge labels differ",
         ),
         ComparisonResult(
             "CONGRUENT_QUOTIENT_REMAINS_LTS_DERIVABLE",
@@ -309,9 +325,10 @@ def main() -> int:
     print(f"{passed}/{len(results)} comparisons passed")
     if passed == len(results):
         print(
-            "VERDICT: current finite evidence favors ambient labeled transitions + "
-            "exact congruence as the simpler core; category remains derivable "
-            "compositional IR, and DAG remains a time-unrolled history projection"
+            "VERDICT: current finite evidence favors richly labeled transitions + "
+            "exact declared transition congruence as the simpler core; category "
+            "remains derivable compositional IR, and DAG remains a time-unrolled "
+            "history projection"
         )
     return 0 if passed == len(results) else 1
 
