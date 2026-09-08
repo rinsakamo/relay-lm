@@ -43,6 +43,8 @@ Partition = Mapping[str, str]
 State = Mapping[str, int]
 Context = Callable[[State], int]
 Arrow = tuple[str, str, str]
+ProcessSegment = tuple[int, int]
+Path = tuple[str, ...]
 
 
 def threshold_counterexample(
@@ -52,6 +54,70 @@ def threshold_counterexample(
         if abs(x - y) <= epsilon and abs(y - z) <= epsilon and abs(x - z) > epsilon:
             return x, y, z
     return None
+
+
+def deterministic_probes_agree(
+    domain: Sequence[int],
+    left: Callable[[int], int],
+    right: Callable[[int], int],
+) -> bool:
+    return all(left(point) == right(point) for point in domain)
+
+
+def compose_process_segments(first: ProcessSegment, second: ProcessSegment) -> ProcessSegment:
+    if first[1] != second[0]:
+        raise ValueError("process segments do not share a composable boundary")
+    return first[0], second[1]
+
+
+def transition_paths(
+    nodes: Sequence[str],
+    edges: Sequence[tuple[str, str]],
+    max_edges: int,
+) -> frozenset[Path]:
+    if max_edges < 0:
+        raise ValueError("max_edges must be non-negative")
+    paths: set[Path] = {(node,) for node in nodes}
+    frontier = set(paths)
+    adjacency: dict[str, tuple[str, ...]] = {
+        node: tuple(dst for src, dst in edges if src == node) for node in nodes
+    }
+    for _ in range(max_edges):
+        next_frontier: set[Path] = set()
+        for path in frontier:
+            for dst in adjacency.get(path[-1], ()):
+                extended = path + (dst,)
+                if extended not in paths:
+                    paths.add(extended)
+                    next_frontier.add(extended)
+        frontier = next_frontier
+        if not frontier:
+            break
+    return frozenset(paths)
+
+
+def free_category_morphisms(
+    nodes: Sequence[str],
+    edges: Sequence[tuple[str, str]],
+    max_edges: int,
+) -> frozenset[Path]:
+    if max_edges < 0:
+        raise ValueError("max_edges must be non-negative")
+    morphisms: set[Path] = {(node,) for node in nodes}
+    morphisms.update((src, dst) for src, dst in edges)
+    changed = True
+    while changed:
+        changed = False
+        current = tuple(morphisms)
+        for left, right in product(current, repeat=2):
+            left_edges = len(left) - 1
+            right_edges = len(right) - 1
+            if left[-1] == right[0] and left_edges + right_edges <= max_edges:
+                composite = left + right[1:]
+                if composite not in morphisms:
+                    morphisms.add(composite)
+                    changed = True
+    return frozenset(morphisms)
 
 
 def partition_refines(fine: Partition, coarse: Partition) -> bool:
@@ -157,6 +223,23 @@ def object_preserving_arrow_map_possible(source: Sequence[Arrow], target: Sequen
 def run_checks() -> tuple[CheckResult, ...]:
     c0_witness = threshold_counterexample((0.0, 0.75, 1.5), 1.0)
 
+    def f(_: int) -> int:
+        return 0
+
+    def g(point: int) -> int:
+        return 1 if point == 2 else 0
+
+    sampled_domain = (0, 1)
+    declared_domain = (0, 1, 2)
+    sample_agrees = deterministic_probes_agree(sampled_domain, f, g)
+    declared_domain_agrees = deterministic_probes_agree(declared_domain, f, g)
+
+    p_segment = (0, 1)
+    q_segment = (1, 2)
+    h01 = (0, 1)
+    h12 = (1, 2)
+    composed_segment = compose_process_segments(p_segment, q_segment)
+
     p = {"visible": 0, "hidden": 0}
     q = {"visible": 0, "hidden": 1}
 
@@ -225,6 +308,11 @@ def run_checks() -> tuple[CheckResult, ...]:
     fast_admissible = deadline_admissible(1, 10)
     slow_admissible = deadline_admissible(100, 10)
 
+    path_nodes = ("X", "Y", "Z")
+    path_edges = (("X", "Y"), ("Y", "Z"))
+    baseline_paths = transition_paths(path_nodes, path_edges, max_edges=2)
+    free_paths = free_category_morphisms(path_nodes, path_edges, max_edges=2)
+
     coarse_actions: tuple[Arrow, ...] = (
         ("id_X", "X", "X"),
         ("id_Y", "Y", "Y"),
@@ -236,6 +324,16 @@ def run_checks() -> tuple[CheckResult, ...]:
             "C0",
             c0_witness is not None,
             f"epsilon-threshold non-transitivity witness={c0_witness}",
+        ),
+        CheckResult(
+            "C1",
+            sample_agrees and not declared_domain_agrees,
+            "systems agree on tested {0,1} but differ at declared probe 2; non-rejection is not exact identity",
+        ),
+        CheckResult(
+            "C2",
+            composed_segment == (0, 2) and h01 != h12,
+            "0->1 and 1->2 compose via shared boundary 1 although the complete histories are distinct objects",
         ),
         CheckResult(
             "C3",
@@ -296,6 +394,11 @@ def run_checks() -> tuple[CheckResult, ...]:
             and fast_admissible
             and not slow_admissible,
             "same A -> B reachability has different operational validity under a deadline",
+        ),
+        CheckResult(
+            "C14",
+            baseline_paths == free_paths,
+            "free-category morphisms are exactly the reflexive finite paths already present in the transition model",
         ),
         CheckResult(
             "C15",
