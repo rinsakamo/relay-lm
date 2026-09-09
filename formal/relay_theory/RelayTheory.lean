@@ -3,4 +3,5 @@ import RelayTheory.Access
 import RelayTheory.Transform
 import RelayTheory.Alignment
 import RelayTheory.HigherOrder
+import RelayTheory.Stochastic
 import RelayTheory.Countermodels
