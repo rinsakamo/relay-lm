@@ -220,11 +220,12 @@ theorem finKernel_compose_identity_before {m n : Nat} (k : FinKernel m n) :
             apply sumFin_congr
             intro y
             by_cases h : y = x
-            · simp [h, h.symm]
+            · subst y
+              rw [if_pos rfl, Rat.one_mul, if_pos rfl]
             · have h' : x ≠ y := by
                 intro e
                 exact h e.symm
-              simp [h, h']
+              rw [if_neg h', if_neg h, Rat.zero_mul]
     _ = k x z := sumFin_single x (fun y => k y z)
 
 /-- Exact stochastic validity is closed under generic finite composition. -/
