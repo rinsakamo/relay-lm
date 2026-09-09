@@ -15,6 +15,7 @@ from relaylm.actual_model_fast_screening_artifacts import (
     bind_fast_screening_timing_artifact,
     write_fast_screening_timing_artifact,
 )
+from relaylm.actual_model_request_evidence import ActualModelRequestEvidenceRecorder
 from relaylm.providers.openai_compatible import ProviderProtocolError
 
 
@@ -26,6 +27,17 @@ class _FailingExtractionProvider:
 class _UnsafeFailureProvider:
     async def generate_extraction(self, _):
         raise RuntimeError("raw semantic payload must not be persisted")
+
+
+def _request_recorder() -> ActualModelRequestEvidenceRecorder:
+    return ActualModelRequestEvidenceRecorder(
+        execution_id=f"amx-{'a' * 64}",
+        run_id=f"amr-{'b' * 64}",
+        scenario_id="request-failure-diagnostic-v1",
+        scenario_revision="sha256:scenario-revision",
+        provider_identity="provider-v1",
+        adapter_identity="openai_compatible",
+    )
 
 
 def test_instrumented_pass2_failure_records_sanitized_provider_exception_identity() -> None:
@@ -70,6 +82,82 @@ def test_untrusted_exception_message_is_not_persisted() -> None:
     call = recorder.calls[0]
     assert call.failure_exception_type == "RuntimeError"
     assert call.failure_exception_message is None
+
+
+def test_request_failure_records_same_bounded_provider_protocol_diagnostic_without_rekeying() -> None:
+    recorder = _request_recorder()
+    request_body = {
+        "model": "gemma-test",
+        "messages": [{"role": "user", "content": "semantic request"}],
+        "stream": False,
+    }
+    captured = None
+
+    with pytest.raises(ProviderProtocolError, match="upstream request failed"):
+        with recorder.capture(turn_index=1, pass_identity="pass1"):
+            captured = recorder.record(
+                turn_index=1,
+                pass_identity="pass1",
+                request_body=request_body,
+            )
+            raise ProviderProtocolError(" upstream   request\nfailed: 503 ")
+
+    assert captured is not None
+    record = recorder.records[0]
+    assert record.evidence_id == captured.evidence_id
+    assert record.request_body_sha256 == captured.request_body_sha256
+    assert record.request_body == captured.request_body
+    assert record.failure_exception_type == "ProviderProtocolError"
+    assert record.failure_exception_message == "upstream request failed: 503"
+    assert record.to_mapping()["failure"] == {
+        "exception_type": "ProviderProtocolError",
+        "exception_message": "upstream request failed: 503",
+    }
+
+
+def test_request_failure_never_persists_untrusted_exception_message() -> None:
+    recorder = _request_recorder()
+    secret = "secret-token=do-not-persist"
+
+    with pytest.raises(RuntimeError, match="secret-token"):
+        with recorder.capture(turn_index=1, pass_identity="pass1"):
+            recorder.record(
+                turn_index=1,
+                pass_identity="pass1",
+                request_body={
+                    "model": "gemma-test",
+                    "messages": [{"role": "user", "content": "semantic request"}],
+                    "stream": False,
+                },
+            )
+            raise RuntimeError(secret)
+
+    record = recorder.records[0]
+    assert record.failure_exception_type == "RuntimeError"
+    assert record.failure_exception_message is None
+    serialized = json.dumps(record.to_mapping(), ensure_ascii=False)
+    assert secret not in serialized
+
+
+def test_request_failure_diagnostic_is_bounded() -> None:
+    recorder = _request_recorder()
+
+    with pytest.raises(ProviderProtocolError):
+        with recorder.capture(turn_index=1, pass_identity="pass1"):
+            recorder.record(
+                turn_index=1,
+                pass_identity="pass1",
+                request_body={
+                    "model": "gemma-test",
+                    "messages": [{"role": "user", "content": "semantic request"}],
+                    "stream": False,
+                },
+            )
+            raise ProviderProtocolError("x" * 700)
+
+    message = recorder.records[0].failure_exception_message
+    assert message is not None
+    assert len(message) == 512
 
 
 def test_failed_pass2_writes_separate_diagnostic_sidecar_without_changing_timing_wire(
