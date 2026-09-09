@@ -1,11 +1,11 @@
 # Relay Theory 0.1 — bounded Lean core
 
-This directory is an isolated Lean 4 formalization lane for Relay Theory issue #2403.
+This directory is an isolated Lean 4 formalization lane for Relay Theory.
 It is **not** a RelayLM runtime dependency and does not authorize changes to `v1` or `v2`.
 
-The first milestone intentionally formalizes only the smallest finite witness surface
-extracted by #2396 / PR #2400. It does not claim a universal probability ontology,
-a universal minimal axiom system, or a category-theoretic foundation.
+The formalization intentionally follows already-earned finite Grand Null results. It does not
+claim a universal probability ontology, a universal minimal axiom system, a global-world ontology,
+or a category-theoretic foundation.
 
 ## Python ↔ Lean semantic correspondence
 
@@ -22,25 +22,55 @@ The bounded Lean roles correspond as follows:
 | `ACCESS_SPECIFICATION` | `AccessSpec`, `PureForgetting` |
 | `EXPERIMENT_TRANSFORMATION` | `TransformCommand`, `AccessSpec.admits`, `ResponseTable` |
 | derived behavioral quotient/equivalence | `OperationalSignature`, `BehaviorEquivalent` |
-| `EXPLICIT_ALIGNMENT_INPUT` | `JointLaw`, `JointLaw.marginalA`, `JointLaw.marginalB` |
-| `REALIZABILITY_DOMAIN_CERTIFICATE` | `RealizabilityCertificate.Valid` |
+| `EXPLICIT_ALIGNMENT_INPUT` | `JointLaw`, `TripleLaw`, exact marginal projections |
+| `REALIZABILITY_DOMAIN_CERTIFICATE` | `RealizabilityCertificate.Valid`, `PairContextFamily.RealizedBy` |
 | `EXACT_EQUALITY_BOUNDARY` | Lean propositional equality over the exact finite structures |
 
-The current probability representation uses exact quarter units because every first
-formal milestone countermodel only needs masses in `{0, 1/4, 1/2, 3/4, 1}`. This is a
-bounded theorem model, not a claim that quarter-valued probability is fundamental.
+The current probability representation uses exact quarter units because the formalized witness
+families only need masses in `{0, 1/4, 1/2, 3/4, 1}`. This is a bounded theorem model, not a
+claim that quarter-valued probability is fundamental.
 
-## Mechanically checked first milestone
+## First formal milestone — #2403 / PR #2404
 
-`RelayTheory.Countermodels.finiteCore_countermodel_bundle` checks together that:
+`RelayTheory.Countermodels.finiteCore_countermodel_bundle` mechanically checks that:
 
 1. equal support does not imply equal exact law;
 2. an unresolved selectable response family is not one resolved law;
 3. visible information changes transform admissibility;
 4. behavioral equivalence is derived from exact public signature;
 5. pure observational forgetting composes;
-6. equal one-context marginals do not determine the exact joint alignment;
+6. equal one-context marginals do not determine the exact 2x2 joint alignment;
 7. realizability certificate validation is exact and fail-closed.
+
+## Higher-order alignment and gluing — #2413
+
+`RelayTheory.HigherOrder` ports the already-earned finite Grand Null results from #2374 and #2379
+into the theorem surface.
+
+The non-uniqueness witness uses exact even/odd parity triple laws. They have identical exact
+marginals on all three binary pairs but unequal full triple joints, and a triple parity probe
+separates them. Therefore pairwise alignment does not determine one unique higher-order joint.
+
+The non-existence witness uses fair anti-correlation on all three local contexts `AB`, `BC`, and
+`AC`. Each local pair law is valid and all singleton overlaps agree exactly, yet no binary triple
+can realize all three pair laws simultaneously. Matched positive controls prove that the fair
+equality triangle has an explicit global witness and that deleting one anti-correlation edge
+restores an explicit global completion.
+
+The bounded conclusions are only:
+
+```text
+same all pairwise data
+  != unique global joint
+
+locally valid + overlap-consistent pairwise data
+  != guaranteed global joint existence
+```
+
+This does not solve the general marginal polytope, assume a sheaf/presheaf, or establish an
+arbitrary `n`-world hierarchy.
+
+## Proof / CI authority
 
 The dedicated CI lane does not relax this repository's full-SHA action policy. It:
 
@@ -52,6 +82,6 @@ The dedicated CI lane does not relax this repository's full-SHA action policy. I
   `46024e005996495c65ef609368e11ab39c4222e3`, builds it with the project toolchain,
   and audits the compiled `RelayTheory` kernel environment.
 
-Accepted theorem surface must not depend on `sorry`, `native_decide`, or home-grown
-axioms. Markov / FinStoch reconstruction is intentionally downstream. No Mathlib,
-category, MDP, SCM, game, or product-runtime dependency is imported here.
+Accepted theorem surfaces must not depend on `sorry`, `admit`, `native_decide`, or home-grown
+substantive axioms. Markov / FinStoch/category reconstruction remains downstream. No Mathlib,
+SCM, MDP, game, contextuality, sheaf, or product-runtime dependency is imported here.
