@@ -85,45 +85,75 @@ theorem finPair_flatten_roundtrip {m n : Nat} (x : Fin (m * n)) :
     finPairTransport.toFun (finPairTransport.invFun x) = x :=
   finPairTransport.right_inv x
 
+/-- Exact finite summation is invariant under an exact cardinality cast. -/
+theorem sumFin_cast {m n : Nat} (h : m = n) (f : Fin m → Rat) :
+    sumFin m f = sumFin n (fun i => f (Fin.cast h.symm i)) := by
+  cases h
+  rfl
+
 /-- Exact finite summation splits into a left prefix and right translated block. -/
 theorem sumFin_add_split : ∀ (m n : Nat) (f : Fin (m + n) → Rat),
     sumFin (m + n) f =
       sumFin m (fun i => f (Fin.castAdd n i)) +
       sumFin n (fun j => f (Fin.natAdd m j))
   | 0, n, f => by
-      simp only [Nat.zero_add] at f ⊢
-      rw [sumFin_zero, Rat.zero_add]
-      apply sumFin_congr
-      intro j
-      apply congrArg f
-      apply Fin.eq_of_val_eq
-      rfl
+      let h : 0 + n = n := Nat.zero_add n
+      calc
+        sumFin (0 + n) f
+            = sumFin n (fun j => f (Fin.cast h.symm j)) := sumFin_cast h f
+        _ = sumFin 0 (fun i => f (Fin.castAdd n i)) +
+              sumFin n (fun j => f (Fin.natAdd 0 j)) := by
+              rw [sumFin_zero, Rat.zero_add]
+              apply sumFin_congr
+              intro j
+              apply congrArg f
+              apply Fin.eq_of_val_eq
+              rfl
   | Nat.succ m, n, f => by
-      simp only [Nat.succ_add] at f ⊢
-      rw [sumFin_succ]
-      rw [sumFin_succ]
-      rw [sumFin_add_split m n (fun i => f i.succ)]
-      have h0 : f 0 = f (Fin.castAdd n (0 : Fin (Nat.succ m))) := by
+      let h : Nat.succ m + n = Nat.succ (m + n) := Nat.succ_add m n
+      let f' : Fin (Nat.succ (m + n)) → Rat :=
+        fun i => f (Fin.cast h.symm i)
+      have h0 : f' 0 = f (Fin.castAdd n (0 : Fin (Nat.succ m))) := by
+        dsimp [f']
         apply congrArg f
         apply Fin.eq_of_val_eq
         rfl
       have hleft :
-          sumFin m (fun i => f (Fin.castAdd n i).succ) =
+          sumFin m (fun i => f' (Fin.castAdd n i).succ) =
             sumFin m (fun i => f (Fin.castAdd n i.succ)) := by
         apply sumFin_congr
         intro i
+        dsimp [f']
         apply congrArg f
         apply Fin.eq_of_val_eq
         rfl
       have hright :
-          sumFin n (fun j => f (Fin.natAdd m j).succ) =
+          sumFin n (fun j => f' (Fin.natAdd m j).succ) =
             sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j)) := by
         apply sumFin_congr
         intro j
+        dsimp [f']
         apply congrArg f
         apply Fin.eq_of_val_eq
         grind
-      rw [h0, hleft, hright]
-      exact (Rat.add_assoc _ _ _).symm
+      calc
+        sumFin (Nat.succ m + n) f
+            = sumFin (Nat.succ (m + n)) f' := sumFin_cast h f
+        _ = f' 0 + sumFin (m + n) (fun i => f' i.succ) := rfl
+        _ = f' 0 +
+              (sumFin m (fun i => f' (Fin.castAdd n i).succ) +
+               sumFin n (fun j => f' (Fin.natAdd m j).succ)) := by
+              rw [sumFin_add_split m n (fun i => f' i.succ)]
+        _ = f (Fin.castAdd n (0 : Fin (Nat.succ m))) +
+              (sumFin m (fun i => f (Fin.castAdd n i.succ)) +
+               sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j))) := by
+              rw [h0, hleft, hright]
+        _ = (f (Fin.castAdd n (0 : Fin (Nat.succ m))) +
+              sumFin m (fun i => f (Fin.castAdd n i.succ))) +
+              sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j)) :=
+              (Rat.add_assoc _ _ _).symm
+        _ = sumFin (Nat.succ m) (fun i => f (Fin.castAdd n i)) +
+              sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j)) := by
+              rw [sumFin_succ]
 
 end RelayTheory
