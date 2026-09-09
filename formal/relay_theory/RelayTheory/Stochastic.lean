@@ -14,6 +14,18 @@ def qHalf : Rat := (1 : Rat) / 2
 def qQuarter : Rat := (1 : Rat) / 4
 def qThreeQuarter : Rat := (3 : Rat) / 4
 
+theorem qHalf_pos : 0 < qHalf := by
+  rw [qHalf, Rat.div_def]
+  exact Rat.mul_pos (by decide) (Rat.inv_pos.mpr (by decide))
+
+theorem qQuarter_pos : 0 < qQuarter := by
+  rw [qQuarter, Rat.div_def]
+  exact Rat.mul_pos (by decide) (Rat.inv_pos.mpr (by decide))
+
+theorem qThreeQuarter_pos : 0 < qThreeQuarter := by
+  rw [qThreeQuarter, Rat.div_def]
+  exact Rat.mul_pos (by decide) (Rat.inv_pos.mpr (by decide))
+
 /-- A fully resolved exact stochastic channel on one binary interface. -/
 abbrev BinaryKernel := Bool → Bool → Rat
 
@@ -67,17 +79,40 @@ def noisyFlipKernel : BinaryKernel
   | true, false => qThreeQuarter
   | true, true => qQuarter
 
+theorem fairKernel_pos (x y : Bool) : 0 < fairKernel x y := by
+  simpa [fairKernel] using qHalf_pos
+
+theorem biasKernel_pos (x y : Bool) : 0 < biasKernel x y := by
+  cases x <;> cases y
+  · simpa [biasKernel] using qThreeQuarter_pos
+  · simpa [biasKernel] using qQuarter_pos
+  · simpa [biasKernel] using qQuarter_pos
+  · simpa [biasKernel] using qThreeQuarter_pos
+
+theorem noisyFlipKernel_pos (x y : Bool) : 0 < noisyFlipKernel x y := by
+  cases x <;> cases y
+  · simpa [noisyFlipKernel] using qQuarter_pos
+  · simpa [noisyFlipKernel] using qThreeQuarter_pos
+  · simpa [noisyFlipKernel] using qThreeQuarter_pos
+  · simpa [noisyFlipKernel] using qQuarter_pos
+
 theorem fairKernel_valid : BinaryKernel.Valid fairKernel := by
   intro x
+  refine ⟨Rat.le_of_lt (fairKernel_pos x false),
+    Rat.le_of_lt (fairKernel_pos x true), ?_⟩
   cases x <;> grind [fairKernel, BinaryKernel.rowSum, qHalf]
 
 theorem biasKernel_valid : BinaryKernel.Valid biasKernel := by
   intro x
+  refine ⟨Rat.le_of_lt (biasKernel_pos x false),
+    Rat.le_of_lt (biasKernel_pos x true), ?_⟩
   cases x <;>
     grind [biasKernel, BinaryKernel.rowSum, qQuarter, qThreeQuarter]
 
 theorem noisyFlipKernel_valid : BinaryKernel.Valid noisyFlipKernel := by
   intro x
+  refine ⟨Rat.le_of_lt (noisyFlipKernel_pos x false),
+    Rat.le_of_lt (noisyFlipKernel_pos x true), ?_⟩
   cases x <;>
     grind [noisyFlipKernel, BinaryKernel.rowSum, qQuarter, qThreeQuarter]
 
@@ -86,16 +121,18 @@ theorem compose_identity_after (k : BinaryKernel) :
     BinaryKernel.compose BinaryKernel.identity k = k := by
   funext x z
   cases z <;>
-    simp only [BinaryKernel.compose, BinaryKernel.identity, if_pos, if_neg,
-      Rat.mul_one, Rat.mul_zero, Rat.add_zero, Rat.zero_add]
+    simp [BinaryKernel.compose, BinaryKernel.identity,
+      Rat.mul_one, Rat.mul_zero, Rat.one_mul, Rat.zero_mul,
+      Rat.add_zero, Rat.zero_add]
 
 /-- Left identity for exact binary stochastic composition, proved generically. -/
 theorem compose_identity_before (k : BinaryKernel) :
     BinaryKernel.compose k BinaryKernel.identity = k := by
   funext x z
   cases x <;>
-    simp only [BinaryKernel.compose, BinaryKernel.identity, if_pos, if_neg,
-      Rat.one_mul, Rat.zero_mul, Rat.add_zero, Rat.zero_add]
+    simp [BinaryKernel.compose, BinaryKernel.identity,
+      Rat.mul_one, Rat.mul_zero, Rat.one_mul, Rat.zero_mul,
+      Rat.add_zero, Rat.zero_add]
 
 /--
 Associativity on a nontrivial exact finite chain. This establishes the earned
@@ -230,13 +267,26 @@ def tensorLaw (p q : RatBinaryLaw) : RatPairLaw :=
   ⟨p.p0 * q.p0, p.p0 * q.p1, p.p1 * q.p0, p.p1 * q.p1⟩
 
 theorem fairRatLaw_valid : fairRatLaw.Valid := by
-  grind [RatBinaryLaw.Valid, fairRatLaw, qHalf]
+  refine ⟨Rat.le_of_lt qHalf_pos, Rat.le_of_lt qHalf_pos, ?_⟩
+  grind [fairRatLaw, qHalf]
 
 theorem copyFair_valid : (copyLaw fairRatLaw).Valid := by
-  grind [RatPairLaw.Valid, copyLaw, fairRatLaw, qHalf]
+  change 0 ≤ qHalf ∧ 0 ≤ (0 : Rat) ∧ 0 ≤ (0 : Rat) ∧ 0 ≤ qHalf ∧
+    qHalf + 0 + 0 + qHalf = 1
+  refine ⟨Rat.le_of_lt qHalf_pos, Rat.le_refl 0, Rat.le_refl 0,
+    Rat.le_of_lt qHalf_pos, ?_⟩
+  grind [qHalf]
 
 theorem independentFair_valid : (tensorLaw fairRatLaw fairRatLaw).Valid := by
-  grind [RatPairLaw.Valid, tensorLaw, fairRatLaw, qHalf]
+  have hprod : 0 ≤ qHalf * qHalf :=
+    Rat.le_of_lt (Rat.mul_pos qHalf_pos qHalf_pos)
+  change 0 ≤ qHalf * qHalf ∧
+    0 ≤ qHalf * qHalf ∧
+    0 ≤ qHalf * qHalf ∧
+    0 ≤ qHalf * qHalf ∧
+    qHalf * qHalf + qHalf * qHalf + qHalf * qHalf + qHalf * qHalf = 1
+  refine ⟨hprod, hprod, hprod, hprod, ?_⟩
+  grind [qHalf]
 
 /--
 One fair draw followed by copy is exactly different from two independent fair
@@ -246,7 +296,12 @@ theorem copy_one_random_result_ne_two_independent_draws :
     copyLaw fairRatLaw ≠ tensorLaw fairRatLaw fairRatLaw := by
   intro h
   have h00 := congrArg RatPairLaw.p00 h
-  grind [copyLaw, tensorLaw, fairRatLaw, qHalf] at h00
+  change qHalf = qHalf * qHalf at h00
+  grind [qHalf]
+
+theorem qHalf_square_twice :
+    qHalf * qHalf + qHalf * qHalf = qHalf := by
+  grind [qHalf]
 
 /-- Both constructions still have the same fair single-coordinate marginals. -/
 theorem shared_and_independent_have_same_fair_marginals :
@@ -254,8 +309,21 @@ theorem shared_and_independent_have_same_fair_marginals :
     (copyLaw fairRatLaw).marginalSecond = fairRatLaw ∧
     (tensorLaw fairRatLaw fairRatLaw).marginalFirst = fairRatLaw ∧
     (tensorLaw fairRatLaw fairRatLaw).marginalSecond = fairRatLaw := by
-  grind [RatPairLaw.marginalFirst, RatPairLaw.marginalSecond,
-    copyLaw, tensorLaw, fairRatLaw, qHalf]
+  change
+    RatBinaryLaw.mk (qHalf + 0) (0 + qHalf) = RatBinaryLaw.mk qHalf qHalf ∧
+    RatBinaryLaw.mk (qHalf + 0) (0 + qHalf) = RatBinaryLaw.mk qHalf qHalf ∧
+    RatBinaryLaw.mk (qHalf * qHalf + qHalf * qHalf)
+        (qHalf * qHalf + qHalf * qHalf) = RatBinaryLaw.mk qHalf qHalf ∧
+    RatBinaryLaw.mk (qHalf * qHalf + qHalf * qHalf)
+        (qHalf * qHalf + qHalf * qHalf) = RatBinaryLaw.mk qHalf qHalf
+  have hcopy :
+      RatBinaryLaw.mk (qHalf + 0) (0 + qHalf) = RatBinaryLaw.mk qHalf qHalf := by
+    rw [Rat.add_zero, Rat.zero_add]
+  have hind :
+      RatBinaryLaw.mk (qHalf * qHalf + qHalf * qHalf)
+          (qHalf * qHalf + qHalf * qHalf) = RatBinaryLaw.mk qHalf qHalf := by
+    rw [qHalf_square_twice]
+  exact ⟨hcopy, hcopy, hind, hind⟩
 
 /-- Exact stochastic channel on a pair of binary interfaces. -/
 abbrev PairKernel := (Bool × Bool) → (Bool × Bool) → Rat
@@ -299,6 +367,13 @@ end PairKernel
 theorem tensor_fixture_valid :
     PairKernel.Valid (PairKernel.tensor biasKernel fairKernel) := by
   intro x
+  refine ⟨
+    Rat.le_of_lt (Rat.mul_pos (biasKernel_pos x.1 false) (fairKernel_pos x.2 false)),
+    Rat.le_of_lt (Rat.mul_pos (biasKernel_pos x.1 false) (fairKernel_pos x.2 true)),
+    Rat.le_of_lt (Rat.mul_pos (biasKernel_pos x.1 true) (fairKernel_pos x.2 false)),
+    Rat.le_of_lt (Rat.mul_pos (biasKernel_pos x.1 true) (fairKernel_pos x.2 true)),
+    ?_
+  ⟩
   rcases x with ⟨a, b⟩
   cases a <;> cases b <;>
     grind [PairKernel.tensor, PairKernel.rowSum, biasKernel, fairKernel,
