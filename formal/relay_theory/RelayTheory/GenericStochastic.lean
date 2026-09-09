@@ -108,6 +108,7 @@ theorem sumFin_single : ∀ {n : Nat} (x : Fin n) (f : Fin n → Rat),
                     simp [hne]
             _ = 0 := sumFin_zero_values n
         rw [htail, Rat.add_zero]
+        simp
       · rw [sumFin_succ]
         have hzero : (0 : Fin (Nat.succ n)) ≠ i.succ := by grind
         simp only [if_neg hzero, Rat.zero_add]
@@ -250,15 +251,17 @@ theorem finKernel_compose_valid {m n p : Nat}
       _ = sumFin n (fun y => f x y * 1) := by
             apply sumFin_congr
             intro y
-            have hrow : sumFin p (fun z => g y z) = 1 := by
-              simpa [FinKernel.rowSum] using hg.2 y
+            have hrow := hg.2 y
+            change sumFin p (fun z => g y z) = 1 at hrow
             rw [hrow]
       _ = sumFin n (fun y => f x y) := by
             apply sumFin_congr
             intro y
             rw [Rat.mul_one]
       _ = 1 := by
-            simpa [FinKernel.rowSum] using hf.2 x
+            have hrow := hf.2 x
+            change sumFin n (fun y => f x y) = 1 at hrow
+            exact hrow
 
 /--
 Generic associativity over arbitrary compatible finite interface sizes and
