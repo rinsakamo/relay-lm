@@ -85,4 +85,42 @@ theorem finPair_flatten_roundtrip {m n : Nat} (x : Fin (m * n)) :
     finPairTransport.toFun (finPairTransport.invFun x) = x :=
   finPairTransport.right_inv x
 
+/-- Exact finite summation splits into a left prefix and right translated block. -/
+theorem sumFin_add_split : ∀ (m n : Nat) (f : Fin (m + n) → Rat),
+    sumFin (m + n) f =
+      sumFin m (fun i => f (Fin.castAdd n i)) +
+      sumFin n (fun j => f (Fin.natAdd m j))
+  | 0, n, f => by
+      rw [sumFin_zero, Rat.zero_add]
+      apply sumFin_congr
+      intro j
+      apply congrArg f
+      apply Fin.eq_of_val_eq
+      rfl
+  | Nat.succ m, n, f => by
+      rw [Nat.succ_add, sumFin_succ, sumFin_succ]
+      rw [sumFin_add_split m n (fun i => f i.succ)]
+      have h0 : f 0 = f (Fin.castAdd n (0 : Fin (Nat.succ m))) := by
+        apply congrArg f
+        apply Fin.eq_of_val_eq
+        rfl
+      have hleft :
+          sumFin m (fun i => f (Fin.castAdd n i).succ) =
+            sumFin m (fun i => f (Fin.castAdd n i.succ)) := by
+        apply sumFin_congr
+        intro i
+        apply congrArg f
+        apply Fin.eq_of_val_eq
+        rfl
+      have hright :
+          sumFin n (fun j => f (Fin.natAdd m j).succ) =
+            sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j)) := by
+        apply sumFin_congr
+        intro j
+        apply congrArg f
+        apply Fin.eq_of_val_eq
+        grind
+      rw [h0, hleft, hright]
+      exact (Rat.add_assoc _ _ _).symm
+
 end RelayTheory
