@@ -11,6 +11,7 @@ from relaylm.actual_model_llama_cpp import (
 )
 from relaylm.actual_model_llama_cpp_thinking import (
     LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY,
+    LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION,
     LlamaCppThinkingChatInputCounter,
 )
 
@@ -41,7 +42,7 @@ def _runtime():
     )
 
 
-def test_thinking_counter_preserves_exact_template_and_stream_controls() -> None:
+def test_thinking_counter_preserves_exact_reasoning_and_stream_controls() -> None:
     observed: list[dict[str, Any]] = []
 
     def post_json(_: str, payload: Mapping[str, Any], __: str | None) -> object:
@@ -65,45 +66,48 @@ def test_thinking_counter_preserves_exact_template_and_stream_controls() -> None
             "top_p": 1.0,
             "max_tokens": 64,
             "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False},
+            "reasoning_effort": "none",
         }
     )
 
     assert result.total_input_tokens == 12
     assert result.required_input_framing_tokens == 4
     assert len(observed) == 2
-    assert all(
-        item["chat_template_kwargs"] == {"enable_thinking": False}
-        for item in observed
-    )
+    assert all(item["reasoning_effort"] == "none" for item in observed)
+    assert all("chat_template_kwargs" not in item for item in observed)
     assert all(item["stream"] is False for item in observed)
     assert counter.evidence_identity.capability == LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY
+    assert counter.evidence_identity.version == LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION
     parameters = dict(counter.evidence_identity.parameters)
-    assert parameters["thinking_control"] == (
-        "chat_template_kwargs.enable_thinking=false"
-    )
+    assert parameters["thinking_control"] == "reasoning_effort=none"
     assert parameters["stream_control"] == "stream=false"
 
 
-def test_thinking_counter_rejects_unqualified_template_or_stream_controls() -> None:
+def test_thinking_counter_rejects_unqualified_reasoning_or_stream_controls() -> None:
     counter = LlamaCppThinkingChatInputCounter(
         base_url="http://127.0.0.1:1234/v1",
         runtime_identity=_runtime(),
         post_json=lambda *_: {"input_tokens": 1},
     )
 
-    for value in (
-        {"enable_thinking": True},
-        {"enable_thinking": False, "other": 1},
-    ):
-        with pytest.raises(LlamaCppInputCounterError):
+    for value in ("low", "medium", "high", ""):
+        with pytest.raises(LlamaCppInputCounterError, match="reasoning_effort=none"):
             counter.count_input(
                 {
                     "model": MODEL,
                     "messages": [{"role": "user", "content": "hello"}],
-                    "chat_template_kwargs": value,
+                    "reasoning_effort": value,
                 }
             )
+
+    with pytest.raises(LlamaCppInputCounterError, match="unsupported"):
+        counter.count_input(
+            {
+                "model": MODEL,
+                "messages": [{"role": "user", "content": "hello"}],
+                "chat_template_kwargs": {"enable_thinking": False},
+            }
+        )
 
     with pytest.raises(LlamaCppInputCounterError, match="stream=false"):
         counter.count_input(
@@ -111,6 +115,6 @@ def test_thinking_counter_rejects_unqualified_template_or_stream_controls() -> N
                 "model": MODEL,
                 "messages": [{"role": "user", "content": "hello"}],
                 "stream": True,
-                "chat_template_kwargs": {"enable_thinking": False},
+                "reasoning_effort": "none",
             }
         )
