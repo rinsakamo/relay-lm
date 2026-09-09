@@ -1,4 +1,5 @@
-import Init.Data.Rat
+import Lean.Elab.Tactic.Grind
+import Init.Grind.Ordered.Rat
 import RelayTheory.Transform
 import RelayTheory.HigherOrder
 
@@ -68,29 +69,33 @@ def noisyFlipKernel : BinaryKernel
 
 theorem fairKernel_valid : BinaryKernel.Valid fairKernel := by
   intro x
-  cases x <;> decide
+  cases x <;> grind [fairKernel, BinaryKernel.rowSum, qHalf]
 
 theorem biasKernel_valid : BinaryKernel.Valid biasKernel := by
   intro x
-  cases x <;> decide
+  cases x <;>
+    grind [biasKernel, BinaryKernel.rowSum, qQuarter, qThreeQuarter]
 
 theorem noisyFlipKernel_valid : BinaryKernel.Valid noisyFlipKernel := by
   intro x
-  cases x <;> decide
+  cases x <;>
+    grind [noisyFlipKernel, BinaryKernel.rowSum, qQuarter, qThreeQuarter]
 
 /-- Right identity for exact binary stochastic composition, proved generically. -/
 theorem compose_identity_after (k : BinaryKernel) :
     BinaryKernel.compose BinaryKernel.identity k = k := by
   funext x z
   cases z <;>
-    simp [BinaryKernel.compose, BinaryKernel.identity]
+    simp only [BinaryKernel.compose, BinaryKernel.identity, if_pos, if_neg,
+      Rat.mul_one, Rat.mul_zero, Rat.add_zero, Rat.zero_add]
 
 /-- Left identity for exact binary stochastic composition, proved generically. -/
 theorem compose_identity_before (k : BinaryKernel) :
     BinaryKernel.compose k BinaryKernel.identity = k := by
   funext x z
   cases x <;>
-    simp [BinaryKernel.compose, BinaryKernel.identity]
+    simp only [BinaryKernel.compose, BinaryKernel.identity, if_pos, if_neg,
+      Rat.one_mul, Rat.zero_mul, Rat.add_zero, Rat.zero_add]
 
 /--
 Associativity on a nontrivial exact finite chain. This establishes the earned
@@ -103,7 +108,9 @@ theorem compose_associativity_fixture :
         (BinaryKernel.compose noisyFlipKernel biasKernel)
         fairKernel := by
   funext x z
-  cases x <;> cases z <;> decide
+  cases x <;> cases z <;>
+    grind [BinaryKernel.compose, fairKernel, biasKernel, noisyFlipKernel,
+      qHalf, qQuarter, qThreeQuarter]
 
 def flipBit : Bool → Bool
   | false => true
@@ -116,7 +123,10 @@ theorem dirac_composition_fixture :
         (BinaryKernel.dirac flipBit) =
       BinaryKernel.dirac (fun x => flipBit (flipBit x)) := by
   funext x z
-  cases x <;> cases z <;> decide
+  cases x <;> cases z <;>
+    simp [BinaryKernel.compose, BinaryKernel.dirac, flipBit,
+      Rat.mul_one, Rat.mul_zero, Rat.one_mul, Rat.zero_mul,
+      Rat.add_zero, Rat.zero_add]
 
 /-- One-point output channel used to express exact discard. -/
 abbrev ToUnitKernel := Bool → Rat
@@ -134,7 +144,8 @@ def composeToUnit (d : ToUnitKernel) (k : BinaryKernel) : ToUnitKernel :=
 theorem discard_after_bias :
     composeToUnit discardKernel biasKernel = discardKernel := by
   funext x
-  cases x <;> decide
+  cases x <;>
+    grind [composeToUnit, discardKernel, biasKernel, qQuarter, qThreeQuarter]
 
 /-- Deterministic classical-data copy on the bounded binary object. -/
 def copyBit (x : Bool) : Bool × Bool :=
@@ -219,13 +230,13 @@ def tensorLaw (p q : RatBinaryLaw) : RatPairLaw :=
   ⟨p.p0 * q.p0, p.p0 * q.p1, p.p1 * q.p0, p.p1 * q.p1⟩
 
 theorem fairRatLaw_valid : fairRatLaw.Valid := by
-  decide
+  grind [RatBinaryLaw.Valid, fairRatLaw, qHalf]
 
 theorem copyFair_valid : (copyLaw fairRatLaw).Valid := by
-  decide
+  grind [RatPairLaw.Valid, copyLaw, fairRatLaw, qHalf]
 
 theorem independentFair_valid : (tensorLaw fairRatLaw fairRatLaw).Valid := by
-  decide
+  grind [RatPairLaw.Valid, tensorLaw, fairRatLaw, qHalf]
 
 /--
 One fair draw followed by copy is exactly different from two independent fair
@@ -233,7 +244,9 @@ draws.
 -/
 theorem copy_one_random_result_ne_two_independent_draws :
     copyLaw fairRatLaw ≠ tensorLaw fairRatLaw fairRatLaw := by
-  decide
+  intro h
+  have h00 := congrArg RatPairLaw.p00 h
+  grind [copyLaw, tensorLaw, fairRatLaw, qHalf] at h00
 
 /-- Both constructions still have the same fair single-coordinate marginals. -/
 theorem shared_and_independent_have_same_fair_marginals :
@@ -241,7 +254,8 @@ theorem shared_and_independent_have_same_fair_marginals :
     (copyLaw fairRatLaw).marginalSecond = fairRatLaw ∧
     (tensorLaw fairRatLaw fairRatLaw).marginalFirst = fairRatLaw ∧
     (tensorLaw fairRatLaw fairRatLaw).marginalSecond = fairRatLaw := by
-  decide
+  grind [RatPairLaw.marginalFirst, RatPairLaw.marginalSecond,
+    copyLaw, tensorLaw, fairRatLaw, qHalf]
 
 /-- Exact stochastic channel on a pair of binary interfaces. -/
 abbrev PairKernel := (Bool × Bool) → (Bool × Bool) → Rat
@@ -286,7 +300,9 @@ theorem tensor_fixture_valid :
     PairKernel.Valid (PairKernel.tensor biasKernel fairKernel) := by
   intro x
   rcases x with ⟨a, b⟩
-  cases a <;> cases b <;> decide
+  cases a <;> cases b <;>
+    grind [PairKernel.tensor, PairKernel.rowSum, biasKernel, fairKernel,
+      qHalf, qQuarter, qThreeQuarter]
 
 /-- Tensor of binary identities reconstructs the direct pair identity. -/
 theorem tensor_identities :
@@ -295,7 +311,9 @@ theorem tensor_identities :
   funext x y
   rcases x with ⟨xa, xb⟩
   rcases y with ⟨ya, yb⟩
-  cases xa <;> cases xb <;> cases ya <;> cases yb <;> decide
+  cases xa <;> cases xb <;> cases ya <;> cases yb <;>
+    simp [PairKernel.tensor, PairKernel.identity, BinaryKernel.identity,
+      Rat.mul_one, Rat.mul_zero, Rat.one_mul, Rat.zero_mul]
 
 /-- Bounded interchange law for independent tensor and sequential composition. -/
 theorem tensor_interchange_fixture :
@@ -308,7 +326,10 @@ theorem tensor_interchange_fixture :
   funext x z
   rcases x with ⟨xa, xb⟩
   rcases z with ⟨za, zb⟩
-  cases xa <;> cases xb <;> cases za <;> cases zb <;> decide
+  cases xa <;> cases xb <;> cases za <;> cases zb <;>
+    grind [PairKernel.compose, PairKernel.tensor, BinaryKernel.compose,
+      noisyFlipKernel, biasKernel, fairKernel,
+      qHalf, qQuarter, qThreeQuarter]
 
 /--
 The derived stochastic slice does not erase already-formalized outer boundaries:
