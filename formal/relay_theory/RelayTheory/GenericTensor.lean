@@ -13,7 +13,14 @@ theorem sumFin_product : ∀ (m n : Nat) (f : Fin (m * n) → Rat),
       sumFin m (fun i =>
         sumFin n (fun j => f (finPairTransport.toFun (i, j))))
   | 0, n, f => by
-      simp [Nat.zero_mul, sumFin]
+      let h : 0 * n = 0 := Nat.zero_mul n
+      calc
+        sumFin (0 * n) f
+            = sumFin 0 (fun i => f (Fin.cast h.symm i)) := sumFin_cast h f
+        _ = 0 := sumFin_zero _
+        _ = sumFin 0 (fun i =>
+              sumFin n (fun j => f (finPairTransport.toFun (i, j)))) :=
+              (sumFin_zero _).symm
   | Nat.succ m, n, f => by
       let h : Nat.succ m * n = n + m * n := by
         rw [Nat.succ_mul, Nat.add_comm]
