@@ -12,7 +12,7 @@ This is deliberately proved from natural-number div/mod rather than imported as
 category or finite-equivalence infrastructure. The orientation matches row-major
 pair indexing: the second coordinate varies fastest.
 -/
-def finPairEquiv {m n : Nat} : Fin m × Fin n ≃ Fin (m * n) where
+def finPairEquiv {m n : Nat} : Equiv (Fin m × Fin n) (Fin (m * n)) where
   toFun x :=
     ⟨x.2.1 + n * x.1.1,
       calc
