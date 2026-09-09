@@ -41,7 +41,7 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
-def test_llama_cpp_two_pass_carries_explicit_thinking_off_and_native_schema() -> None:
+def test_llama_cpp_two_pass_carries_reasoning_effort_none_and_native_schema() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -120,10 +120,8 @@ def test_llama_cpp_two_pass_carries_explicit_thinking_off_and_native_schema() ->
     asyncio.run(run())
 
     assert len(seen) == 2
-    assert all(
-        body["chat_template_kwargs"] == {"enable_thinking": False}
-        for body in seen
-    )
+    assert all(body["reasoning_effort"] == "none" for body in seen)
+    assert all("chat_template_kwargs" not in body for body in seen)
     assert all(body["temperature"] == 0.0 for body in seen)
     assert all(body["top_p"] == 1.0 for body in seen)
     assert all("seed" not in body for body in seen)

@@ -23,9 +23,16 @@ class LlamaCppReasoningCapabilityError(ValueError):
 class LlamaCppReasoningCapabilityAttestation:
     """Exact llama.cpp request-model capability used for reasoning realization.
 
-    RelayLM currently qualifies only the Gemma-style per-request template control
-    ``chat_template_kwargs.enable_thinking=false`` for provider-neutral OFF.
-    This record deliberately does not infer support from the model family name.
+    RelayLM currently qualifies provider-neutral OFF through the OpenAI-compatible
+    ``reasoning_effort=none`` request field. The exact pinned llama-server maps
+    that field to its internal ``enable_thinking=false`` template input. This
+    record deliberately does not infer support from the model family name.
+
+    ``enable_thinking_supported`` is retained as the existing constructor field
+    for compatibility with the already-merged evaluation host. In this format it
+    means that the exact request-model/runtime condition has attested an explicit
+    Thinking-OFF control; the qualified public wire emitted by RelayLM is
+    ``reasoning_effort=none``.
     """
 
     request_model: str
@@ -44,10 +51,18 @@ class LlamaCppReasoningCapabilityAttestation:
             raise TypeError("enable_thinking_supported must be bool")
 
     @property
+    def reasoning_effort_none_supported(self) -> bool:
+        """Whether explicit OpenAI-compatible OFF is attested for this condition."""
+
+        return self.enable_thinking_supported
+
+    @property
     def capabilities(self) -> OpenAICompatibleReasoningCapabilities:
         return OpenAICompatibleReasoningCapabilities(
-            mode_control_supported=self.enable_thinking_supported,
-            supported_mode_values=("off",) if self.enable_thinking_supported else None,
+            mode_control_supported=self.reasoning_effort_none_supported,
+            supported_mode_values=("off",)
+            if self.reasoning_effort_none_supported
+            else None,
             token_budget_supported=False,
         )
 
@@ -57,6 +72,7 @@ class LlamaCppReasoningCapabilityAttestation:
             "backend": "llama_cpp",
             "request_model": self.request_model,
             "enable_thinking_supported": self.enable_thinking_supported,
+            "reasoning_effort_none_supported": self.reasoning_effort_none_supported,
             "reasoning_capabilities": self.capabilities.to_mapping(),
         }
 
@@ -75,7 +91,7 @@ class LlamaCppReasoningRealization:
             raise LlamaCppReasoningCapabilityError(
                 "llama.cpp reasoning request is not semantically attested; refusing wire"
             )
-        return {"chat_template_kwargs": {"enable_thinking": False}}
+        return {"reasoning_effort": "none"}
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -121,7 +137,7 @@ def realize_llama_cpp_reasoning_request(
     )
     if preflight.status is not OpenAICompatibleReasoningPreflightStatus.READY:
         raise LlamaCppReasoningCapabilityError(
-            "llama.cpp enable_thinking=false is not attested for this request model"
+            "llama.cpp reasoning_effort=none is not attested for this request model"
         )
 
     return LlamaCppReasoningRealization(
@@ -129,6 +145,6 @@ def realize_llama_cpp_reasoning_request(
         application=OpenAICompatibleReasoningApplication(
             status=OpenAICompatibleReasoningApplicationStatus.APPLIED,
             requested=request.requested,
-            wire_fields=(("chat_template_kwargs.enable_thinking", False),),
+            wire_fields=(("reasoning_effort", "none"),),
         ),
     )

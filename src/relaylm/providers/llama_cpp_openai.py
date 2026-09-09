@@ -128,7 +128,7 @@ class LlamaCppOpenAICompatibleTwoPassProvider(OpenAICompatibleTwoPassProvider):
             structured_output=True,
             streaming=False,
             reasoning_modes=("off",)
-            if self.llama_cpp_reasoning_capability.enable_thinking_supported
+            if self.llama_cpp_reasoning_capability.reasoning_effort_none_supported
             else (),
             bounded_reasoning_budget=False,
             decoding_controls=tuple(

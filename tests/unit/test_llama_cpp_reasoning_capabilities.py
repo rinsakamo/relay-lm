@@ -31,6 +31,7 @@ def test_llama_cpp_reasoning_capability_has_backend_specific_identity() -> None:
         "backend": "llama_cpp",
         "request_model": REQUEST_MODEL,
         "enable_thinking_supported": True,
+        "reasoning_effort_none_supported": True,
         "reasoning_capabilities": {
             "mode_control_supported": True,
             "supported_mode_values": ["off"],
@@ -40,7 +41,7 @@ def test_llama_cpp_reasoning_capability_has_backend_specific_identity() -> None:
     }
 
 
-def test_llama_cpp_realizes_off_as_enable_thinking_false() -> None:
+def test_llama_cpp_realizes_off_as_reasoning_effort_none() -> None:
     realization = realize_llama_cpp_reasoning_request(
         request=OpenAICompatibleReasoningRequest(mode="off"),
         capability=_capability(),
@@ -48,16 +49,12 @@ def test_llama_cpp_realizes_off_as_enable_thinking_false() -> None:
 
     assert realization.application.status is OpenAICompatibleReasoningApplicationStatus.APPLIED
     assert realization.application.requested == (("mode", "off"),)
-    assert realization.application.wire_fields == (
-        ("chat_template_kwargs.enable_thinking", False),
-    )
-    assert realization.to_request_fields() == {
-        "chat_template_kwargs": {"enable_thinking": False}
-    }
+    assert realization.application.wire_fields == (("reasoning_effort", "none"),)
+    assert realization.to_request_fields() == {"reasoning_effort": "none"}
 
 
-def test_llama_cpp_realizer_rejects_off_without_attested_template_control() -> None:
-    with pytest.raises(LlamaCppReasoningCapabilityError, match="enable_thinking"):
+def test_llama_cpp_realizer_rejects_off_without_attested_control() -> None:
+    with pytest.raises(LlamaCppReasoningCapabilityError, match="reasoning_effort=none"):
         realize_llama_cpp_reasoning_request(
             request=OpenAICompatibleReasoningRequest(mode="off"),
             capability=_capability(enable_thinking_supported=False),
