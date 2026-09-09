@@ -9,4 +9,5 @@ import RelayTheory.GenericMonoidal
 import RelayTheory.GenericTensor
 import RelayTheory.GenericTensorKernel
 import RelayTheory.GenericInterchange
+import RelayTheory.GenericCoherence
 import RelayTheory.Countermodels
