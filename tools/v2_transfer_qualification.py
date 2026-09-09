@@ -141,6 +141,7 @@ class TargetCompetenceResult:
     protocol_valid: bool
     structure_origin: str
     family_count: int
+    evidence_level_correct: tuple[int, ...]
     endpoint_correct: int
     replaced_seed_count: int
 
@@ -150,7 +151,13 @@ class TargetCompetenceResult:
             raise TransferQualificationError("Q1 evidence reference must be non-empty")
         if not isinstance(self.complete, bool) or not isinstance(self.protocol_valid, bool):
             raise TransferQualificationError("Q1 completion/protocol flags must be boolean")
+        if not isinstance(self.evidence_level_correct, tuple) or not self.evidence_level_correct:
+            raise TransferQualificationError("Q1 adaptation curve must be a non-empty tuple")
+        for index, correct in enumerate(self.evidence_level_correct):
+            _validate_counts(correct, self.family_count, f"Q1 evidence level {index}")
         _validate_counts(self.endpoint_correct, self.family_count, "Q1 endpoint")
+        if self.endpoint_correct != self.evidence_level_correct[-1]:
+            raise TransferQualificationError("Q1 endpoint must equal the final adaptation-curve count")
         _require_nonnegative_int(self.replaced_seed_count, "Q1 replaced seed count")
 
 
@@ -232,6 +239,8 @@ def classify_q1(manifest: QualificationManifest, result: TargetCompetenceResult)
     if result.structure_origin != ORIGIN_NONE or result.replaced_seed_count != 0:
         return PROTOCOL_INVALID
     if not result.protocol_valid:
+        return PROTOCOL_INVALID
+    if len(result.evidence_level_correct) != len(manifest.target_evidence_levels):
         return PROTOCOL_INVALID
     if not result.complete or result.family_count < manifest.thresholds.q1_min_families:
         return INCONCLUSIVE
