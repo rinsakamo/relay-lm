@@ -40,7 +40,8 @@ def finPairTransport {m n : Nat} : FiniteTransport (Fin m × Fin n) (Fin (m * n)
         have hn : n ≠ 0 := by
           intro hn0
           subst n
-          simp at x
+          have hz : x.1 < 0 := by simpa using x.2
+          exact Nat.not_lt_zero _ hz
         exact Nat.mod_lt _ (Nat.pos_of_ne_zero hn)⟩)
   left_inv := by
     intro x
