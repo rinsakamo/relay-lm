@@ -108,7 +108,7 @@ theorem sumFin_add_split : ∀ (m n : Nat) (f : Fin (m + n) → Rat),
               intro j
               apply congrArg f
               apply Fin.eq_of_val_eq
-              rfl
+              simp
   | Nat.succ m, n, f => by
       let h : Nat.succ m + n = Nat.succ (m + n) := Nat.succ_add m n
       let f' : Fin (Nat.succ (m + n)) → Rat :=
@@ -117,7 +117,7 @@ theorem sumFin_add_split : ∀ (m n : Nat) (f : Fin (m + n) → Rat),
         dsimp [f']
         apply congrArg f
         apply Fin.eq_of_val_eq
-        rfl
+        simp
       have hleft :
           sumFin m (fun i => f' (Fin.castAdd n i).succ) =
             sumFin m (fun i => f (Fin.castAdd n i.succ)) := by
@@ -126,7 +126,7 @@ theorem sumFin_add_split : ∀ (m n : Nat) (f : Fin (m + n) → Rat),
         dsimp [f']
         apply congrArg f
         apply Fin.eq_of_val_eq
-        rfl
+        simp
       have hright :
           sumFin n (fun j => f' (Fin.natAdd m j).succ) =
             sumFin n (fun j => f (Fin.natAdd (Nat.succ m) j)) := by
