@@ -25,7 +25,12 @@ theorem finKernel_tensor_dirac {a b c d : Nat}
   funext x y
   by_cases h1 : (finPairTransport.invFun y).1 = f (finPairTransport.invFun x).1
   · by_cases h2 : (finPairTransport.invFun y).2 = g (finPairTransport.invFun x).2
-    · have hy :
+    · have hp :
+          finPairTransport.invFun y =
+            (f (finPairTransport.invFun x).1,
+             g (finPairTransport.invFun x).2) :=
+        Prod.ext h1 h2
+      have hy :
           y = finPairTransport.toFun
             (f (finPairTransport.invFun x).1,
              g (finPairTransport.invFun x).2) := by
@@ -34,9 +39,9 @@ theorem finKernel_tensor_dirac {a b c d : Nat}
             (finPair_flatten_roundtrip y).symm
           _ = finPairTransport.toFun
                 (f (finPairTransport.invFun x).1,
-                 g (finPairTransport.invFun x).2) := by
-                rw [h1, h2]
-      simp [FinKernel.tensor, FinKernel.dirac, h1, h2, hy]
+                 g (finPairTransport.invFun x).2) :=
+                congrArg finPairTransport.toFun hp
+      simp [FinKernel.tensor, FinKernel.dirac, hy, finPair_transport_roundtrip]
     · have hyne :
           y ≠ finPairTransport.toFun
             (f (finPairTransport.invFun x).1,
