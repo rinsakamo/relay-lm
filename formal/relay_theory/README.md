@@ -24,11 +24,13 @@ The bounded Lean roles correspond as follows:
 | derived behavioral quotient/equivalence | `OperationalSignature`, `BehaviorEquivalent` |
 | `EXPLICIT_ALIGNMENT_INPUT` | `JointLaw`, `TripleLaw`, exact marginal projections |
 | `REALIZABILITY_DOMAIN_CERTIFICATE` | `RealizabilityCertificate.Valid`, `PairContextFamily.RealizedBy` |
+| derived finite stochastic slice | `BinaryKernel`, `PairKernel`, exact `Rat` composition/tensor/copy/discard |
 | `EXACT_EQUALITY_BOUNDARY` | Lean propositional equality over the exact finite structures |
 
-The current probability representation uses exact quarter units because the formalized witness
-families only need masses in `{0, 1/4, 1/2, 3/4, 1}`. This is a bounded theorem model, not a
-claim that quarter-valued probability is fundamental.
+The first countermodel layers use exact quarter units because those witness families only need
+masses in `{0, 1/4, 1/2, 3/4, 1}`. The derived stochastic-composition layer uses Lean core exact
+`Rat`, because sequential composition and independent tensor need exact products such as `1/16`.
+Neither representation is claimed fundamental.
 
 ## First formal milestone — #2403 / PR #2404
 
@@ -42,7 +44,7 @@ claim that quarter-valued probability is fundamental.
 6. equal one-context marginals do not determine the exact 2x2 joint alignment;
 7. realizability certificate validation is exact and fail-closed.
 
-## Higher-order alignment and gluing — #2413
+## Higher-order alignment and gluing — #2413 / PR #2415
 
 `RelayTheory.HigherOrder` ports the already-earned finite Grand Null results from #2374 and #2379
 into the theorem surface.
@@ -70,6 +72,42 @@ locally valid + overlap-consistent pairwise data
 This does not solve the general marginal polytope, assume a sheaf/presheaf, or establish an
 arbitrary `n`-world hierarchy.
 
+## Earned finite stochastic slice — #2416
+
+`RelayTheory.Stochastic` reconstructs the already-earned #2384 fully resolved stochastic slice
+without importing category theory as a premise.
+
+The module uses exact Lean `Rat` masses and mechanically defines/evaluates:
+
+- binary stochastic kernels and exact sequential composition;
+- exact identity and deterministic/Dirac kernels;
+- bounded discard;
+- deterministic classical-data copy, including coassociativity, cocommutativity, counit, and
+  deterministic copy preservation;
+- exact state-level shared-randomness copy versus independent tensor;
+- exact independent tensor of binary kernels and bounded interchange with sequential composition.
+
+The required negative control remains explicit:
+
+```text
+copy one fair random result
+  !=
+make two independent fair draws
+```
+
+while both resulting coordinate marginals are exactly fair.
+
+The module also imports the already-formalized outer boundaries rather than hiding them inside a
+stochastic arrow:
+
+```text
+unresolved selectable family != one resolved law
+locally valid overlap-consistent pieces may have no global realization
+```
+
+The bounded result is therefore only a reconstructed **derived finite stochastic / Markov-like
+slice**. It is not a theorem that Relay Theory itself is a Markov category.
+
 ## Proof / CI authority
 
 The dedicated CI lane does not relax this repository's full-SHA action policy. It:
@@ -83,5 +121,7 @@ The dedicated CI lane does not relax this repository's full-SHA action policy. I
   and audits the compiled `RelayTheory` kernel environment.
 
 Accepted theorem surfaces must not depend on `sorry`, `admit`, `native_decide`, or home-grown
-substantive axioms. Markov / FinStoch/category reconstruction remains downstream. No Mathlib,
-SCM, MDP, game, contextuality, sheaf, or product-runtime dependency is imported here.
+substantive axioms. Universal FinStoch/category reconstruction, general symmetric-monoidal
+coherence, arbitrary finite indexing, intervention/substitution algebra, and general gluing remain
+downstream. No Mathlib, SCM, MDP, game, contextuality, sheaf, or product-runtime dependency is
+imported here.
