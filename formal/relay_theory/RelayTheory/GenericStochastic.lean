@@ -97,10 +97,21 @@ theorem sumFin_single : ∀ {n : Nat} (x : Fin n) (f : Fin n → Rat),
       intro x f
       refine Fin.cases ?_ (fun i => ?_) x
       · rw [sumFin_succ]
-        simp [sumFin_zero_values]
-      · intro i
-        rw [sumFin_succ]
-        simp [ih i (fun j => f j.succ)]
+        have htail :
+            sumFin n (fun i => if i.succ = (0 : Fin (Nat.succ n)) then f i.succ else 0) = 0 := by
+          calc
+            sumFin n (fun i => if i.succ = (0 : Fin (Nat.succ n)) then f i.succ else 0)
+                = sumFin n (fun _ => (0 : Rat)) := by
+                    apply sumFin_congr
+                    intro i
+                    have hne : i.succ ≠ (0 : Fin (Nat.succ n)) := by grind
+                    simp [hne]
+            _ = 0 := sumFin_zero_values n
+        rw [htail, Rat.add_zero]
+      · rw [sumFin_succ]
+        have hzero : (0 : Fin (Nat.succ n)) ≠ i.succ := by grind
+        simp only [if_neg hzero, Rat.zero_add]
+        simpa using ih i (fun j => f j.succ)
 
 /--
 Bilinear finite-sum reassociation used directly by stochastic associativity.
@@ -160,21 +171,25 @@ def dirac {m n : Nat} (f : Fin m → Fin n) : FinKernel m n :=
 
 end FinKernel
 
+theorem rat_zero_le_one : (0 : Rat) ≤ 1 :=
+  Rat.le_of_lt (by decide)
+
 /-- No normalized stochastic row exists from an inhabited source into an empty target. -/
 theorem no_valid_kernel_to_empty {m : Nat} (x : Fin m) (k : FinKernel m 0) :
     ¬ FinKernel.Valid k := by
   intro hk
   have hrow := hk.2 x
   change sumFin 0 (fun y => k x y) = 1 at hrow
-  grind [sumFin] at hrow
+  grind [sumFin]
 
 /-- Generic exact identity is stochastic-valid. -/
 theorem finKernel_identity_valid (n : Nat) :
     FinKernel.Valid (FinKernel.identity n) := by
   constructor
   · intro x y
-    by_cases h : x = y <;>
-      simp [FinKernel.identity, h]
+    by_cases h : x = y
+    · simpa [FinKernel.identity, h] using rat_zero_le_one
+    · simpa [FinKernel.identity, h] using (show (0 : Rat) ≤ 0 from Rat.le_refl)
   · intro x
     unfold FinKernel.rowSum FinKernel.identity
     have h := sumFin_single x (fun _ => (1 : Rat))
@@ -185,16 +200,31 @@ theorem finKernel_compose_identity_after {m n : Nat} (k : FinKernel m n) :
     FinKernel.compose (FinKernel.identity n) k = k := by
   funext x z
   unfold FinKernel.compose FinKernel.identity
-  have h := sumFin_single z (fun y => k x y)
-  simpa [Rat.mul_one, Rat.mul_zero] using h
+  calc
+    sumFin n (fun y => k x y * (if y = z then 1 else 0))
+        = sumFin n (fun y => if y = z then k x y else 0) := by
+            apply sumFin_congr
+            intro y
+            by_cases h : y = z <;> simp [h]
+    _ = k x z := sumFin_single z (fun y => k x y)
 
 /-- Generic left identity for arbitrary exact finite kernels. -/
 theorem finKernel_compose_identity_before {m n : Nat} (k : FinKernel m n) :
     FinKernel.compose k (FinKernel.identity m) = k := by
   funext x z
   unfold FinKernel.compose FinKernel.identity
-  have h := sumFin_single x (fun y => k y z)
-  simpa [eq_comm, Rat.one_mul, Rat.zero_mul] using h
+  calc
+    sumFin m (fun y => (if x = y then 1 else 0) * k y z)
+        = sumFin m (fun y => if y = x then k y z else 0) := by
+            apply sumFin_congr
+            intro y
+            by_cases h : y = x
+            · simp [h, h.symm]
+            · have h' : x ≠ y := by
+                intro e
+                exact h e.symm
+              simp [h, h']
+    _ = k x z := sumFin_single x (fun y => k y z)
 
 /-- Exact stochastic validity is closed under generic finite composition. -/
 theorem finKernel_compose_valid {m n p : Nat}
@@ -220,12 +250,15 @@ theorem finKernel_compose_valid {m n p : Nat}
       _ = sumFin n (fun y => f x y * 1) := by
             apply sumFin_congr
             intro y
-            rw [hg.2 y]
+            have hrow : sumFin p (fun z => g y z) = 1 := by
+              simpa [FinKernel.rowSum] using hg.2 y
+            rw [hrow]
       _ = sumFin n (fun y => f x y) := by
             apply sumFin_congr
             intro y
             rw [Rat.mul_one]
-      _ = 1 := hf.2 x
+      _ = 1 := by
+            simpa [FinKernel.rowSum] using hf.2 x
 
 /--
 Generic associativity over arbitrary compatible finite interface sizes and
@@ -248,8 +281,9 @@ theorem finKernel_dirac_valid {m n : Nat} (f : Fin m → Fin n) :
     FinKernel.Valid (FinKernel.dirac f) := by
   constructor
   · intro x y
-    by_cases h : y = f x <;>
-      simp [FinKernel.dirac, h]
+    by_cases h : y = f x
+    · simpa [FinKernel.dirac, h] using rat_zero_le_one
+    · simpa [FinKernel.dirac, h] using (show (0 : Rat) ≤ 0 from Rat.le_refl)
   · intro x
     unfold FinKernel.rowSum FinKernel.dirac
     have h := sumFin_single (f x) (fun _ => (1 : Rat))
@@ -262,8 +296,14 @@ theorem finKernel_dirac_compose {a b c : Nat}
       FinKernel.dirac (fun x => g (f x)) := by
   funext x z
   unfold FinKernel.compose FinKernel.dirac
-  have h := sumFin_single (f x) (fun y => if z = g y then (1 : Rat) else 0)
-  simpa [Rat.one_mul, Rat.zero_mul] using h
+  calc
+    sumFin b (fun y => (if y = f x then 1 else 0) * (if z = g y then 1 else 0))
+        = sumFin b (fun y => if y = f x then (if z = g y then 1 else 0) else 0) := by
+            apply sumFin_congr
+            intro y
+            by_cases h : y = f x <;> simp [h]
+    _ = (if z = g (f x) then 1 else 0) :=
+          sumFin_single (f x) (fun y => if z = g y then (1 : Rat) else 0)
 
 /-- A genuinely non-binary exact stochastic fixture: one source state to three target states. -/
 def triKernel : FinKernel 1 3 :=
