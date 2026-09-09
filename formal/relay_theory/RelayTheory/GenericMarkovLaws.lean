@@ -23,7 +23,7 @@ theorem finKernel_dirac_congr {m n : Nat}
     (f g : Fin m → Fin n) (h : ∀ x, f x = g x) :
     FinKernel.dirac f = FinKernel.dirac g := by
   funext x y
-  rw [h x]
+  simp [FinKernel.dirac, h x]
 
 /-- Generic copy is cocommutative at the underlying finite-function level. -/
 theorem finCopyFn_cocommutative {n : Nat} (x : Fin n) :
