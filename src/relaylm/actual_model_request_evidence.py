@@ -5,13 +5,16 @@ import json
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
+
+from relaylm.providers.openai_compatible import ProviderProtocolError
 
 
 ACTUAL_MODEL_REQUEST_EVIDENCE_FORMAT_VERSION = 1
 RequestPassIdentity = Literal["single_pass", "pass1", "pass2"]
 _REQUEST_PASSES = frozenset({"single_pass", "pass1", "pass2"})
+_FAILURE_MESSAGE_LIMIT = 512
 _FORBIDDEN_REQUEST_KEYS = frozenset(
     {
         "access_token",
@@ -53,6 +56,20 @@ class ActualModelRequestEvidenceError(RuntimeError):
     """A request-evidence artifact violated its immutable evidence contract."""
 
 
+def bounded_provider_failure_diagnostic(
+    exc: BaseException,
+) -> tuple[str, str | None]:
+    """Return the existing bounded provider-failure diagnostic privacy shape."""
+
+    exception_type = type(exc).__name__
+    if not isinstance(exc, ProviderProtocolError):
+        return exception_type, None
+    message = " ".join(str(exc).split())
+    if not message:
+        return exception_type, None
+    return exception_type, message[:_FAILURE_MESSAGE_LIMIT]
+
+
 @dataclass(frozen=True, slots=True)
 class ActualModelRequestEvidence:
     """One exact model-facing request captured immediately before transport."""
@@ -70,6 +87,8 @@ class ActualModelRequestEvidence:
     request_body: dict[str, Any]
     request_body_sha256: str
     attempted: bool = True
+    failure_exception_type: str | None = None
+    failure_exception_message: str | None = None
     format_version: int = ACTUAL_MODEL_REQUEST_EVIDENCE_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -97,6 +116,24 @@ class ActualModelRequestEvidence:
         _require_positive_int(self.request_ordinal, "request_ordinal")
         if self.attempted is not True:
             raise ValueError("request evidence must represent an attempted request")
+        if self.failure_exception_type is not None:
+            if not isinstance(self.failure_exception_type, str):
+                raise TypeError("failure_exception_type must be a string or None")
+            if not self.failure_exception_type.strip():
+                raise ValueError("failure_exception_type must not be empty")
+        if self.failure_exception_message is not None:
+            if self.failure_exception_type is None:
+                raise ValueError(
+                    "failure_exception_message requires failure_exception_type"
+                )
+            if not isinstance(self.failure_exception_message, str):
+                raise TypeError("failure_exception_message must be a string or None")
+            if not self.failure_exception_message.strip():
+                raise ValueError("failure_exception_message must not be empty")
+            if len(self.failure_exception_message) > _FAILURE_MESSAGE_LIMIT:
+                raise ValueError(
+                    "failure_exception_message exceeds the bounded diagnostic limit"
+                )
         _validate_request_body(self.request_body)
         self.validate_identity()
 
@@ -172,7 +209,7 @@ class ActualModelRequestEvidence:
 
     def to_mapping(self) -> dict[str, object]:
         self.validate_identity()
-        return {
+        mapping: dict[str, object] = {
             "format_version": self.format_version,
             "evidence_id": self.evidence_id,
             "execution_id": self.execution_id,
@@ -192,6 +229,12 @@ class ActualModelRequestEvidence:
             "request_body": _copy_json_value(self.request_body),
             "request_body_sha256": self.request_body_sha256,
         }
+        if self.failure_exception_type is not None:
+            mapping["failure"] = {
+                "exception_type": self.failure_exception_type,
+                "exception_message": self.failure_exception_message,
+            }
+        return mapping
 
     def to_json(self) -> str:
         return json.dumps(
@@ -263,6 +306,13 @@ class ActualModelRequestEvidenceRecorder:
         )
         try:
             yield
+        except BaseException as exc:
+            self._annotate_latest_failure(
+                turn_index=turn_index,
+                pass_identity=pass_identity,
+                exc=exc,
+            )
+            raise
         finally:
             _CURRENT_REQUEST_CAPTURE.reset(token)
 
@@ -293,6 +343,28 @@ class ActualModelRequestEvidenceRecorder:
         )
         self._records.append(evidence)
         return evidence
+
+    def _annotate_latest_failure(
+        self,
+        *,
+        turn_index: int,
+        pass_identity: RequestPassIdentity,
+        exc: BaseException,
+    ) -> None:
+        exception_type, exception_message = bounded_provider_failure_diagnostic(exc)
+        for index in range(len(self._records) - 1, -1, -1):
+            record = self._records[index]
+            if (
+                record.turn_index != turn_index
+                or record.pass_identity != pass_identity
+            ):
+                continue
+            self._records[index] = replace(
+                record,
+                failure_exception_type=exception_type,
+                failure_exception_message=exception_message,
+            )
+            return
 
 
 _CURRENT_REQUEST_CAPTURE: ContextVar[_RequestCaptureContext | None] = ContextVar(
