@@ -1,0 +1,106 @@
+name: Relay Theory Lean CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - relay-theory
+    paths:
+      - "formal/relay_theory/**"
+      - ".github/workflows/relay-theory-lean-ci.yml"
+  push:
+    branches:
+      - relay-theory
+    paths:
+      - "formal/relay_theory/**"
+      - ".github/workflows/relay-theory-lean-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-theory-lean-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finite-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Install pinned elan and declared Lean toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          ELAN_VERSION="v4.2.4"
+          ELAN_SHA256="42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63"
+          ELAN_ARCHIVE="$RUNNER_TEMP/elan-x86_64-unknown-linux-gnu.tar.gz"
+          ELAN_DIR="$RUNNER_TEMP/elan-bootstrap"
+          curl --fail --location --retry 3 \
+            "https://github.com/leanprover/elan/releases/download/${ELAN_VERSION}/elan-x86_64-unknown-linux-gnu.tar.gz" \
+            --output "$ELAN_ARCHIVE"
+          echo "${ELAN_SHA256}  ${ELAN_ARCHIVE}" | sha256sum --check --strict
+          mkdir -p "$ELAN_DIR"
+          tar -xzf "$ELAN_ARCHIVE" -C "$ELAN_DIR"
+          TOOLCHAIN="$(tr -d '\r\n' < formal/relay_theory/lean-toolchain)"
+          "$ELAN_DIR/elan-init" -y --no-modify-path --default-toolchain "$TOOLCHAIN"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Verify pinned Lean toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd formal/relay_theory
+          lean --version
+          lake --version
+          lean --version | grep -F "version 4.33.1"
+
+      - name: Build finite core
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd formal/relay_theory
+          lake build
+
+      - name: Independently kernel-check compiled modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd formal/relay_theory
+          lake env leanchecker RelayTheory
+
+      - name: Audit theorem axioms with pinned axiom-audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          AXIOM_AUDIT_REF="v0.1.2"
+          AXIOM_AUDIT_SHA="46024e005996495c65ef609368e11ab39c4222e3"
+          WORKDIR="$(mktemp -d "$RUNNER_TEMP/axiom-audit.XXXXXX")"
+          trap 'rm -rf "$WORKDIR"' EXIT
+
+          git clone --depth 1 --branch "$AXIOM_AUDIT_REF" \
+            https://github.com/leanprover-community/axiom-audit.git \
+            "$WORKDIR/axiom-audit"
+          GOT_SHA="$(git -C "$WORKDIR/axiom-audit" rev-parse HEAD)"
+          test "$GOT_SHA" = "$AXIOM_AUDIT_SHA"
+
+          cp formal/relay_theory/lean-toolchain "$WORKDIR/axiom-audit/lean-toolchain"
+          (
+            cd "$WORKDIR/axiom-audit"
+            lake build
+          )
+          (
+            cd formal/relay_theory
+            lake env "$WORKDIR/axiom-audit/.lake/build/bin/axiom-audit" \
+              --root RelayTheory \
+              --allow "propext,Classical.choice,Quot.sound"
+          )
