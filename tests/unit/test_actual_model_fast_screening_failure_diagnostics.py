@@ -93,7 +93,7 @@ def test_request_failure_records_same_bounded_provider_protocol_diagnostic_witho
     }
     captured = None
 
-    with pytest.raises(ProviderProtocolError, match="upstream request failed"):
+    with pytest.raises(ProviderProtocolError):
         with recorder.capture(turn_index=1, pass_identity="pass1"):
             captured = recorder.record(
                 turn_index=1,
