@@ -273,7 +273,9 @@ theorem fairRatLaw_valid : fairRatLaw.Valid := by
 theorem copyFair_valid : (copyLaw fairRatLaw).Valid := by
   change 0 ≤ qHalf ∧ 0 ≤ (0 : Rat) ∧ 0 ≤ (0 : Rat) ∧ 0 ≤ qHalf ∧
     qHalf + 0 + 0 + qHalf = 1
-  refine ⟨Rat.le_of_lt qHalf_pos, Rat.le_refl 0, Rat.le_refl 0,
+  refine ⟨Rat.le_of_lt qHalf_pos,
+    (show (0 : Rat) ≤ 0 from Rat.le_refl),
+    (show (0 : Rat) ≤ 0 from Rat.le_refl),
     Rat.le_of_lt qHalf_pos, ?_⟩
   grind [qHalf]
 
