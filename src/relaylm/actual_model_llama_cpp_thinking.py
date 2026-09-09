@@ -17,19 +17,23 @@ LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION = "2"
 
 
 class LlamaCppThinkingChatInputCounter(LlamaCppChatInputCounter):
-    """Exact llama.cpp counter for the qualified reasoning-OFF body.
+    """Exact llama.cpp counter for explicit reasoning-OFF request bodies.
 
-    The parent counter owns the transport, framing method and runtime binding.
-    This specialization admits only the exact additional request fields used by
-    the current llama-server qualification path and preserves them unchanged in
-    both full and empty-content counting requests.
+    The preferred qualified OpenAI-compatible wire is ``reasoning_effort=none``.
+    During the #2422 -> #2421 repository handoff this counter also preserves the
+    already-merged lower-level ``chat_template_kwargs.enable_thinking=false``
+    body exactly so the existing Stage R host is not broken between merges.
+    The provider realization itself emits only ``reasoning_effort=none``.
     """
 
     @property
     def evidence_identity(self) -> SerializedInputCounterIdentity:
         base = super().evidence_identity
         parameters = dict(base.parameters)
-        parameters["thinking_control"] = "reasoning_effort=none"
+        parameters["preferred_thinking_control"] = "reasoning_effort=none"
+        parameters["legacy_template_control"] = (
+            "chat_template_kwargs.enable_thinking=false"
+        )
         parameters["stream_control"] = "stream=false"
         return SerializedInputCounterIdentity(
             capability=LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY,
@@ -46,9 +50,16 @@ class LlamaCppThinkingChatInputCounter(LlamaCppChatInputCounter):
         body = dict(model_input)
         has_reasoning_effort = "reasoning_effort" in body
         reasoning_effort = body.pop("reasoning_effort", None)
+        has_template_kwargs = "chat_template_kwargs" in body
+        template_kwargs = body.pop("chat_template_kwargs", None)
         has_stream = "stream" in body
         stream = body.pop("stream", None)
         payload = super()._validated_payload(body)
+
+        if has_reasoning_effort and has_template_kwargs:
+            raise LlamaCppInputCounterError(
+                "llama.cpp exact counter requires one explicit thinking-off wire, not both"
+            )
 
         if has_reasoning_effort:
             if reasoning_effort != "none":
@@ -57,6 +68,23 @@ class LlamaCppThinkingChatInputCounter(LlamaCppChatInputCounter):
                     "reasoning_effort=none"
                 )
             payload["reasoning_effort"] = "none"
+
+        if has_template_kwargs:
+            if not isinstance(template_kwargs, Mapping):
+                raise LlamaCppInputCounterError(
+                    "llama.cpp chat_template_kwargs must be an object"
+                )
+            if set(template_kwargs) != {"enable_thinking"}:
+                raise LlamaCppInputCounterError(
+                    "llama.cpp exact counter supports only "
+                    "chat_template_kwargs.enable_thinking"
+                )
+            if template_kwargs.get("enable_thinking") is not False:
+                raise LlamaCppInputCounterError(
+                    "llama.cpp legacy exact counter requires "
+                    "chat_template_kwargs.enable_thinking=false"
+                )
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
 
         if has_stream:
             if stream is not False:
