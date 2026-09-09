@@ -30,7 +30,10 @@ from relaylm.actual_model_llama_cpp import (
     LlamaCppRuntimeIdentity,
     attest_llama_cpp_runtime,
 )
-from relaylm.actual_model_llama_cpp_thinking import LlamaCppThinkingChatInputCounter
+from relaylm.actual_model_llama_cpp_thinking import (
+    LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS,
+    LlamaCppThinkingChatInputCounter,
+)
 from relaylm.actual_model_quality import evaluate_labeled_proposals
 from relaylm.actual_model_scenarios import ActualModelScenarioSet
 from relaylm.actual_model_stage_r_semantics import (
@@ -61,6 +64,7 @@ DEFAULT_TARGET_PATH = Path(
     "gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json"
 )
 QUALIFICATION_FORMAT_VERSION = 1
+NON_GENERATIVE_PREFLIGHT_TIMEOUT_SECONDS = 20.0
 CAPABILITY_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -146,11 +150,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--llama-version", required=True)
     parser.add_argument("--expected-build-number", required=True, type=int)
     parser.add_argument("--expected-context-window", required=True, type=int)
-    parser.add_argument("--expected-slots", type=int)
+    parser.add_argument("--expected-slots", required=True, type=int)
     parser.add_argument("--context-shift-disabled", action="store_true")
     parser.add_argument("--gpu-identity")
     parser.add_argument("--gpu-offload-args")
     parser.add_argument("--launch-args")
+    parser.add_argument("--server-log-path", required=True)
     parser.add_argument("--workspace-root", required=True)
     parser.add_argument("--artifact-root", required=True)
     parser.add_argument("--provider-api-key-env")
@@ -191,6 +196,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             gpu_identity=args.gpu_identity,
             gpu_offload_args=args.gpu_offload_args,
             launch_args=args.launch_args,
+            server_log_path=Path(args.server_log_path).resolve(),
         )
     except Exception as exc:
         summary = _failure_summary(
@@ -281,13 +287,14 @@ def _prepare_physical_condition(
     llama_version: str,
     expected_build_number: int,
     expected_context_window: int,
-    expected_slots: int | None,
+    expected_slots: int,
     context_shift_disabled: bool,
     api_key: str | None,
     artifact_root: Path,
     gpu_identity: str | None,
     gpu_offload_args: str | None,
     launch_args: str | None,
+    server_log_path: Path,
 ) -> dict[str, Any]:
     if not isinstance(llama_version, str) or not llama_version.strip():
         raise LlamaCppStageRQualificationError("llama-version must not be empty")
@@ -299,8 +306,14 @@ def _prepare_physical_condition(
         raise LlamaCppStageRQualificationError(
             "expected build and context values must be positive"
         )
-    if expected_slots is not None and expected_slots <= 0:
-        raise LlamaCppStageRQualificationError("expected-slots must be positive")
+    if expected_slots != 1:
+        raise LlamaCppStageRQualificationError(
+            "current shared llama.cpp qualification requires exactly one live slot"
+        )
+    if not server_log_path.is_file():
+        raise LlamaCppStageRQualificationError(
+            "current shared llama.cpp qualification requires the live per-launch server log"
+        )
 
     target_file = target_path if target_path.is_absolute() else repo_root / target_path
     target = load_actual_model_target(target_file)
@@ -311,7 +324,11 @@ def _prepare_physical_condition(
 
     origin = _origin_from_api_base(base_url)
     headers = _headers(api_key)
-    with httpx.Client(timeout=20.0, trust_env=False, headers=headers) as client:
+    with httpx.Client(
+        timeout=NON_GENERATIVE_PREFLIGHT_TIMEOUT_SECONDS,
+        trust_env=False,
+        headers=headers,
+    ) as client:
         health = _get_json(client, f"{origin}/health", "health")
         if not isinstance(health, dict) or health.get("status") != "ok":
             raise LlamaCppStageRQualificationError("llama-server /health is not ok")
@@ -346,7 +363,7 @@ def _prepare_physical_condition(
         raise LlamaCppStageRQualificationError(
             "attested llama.cpp context limit does not match expected context window"
         )
-    if expected_slots is not None and runtime.total_slots != expected_slots:
+    if runtime.total_slots != expected_slots:
         raise LlamaCppStageRQualificationError(
             "attested llama.cpp slot count does not match expected slots"
         )
@@ -384,12 +401,15 @@ def _prepare_physical_condition(
             "gpu_identity": gpu_identity,
             "gpu_offload_args": gpu_offload_args,
             "launch_args": launch_args,
+            "server_log_path": str(server_log_path),
+            "single_slot_required": True,
         },
         "counter_identity": counter.evidence_identity.to_mapping(),
         "thinking": {
             "mode": "off",
-            "wire": {"chat_template_kwargs": {"enable_thinking": False}},
+            "wire": {"reasoning_effort": "none"},
         },
+        "request_timeout_seconds": LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS,
         "json_schema_capability_sha256": f"sha256:{schema_sha}",
         "capability_smoke": capability,
         "non_generative_preflight_request_count": 4,
@@ -418,7 +438,7 @@ def _run_capability_smoke(
         "top_p": 1,
         "max_tokens": 48,
         "stream": False,
-        "chat_template_kwargs": {"enable_thinking": False},
+        "reasoning_effort": "none",
     }
     plain = {
         **common,
@@ -440,7 +460,11 @@ def _run_capability_smoke(
     }
     plain_count = counter.count_input(plain)
     schema_count = counter.count_input(schema)
-    with httpx.Client(timeout=120.0, trust_env=False, headers=_headers(api_key)) as client:
+    with httpx.Client(
+        timeout=LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS,
+        trust_env=False,
+        headers=_headers(api_key),
+    ) as client:
         plain_envelope = _post_json(
             client,
             f"{base_url}/chat/completions",
@@ -507,7 +531,10 @@ async def _run_stage_r(
     runtime: LlamaCppRuntimeIdentity,
     counter: LlamaCppThinkingChatInputCounter,
 ) -> dict[str, object]:
-    client = httpx.AsyncClient(timeout=120.0, trust_env=False)
+    client = httpx.AsyncClient(
+        timeout=LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS,
+        trust_env=False,
+    )
     provider = _CompletionObservingLlamaProvider(
         base_url=base_url,
         model=request_model,
@@ -534,7 +561,7 @@ async def _run_stage_r(
         character_fixture_revision=character_fixture_revision(fixture_root),
         provider_identity=(
             "llama_cpp:"
-            f"{runtime.upstream_revision}:{request_model}:enable_thinking=false"
+            f"{runtime.upstream_revision}:{request_model}:reasoning_effort=none"
         ),
         adapter_identity=identity.adapter_identity,
         model_artifact=target.model_artifact_identity,
@@ -630,7 +657,7 @@ async def _run_stage_r(
         "runtime": _runtime_mapping(runtime),
         "reasoning": {
             "requested": "off",
-            "wire": {"chat_template_kwargs": {"enable_thinking": False}},
+            "wire": {"reasoning_effort": "none"},
             "completion_evidence_valid": reasoning_evidence_valid,
         },
         "provider_request_count": len(provider.completion_artifacts),
