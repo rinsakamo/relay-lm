@@ -54,10 +54,13 @@ oracle = absent
 target-local evidence = present at preregistered levels
 ```
 
-The result records the endpoint success count over a preregistered family set. `PASS` requires:
+The result records one success count for every preregistered target-evidence level, plus an endpoint count that must equal the final curve entry. The curve length must exactly match the manifest's evidence-level sequence; a missing or shortened curve is `PROTOCOL_INVALID` rather than sufficient endpoint evidence.
+
+`PASS` requires:
 
 - exact manifest identity;
 - protocol-valid and complete evidence;
+- a complete adaptation curve over every preregistered evidence level;
 - zero seed replacement;
 - enough families for the preregistered minimum;
 - endpoint success rate at or above the preregistered floor threshold;
@@ -65,7 +68,7 @@ The result records the endpoint success count over a preregistered family set. `
 
 Outcomes below/above the range are `FAIL_FLOOR` / `FAIL_CEILING`.
 
-This does not prove transfer. It proves only that the target task occupies a measurable operating range for the frozen model/runtime.
+This does not prove transfer. It proves only that the target task occupies a measurable operating range for the frozen model/runtime while preserving the full adaptation curve needed by later transfer design.
 
 ## Q2 — SOURCE_ACQUISITION
 
