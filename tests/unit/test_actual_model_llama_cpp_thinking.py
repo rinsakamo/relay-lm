@@ -42,22 +42,26 @@ def _runtime():
     )
 
 
-def test_thinking_counter_preserves_exact_reasoning_and_stream_controls() -> None:
-    observed: list[dict[str, Any]] = []
-
+def _counter(observed: list[dict[str, Any]] | None = None):
     def post_json(_: str, payload: Mapping[str, Any], __: str | None) -> object:
-        observed.append(dict(payload))
+        if observed is not None:
+            observed.append(dict(payload))
         return {
             "input_tokens": 12
             if any(m["content"] for m in payload["messages"])
             else 4
         }
 
-    counter = LlamaCppThinkingChatInputCounter(
+    return LlamaCppThinkingChatInputCounter(
         base_url="http://127.0.0.1:1234/v1",
         runtime_identity=_runtime(),
         post_json=post_json,
     )
+
+
+def test_thinking_counter_preserves_reasoning_effort_and_stream_controls() -> None:
+    observed: list[dict[str, Any]] = []
+    counter = _counter(observed)
     result = counter.count_input(
         {
             "model": MODEL,
@@ -79,16 +83,34 @@ def test_thinking_counter_preserves_exact_reasoning_and_stream_controls() -> Non
     assert counter.evidence_identity.capability == LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY
     assert counter.evidence_identity.version == LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION
     parameters = dict(counter.evidence_identity.parameters)
-    assert parameters["thinking_control"] == "reasoning_effort=none"
+    assert parameters["preferred_thinking_control"] == "reasoning_effort=none"
+    assert parameters["legacy_template_control"] == (
+        "chat_template_kwargs.enable_thinking=false"
+    )
     assert parameters["stream_control"] == "stream=false"
 
 
-def test_thinking_counter_rejects_unqualified_reasoning_or_stream_controls() -> None:
-    counter = LlamaCppThinkingChatInputCounter(
-        base_url="http://127.0.0.1:1234/v1",
-        runtime_identity=_runtime(),
-        post_json=lambda *_: {"input_tokens": 1},
+def test_thinking_counter_preserves_legacy_template_control_during_host_handoff() -> None:
+    observed: list[dict[str, Any]] = []
+    result = _counter(observed).count_input(
+        {
+            "model": MODEL,
+            "messages": [{"role": "user", "content": "hello"}],
+            "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
     )
+
+    assert result.total_input_tokens == 12
+    assert all(
+        item["chat_template_kwargs"] == {"enable_thinking": False}
+        for item in observed
+    )
+    assert all("reasoning_effort" not in item for item in observed)
+
+
+def test_thinking_counter_rejects_unqualified_or_ambiguous_controls() -> None:
+    counter = _counter()
 
     for value in ("low", "medium", "high", ""):
         with pytest.raises(LlamaCppInputCounterError, match="reasoning_effort=none"):
@@ -100,12 +122,22 @@ def test_thinking_counter_rejects_unqualified_reasoning_or_stream_controls() -> 
                 }
             )
 
-    with pytest.raises(LlamaCppInputCounterError, match="unsupported"):
+    with pytest.raises(LlamaCppInputCounterError, match="one explicit"):
         counter.count_input(
             {
                 "model": MODEL,
                 "messages": [{"role": "user", "content": "hello"}],
+                "reasoning_effort": "none",
                 "chat_template_kwargs": {"enable_thinking": False},
+            }
+        )
+
+    with pytest.raises(LlamaCppInputCounterError, match="enable_thinking=false"):
+        counter.count_input(
+            {
+                "model": MODEL,
+                "messages": [{"role": "user", "content": "hello"}],
+                "chat_template_kwargs": {"enable_thinking": True},
             }
         )
 
