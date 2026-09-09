@@ -16,11 +16,9 @@ from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.providers.llama_cpp_openai import LlamaCppOpenAICompatibleTwoPassProvider
 from relaylm.providers.llama_cpp_reasoning import LlamaCppReasoningCapabilityAttestation
-from relaylm.providers.openai_compatible_backend import (
-    OpenAICompatibleBackendId,
-    decoding_capabilities_for_backend,
+from relaylm.providers.openai_compatible_decoding import (
+    OpenAICompatibleDecodingCapabilities,
 )
-from relaylm.providers.openai_compatible_decoding import OpenAICompatibleDecodingConfig
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
@@ -83,9 +81,10 @@ def test_llama_cpp_two_pass_carries_explicit_thinking_off_and_native_schema() ->
             provider = LlamaCppOpenAICompatibleTwoPassProvider(
                 base_url="http://127.0.0.1:1234/v1",
                 model=MODEL,
-                decoding_config=OpenAICompatibleDecodingConfig(seed=7),
-                decoding_capabilities=decoding_capabilities_for_backend(
-                    OpenAICompatibleBackendId.LLAMA_CPP
+                decoding_capabilities=OpenAICompatibleDecodingCapabilities(
+                    supported_controls=frozenset(
+                        {"temperature", "top_p", "max_output_tokens"}
+                    )
                 ),
                 llama_cpp_reasoning_capability=LlamaCppReasoningCapabilityAttestation(
                     request_model=MODEL,
@@ -125,7 +124,7 @@ def test_llama_cpp_two_pass_carries_explicit_thinking_off_and_native_schema() ->
     )
     assert all(body["temperature"] == 0.0 for body in seen)
     assert all(body["top_p"] == 1.0 for body in seen)
-    assert all(body["seed"] == 7 for body in seen)
+    assert all("seed" not in body for body in seen)
     assert all(body["max_tokens"] == 256 for body in seen)
     assert "response_format" not in seen[0]
     response_format = seen[1]["response_format"]
