@@ -42,9 +42,16 @@ bounded theorem model, not a claim that quarter-valued probability is fundamenta
 6. equal one-context marginals do not determine the exact joint alignment;
 7. realizability certificate validation is exact and fail-closed.
 
-The CI lane builds only this Lake project, runs Lean's environment checker through
-`lean-action`, and runs `axiom-audit`. Accepted theorem surface must not depend on
-`sorry`, `native_decide`, or home-grown axioms.
+The dedicated CI lane does not relax this repository's full-SHA action policy. It:
 
-Markov / FinStoch reconstruction is intentionally downstream. No Mathlib, category,
-MDP, SCM, game, or product-runtime dependency is imported here.
+- installs `elan` from the official v4.2.4 Linux release asset and verifies its published SHA256;
+- installs the toolchain declared by `lean-toolchain` (`leanprover/lean4:v4.33.1`);
+- runs `lake build` only in this isolated project;
+- runs the bundled `leanchecker` over `RelayTheory`;
+- clones `leanprover-community/axiom-audit` v0.1.2, verifies exact commit
+  `46024e005996495c65ef609368e11ab39c4222e3`, builds it with the project toolchain,
+  and audits the compiled `RelayTheory` kernel environment.
+
+Accepted theorem surface must not depend on `sorry`, `native_decide`, or home-grown
+axioms. Markov / FinStoch reconstruction is intentionally downstream. No Mathlib,
+category, MDP, SCM, game, or product-runtime dependency is imported here.
