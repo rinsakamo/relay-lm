@@ -14,6 +14,8 @@ TREE = "c" * 40
 
 
 def _argv(tmp_path: Path) -> list[str]:
+    server_log = tmp_path / "llama-server.log"
+    server_log.write_text("", encoding="utf-8")
     return [
         "--repo-root",
         str(tmp_path / "repo"),
@@ -30,8 +32,12 @@ def _argv(tmp_path: Path) -> list[str]:
         "--expected-build-number",
         "10874",
         "--expected-context-window",
-        "4352",
+        "8192",
+        "--expected-slots",
+        "1",
         "--context-shift-disabled",
+        "--server-log-path",
+        str(server_log),
         "--workspace-root",
         str(tmp_path / "workspace"),
         "--artifact-root",
@@ -58,6 +64,11 @@ def test_current_llama_endpoint_is_exact_loopback_and_never_lm_studio_fallback()
     ):
         with pytest.raises(host.LlamaCppStageRQualificationError):
             host._require_local_llama_api_base(value)
+
+
+def test_shared_llama_qualification_uses_long_bounded_wait_without_retry() -> None:
+    assert host.LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS == 600.0
+    assert host.NON_GENERATIVE_PREFLIGHT_TIMEOUT_SECONDS == 20.0
 
 
 def test_physical_preflight_failure_is_infra_invalid_without_semantic_execution(
