@@ -20,11 +20,13 @@ The controller may collect fresh read-only serving, process, artifact, hardware,
 
 ## One-command physical transaction
 
-The current Local execution surface is repository-owned:
+The current WSL Local execution surface is repository-owned and uses the interpreter name that is present on the target Ubuntu/WSL laboratory:
 
 ```text
-python -m tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
+python3 -m tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
 ```
+
+Do not assume a `python` compatibility alias exists. #2436 established that the current target shell exposes `/usr/bin/python3` while `python` is absent; that pre-harness launcher block is historical infrastructure evidence and does not spend S2.
 
 The command owns only the mechanical laboratory lifecycle around the existing scientific host:
 
