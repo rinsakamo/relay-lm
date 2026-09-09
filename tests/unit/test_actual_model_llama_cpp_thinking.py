@@ -10,6 +10,7 @@ from relaylm.actual_model_llama_cpp import (
     attest_llama_cpp_runtime,
 )
 from relaylm.actual_model_llama_cpp_thinking import (
+    LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS,
     LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY,
     LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION,
     LlamaCppThinkingChatInputCounter,
@@ -30,9 +31,9 @@ def _runtime():
             "model_path": MODEL_PATH,
             "chat_template": "{{ messages }}",
             "total_slots": 1,
-            "default_generation_settings": {"n_ctx": 4352},
+            "default_generation_settings": {"n_ctx": 8192},
         },
-        slots=[{"id": 0, "n_ctx": 4352}],
+        slots=[{"id": 0, "n_ctx": 8192}],
         upstream_revision=REVISION,
         expected_build_info=f"b999-{REVISION}",
         expected_model_alias=MODEL,
@@ -83,33 +84,15 @@ def test_thinking_counter_preserves_reasoning_effort_and_stream_controls() -> No
     assert counter.evidence_identity.capability == LLAMA_CPP_THINKING_CHAT_COUNTER_CAPABILITY
     assert counter.evidence_identity.version == LLAMA_CPP_THINKING_CHAT_COUNTER_VERSION
     parameters = dict(counter.evidence_identity.parameters)
-    assert parameters["preferred_thinking_control"] == "reasoning_effort=none"
-    assert parameters["legacy_template_control"] == (
-        "chat_template_kwargs.enable_thinking=false"
-    )
+    assert parameters["thinking_control"] == "reasoning_effort=none"
     assert parameters["stream_control"] == "stream=false"
-
-
-def test_thinking_counter_preserves_legacy_template_control_during_host_handoff() -> None:
-    observed: list[dict[str, Any]] = []
-    result = _counter(observed).count_input(
-        {
-            "model": MODEL,
-            "messages": [{"role": "user", "content": "hello"}],
-            "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False},
-        }
+    assert parameters["request_timeout_seconds"] == (
+        LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS
     )
-
-    assert result.total_input_tokens == 12
-    assert all(
-        item["chat_template_kwargs"] == {"enable_thinking": False}
-        for item in observed
-    )
-    assert all("reasoning_effort" not in item for item in observed)
+    assert LLAMA_CPP_QUALIFICATION_REQUEST_TIMEOUT_SECONDS == 600.0
 
 
-def test_thinking_counter_rejects_unqualified_or_ambiguous_controls() -> None:
+def test_thinking_counter_rejects_unqualified_controls() -> None:
     counter = _counter()
 
     for value in ("low", "medium", "high", ""):
@@ -122,22 +105,12 @@ def test_thinking_counter_rejects_unqualified_or_ambiguous_controls() -> None:
                 }
             )
 
-    with pytest.raises(LlamaCppInputCounterError, match="one explicit"):
+    with pytest.raises(LlamaCppInputCounterError, match="unsupported"):
         counter.count_input(
             {
                 "model": MODEL,
                 "messages": [{"role": "user", "content": "hello"}],
-                "reasoning_effort": "none",
                 "chat_template_kwargs": {"enable_thinking": False},
-            }
-        )
-
-    with pytest.raises(LlamaCppInputCounterError, match="enable_thinking=false"):
-        counter.count_input(
-            {
-                "model": MODEL,
-                "messages": [{"role": "user", "content": "hello"}],
-                "chat_template_kwargs": {"enable_thinking": True},
             }
         )
 

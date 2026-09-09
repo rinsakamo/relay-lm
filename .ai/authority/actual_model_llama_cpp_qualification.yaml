@@ -1,13 +1,14 @@
 schema_version: 1
 id: actual_model_llama_cpp_qualification
-owner_issue: 2409
+owner_issue: 2421
 summary: >-
   Evaluation-only llama.cpp/llama-server physical qualification carriage for
-  current RelayLM 1.0 actual-model Stage R, including explicit Gemma Thinking-OFF
-  request realization, exact serialized-input counting parity, bounded physical
-  admission, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID
-  classification without changing frozen Core semantics or production backend
-  routing identity.
+  current RelayLM 1.0 actual-model Stage R, including OpenAI-compatible
+  reasoning_effort=none Thinking-OFF realization, exact serialized-input counting
+  parity, a single-slot shared local laboratory with bounded 600-second request
+  waits and one per-launch server log, bounded physical admission, reproducibility
+  evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID classification without changing
+  frozen Core semantics or production backend routing identity.
 canonical_surfaces:
 - docs/reference/actual-model-llama-cpp-qualification.md
 references:
