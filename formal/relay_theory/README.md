@@ -24,12 +24,13 @@ The bounded Lean roles correspond as follows:
 | derived behavioral quotient/equivalence | `OperationalSignature`, `BehaviorEquivalent` |
 | `EXPLICIT_ALIGNMENT_INPUT` | `JointLaw`, `TripleLaw`, exact marginal projections |
 | `REALIZABILITY_DOMAIN_CERTIFICATE` | `RealizabilityCertificate.Valid`, `PairContextFamily.RealizedBy` |
-| derived finite stochastic slice | `BinaryKernel`, `PairKernel`, exact `Rat` composition/tensor/copy/discard |
+| derived bounded stochastic slice | `BinaryKernel`, `PairKernel`, exact `Rat` composition/tensor/copy/discard |
+| earned generic finite sequential stochastic core | `FinKernel`, `sumFin`, generic exact composition/identity/associativity |
 | `EXACT_EQUALITY_BOUNDARY` | Lean propositional equality over the exact finite structures |
 
 The first countermodel layers use exact quarter units because those witness families only need
-masses in `{0, 1/4, 1/2, 3/4, 1}`. The derived stochastic-composition layer uses Lean core exact
-`Rat`, because sequential composition and independent tensor need exact products such as `1/16`.
+masses in `{0, 1/4, 1/2, 3/4, 1}`. The stochastic-composition layers use Lean core exact `Rat`,
+because composition and independent tensor need exact products such as `1/16`.
 Neither representation is claimed fundamental.
 
 ## First formal milestone — #2403 / PR #2404
@@ -72,7 +73,7 @@ locally valid + overlap-consistent pairwise data
 This does not solve the general marginal polytope, assume a sheaf/presheaf, or establish an
 arbitrary `n`-world hierarchy.
 
-## Earned finite stochastic slice — #2416
+## Earned bounded finite stochastic slice — #2416 / PR #2427
 
 `RelayTheory.Stochastic` reconstructs the already-earned #2384 fully resolved stochastic slice
 without importing category theory as a premise.
@@ -97,16 +98,74 @@ make two independent fair draws
 
 while both resulting coordinate marginals are exactly fair.
 
-The module also imports the already-formalized outer boundaries rather than hiding them inside a
-stochastic arrow:
+This first stochastic result is the bounded precursor to the generic sequential reconstruction
+below. It does not by itself establish an arbitrary-finite category core.
+
+## Earned generic finite stochastic category core — #2428 / PR #2429
+
+`RelayTheory.GenericStochastic` lifts the sequential part of the stochastic reconstruction from a
+binary fixture to arbitrary declared finite interfaces without importing category theory as a
+premise.
+
+The representation is deliberately small:
+
+```text
+FinKernel m n := Fin m -> Fin n -> Rat
+```
+
+with a recursive exact finite summation `sumFin`. The theorem surface mechanically proves:
+
+- exact finite-sum congruence, additivity, scalar distribution, non-negativity, finite sum swap,
+  and exact singleton/delta reduction;
+- exact stochastic validity by non-negative entries plus normalized rows;
+- exact Dirac identities on arbitrary finite interfaces;
+- generic left and right identity laws;
+- exact probability sum/product composition;
+- composition preserves stochastic validity, including both non-negativity and row normalization;
+- generic associativity for arbitrary compatible finite interface sizes and arbitrary exact
+  kernels;
+- generic deterministic/Dirac kernels are valid whenever the underlying finite function exists;
+- Dirac kernel composition agrees exactly with ordinary function composition;
+- an inhabited source admits no valid normalized stochastic kernel into an empty target;
+- a genuine non-binary `Fin 1 -> Fin 3` positive control.
+
+The sequential category equations are therefore no longer merely a `Bool` fixture. The scoped
+earned label is:
+
+```text
+FINITE_STOCHASTIC_CATEGORY_CORE_EARNED
+```
+
+This means only that the fully resolved exact finite stochastic slice has an earned **sequential
+category core**: declared finite interfaces, valid exact stochastic kernels, identity, closure
+under composition, and generic associativity.
+
+It does **not** yet mean full `FinStoch`, a Markov category, or Relay Theory itself is a category.
+In particular, generic symmetric-monoidal tensor coherence and generic copy/discard Markov
+structure remain downstream.
+
+## Outer boundaries retained
+
+The stochastic modules reuse the already-formalized outer boundaries rather than hiding them
+inside a stochastic arrow:
 
 ```text
 unresolved selectable family != one resolved law
 locally valid overlap-consistent pieces may have no global realization
 ```
 
-The bounded result is therefore only a reconstructed **derived finite stochastic / Markov-like
-slice**. It is not a theorem that Relay Theory itself is a Markov category.
+Thus the current earned shape is:
+
+```text
+fully resolved exact finite stochastic behavior
+  -> generic sequential category core re-emerges
+
+unresolved choice / local-to-global gluing
+  -> remain outside that stochastic core
+```
+
+No scheduler, choice ownership, or gluing witness is smuggled into an opaque stochastic-arrow
+payload merely to make the theory look closed.
 
 ## Proof / CI authority
 
@@ -121,7 +180,8 @@ The dedicated CI lane does not relax this repository's full-SHA action policy. I
   and audits the compiled `RelayTheory` kernel environment.
 
 Accepted theorem surfaces must not depend on `sorry`, `admit`, `native_decide`, or home-grown
-substantive axioms. Universal FinStoch/category reconstruction, general symmetric-monoidal
-coherence, arbitrary finite indexing, intervention/substitution algebra, and general gluing remain
-downstream. No Mathlib, SCM, MDP, game, contextuality, sheaf, or product-runtime dependency is
-imported here.
+substantive axioms. Generic symmetric-monoidal coherence, generic finite product/tensor transport,
+generic copy/discard Markov structure, quotient congruence, intervention/substitution algebra,
+same-unit counterfactual coupling, scheduler/game structure, and general gluing remain downstream.
+No Mathlib, SCM, MDP, game, contextuality, sheaf, category-library, or product-runtime dependency
+is imported here.
