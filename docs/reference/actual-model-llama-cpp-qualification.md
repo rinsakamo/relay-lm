@@ -128,7 +128,7 @@ python -m relaylm.actual_model_stage_r_llama_cpp \
   --llama-upstream-revision <exact-40-hex-revision> \
   --llama-version <exact-live-version> \
   --expected-build-number <exact-live-build-number> \
-  --expected-context-window 4352 \
+  --expected-context-window 8192 \
   --context-shift-disabled \
   --workspace-root <fresh-workspace> \
   --artifact-root <fresh-artifact-root>
