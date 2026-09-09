@@ -1,0 +1,16 @@
+schema_version: 1
+id: relaylm2_transfer_qualification
+owner_issue: 2388
+summary: >-
+  RelayLM 2.0 transfer-precondition qualification authority separating target
+  competence, learned source-Structure acquisition, and oracle projection
+  upper-bound mechanism checks before any new learned-transfer campaign.
+canonical_surfaces:
+- docs/research/relaylm2-transfer-qualification.md
+implementation:
+- tools/v2_transfer_qualification.py
+tests:
+- tests/unit/test_v2_transfer_qualification.py
+depends_on:
+- relaylm2_transfer_experiment
+- relaylm2_physical_execution
