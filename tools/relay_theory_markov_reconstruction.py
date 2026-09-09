@@ -1,9 +1,9 @@
 """Earned finite stochastic / Markov-category slice for Relay Theory #2384.
 
-Research reconstruction only.  This module deliberately starts from finite exact
-rational stochastic kernels and mechanically checks the equations that survive
-after the earlier Grand Null attacks.  It is not RelayLM runtime authority and
-does not claim that a Markov category is the whole of Relay Theory.
+Research reconstruction only. This module starts from finite exact rational
+stochastic kernels and mechanically checks the equations that survive earlier
+Grand Null attacks. It is not RelayLM runtime authority and does not claim that
+a Markov category is the whole of Relay Theory.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ UNIT: tuple[Hashable, ...] = (UNIT_VALUE,)
 
 @dataclass(frozen=True)
 class ExactKernel:
-    """A finite normalized stochastic kernel with exact rational mass."""
+    """Finite normalized stochastic kernel with exact rational mass."""
 
     source: tuple[Hashable, ...]
     target: tuple[Hashable, ...]
@@ -90,16 +90,17 @@ def exact_kernel(
     if set(rows) != set(source):
         raise ValueError("rows must cover every source value exactly once")
 
-    matrix: list[tuple[Fraction, ...]] = []
     target_set = set(target)
+    matrix: list[tuple[Fraction, ...]] = []
     for source_value in source:
         weights = rows[source_value]
         if set(weights) - target_set:
             raise ValueError("kernel row references an undeclared target value")
         if any(not isinstance(mass, Fraction) for mass in weights.values()):
             raise TypeError("kernel masses must be fractions.Fraction")
-        dense = tuple(weights.get(target_value, Fraction(0)) for target_value in target)
-        matrix.append(dense)
+        matrix.append(
+            tuple(weights.get(target_value, Fraction(0)) for target_value in target)
+        )
     return ExactKernel(source, target, tuple(matrix))
 
 
@@ -131,31 +132,46 @@ def deterministic_kernel(
         source,
         target,
         tuple(
-            tuple(Fraction(int(mapping[source_value] == target_value)) for target_value in target)
+            tuple(
+                Fraction(int(mapping[source_value] == target_value))
+                for target_value in target
+            )
             for source_value in source
         ),
     )
+
+
+def distribution_kernel(
+    target: tuple[Hashable, ...],
+    distribution: tuple[tuple[Hashable, Fraction], ...],
+) -> ExactKernel:
+    """Lift one exact resolved distribution to a state arrow ``1 -> target``."""
+    weights: dict[Hashable, Fraction] = {}
+    for value, mass in distribution:
+        if value in weights:
+            raise ValueError("resolved distribution outcomes must be unique")
+        weights[value] = mass
+    return exact_kernel(UNIT, target, {UNIT_VALUE: weights})
 
 
 def compose(after: ExactKernel, before: ExactKernel) -> ExactKernel:
     """Return ``after o before`` by exact finite probability sum/product."""
     if before.target != after.source:
         raise ValueError("kernel composition requires identical intermediate objects")
-    rows: list[tuple[Fraction, ...]] = []
-    for before_row in before.matrix:
-        rows.append(
-            tuple(
-                sum(
-                    (
-                        before_row[mid_index] * after.matrix[mid_index][target_index]
-                        for mid_index in range(len(before.target))
-                    ),
-                    Fraction(0),
-                )
-                for target_index in range(len(after.target))
+    rows = tuple(
+        tuple(
+            sum(
+                (
+                    before_row[mid_index] * after.matrix[mid_index][target_index]
+                    for mid_index in range(len(before.target))
+                ),
+                Fraction(0),
             )
+            for target_index in range(len(after.target))
         )
-    return ExactKernel(before.source, after.target, tuple(rows))
+        for before_row in before.matrix
+    )
+    return ExactKernel(before.source, after.target, rows)
 
 
 def product_object(
@@ -163,31 +179,30 @@ def product_object(
 ) -> tuple[Hashable, ...]:
     _validate_object(left, "left product")
     _validate_object(right, "right product")
-    return tuple((left_value, right_value) for left_value in left for right_value in right)
+    return tuple(
+        (left_value, right_value)
+        for left_value in left
+        for right_value in right
+    )
 
 
 def tensor(left: ExactKernel, right: ExactKernel) -> ExactKernel:
     """Independent parallel composition by exact product mass."""
     source = product_object(left.source, right.source)
     target = product_object(left.target, right.target)
-    rows: list[tuple[Fraction, ...]] = []
-    for left_source, right_source in source:
-        rows.append(
-            tuple(
-                left.probability(left_source, left_target)
-                * right.probability(right_source, right_target)
-                for left_target, right_target in target
-            )
+    rows = tuple(
+        tuple(
+            left.probability(left_source, left_target)
+            * right.probability(right_source, right_target)
+            for left_target, right_target in target
         )
-    return ExactKernel(source, target, tuple(rows))
+        for left_source, right_source in source
+    )
+    return ExactKernel(source, target, rows)
 
 
 def discard_kernel(obj: tuple[Hashable, ...]) -> ExactKernel:
-    return ExactKernel(
-        obj,
-        UNIT,
-        tuple((Fraction(1),) for _ in obj),
-    )
+    return ExactKernel(obj, UNIT, tuple((Fraction(1),) for _ in obj))
 
 
 def copy_kernel(obj: tuple[Hashable, ...]) -> ExactKernel:
@@ -221,47 +236,53 @@ def deterministic_composition_law_holds() -> bool:
     source = ("a", "b", "c")
     middle = ("u", "v")
     target = ("0", "1", "2")
-    f_map = {"a": "u", "b": "v", "c": "u"}
-    g_map = {"u": "2", "v": "1"}
-    f = deterministic_kernel(source, middle, f_map)
-    g = deterministic_kernel(middle, target, g_map)
-    composed_map = {item: g_map[f_map[item]] for item in source}
-    return compose(g, f) == deterministic_kernel(source, target, composed_map)
+    first_map = {"a": "u", "b": "v", "c": "u"}
+    second_map = {"u": "2", "v": "1"}
+    first = deterministic_kernel(source, middle, first_map)
+    second = deterministic_kernel(middle, target, second_map)
+    composed_map = {item: second_map[first_map[item]] for item in source}
+    return compose(second, first) == deterministic_kernel(
+        source, target, composed_map
+    )
 
 
 def category_laws_hold() -> bool:
-    w = ("w0", "w1")
-    x = ("x0", "x1")
-    y = ("y0", "y1", "y2")
-    z = ("z0", "z1")
-
-    k = ExactKernel(
-        w,
-        x,
+    obj_w = ("w0", "w1")
+    obj_x = ("x0", "x1")
+    obj_y = ("y0", "y1", "y2")
+    obj_z = ("z0", "z1")
+    first = ExactKernel(
+        obj_w,
+        obj_x,
         (
             (Fraction(1, 3), Fraction(2, 3)),
             (Fraction(3, 4), Fraction(1, 4)),
         ),
     )
-    l = ExactKernel(
-        x,
-        y,
+    second = ExactKernel(
+        obj_x,
+        obj_y,
         (
             (Fraction(1, 2), Fraction(1, 3), Fraction(1, 6)),
             (Fraction(1, 4), Fraction(1, 4), Fraction(1, 2)),
         ),
     )
-    m = ExactKernel(
-        y,
-        z,
+    third = ExactKernel(
+        obj_y,
+        obj_z,
         (
             (Fraction(1, 5), Fraction(4, 5)),
             (Fraction(2, 5), Fraction(3, 5)),
             (Fraction(3, 5), Fraction(2, 5)),
         ),
     )
-    identity = compose(k, identity_kernel(w)) == k and compose(identity_kernel(x), k) == k
-    associativity = compose(m, compose(l, k)) == compose(compose(m, l), k)
+    identity = (
+        compose(first, identity_kernel(obj_w)) == first
+        and compose(identity_kernel(obj_x), first) == first
+    )
+    associativity = compose(third, compose(second, first)) == compose(
+        compose(third, second), first
+    )
     return identity and associativity
 
 
@@ -274,7 +295,9 @@ def discard_naturality_holds() -> bool:
             (Fraction(1, 4), Fraction(1, 4), Fraction(1, 2)),
         ),
     )
-    return compose(discard_kernel(kernel.target), kernel) == discard_kernel(kernel.source)
+    return compose(discard_kernel(kernel.target), kernel) == discard_kernel(
+        kernel.source
+    )
 
 
 def copy_comonoid_laws_hold(obj: tuple[Hashable, ...]) -> bool:
@@ -286,7 +309,6 @@ def copy_comonoid_laws_hold(obj: tuple[Hashable, ...]) -> bool:
 
     left_nested = compose(tensor(copy, identity), copy)
     right_nested = compose(tensor(identity, copy), copy)
-
     flatten_left = deterministic_kernel(
         left_nested.target,
         product3,
@@ -330,16 +352,17 @@ def copy_comonoid_laws_hold(obj: tuple[Hashable, ...]) -> bool:
 def deterministic_maps_preserve_copy() -> bool:
     source = ("a", "b", "c")
     target = ("0", "1")
-    f = deterministic_kernel(source, target, {"a": "0", "b": "1", "c": "0"})
-    left = compose(copy_kernel(target), f)
-    right = compose(tensor(f, f), copy_kernel(source))
-    return left == right
+    function = deterministic_kernel(
+        source, target, {"a": "0", "b": "1", "c": "0"}
+    )
+    copied_after = compose(copy_kernel(target), function)
+    copied_before = compose(tensor(function, function), copy_kernel(source))
+    return copied_after == copied_before
 
 
 def stochastic_copy_naturality_fails() -> bool:
-    fair = fair_bit_kernel()
-    copied_sample = compose(copy_kernel(fair.target), fair)
-    independent_resample = compose(tensor(fair, fair), copy_kernel(UNIT))
+    copied_sample = shared_fair_pair()
+    independent_resample = independent_fair_pair()
     return (
         copied_sample != independent_resample
         and copied_sample.row(UNIT_VALUE)
@@ -355,106 +378,106 @@ def stochastic_copy_naturality_fails() -> bool:
 
 
 def tensor_laws_hold() -> bool:
-    x = ("x0", "x1")
-    y = ("y0", "y1")
-    z = ("z0", "z1")
-    a = ("a0", "a1")
-    b = ("b0", "b1")
-    c = ("c0", "c1")
-
-    k1 = ExactKernel(
-        x,
-        y,
+    obj_x = ("x0", "x1")
+    obj_y = ("y0", "y1")
+    obj_z = ("z0", "z1")
+    obj_a = ("a0", "a1")
+    obj_b = ("b0", "b1")
+    obj_c = ("c0", "c1")
+    first_left = ExactKernel(
+        obj_x,
+        obj_y,
         (
             (Fraction(1, 3), Fraction(2, 3)),
             (Fraction(3, 4), Fraction(1, 4)),
         ),
     )
-    k2 = ExactKernel(
-        y,
-        z,
+    second_left = ExactKernel(
+        obj_y,
+        obj_z,
         (
             (Fraction(2, 5), Fraction(3, 5)),
             (Fraction(1, 5), Fraction(4, 5)),
         ),
     )
-    l1 = ExactKernel(
-        a,
-        b,
+    first_right = ExactKernel(
+        obj_a,
+        obj_b,
         (
             (Fraction(1, 2), Fraction(1, 2)),
             (Fraction(1, 4), Fraction(3, 4)),
         ),
     )
-    l2 = ExactKernel(
-        b,
-        c,
+    second_right = ExactKernel(
+        obj_b,
+        obj_c,
         (
             (Fraction(3, 5), Fraction(2, 5)),
             (Fraction(2, 3), Fraction(1, 3)),
         ),
     )
 
-    identity_compatibility = tensor(identity_kernel(x), identity_kernel(a)) == identity_kernel(
-        product_object(x, a)
-    )
-    interchange = tensor(compose(k2, k1), compose(l2, l1)) == compose(
-        tensor(k2, l2), tensor(k1, l1)
+    identity_compatibility = tensor(
+        identity_kernel(obj_x), identity_kernel(obj_a)
+    ) == identity_kernel(product_object(obj_x, obj_a))
+    interchange = tensor(
+        compose(second_left, first_left),
+        compose(second_right, first_right),
+    ) == compose(
+        tensor(second_left, second_right),
+        tensor(first_left, first_right),
     )
 
     swap_source = deterministic_kernel(
-        product_object(x, a),
-        product_object(a, x),
-        {(left, right): (right, left) for left, right in product(x, a)},
+        product_object(obj_x, obj_a),
+        product_object(obj_a, obj_x),
+        {(left, right): (right, left) for left, right in product(obj_x, obj_a)},
     )
     swap_target = deterministic_kernel(
-        product_object(y, b),
-        product_object(b, y),
-        {(left, right): (right, left) for left, right in product(y, b)},
+        product_object(obj_y, obj_b),
+        product_object(obj_b, obj_y),
+        {(left, right): (right, left) for left, right in product(obj_y, obj_b)},
     )
-    explicit_symmetry = compose(swap_target, tensor(k1, l1)) == compose(
-        tensor(l1, k1), swap_source
-    )
+    explicit_symmetry = compose(
+        swap_target, tensor(first_left, first_right)
+    ) == compose(tensor(first_right, first_left), swap_source)
     normalized = all(
-        sum(row, Fraction(0)) == 1 for row in tensor(k1, l1).matrix
+        sum(row, Fraction(0)) == 1
+        for row in tensor(first_left, first_right).matrix
     )
     return identity_compatibility and interchange and explicit_symmetry and normalized
+
+
+def _pair_marginal(kernel: ExactKernel, coordinate: int) -> dict[str, Fraction]:
+    return {
+        bit: sum(
+            (
+                kernel.probability(UNIT_VALUE, pair)
+                for pair in kernel.target
+                if pair[coordinate] == bit
+            ),
+            Fraction(0),
+        )
+        for bit in ("0", "1")
+    }
 
 
 def shared_randomness_uses_copy_not_plain_tensor() -> bool:
     shared = shared_fair_pair()
     independent = independent_fair_pair()
-    shared_marginal_left = {
-        bit: sum(
-            (
-                shared.probability(UNIT_VALUE, pair)
-                for pair in shared.target
-                if pair[0] == bit
-            ),
-            Fraction(0),
-        )
-        for bit in ("0", "1")
-    }
-    independent_marginal_left = {
-        bit: sum(
-            (
-                independent.probability(UNIT_VALUE, pair)
-                for pair in independent.target
-                if pair[0] == bit
-            ),
-            Fraction(0),
-        )
-        for bit in ("0", "1")
-    }
+    fair_marginal = {"0": Fraction(1, 2), "1": Fraction(1, 2)}
     return (
-        shared_marginal_left
-        == independent_marginal_left
-        == {"0": Fraction(1, 2), "1": Fraction(1, 2)}
+        _pair_marginal(shared, 0)
+        == _pair_marginal(shared, 1)
+        == _pair_marginal(independent, 0)
+        == _pair_marginal(independent, 1)
+        == fair_marginal
         and shared != independent
     )
 
 
 def resolved_choice_boundary_survives() -> bool:
+    """Resolve scheduler choices to arrows without erasing unresolved capability."""
     from tools.relay_theory_scheduler_nondeterminism import (
         Alternative,
         ChoiceState,
@@ -463,50 +486,85 @@ def resolved_choice_boundary_survives() -> bool:
         max_outcome_probability,
     )
 
-    delta_l = exact_distribution({"L": Fraction(1)})
-    delta_r = exact_distribution({"R": Fraction(1)})
-    half = exact_distribution({"L": Fraction(1, 2), "R": Fraction(1, 2)})
+    outcomes = ("L", "R")
+    delta_left = exact_distribution({"L": Fraction(1)})
+    delta_right = exact_distribution({"R": Fraction(1)})
+    fair = exact_distribution({"L": Fraction(1, 2), "R": Fraction(1, 2)})
     selectable = ChoiceState(
         "selectable",
-        (Alternative("left", delta_l), Alternative("right", delta_r)),
+        (
+            Alternative("left", delta_left),
+            Alternative("right", delta_right),
+        ),
     )
-    fixed = ChoiceState("fixed", (Alternative("half", half),))
-    resolved = induced_distribution(
+    fixed = ChoiceState("fixed", (Alternative("fair", fair),))
+
+    fixed_left = induced_distribution(selectable, {"left": Fraction(1)})
+    fixed_right = induced_distribution(selectable, {"right": Fraction(1)})
+    randomized = induced_distribution(
         selectable,
         {"left": Fraction(1, 2), "right": Fraction(1, 2)},
     )
-    return (
-        resolved == half
-        and max_outcome_probability(selectable, "L", "randomized") == 1
+    left_arrow = distribution_kernel(outcomes, fixed_left)
+    right_arrow = distribution_kernel(outcomes, fixed_right)
+    randomized_arrow = distribution_kernel(outcomes, randomized)
+    fixed_fair_arrow = distribution_kernel(outcomes, fair)
+
+    resolutions_recover_arrows = (
+        left_arrow.row(UNIT_VALUE) == (("L", Fraction(1)),)
+        and right_arrow.row(UNIT_VALUE) == (("R", Fraction(1)),)
+        and randomized_arrow == fixed_fair_arrow
+    )
+    unresolved_capability_survives = (
+        max_outcome_probability(selectable, "L", "randomized") == 1
         and max_outcome_probability(fixed, "L", "randomized") == Fraction(1, 2)
     )
+    return resolutions_recover_arrows and unresolved_capability_survives
 
 
 def causal_intervention_boundary_survives() -> bool:
-    from tools.relay_theory_causal_substitution import run_causal_substitution_comparison
+    from tools.relay_theory_causal_substitution import (
+        run_causal_substitution_comparison,
+    )
 
-    results = {result.name: result.passed for result in run_causal_substitution_comparison()}
+    results = {
+        result.name: result.passed
+        for result in run_causal_substitution_comparison()
+    }
     return (
-        results["OBSERVATIONAL_EQUIVALENCE_DOES_NOT_IMPLY_INTERVENTIONAL_EQUIVALENCE"]
+        results[
+            "OBSERVATIONAL_EQUIVALENCE_DOES_NOT_IMPLY_INTERVENTIONAL_EQUIVALENCE"
+        ]
         and results["FIXED_SUBSTITUTION_RECOVERS_ONE_EXACT_STOCHASTIC_LAW"]
     )
 
 
 def counterfactual_boundary_survives() -> bool:
-    from tools.relay_theory_cross_world_coupling import run_cross_world_coupling_comparison
+    from tools.relay_theory_cross_world_coupling import (
+        run_cross_world_coupling_comparison,
+    )
 
-    results = {result.name: result.passed for result in run_cross_world_coupling_comparison()}
+    results = {
+        result.name: result.passed
+        for result in run_cross_world_coupling_comparison()
+    }
     return (
         results["COMPLETE_BINARY_HARD_INTERVENTION_FAMILY_MATCHES"]
-        and results["ENTIRE_BERNOULLI_SOFT_INTERVENTION_FAMILY_MATCHES_SYMBOLICALLY"]
+        and results[
+            "ENTIRE_BERNOULLI_SOFT_INTERVENTION_FAMILY_MATCHES_SYMBOLICALLY"
+        ]
         and results["SAME_UNIT_CROSS_WORLD_COUPLING_DIFFERS"]
     )
 
 
 def local_global_gluing_boundary_survives() -> bool:
-    from tools.relay_theory_probability_mass_gluing import run_probability_mass_gluing
+    from tools.relay_theory_probability_mass_gluing import (
+        run_probability_mass_gluing,
+    )
 
-    results = {result.name: result.passed for result in run_probability_mass_gluing()}
+    results = {
+        result.name: result.passed for result in run_probability_mass_gluing()
+    }
     return (
         results["NEGATIVE_LOCAL_LAWS_ARE_OVERLAP_CONSISTENT"]
         and results["NEGATIVE_SUPPORT_IS_MAXIMALLY_PERMISSIVE"]
@@ -515,7 +573,7 @@ def local_global_gluing_boundary_survives() -> bool:
 
 
 def quotient_representative_independence_survives() -> bool:
-    """Reuse #2209 exact bisimulation and lift representatives to one quotient arrow."""
+    """Lift #2209 bisimilar representatives to the same quotient arrow."""
     from tools.v2_operational_probabilistic_bisimulation import (
         ProbLTS,
         ProbTransition,
@@ -549,11 +607,7 @@ def quotient_representative_independence_survives() -> bool:
         accumulated = {block: Fraction(0) for block in target_blocks}
         for target, mass in state_distribution(system, representative, label):
             accumulated[partition[target]] += mass
-        return exact_kernel(
-            ("Q",),
-            target_blocks,
-            {"Q": accumulated},
-        )
+        return exact_kernel(("Q",), target_blocks, {"Q": accumulated})
 
     left = representative_kernel("x1")
     right = representative_kernel("x2")
@@ -564,15 +618,21 @@ def quotient_representative_independence_survives() -> bool:
     post = deterministic_kernel(
         target_blocks,
         output,
-        {block: output[index] for index, block in enumerate(target_blocks)},
+        {
+            block: output[index]
+            for index, block in enumerate(target_blocks)
+        },
     )
     context = fair_bit_kernel()
-    sequential = compose(post, left) == compose(post, right)
-    parallel = tensor(left, context) == tensor(right, context)
-    canonical_copy = copy_kernel(left.source) == copy_kernel(right.source)
-    canonical_discard = discard_kernel(left.source) == discard_kernel(right.source)
-    observable = compose(post, left).row("Q") == compose(post, right).row("Q")
-    return sequential and parallel and canonical_copy and canonical_discard and observable
+    return all(
+        (
+            compose(post, left) == compose(post, right),
+            tensor(left, context) == tensor(right, context),
+            copy_kernel(left.source) == copy_kernel(right.source),
+            discard_kernel(left.source) == discard_kernel(right.source),
+            compose(post, left).row("Q") == compose(post, right).row("Q"),
+        )
+    )
 
 
 def reconstructed_core_survives() -> bool:
@@ -606,7 +666,7 @@ def reconstruction_verdict() -> str:
     if not category_laws_hold():
         return "CATEGORY_LAWS_FAIL"
     if not tensor_laws_hold():
-        return "COPY_DISCARD_STRUCTURE_SURVIVES"
+        return "UNDERDETERMINED"
     if not copy_comonoid_laws_hold(("0", "1")) or not discard_naturality_holds():
         return "SYMMETRIC_MONOIDAL_STOCHASTIC_SLICE_SURVIVES"
     if not deterministic_composition_law_holds() or not deterministic_maps_preserve_copy():
@@ -622,14 +682,19 @@ def reconstruction_verdict() -> str:
 
 def run_markov_reconstruction() -> tuple[ReconstructionResult, ...]:
     checks = (
-        ReconstructionResult("CATEGORY_IDENTITY_AND_ASSOCIATIVITY_SURVIVE", category_laws_hold()),
+        ReconstructionResult(
+            "CATEGORY_IDENTITY_AND_ASSOCIATIVITY_SURVIVE",
+            category_laws_hold(),
+        ),
         ReconstructionResult(
             "DETERMINISTIC_DIRAC_SUBCATEGORY_SURVIVES",
-            deterministic_composition_law_holds() and deterministic_maps_preserve_copy(),
+            deterministic_composition_law_holds()
+            and deterministic_maps_preserve_copy(),
         ),
         ReconstructionResult(
             "COPY_DISCARD_COMONOID_STRUCTURE_SURVIVES",
-            discard_naturality_holds() and copy_comonoid_laws_hold(("0", "1")),
+            discard_naturality_holds()
+            and copy_comonoid_laws_hold(("0", "1")),
         ),
         ReconstructionResult(
             "INDEPENDENT_TENSOR_AND_INTERCHANGE_SURVIVE",
