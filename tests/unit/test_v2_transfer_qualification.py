@@ -62,6 +62,7 @@ def _q1(manifest: QualificationManifest) -> TargetCompetenceResult:
         protocol_valid=True,
         structure_origin=ORIGIN_NONE,
         family_count=8,
+        evidence_level_correct=(1, 2, 4, 5),
         endpoint_correct=5,
         replaced_seed_count=0,
     )
@@ -114,11 +115,23 @@ def test_manifest_binds_explicit_representation_semantics() -> None:
         )
 
 
-def test_q1_requires_non_floor_non_ceiling_target_competence_without_structure() -> None:
+def test_q1_requires_full_non_floor_non_ceiling_target_curve_without_structure() -> None:
     manifest = _manifest()
     assert classify_q1(manifest, _q1(manifest)) == PASS
-    assert classify_q1(manifest, replace(_q1(manifest), endpoint_correct=0)) == FAIL_FLOOR
-    assert classify_q1(manifest, replace(_q1(manifest), endpoint_correct=8)) == FAIL_CEILING
+    assert (
+        classify_q1(
+            manifest,
+            replace(_q1(manifest), evidence_level_correct=(0, 0, 0, 0), endpoint_correct=0),
+        )
+        == FAIL_FLOOR
+    )
+    assert (
+        classify_q1(
+            manifest,
+            replace(_q1(manifest), evidence_level_correct=(2, 4, 7, 8), endpoint_correct=8),
+        )
+        == FAIL_CEILING
+    )
     assert (
         classify_q1(
             manifest,
@@ -126,6 +139,15 @@ def test_q1_requires_non_floor_non_ceiling_target_competence_without_structure()
         )
         == PROTOCOL_INVALID
     )
+    assert (
+        classify_q1(
+            manifest,
+            replace(_q1(manifest), evidence_level_correct=(2, 4, 5), endpoint_correct=5),
+        )
+        == PROTOCOL_INVALID
+    )
+    with pytest.raises(TransferQualificationError, match="endpoint must equal"):
+        replace(_q1(manifest), endpoint_correct=4)
 
 
 def test_q2_separates_learned_acquisition_from_oracle_truth() -> None:
@@ -225,7 +247,11 @@ def test_transfer_certificate_rejects_failed_or_mismatched_gate() -> None:
     with pytest.raises(TransferQualificationError, match="not all PASS"):
         qualify_for_transfer(
             manifest,
-            q1=replace(_q1(manifest), endpoint_correct=0),
+            q1=replace(
+                _q1(manifest),
+                evidence_level_correct=(0, 0, 0, 0),
+                endpoint_correct=0,
+            ),
             q2=_q2(manifest),
             q3=_q3(manifest),
         )
