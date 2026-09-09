@@ -11,4 +11,5 @@ import RelayTheory.GenericTensorKernel
 import RelayTheory.GenericInterchange
 import RelayTheory.GenericCoherence
 import RelayTheory.GenericStructuralKernels
+import RelayTheory.GenericMarkovLaws
 import RelayTheory.Countermodels
