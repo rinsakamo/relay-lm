@@ -33,7 +33,7 @@ theorem samePublicSignature_equivalent :
 
 theorem changedExactResponse_not_equivalent :
     ¬ BehaviorEquivalent signatureBase signatureChanged := by
-  decide
+  simp [BehaviorEquivalent, signatureBase, signatureChanged, deltaLeft, deltaRight, halfLaw]
 
 /-- All first Lean milestone countermodels hold simultaneously. -/
 theorem finiteCore_countermodel_bundle :

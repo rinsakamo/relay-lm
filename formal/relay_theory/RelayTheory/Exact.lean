@@ -37,18 +37,18 @@ def deltaLeft : BinaryLaw := ⟨4, 0⟩
 /-- Point mass on the right outcome. -/
 def deltaRight : BinaryLaw := ⟨0, 4⟩
 
-theorem halfLaw_valid : halfLaw.Valid := by decide
+theorem halfLaw_valid : halfLaw.Valid := rfl
 
-theorem skewLaw_valid : skewLaw.Valid := by decide
+theorem skewLaw_valid : skewLaw.Valid := rfl
 
-theorem deltaLeft_valid : deltaLeft.Valid := by decide
+theorem deltaLeft_valid : deltaLeft.Valid := rfl
 
-theorem deltaRight_valid : deltaRight.Valid := by decide
+theorem deltaRight_valid : deltaRight.Valid := rfl
 
 /-- Equal finite support does not imply equal exact stochastic law. -/
 theorem sameSupport_not_sameExactLaw :
     halfLaw.support = skewLaw.support ∧ halfLaw ≠ skewLaw := by
-  decide
+  simp [BinaryLaw.support, halfLaw, skewLaw]
 
 /-- Exact equality, not tolerance, is the bounded identity boundary. -/
 def ExactEquivalent (p q : BinaryLaw) : Prop := p = q

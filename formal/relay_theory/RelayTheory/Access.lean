@@ -62,9 +62,11 @@ def accessMiddle : AccessSpec :=
 def accessRich : AccessSpec :=
   ⟨true, true, true, true, true, true⟩
 
-theorem coarse_forgets_middle : PureForgetting accessCoarse accessMiddle := by decide
+theorem coarse_forgets_middle : PureForgetting accessCoarse accessMiddle := by
+  simp [PureForgetting, BoolLe, accessCoarse, accessMiddle]
 
-theorem middle_forgets_rich : PureForgetting accessMiddle accessRich := by decide
+theorem middle_forgets_rich : PureForgetting accessMiddle accessRich := by
+  simp [PureForgetting, BoolLe, accessMiddle, accessRich]
 
 theorem coarse_forgets_rich : PureForgetting accessCoarse accessRich :=
   pureForgetting_trans coarse_forgets_middle middle_forgets_rich

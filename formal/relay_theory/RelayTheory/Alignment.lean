@@ -32,16 +32,16 @@ def correlatedJoint : JointLaw := ⟨2, 0, 0, 2⟩
 /-- Perfectly anti-correlated uniform binary joint. -/
 def antiCorrelatedJoint : JointLaw := ⟨0, 2, 2, 0⟩
 
-theorem correlatedJoint_valid : correlatedJoint.Valid := by decide
+theorem correlatedJoint_valid : correlatedJoint.Valid := rfl
 
-theorem antiCorrelatedJoint_valid : antiCorrelatedJoint.Valid := by decide
+theorem antiCorrelatedJoint_valid : antiCorrelatedJoint.Valid := rfl
 
 /-- Equal one-context marginals do not determine the exact joint alignment. -/
 theorem equalMarginals_not_equalJoint :
     correlatedJoint.marginalA = antiCorrelatedJoint.marginalA ∧
     correlatedJoint.marginalB = antiCorrelatedJoint.marginalB ∧
     correlatedJoint ≠ antiCorrelatedJoint := by
-  decide
+  simp [JointLaw.marginalA, JointLaw.marginalB, correlatedJoint, antiCorrelatedJoint]
 
 /--
 Explicit candidate/certificate for a bounded global construction. The candidate
@@ -80,8 +80,12 @@ def goodCertificate : RealizabilityCertificate :=
 def badCertificate : RealizabilityCertificate :=
   ⟨deltaLeft, halfLaw, correlatedJoint⟩
 
-theorem goodCertificate_valid : goodCertificate.Valid := by decide
+theorem goodCertificate_valid : goodCertificate.Valid := by
+  simp [RealizabilityCertificate.Valid, goodCertificate, BinaryLaw.Valid, JointLaw.Valid,
+    JointLaw.marginalA, JointLaw.marginalB, halfLaw, correlatedJoint]
 
-theorem badCertificate_rejected : ¬ badCertificate.Valid := by decide
+theorem badCertificate_rejected : ¬ badCertificate.Valid := by
+  simp [RealizabilityCertificate.Valid, badCertificate, BinaryLaw.Valid, JointLaw.Valid,
+    JointLaw.marginalA, JointLaw.marginalB, deltaLeft, halfLaw, correlatedJoint]
 
 end RelayTheory

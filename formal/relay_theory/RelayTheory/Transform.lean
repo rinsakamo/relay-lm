@@ -74,7 +74,8 @@ def transformAccessRich : AccessSpec :=
 theorem information_changes_admissibility :
     transformAccessCoarse.admits historyChoice = false ∧
     transformAccessRich.admits historyChoice = true := by
-  decide
+  simp [AccessSpec.admits, AccessSpec.commandEnabled, transformAccessCoarse,
+    transformAccessRich, historyChoice]
 
 /-- Unresolved selectable capability: two exact responses remain available. -/
 def unresolvedSelectableResponses : List BinaryLaw :=
@@ -86,6 +87,6 @@ def resolvedMixedResponse : BinaryLaw := halfLaw
 /-- A selectable family is not the same object as one resolved response. -/
 theorem unresolvedFamily_ne_resolvedSingleton :
     unresolvedSelectableResponses ≠ [resolvedMixedResponse] := by
-  decide
+  simp [unresolvedSelectableResponses, resolvedMixedResponse, deltaLeft, deltaRight, halfLaw]
 
 end RelayTheory
