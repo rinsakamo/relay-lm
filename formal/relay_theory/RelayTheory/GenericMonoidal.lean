@@ -6,13 +6,24 @@ import RelayTheory.GenericStochastic
 namespace RelayTheory
 
 /--
+The minimal transport contract needed by this transaction: two executable maps
+with exact round trips. This is intentionally narrower than importing a general
+finite-equivalence or category framework.
+-/
+structure FiniteTransport (α β : Type) where
+  toFun : α → β
+  invFun : β → α
+  left_inv : ∀ x, invFun (toFun x) = x
+  right_inv : ∀ y, toFun (invFun y) = y
+
+/--
 Constructive product encoding for the current cardinal-indexed finite object family.
 
 This is deliberately proved from natural-number div/mod rather than imported as
 category or finite-equivalence infrastructure. The orientation matches row-major
 pair indexing: the second coordinate varies fastest.
 -/
-def finPairEquiv {m n : Nat} : Equiv (Fin m × Fin n) (Fin (m * n)) where
+def finPairTransport {m n : Nat} : FiniteTransport (Fin m × Fin n) (Fin (m * n)) where
   toFun x :=
     ⟨x.2.1 + n * x.1.1,
       calc
@@ -52,28 +63,25 @@ def finPairEquiv {m n : Nat} : Equiv (Fin m × Fin n) (Fin (m * n)) where
     intro x
     apply Fin.eq_of_val_eq
     change (x.1 % n + n * (x.1 / n)) = x.1
-    calc
-      x.1 % n + n * (x.1 / n) = x.1 % n + (x.1 / n) * n := by
-        rw [Nat.mul_comm n (x.1 / n)]
-      _ = x.1 := Nat.mod_add_div _ _
+    exact Nat.mod_add_div _ _
 
-@[simp] theorem finPairEquiv_apply_val {m n : Nat} (x : Fin m × Fin n) :
-    (finPairEquiv x).1 = x.2.1 + n * x.1.1 := rfl
+@[simp] theorem finPairTransport_apply_val {m n : Nat} (x : Fin m × Fin n) :
+    (finPairTransport.toFun x).1 = x.2.1 + n * x.1.1 := rfl
 
-@[simp] theorem finPairEquiv_symm_apply_fst_val {m n : Nat} (x : Fin (m * n)) :
-    ((finPairEquiv.symm x).1).1 = x.1 / n := rfl
+@[simp] theorem finPairTransport_inv_fst_val {m n : Nat} (x : Fin (m * n)) :
+    ((finPairTransport.invFun x).1).1 = x.1 / n := rfl
 
-@[simp] theorem finPairEquiv_symm_apply_snd_val {m n : Nat} (x : Fin (m * n)) :
-    ((finPairEquiv.symm x).2).1 = x.1 % n := rfl
+@[simp] theorem finPairTransport_inv_snd_val {m n : Nat} (x : Fin (m * n)) :
+    ((finPairTransport.invFun x).2).1 = x.1 % n := rfl
 
 /-- The product transport round-trips every declared finite pair exactly. -/
 theorem finPair_transport_roundtrip {m n : Nat} (x : Fin m × Fin n) :
-    finPairEquiv.symm (finPairEquiv x) = x :=
-  finPairEquiv.left_inv x
+    finPairTransport.invFun (finPairTransport.toFun x) = x :=
+  finPairTransport.left_inv x
 
 /-- The flattened finite product transport round-trips every encoded index exactly. -/
 theorem finPair_flatten_roundtrip {m n : Nat} (x : Fin (m * n)) :
-    finPairEquiv (finPairEquiv.symm x) = x :=
-  finPairEquiv.right_inv x
+    finPairTransport.toFun (finPairTransport.invFun x) = x :=
+  finPairTransport.right_inv x
 
 end RelayTheory
