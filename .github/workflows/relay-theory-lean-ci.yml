@@ -1,0 +1,52 @@
+name: Relay Theory Lean CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - relay-theory
+    paths:
+      - "formal/relay_theory/**"
+      - ".github/workflows/relay-theory-lean-ci.yml"
+  push:
+    branches:
+      - relay-theory
+    paths:
+      - "formal/relay_theory/**"
+      - ".github/workflows/relay-theory-lean-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-theory-lean-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finite-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Build, independently check, and audit Lean finite core
+        uses: leanprover/lean-action@50fcf42d2e460296f1a34b402e990d1b24f8b596 # v1.6.0
+        with:
+          lake-package-directory: formal/relay_theory
+          auto-config: false
+          build: true
+          test: false
+          lint: false
+          leanchecker: true
+          axiom-audit: true
+          axiom-audit-root: RelayTheory
+          use-mathlib-cache: false
+          use-github-cache: false
