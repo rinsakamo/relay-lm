@@ -18,6 +18,58 @@ The procedure invariant remains:
 
 The controller may collect fresh read-only serving, process, artifact, hardware, and capacity observations. It does not authorize the scientific run. `run_llama_cpp_selected_s2_transaction(...)` revalidates the material binding and then enters the existing S2 host, whose final binding/freeze remains authoritative before provider entry.
 
+## One-command physical transaction
+
+The current Local execution surface is repository-owned:
+
+```text
+python -m tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
+```
+
+The command owns only the mechanical laboratory lifecycle around the existing scientific host:
+
+```text
+fresh clean exact v2 checkout
+-> acquire one kernel-backed local laboratory lock
+-> fail closed if 127.0.0.1:1234 is already occupied
+-> attest exact local llama.cpp source/binary/GGUF/GPU identity
+-> verify the exact binary accepts the declared launch flags
+-> verify the exact source revision maps reasoning_effort=none to Thinking OFF
+-> create one unique server log
+-> launch one fresh llama-server process
+-> bounded non-generative readiness and /health + /v1/models + /props + /slots probes
+-> assemble the existing selected-S2 controller identity
+-> invoke run_llama_cpp_selected_s2_transaction(...) at most once
+-> terminate only the transaction-owned server PID
+-> wait for process exit/log flush
+-> hash the one-process-lifetime server log
+-> emit s2-selected-llama-cpp-transaction-summary.json
+```
+
+The transaction-owned launch class is:
+
+```text
+-m <canonical GGUF>
+--host 127.0.0.1
+--port 1234
+-ngl 999
+-c 8192
+-np 1
+--no-context-shift
+-lv 4
+--log-prefix
+--log-timestamps
+--log-file <unique one-lifetime path>
+```
+
+One harness invocation owns at most one server launch and at most one scientific host invocation. It never reuses, restarts, replaces, or kills a pre-existing listener. Cleanup signals only the exact process handle created by that invocation. A local kernel-backed lock spans the whole server lifetime so independently launched Local agents serialize on the shared port/GPU rather than racing one another.
+
+A server startup/readiness/identity failure before host invocation is an `EXECUTION_BLOCKED` mechanical result with zero semantic provider/model calls. Once the selected-S2 host has been invoked, a failure is terminal for that host transaction; the wrapper does not restart the server, retry the host, replay a request, reseed, or fall back to another provider.
+
+The lifecycle wrapper is not a second scientific host. It does not call host-owned freeze/durability primitives and does not alter the #2363 boundary. The existing `run_llama_cpp_selected_s2_transaction(...)` remains the only selected-S2 host entrypoint.
+
+The transaction summary records the exact RelayLM repository identity, server PID/source/binary/hash/argv, GGUF hash, GPU identity, fresh request alias/runtime probes, controller identity, host result when reached, artifact references, unique server-log path/hash/size, cleanup disposition, and explicit zero retry/replay/fallback/LM-Studio/repository-mutation counters. Local execution/reconciliation should adopt this summary and its referenced artifacts rather than manually replaying internal requests.
+
 ## Endpoint boundary
 
 The selected WSL adapter accepts only:
