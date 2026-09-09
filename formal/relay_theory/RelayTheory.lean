@@ -6,4 +6,5 @@ import RelayTheory.HigherOrder
 import RelayTheory.Stochastic
 import RelayTheory.GenericStochastic
 import RelayTheory.GenericMonoidal
+import RelayTheory.GenericTensor
 import RelayTheory.Countermodels
