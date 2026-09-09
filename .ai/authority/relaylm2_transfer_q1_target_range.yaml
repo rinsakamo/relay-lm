@@ -1,0 +1,18 @@
+schema_version: 1
+id: relaylm2_transfer_q1_target_range
+owner_issue: 2393
+summary: >-
+  RelayLM 2.0 Q1 target-competence range qualification packaging with a
+  non-citable frozen difficulty calibration ladder followed by a disjoint
+  held-out target-only qualification before downstream transfer gates.
+canonical_surfaces:
+- docs/research/relaylm2-transfer-q1-target-range.md
+implementation:
+- tools/v2_transfer_q1_target_range.py
+- tools/v2_transfer_q1_structured_client.py
+- tools/v2_transfer_q1_host.py
+tests:
+- tests/unit/test_v2_transfer_q1_target_range.py
+- tests/unit/test_v2_transfer_q1_host.py
+depends_on:
+- relaylm2_transfer_qualification
