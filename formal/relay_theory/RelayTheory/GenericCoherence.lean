@@ -7,6 +7,15 @@ theorem fin_one_eq_zero (i : Fin 1) : i = 0 := by
   apply Fin.eq_of_val_eq
   grind
 
+/--
+The pair transport right round-trip, exposed in component form so nested
+coherence proofs do not depend on product eta being a definitional reduction.
+-/
+theorem finPair_flatten_components {m n : Nat} (x : Fin (m * n)) :
+    finPairTransport.toFun
+      ((finPairTransport.invFun x).1, (finPairTransport.invFun x).2) = x := by
+  simpa using finPair_flatten_roundtrip x
+
 /-- Explicit symmetry transport for the cardinal-indexed product objects. -/
 def finSwapTransport {m n : Nat} :
     FiniteTransport (Fin (m * n)) (Fin (n * m)) where
@@ -18,10 +27,10 @@ def finSwapTransport {m n : Nat} :
     finPairTransport.toFun (p.2, p.1)
   left_inv := by
     intro x
-    simp [finPair_transport_roundtrip, finPair_flatten_roundtrip]
+    simp [finPair_transport_roundtrip, finPair_flatten_components]
   right_inv := by
     intro y
-    simp [finPair_transport_roundtrip, finPair_flatten_roundtrip]
+    simp [finPair_transport_roundtrip, finPair_flatten_components]
 
 /-- Explicit left-unitor transport `Fin (1*n) <-> Fin n`. -/
 def finLeftUnitTransport {n : Nat} :
@@ -34,7 +43,7 @@ def finLeftUnitTransport {n : Nat} :
     have hp : (0 : Fin 1) = p.1 := (fin_one_eq_zero p.1).symm
     change finPairTransport.toFun ((0 : Fin 1), p.2) = x
     rw [hp]
-    exact finPair_flatten_roundtrip x
+    exact finPair_flatten_components x
   right_inv := by
     intro y
     have h := finPair_transport_roundtrip ((0 : Fin 1), y)
@@ -51,7 +60,7 @@ def finRightUnitTransport {n : Nat} :
     have hp : (0 : Fin 1) = p.2 := (fin_one_eq_zero p.2).symm
     change finPairTransport.toFun (p.1, (0 : Fin 1)) = x
     rw [hp]
-    exact finPair_flatten_roundtrip x
+    exact finPair_flatten_components x
   right_inv := by
     intro y
     have h := finPair_transport_roundtrip (y, (0 : Fin 1))
@@ -73,10 +82,10 @@ def finAssocTransport {a b c : Nat} :
     finPairTransport.toFun (finPairTransport.toFun (p.1, bc.1), bc.2)
   left_inv := by
     intro x
-    simp [finPair_transport_roundtrip, finPair_flatten_roundtrip]
+    simp [finPair_transport_roundtrip, finPair_flatten_components]
   right_inv := by
     intro y
-    simp [finPair_transport_roundtrip, finPair_flatten_roundtrip]
+    simp [finPair_transport_roundtrip, finPair_flatten_components]
 
 /-- Symmetry transport is an exact involution at the flattened interface level. -/
 theorem finSwap_transport_roundtrip {m n : Nat} (x : Fin (m * n)) :
