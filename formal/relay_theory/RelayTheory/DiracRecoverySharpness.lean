@@ -49,19 +49,20 @@ theorem finKernel_dirac_injective_of_hasExactRecovery
     Function.Injective f := by
   rcases hrecover with ⟨recovery, hrec⟩
   intro x y hxy
-  by_contra hne
-  have hne' : y ≠ x := by
-    intro h
-    exact hne h.symm
-  have hx := congrFun (congrFun hrec x) x
-  have hy := congrFun (congrFun hrec y) x
-  rw [finKernel_compose_after_dirac_eval] at hx hy
-  have hxone : recovery (f x) x = 1 := by
-    simpa [FinKernel.identity] using hx
-  have hyzero : recovery (f y) x = 0 := by
-    simpa [FinKernel.identity, hne'] using hy
-  rw [hxy] at hyzero
-  grind
+  by_cases heq : x = y
+  · exact heq
+  · have hne' : y ≠ x := by
+      intro h
+      exact heq h.symm
+    have hx := congrFun (congrFun hrec x) x
+    have hy := congrFun (congrFun hrec y) x
+    rw [finKernel_compose_after_dirac_eval] at hx hy
+    have hxone : recovery (f x) x = 1 := by
+      simpa [FinKernel.identity] using hx
+    have hyzero : recovery (f y) x = 0 := by
+      simpa [FinKernel.identity, hne'] using hy
+    rw [hxy] at hyzero
+    grind
 
 /-- Exact deterministic recovery is precisely injectivity. -/
 theorem finKernel_dirac_hasExactRecovery_iff_injective
@@ -74,13 +75,15 @@ theorem finKernel_dirac_hasExactRecovery_iff_injective
 
 /--
 Combining the already-earned deterministic epicity characterization with exact
-recovery sharpness gives the exact bijective boundary.
+recovery sharpness gives the exact bijective boundary.  Bijectivity is written
+explicitly as injectivity plus surjectivity to stay inside the current core
+import surface.
 -/
 theorem finKernel_dirac_epic_and_exactRecovery_iff_bijective
     {a q : Nat} (f : Fin a → Fin q) :
     (FinKernel.ObservationEpic (FinKernel.dirac f) ∧
       FinKernel.HasExactRecovery (FinKernel.dirac f)) ↔
-      Function.Bijective f := by
+      (Function.Injective f ∧ Function.Surjective f) := by
   constructor
   · intro h
     exact ⟨
@@ -97,7 +100,7 @@ transpose-delta recovery is itself stochastic-valid.
 -/
 theorem finKernel_diracTranspose_valid_of_bijective
     {a q : Nat} (f : Fin a → Fin q)
-    (hbij : Function.Bijective f) :
+    (hbij : Function.Injective f ∧ Function.Surjective f) :
     FinKernel.Valid (finKernelDiracTranspose f) := by
   constructor
   · intro y x
@@ -130,7 +133,7 @@ theorem finKernel_diracTranspose_valid_of_bijective
 /-- Every deterministic bijection has an explicit stochastic-valid recovery. -/
 theorem finKernel_dirac_hasValidStochasticRecovery_of_bijective
     {a q : Nat} (f : Fin a → Fin q)
-    (hbij : Function.Bijective f) :
+    (hbij : Function.Injective f ∧ Function.Surjective f) :
     FinKernel.HasValidStochasticRecovery (FinKernel.dirac f) := by
   exact ⟨finKernelDiracTranspose f,
     finKernel_diracTranspose_valid_of_bijective f hbij,
@@ -191,9 +194,9 @@ theorem finKernel_dirac_recovery_sharpness_bundle :
     (∀ {a q : Nat} (f : Fin a → Fin q),
       (FinKernel.ObservationEpic (FinKernel.dirac f) ∧
         FinKernel.HasExactRecovery (FinKernel.dirac f)) ↔
-        Function.Bijective f) ∧
+        (Function.Injective f ∧ Function.Surjective f)) ∧
     (∀ {a q : Nat} (f : Fin a → Fin q),
-      Function.Bijective f →
+      (Function.Injective f ∧ Function.Surjective f) →
         FinKernel.HasValidStochasticRecovery (FinKernel.dirac f)) := by
   exact ⟨finKernel_dirac_hasExactRecovery_iff_injective,
     finKernel_dirac_epic_and_exactRecovery_iff_bijective,
