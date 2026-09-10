@@ -29,7 +29,8 @@ theorem finKernel_factorWitness_unique_of_observationEpic
 
 /--
 An existing factorization through an epic source observation upgrades from
-existence to a unique quotient witness.
+existence to a unique quotient witness.  The uniqueness packaging is written
+explicitly rather than relying on additional parser/library notation.
 -/
 theorem finKernel_kernelObservationFactors_existsUnique
     {a b qa qb : Nat}
@@ -37,13 +38,15 @@ theorem finKernel_kernelObservationFactors_existsUnique
     {k : FinKernel a b}
     (hepic : FinKernel.ObservationEpic obsA)
     (hk : FinKernel.KernelObservationFactors obsA obsB k) :
-    ∃! h : FinKernel qa qb,
-      FinKernel.compose obsB k = FinKernel.compose h obsA := by
+    ∃ h : FinKernel qa qb,
+      FinKernel.compose obsB k = FinKernel.compose h obsA ∧
+      ∀ h' : FinKernel qa qb,
+        FinKernel.compose obsB k = FinKernel.compose h' obsA → h' = h := by
   rcases hk with ⟨h, hEq⟩
   refine ⟨h, hEq, ?_⟩
   intro h' h'Eq
   exact finKernel_factorWitness_unique_of_observationEpic
-    hepic hEq h'Eq
+    hepic h'Eq hEq
 
 /--
 Every surjective deterministic observation is epic for arbitrary exact finite
@@ -93,10 +96,10 @@ theorem finKernel_flip_after_fair :
   funext x z
   rcases finTwo_zero_or_one z with hz | hz
   · subst z
-    simp [FinKernel.compose, sumFin, FinKernel.dirac,
+    grind [FinKernel.compose, sumFin, FinKernel.dirac,
       finFlip2, finFairKernel, qHalf]
   · subst z
-    simp [FinKernel.compose, sumFin, FinKernel.dirac,
+    grind [FinKernel.compose, sumFin, FinKernel.dirac,
       finFlip2, finFairKernel, qHalf]
 
 /--
@@ -171,7 +174,9 @@ theorem finNoisyEpic2_not_deterministic :
     (finKernel_valid_preservesCopy_iff_deterministic finNoisyEpic2_valid).2 hdet
   have hd := finKernel_preservesCopy_diagonal
     hcopy (0 : Fin 2) (0 : Fin 2)
-  grind [finNoisyEpic2, qThreeQuarter] at hd
+  have hq : qThreeQuarter = qThreeQuarter * qThreeQuarter := by
+    simpa [finNoisyEpic2] using hd
+  grind [qThreeQuarter]
 
 /--
 Despite being genuinely stochastic, the noisy binary observation is epic: its
@@ -183,13 +188,21 @@ theorem finNoisyEpic2_observationEpic :
   funext y z
   have h0 := congrFun (congrFun hEq (0 : Fin 2)) z
   have h1 := congrFun (congrFun hEq (1 : Fin 2)) z
+  have h0eq :
+      qThreeQuarter * h₁ (0 : Fin 2) z + qQuarter * h₁ (1 : Fin 2) z =
+        qThreeQuarter * h₂ (0 : Fin 2) z + qQuarter * h₂ (1 : Fin 2) z := by
+    simpa [FinKernel.compose, sumFin, finNoisyEpic2,
+      Rat.add_zero, Rat.zero_add] using h0
+  have h1eq :
+      qQuarter * h₁ (0 : Fin 2) z + qThreeQuarter * h₁ (1 : Fin 2) z =
+        qQuarter * h₂ (0 : Fin 2) z + qThreeQuarter * h₂ (1 : Fin 2) z := by
+    simpa [FinKernel.compose, sumFin, finNoisyEpic2,
+      Rat.add_zero, Rat.zero_add] using h1
   rcases finTwo_zero_or_one y with hy | hy
   · subst y
-    grind [FinKernel.compose, sumFin, finNoisyEpic2,
-      qThreeQuarter, qQuarter] at h0 h1 ⊢
+    grind [qThreeQuarter, qQuarter]
   · subst y
-    grind [FinKernel.compose, sumFin, finNoisyEpic2,
-      qThreeQuarter, qQuarter] at h0 h1 ⊢
+    grind [qThreeQuarter, qQuarter]
 
 /--
 Positive-control bundle: stochasticity does not preclude exact quotient-witness
