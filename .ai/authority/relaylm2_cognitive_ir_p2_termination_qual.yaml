@@ -1,0 +1,20 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_p2_termination_qual
+owner_issue: 2211
+summary: Non-citable mechanical qualification for the bounded P2 ordinary-summary termination contract frozen by #2530 and implemented by #2533 after independent S3-R2/R3 max-output stops. Preserves historical S2/S3-v1/R2/R3 behavior, keeps the provider hard ceiling at 1024, tests only clean P2 termination and visible-content bounds over twelve fresh calls, and precommits but does not activate future S3-R4 seeds.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-p2-termination-qualification.md
+implementation:
+- src/relaylm/v2_cognitive_ir_p2_termination_qual.py
+- tools/v2_cognitive_ir_p2_termination_qual_llama_cpp.py
+- tools/v2_cognitive_ir_p2_termination_qual_transaction.py
+- tools/v2_cognitive_ir_p2_termination_qual_entry.py
+- tools/v2_cognitive_ir_p2_termination_qual_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_p2_termination_qual.py
+- tests/unit/test_v2_cognitive_ir_p2_termination_qual_llama_cpp.py
+- tests/unit/test_v2_cognitive_ir_p2_termination_qual_entry.py
+depends_on:
+- relaylm2_cognitive_ir_experiment
+- relaylm2_cognitive_ir_s3_r3
+- relaylm2_physical_execution
