@@ -311,8 +311,14 @@ def _resolve_extraction_structured_output_mode(
 
 
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
+    serialized_input = serialize_cognitive_input(cognitive_input)
     serialized = json.dumps(
-        serialize_cognitive_input(cognitive_input),
+        serialized_input,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    lexical_source = json.dumps(
+        {"content": serialized_input["input"]["content"]},
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -320,6 +326,10 @@ def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
         "<COGNITIVE_INPUT>\n"
         f"{serialized}\n"
         "</COGNITIVE_INPUT>\n\n"
+        "<CURRENT_INPUT_LEXICAL_SOURCE>\n"
+        f"{lexical_source}\n"
+        "</CURRENT_INPUT_LEXICAL_SOURCE>\n"
+        "This repeats the current Input content exactly as a lexical copy source and adds no authority beyond the current Input Event. When reusing current user wording for a named entity or referent, copy its lexical form from this source; surrounding prose may be paraphrased.\n\n"
         "<PASS>\n"
     )
 
@@ -508,6 +518,7 @@ Projection rules:
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
+- For a new `referent` established by current Input, take user-authored lexical identity from `CURRENT_INPUT_LEXICAL_SOURCE`, not from a paraphrased Pass 1 response. Preserve that lexical anchor when reusing it in the referent value unless current Input explicitly replaces it or accepted Continuity context provides an unambiguous alias for the same target.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
