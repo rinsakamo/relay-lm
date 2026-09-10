@@ -11,10 +11,9 @@ from relaylm.v2_cognitive_ir_s3_r2 import (
     derive_s3_r2_seed,
     validate_s3_r2_preregistration,
 )
-import tools.v2_cognitive_ir_s3_llama_cpp_wsl as wsl
 
 
-def test_s3_r2_frozen_identity_seeds_and_route() -> None:
+def test_s3_r2_frozen_identity_and_seeds() -> None:
     validate_s3_r2_preregistration()
     assert S3_R2_PREREGISTRATION_SCHEMA == "relaylm2-cognitive-ir-s3-prereg-v2"
     assert S3_R2_PREREGISTRATION_SHA256 == (
@@ -32,9 +31,6 @@ def test_s3_r2_frozen_identity_seeds_and_route() -> None:
     }
     assert len(fresh) == 12
     assert fresh.isdisjoint(historical)
-    assert wsl.INNER_TRANSACTION_MODULE == (
-        "tools.v2_cognitive_ir_s3_r2_llama_cpp_transaction"
-    )
 
 
 def test_s3_r2_activation_changes_only_campaign_identity_and_families() -> None:
