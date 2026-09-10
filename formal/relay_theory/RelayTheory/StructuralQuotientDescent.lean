@@ -21,9 +21,6 @@ theorem finKernel_discard_factor_square
           (FinKernel.discard a) =
         FinKernel.discard a := by
     rw [finKernel_discard_as_dirac a, finKernel_dirac_compose]
-    apply finKernel_dirac_congr
-    intro x
-    rfl
   calc
     FinKernel.compose
         (FinKernel.dirac (fun z : Fin 1 => z))
