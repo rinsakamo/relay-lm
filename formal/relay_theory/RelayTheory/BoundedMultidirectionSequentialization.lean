@@ -109,18 +109,13 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
       by_cases hxy : x = y
       · subst y
         simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex]
-      · have henc :
-            finPairTransport.toFun (x, phaseIndex k 0 (Nat.zero_le k)) ≠
-              finPairTransport.toFun (y, phaseIndex k 0 (Nat.zero_le k)) := by
+      · have hencZero :
+            finPairTransport.toFun (y, (0 : Fin (k + 1))) ≠
+              finPairTransport.toFun (x, (0 : Fin (k + 1))) := by
           intro h
           apply hxy
-          exact congrArg Prod.fst (finPairTransport_toFun_injective h)
-        have hencRev :
-            finPairTransport.toFun (y, phaseIndex k 0 (Nat.zero_le k)) ≠
-              finPairTransport.toFun (x, phaseIndex k 0 (Nat.zero_le k)) := by
-          intro h
-          exact henc h.symm
-        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, hencRev]
+          exact (congrArg Prod.fst (finPairTransport_toFun_injective h)).symm
+        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, hencZero]
     · have hp0 : p ≠ phaseIndex k 0 (Nat.zero_le k) := by
         intro h
         apply hp
