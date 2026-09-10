@@ -29,4 +29,5 @@ import RelayTheory.ScalarEpicityReduction
 import RelayTheory.MonoidalEpicity
 import RelayTheory.EpicityReversibility
 import RelayTheory.SequentialEpicityReflection
+import RelayTheory.SplitLaterReflection
 import RelayTheory.Countermodels
