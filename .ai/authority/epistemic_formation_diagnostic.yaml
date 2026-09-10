@@ -1,0 +1,48 @@
+schema_version: 1
+id: epistemic_formation_diagnostic
+summary: >-
+  Evaluation-only current Stage R T2 probe that tests whether the model can form
+  a source-grounded representation of information explicitly left not yet known,
+  determined, or answered before any Continuity lifecycle projection. It uses no
+  production cognition IR, no fixture-specific answer hint in the diagnostic
+  instruction or native schema, and no T3 execution.
+owner_issue: 2516
+canonical_surfaces:
+- docs/reference/actual-model-epistemic-formation-diagnostic.md
+references:
+- docs/reference/actual-model-stage-r-current.md
+- docs/reference/actual-model-llama-cpp-qualification.md
+- docs/contracts/cognition-pass-execution.md
+- docs/architecture/continuity-context.md
+implementation:
+- src/relaylm/actual_model_epistemic_formation_diagnostic.py
+- src/relaylm/actual_model_stage_r_llama_cpp_epistemic_formation.py
+- src/relaylm/actual_model_stage_r_llama_cpp_epistemic_formation_transaction.py
+- tools/v1_stage_r_llama_cpp_epistemic_formation_wsl.py
+tests:
+- tests/unit/test_actual_model_epistemic_formation_diagnostic.py
+- tests/unit/test_actual_model_stage_r_llama_cpp_epistemic_formation.py
+- tests/unit/test_actual_model_stage_r_llama_cpp_epistemic_formation_transaction.py
+- tests/unit/test_v1_stage_r_llama_cpp_epistemic_formation_wsl.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_epistemic_formation_diagnostic.py
+  reason: >-
+    Provider-neutral evaluation probe and zero-generation review contract only;
+    it does not alter production cognition IR, Continuity authority, or Core.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_epistemic_formation.py
+  reason: >-
+    Evaluation-only llama.cpp T2 carriage and immutable raw-observation capsule;
+    it does not enter the production Stage R runner or product runtime.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_epistemic_formation_transaction.py
+  reason: >-
+    Physical-owner module selector that reuses the current llama.cpp transaction
+    lifecycle and is not production runtime behavior.
+- path: tools/v1_stage_r_llama_cpp_epistemic_formation_wsl.py
+  reason: >-
+    One-command future physical-owner boundary only; repository work does not
+    invoke it and it has no fallback or alternate runtime path.
+depends_on:
+- actual_model_llama_cpp_qualification
+- actual_model_evaluation
+- cognitive_turn
+- continuity_context
