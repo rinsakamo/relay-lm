@@ -26,9 +26,50 @@ GET http://127.0.0.1:1234/slots
 
 LM Studio support and historical evidence remain under their existing owners. They are not fallback authority for this transaction.
 
-## One-command operator surface
+## One-command LocalCodex/WSL operator surface
 
-The current citable physical laboratory is orchestrated by one repository-owned command:
+LocalCodex/WSL uses one repository-owned operator command exactly once, after
+the separate Full Access/localhost permission preflight passes:
+
+```text
+python3 -m tools.v1_stage_r_llama_cpp_wsl
+```
+
+The operator flow is:
+
+```text
+LocalCodex
+-> Full Access / localhost permission preflight
+-> repository-owned wrapper exactly once
+-> existing inner transaction
+```
+
+The wrapper is only a deterministic process/environment boundary. Before the
+inner transaction is invoked, it:
+
+- captures the real operator `HOME` as `OPERATOR_HOME`;
+- creates one fresh runtime root directly under `/tmp`;
+- creates only `<runtime-root>/home` as the child `runtime_home` and proves it
+  writable;
+- derives `<runtime-root>/workspace` and `<runtime-root>/artifacts` without
+  creating either path;
+- passes those fresh, nonexistent paths as `--workspace-root` and
+  `--artifact-root` to the inner transaction;
+- passes `OPERATOR_HOME/src/llama.cpp` and
+  `OPERATOR_HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf` explicitly;
+- runs from the exact repository root with child `HOME=runtime_home` and
+  `PYTHONPATH=<repo-root>/src` first, followed by the inherited `PYTHONPATH`;
+- invokes the inner transaction once and returns its exit code unchanged.
+
+The wrapper does not start `llama-server`, contact a provider/model, invoke the
+Stage R host, interpret semantic classification, retry, replay, fall back, or
+contact LM Studio. In particular, the wrapper/controller must never pre-create
+the workspace or artifact roots: their fresh-nonexistent ownership belongs to
+the existing inner transaction, which creates them with its fail-closed
+`exist_ok=False` contract.
+
+The existing inner transaction remains the citable physical laboratory and is
+invoked by the wrapper as:
 
 ```text
 python -m relaylm.actual_model_stage_r_llama_cpp_transaction
@@ -205,13 +246,16 @@ The host also retains its existing `stage-r-llama-cpp-summary.json`, physical bi
 
 ## Invocation
 
-For the current WSL laboratory, after fresh repository/GitHub authority has established that the intended v1 execution is allowed, Local Codex should need only the repository command:
+For the current WSL laboratory, after fresh repository/GitHub authority and the
+permission preflight have established that the intended v1 execution is
+allowed, LocalCodex should need only the wrapper command:
 
 ```text
-python -m relaylm.actual_model_stage_r_llama_cpp_transaction
+python3 -m tools.v1_stage_r_llama_cpp_wsl
 ```
 
-Optional explicit roots are available when a controller wants predetermined local evidence locations:
+The inner transaction's direct command remains useful for repository-local
+tests and owner implementation diagnostics. Its explicit-root form is:
 
 ```text
 python -m relaylm.actual_model_stage_r_llama_cpp_transaction \
@@ -220,6 +264,9 @@ python -m relaylm.actual_model_stage_r_llama_cpp_transaction \
   --artifact-root <fresh-nonexistent-artifact-path>
 ```
 
-The controller should read the emitted transaction JSON, reconcile it into the owning physical Issue, and not manually replay any internal request.
+Those explicit roots must be nonexistent before the inner transaction starts;
+the wrapper owns that operator-side proof for the canonical LocalCodex/WSL
+path. The controller should read the emitted transaction JSON, reconcile it
+into the owning physical Issue, and not manually replay any internal request.
 
 > Start one clean laboratory, run one executable transaction, preserve its trace, then shut that laboratory down.
