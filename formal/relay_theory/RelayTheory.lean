@@ -30,4 +30,5 @@ import RelayTheory.MonoidalEpicity
 import RelayTheory.EpicityReversibility
 import RelayTheory.SequentialEpicityReflection
 import RelayTheory.SplitLaterReflection
+import RelayTheory.DiracRecoverySharpness
 import RelayTheory.Countermodels
