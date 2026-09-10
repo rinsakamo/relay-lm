@@ -15,9 +15,6 @@ from relaylm.actual_model_boundary import (
     evaluate_actual_model_deterministic_boundary,
     write_actual_model_deterministic_boundary_verdict,
 )
-from relaylm.actual_model_continuity_diagnostic import (
-    apply_fixed_slot_transport,
-)
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_execution import run_actual_model_scenario_definition
 from relaylm.actual_model_execution_artifacts import write_actual_model_execution_result
@@ -196,7 +193,28 @@ def _fixed_slot_request_body(
         lm_studio_reasoning_capability=effective_lm_studio,
         structured_output_mode=structured_output_mode,
     )
-    return apply_fixed_slot_transport(body)
+    messages = body.get("messages")
+    if not isinstance(messages, list) or len(messages) != 2:
+        raise ProviderProtocolError(
+            "fixed-slot diagnostic expected production two-message extraction request"
+        )
+    user_message = messages[1]
+    if not isinstance(user_message, dict) or not isinstance(
+        user_message.get("content"), str
+    ):
+        raise ProviderProtocolError(
+            "fixed-slot diagnostic expected production extraction user prompt"
+        )
+    user_message["content"] = _fixed_slot_prompt(user_message["content"])
+    body["response_format"] = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": FIXED_SLOT_SCHEMA_NAME,
+            "strict": True,
+            "schema": FIXED_SLOT_EXTRACTION_SCHEMA,
+        },
+    }
+    return body
 
 
 def _parse_fixed_slot_wire(
