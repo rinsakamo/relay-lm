@@ -55,7 +55,7 @@ theorem finKernel_tensor_scalar_contract_eval
             (finPairTransport.toFun (x, y))
             (finPairTransport.toFun (i, j)) *
           h (finPairTransport.toFun (i, j)) (0 : Fin 1))) :=
-        sumFin_product (qa) (qb) (fun w =>
+        sumFin_product qa qb (fun w =>
           FinKernel.tensor obsA obsB
             (finPairTransport.toFun (x, y)) w * h w (0 : Fin 1))
     _ = sumFin qa (fun i =>
@@ -186,12 +186,13 @@ theorem finNoisyEpic2_tensor_not_deterministic :
   rintro ⟨f, hf⟩
   let p := finPairTransport.toFun ((0 : Fin 2), (0 : Fin 2))
   have hv := congrFun (congrFun hf p) p
-  have hencoded := finKernel_tensor_encoded
-    finNoisyEpic2 finNoisyEpic2
-    (0 : Fin 2) (0 : Fin 2) (0 : Fin 2) (0 : Fin 2)
-  change FinKernel.tensor finNoisyEpic2 finNoisyEpic2 p p =
-    qThreeQuarter * qThreeQuarter at hencoded
-  · simpa [p, finNoisyEpic2] using hencoded
+  have hencoded :
+      FinKernel.tensor finNoisyEpic2 finNoisyEpic2 p p =
+        qThreeQuarter * qThreeQuarter := by
+    simpa [p, finNoisyEpic2] using
+      (finKernel_tensor_encoded
+        finNoisyEpic2 finNoisyEpic2
+        (0 : Fin 2) (0 : Fin 2) (0 : Fin 2) (0 : Fin 2))
   rw [hencoded] at hv
   by_cases hp : p = f p
   · simp [FinKernel.dirac, hp] at hv
