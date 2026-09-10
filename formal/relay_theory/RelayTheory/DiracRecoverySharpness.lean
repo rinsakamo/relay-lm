@@ -61,7 +61,7 @@ theorem finKernel_dirac_injective_of_hasExactRecovery
       simpa [FinKernel.identity] using hx
     have hyzero : recovery (f y) x = 0 := by
       simpa [FinKernel.identity, hne'] using hy
-    rw [hxy] at hyzero
+    rw [← hxy] at hyzero
     grind
 
 /-- Exact deterministic recovery is precisely injectivity. -/
