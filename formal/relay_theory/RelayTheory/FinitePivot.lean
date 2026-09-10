@@ -22,10 +22,10 @@ theorem sumFin_sub (n : Nat) (f g : Fin n → Rat) :
         sumFin n (fun i => f i + (- g i)) := by
           apply sumFin_congr
           intro i
-          rfl
+          grind
     _ = sumFin n f + sumFin n (fun i => - g i) := sumFin_add n f (fun i => - g i)
     _ = sumFin n f + (- sumFin n g) := by rw [sumFin_neg]
-    _ = sumFin n f - sumFin n g := rfl
+    _ = sumFin n f - sumFin n g := by grind
 
 /-- Pull a common left scalar through a sum of products. -/
 theorem sumFin_scaled_product (n : Nat) (c : Rat)
@@ -63,14 +63,17 @@ theorem finSwapZero_involutive {n : Nat} (p x : Fin (Nat.succ n)) :
     finSwapZero p (finSwapZero p x) = x := by
   by_cases hp : p = 0
   · subst p
-    simp [finSwapZero]
+    by_cases hx : x = 0
+    · subst x
+      simp [finSwapZero]
+    · simp [finSwapZero, hx]
   · by_cases hx0 : x = 0
     · subst x
       simp [finSwapZero, hp]
     · by_cases hxp : x = p
       · subst x
         simp [finSwapZero, hp]
-      · simp [finSwapZero, hx0, hxp, hp]
+      · simp [finSwapZero, hx0, hxp]
 
 /-- Postcomposition by an involutive Dirac map reindexes output coordinates. -/
 theorem finKernel_compose_dirac_involution_eval
@@ -84,9 +87,11 @@ theorem finKernel_compose_dirac_involution_eval
           apply sumFin_congr
           intro y
           by_cases hy : y = s z
-          · subst y
-            have hz : z = s (s z) := (hs z).symm
-            simp [hz]
+          · have hz : z = s y := by
+              calc
+                z = s (s z) := (hs z).symm
+                _ = s y := congrArg s hy.symm
+            rw [if_pos hz, if_pos hy, Rat.mul_one]
           · have hz : z ≠ s y := by
               intro hzy
               apply hy
@@ -94,7 +99,7 @@ theorem finKernel_compose_dirac_involution_eval
               calc
                 y = s (s y) := (hs y).symm
                 _ = s z := hmap.symm
-            simp [hy, hz]
+            rw [if_neg hz, if_neg hy, Rat.mul_zero]
     _ = k x (s z) := sumFin_single (s z) (fun y => k x y)
 
 /-- The pivot-swap Dirac kernel is its own exact inverse. -/
@@ -146,8 +151,9 @@ theorem finKernel_monic_firstRow_has_nonzero
   intro hnone
   have hrowZero : ∀ y : Fin q, obs 0 y = 0 := by
     intro y
-    by_contra hy
-    exact hnone ⟨y, hy⟩
+    by_cases hy : obs 0 y = 0
+    · exact hy
+    · exact False.elim (hnone ⟨y, hy⟩)
   let z : FinKernel 1 (Nat.succ a) := FinKernel.zeroExact 1 (Nat.succ a)
   let pick : FinKernel 1 (Nat.succ a) :=
     FinKernel.dirac (fun _ : Fin 1 => (0 : Fin (Nat.succ a)))
@@ -216,7 +222,14 @@ theorem finKernelPivotLift_compose_zero
     FinKernel.compose obs (finKernelPivotLift obs h) x 0 = 0 := by
   unfold FinKernel.compose
   rw [sumFin_succ]
-  rw [sumFin_scaled_product]
+  rw [finKernelPivotLift_zero]
+  have htail :
+      sumFin a (fun i => finKernelPivotLift obs h x i.succ * obs i.succ 0) =
+        sumFin a (fun i => (obs 0 0 * h x i) * obs i.succ 0) := by
+    apply sumFin_congr
+    intro i
+    rw [finKernelPivotLift_succ]
+  rw [htail, sumFin_scaled_product]
   grind
 
 /-- Exact formula for composing through the scaled pivot block. -/
@@ -252,7 +265,14 @@ theorem finKernelPivotLift_compose_succ
       FinKernel.compose (finKernelPivotBlock obs) h x z := by
   unfold FinKernel.compose
   rw [sumFin_succ]
-  rw [sumFin_scaled_product]
+  rw [finKernelPivotLift_zero]
+  have htail :
+      sumFin a (fun i => finKernelPivotLift obs h x i.succ * obs i.succ z.succ) =
+        sumFin a (fun i => (obs 0 0 * h x i) * obs i.succ z.succ) := by
+    apply sumFin_congr
+    intro i
+    rw [finKernelPivotLift_succ]
+  rw [htail, sumFin_scaled_product]
   rw [finKernelPivotBlock_compose_formula]
   grind
 
