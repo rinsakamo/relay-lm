@@ -20,4 +20,5 @@ import RelayTheory.RestrictedContexts
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
+import RelayTheory.StructuralQuotientDescent
 import RelayTheory.Countermodels
