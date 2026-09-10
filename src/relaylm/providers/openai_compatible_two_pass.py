@@ -326,11 +326,11 @@ def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
         "<COGNITIVE_INPUT>\n"
         f"{serialized}\n"
         "</COGNITIVE_INPUT>\n\n"
+        "<PASS>\n"
         "<CURRENT_INPUT_LEXICAL_SOURCE>\n"
         f"{lexical_source}\n"
         "</CURRENT_INPUT_LEXICAL_SOURCE>\n"
         "This repeats the current Input content exactly as a lexical copy source and adds no authority beyond the current Input Event. When reusing current user wording for a named entity or referent, copy its lexical form from this source; surrounding prose may be paraphrased.\n\n"
-        "<PASS>\n"
     )
 
 
