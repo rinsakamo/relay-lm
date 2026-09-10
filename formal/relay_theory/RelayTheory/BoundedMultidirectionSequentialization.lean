@@ -28,7 +28,7 @@ def phaseIndex (k r : Nat) (_hr : r ≤ k) : Fin (k + 1) :=
     (phaseIndex k r hr).1 = r := rfl
 
 /-- The constructive product encoding is injective because it has an exact inverse. -/
-theorem finPairTransport_toFun_injective {m n : Nat} :
+theorem bounded_finPairTransport_toFun_injective {m n : Nat} :
     Function.Injective (finPairTransport (m := m) (n := n)).toFun := by
   intro a b h
   have h' := congrArg (finPairTransport (m := m) (n := n)).invFun h
@@ -114,7 +114,7 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
               finPairTransport.toFun (x, (0 : Fin (k + 1))) := by
           intro h
           apply hxy
-          exact (congrArg Prod.fst (finPairTransport_toFun_injective h)).symm
+          exact (congrArg Prod.fst (bounded_finPairTransport_toFun_injective h)).symm
         simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, hencZero]
     · have hp0 : p ≠ phaseIndex k 0 (Nat.zero_le k) := by
         intro h
