@@ -17,7 +17,7 @@ theorem finKernel_tensor_right_identity_cancel
   have hcoord := congrFun
     (congrFun hEq (finPairTransport.toFun (x, u)))
     (finPairTransport.toFun (y, u))
-  simpa [FinKernel.identity] using hcoord
+  simpa [FinKernel.identity, finPair_transport_roundtrip] using hcoord
 
 /-- Left-hand version of identity-tensor cancellation. -/
 theorem finKernel_tensor_left_identity_cancel
@@ -31,7 +31,7 @@ theorem finKernel_tensor_left_identity_cancel
   have hcoord := congrFun
     (congrFun hEq (finPairTransport.toFun (u, x)))
     (finPairTransport.toFun (u, y))
-  simpa [FinKernel.identity] using hcoord
+  simpa [FinKernel.identity, finPair_transport_roundtrip] using hcoord
 
 /-- Exact one-sided recoverability is closed under independent tensor. -/
 theorem finKernel_hasExactRecovery_tensor
