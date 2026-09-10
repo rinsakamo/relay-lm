@@ -4,7 +4,7 @@ import RelayTheory.GenericTensorKernel
 namespace RelayTheory
 
 /--
-A finite-horizon evolution schedule.  Only the first `k` entries are operationally
+A finite-horizon evolution schedule. Only the first `k` entries are operationally
 relevant to a horizon-`k` serialization; using `Nat` here keeps the theorem
 about finite path semantics rather than about a particular word encoding.
 -/
@@ -21,7 +21,7 @@ def kernelIterate {n : Nat} (step : FinKernel n n) : Nat → FinKernel n n
   | Nat.succ r => FinKernel.compose step (kernelIterate step r)
 
 /-- The phase `r` inside a horizon `k`, including the terminal phase `k`. -/
-def phaseIndex (k r : Nat) (hr : r ≤ k) : Fin (k + 1) :=
+def phaseIndex (k r : Nat) (_hr : r ≤ k) : Fin (k + 1) :=
   ⟨r, by grind⟩
 
 @[simp] theorem phaseIndex_val (k r : Nat) (hr : r ≤ k) :
@@ -41,11 +41,11 @@ def physicalProject {n k : Nat} : Fin (n * (k + 1)) → Fin n :=
   simp [physicalProject, phaseEmbed, finPair_transport_roundtrip]
 
 /--
-Lift an arbitrary exact physical kernel into a single phase layer.  It may be
+Lift an arbitrary exact physical kernel into a single phase layer. It may be
 sub-stochastic away from the selected phase; it is proof apparatus for tracking
 the unique phase occupied by a serialized run.
 -/
-def phaseKernel {n k : Nat} (r : Nat) (hr : r ≤ k) (f : FinKernel n n) :
+def phaseKernel {n k : Nat} (r : Nat) (_hr : r ≤ k) (f : FinKernel n n) :
     FinKernel n (n * (k + 1)) :=
   fun x y =>
     let yi := finPairTransport.invFun y
@@ -67,7 +67,7 @@ def serializedStep {n k : Nat} (schedule : DirectionSchedule n) :
   fun s t =>
     let si := finPairTransport.invFun s
     let ti := finPairTransport.invFun t
-    if h : si.2.1 < k then
+    if _h : si.2.1 < k then
       if ti.2.1 = si.2.1 + 1 then schedule si.2.1 si.1 ti.1 else 0
     else
       if ti = si then 1 else 0
@@ -87,22 +87,35 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
     phaseKernel 0 (Nat.zero_le k) (FinKernel.identity n) =
       FinKernel.dirac (phaseEmbed 0 (Nat.zero_le k)) := by
   funext x t
-  rw [← finPair_flatten_roundtrip t]
-  let ti := finPairTransport.invFun t
-  rcases ti with ⟨y, p⟩
-  by_cases hp : p.1 = 0
-  · have hp0 : p = phaseIndex k 0 (Nat.zero_le k) := by
-      apply Fin.eq_of_val_eq
-      simpa [phaseIndex] using hp
-    subst p
-    simp [phaseKernel, phaseEmbed, phaseIndex, FinKernel.identity, FinKernel.dirac,
-      finPair_transport_roundtrip, eq_comm]
-  · simp [phaseKernel, phaseEmbed, phaseIndex, FinKernel.identity, FinKernel.dirac,
-      finPair_transport_roundtrip, hp]
-    intro h
-    have := congrArg (fun z => (finPairTransport.invFun z).2.1) h
-    simp [finPair_transport_roundtrip] at this
-    exact hp this
+  have hencoded : ∀ (y : Fin n) (p : Fin (k + 1)),
+      phaseKernel 0 (Nat.zero_le k) (FinKernel.identity n) x
+          (finPairTransport.toFun (y, p)) =
+        FinKernel.dirac (phaseEmbed 0 (Nat.zero_le k)) x
+          (finPairTransport.toFun (y, p)) := by
+    intro y p
+    rw [phaseKernel_encoded]
+    by_cases hp : p.1 = 0
+    · have hp0 : p = phaseIndex k 0 (Nat.zero_le k) := by
+        apply Fin.eq_of_val_eq
+        simpa [phaseIndex] using hp
+      subst p
+      simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex,
+        finPair_transport_roundtrip, eq_comm]
+    · have hp0 : p ≠ phaseIndex k 0 (Nat.zero_le k) := by
+        intro h
+        apply hp
+        simpa [phaseIndex] using congrArg Fin.val h
+      have henc :
+          finPairTransport.toFun (y, p) ≠ phaseEmbed 0 (Nat.zero_le k) x := by
+        intro h
+        apply hp0
+        have hpair := congrArg finPairTransport.invFun h
+        have hpair' : (y, p) = (x, phaseIndex k 0 (Nat.zero_le k)) := by
+          simpa [phaseEmbed, finPair_transport_roundtrip] using hpair
+        exact congrArg Prod.snd hpair'
+      simp [hp, FinKernel.dirac, henc]
+  have h := hencoded (finPairTransport.invFun t).1 (finPairTransport.invFun t).2
+  simpa only [finPair_flatten_roundtrip] using h
 
 /--
 A single serialized step advances an exact kernel carried entirely at phase `r`
@@ -114,85 +127,85 @@ theorem serializedStep_advance_phase {n k r : Nat}
         (phaseKernel r (Nat.le_of_lt hr) f) =
       phaseKernel (r + 1) (by grind) (FinKernel.compose (schedule r) f) := by
   funext x t
-  rw [← finPair_flatten_roundtrip t]
-  let ti := finPairTransport.invFun t
-  rcases ti with ⟨z, q⟩
-  unfold FinKernel.compose
-  rw [sumFin_product]
-  have hphase :
-      ∀ y : Fin n,
-        sumFin (k + 1) (fun p =>
-          phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
-            serializedStep schedule (finPairTransport.toFun (y, p))
-              (finPairTransport.toFun (z, q))) =
-        f x y * serializedStep schedule
-          (phaseEmbed r (Nat.le_of_lt hr) y)
+  have hencoded : ∀ (z : Fin n) (q : Fin (k + 1)),
+      FinKernel.compose (serializedStep schedule)
+          (phaseKernel r (Nat.le_of_lt hr) f) x
+          (finPairTransport.toFun (z, q)) =
+        phaseKernel (r + 1) (by grind) (FinKernel.compose (schedule r) f) x
           (finPairTransport.toFun (z, q)) := by
-    intro y
-    let pr : Fin (k + 1) := phaseIndex k r (Nat.le_of_lt hr)
-    calc
-      sumFin (k + 1) (fun p =>
-          phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
-            serializedStep schedule (finPairTransport.toFun (y, p))
-              (finPairTransport.toFun (z, q))) =
+    intro z q
+    unfold FinKernel.compose
+    rw [sumFin_product]
+    have hphase :
+        ∀ y : Fin n,
+          sumFin (k + 1) (fun p =>
+            phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
+              serializedStep schedule (finPairTransport.toFun (y, p))
+                (finPairTransport.toFun (z, q))) =
+          f x y * serializedStep schedule
+            (phaseEmbed r (Nat.le_of_lt hr) y)
+            (finPairTransport.toFun (z, q)) := by
+      intro y
+      let pr : Fin (k + 1) := phaseIndex k r (Nat.le_of_lt hr)
+      calc
         sumFin (k + 1) (fun p =>
-          if p = pr then
-            f x y * serializedStep schedule (finPairTransport.toFun (y, p))
-              (finPairTransport.toFun (z, q))
-          else 0) := by
-            apply sumFin_congr
-            intro p
-            by_cases hp : p = pr
-            · subst p
-              simp [phaseKernel_encoded, pr, phaseIndex]
-            · have hv : p.1 ≠ r := by
-                intro hv
-                apply hp
-                apply Fin.eq_of_val_eq
-                simpa [pr, phaseIndex] using hv
-              simp [phaseKernel_encoded, hv, hp]
-      _ = f x y * serializedStep schedule
-          (finPairTransport.toFun (y, pr))
-          (finPairTransport.toFun (z, q)) :=
-            sumFin_single pr (fun p =>
+            phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
+              serializedStep schedule (finPairTransport.toFun (y, p))
+                (finPairTransport.toFun (z, q))) =
+          sumFin (k + 1) (fun p =>
+            if p = pr then
               f x y * serializedStep schedule (finPairTransport.toFun (y, p))
-                (finPairTransport.toFun (z, q)))
-      _ = f x y * serializedStep schedule
-          (phaseEmbed r (Nat.le_of_lt hr) y)
-          (finPairTransport.toFun (z, q)) := by
-            rfl
-  calc
-    sumFin (n * (k + 1)) (fun y =>
-        phaseKernel r (Nat.le_of_lt hr) f x y * serializedStep schedule y
-          (finPairTransport.toFun (z, q))) =
+                (finPairTransport.toFun (z, q))
+            else 0) := by
+              apply sumFin_congr
+              intro p
+              by_cases hp : p = pr
+              · subst p
+                simp [phaseKernel_encoded, pr, phaseIndex]
+              · have hv : p.1 ≠ r := by
+                  intro hv
+                  apply hp
+                  apply Fin.eq_of_val_eq
+                  simpa [pr, phaseIndex] using hv
+                simp [phaseKernel_encoded, hv, hp]
+        _ = f x y * serializedStep schedule
+            (finPairTransport.toFun (y, pr))
+            (finPairTransport.toFun (z, q)) :=
+              sumFin_single pr (fun p =>
+                f x y * serializedStep schedule (finPairTransport.toFun (y, p))
+                  (finPairTransport.toFun (z, q)))
+        _ = f x y * serializedStep schedule
+            (phaseEmbed r (Nat.le_of_lt hr) y)
+            (finPairTransport.toFun (z, q)) := by
+              rfl
+    calc
       sumFin n (fun y =>
-        sumFin (k + 1) (fun p =>
-          phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
-            serializedStep schedule (finPairTransport.toFun (y, p))
-              (finPairTransport.toFun (z, q)))) :=
-        sumFin_product n (k + 1) (fun y =>
-          phaseKernel r (Nat.le_of_lt hr) f x y * serializedStep schedule y
-            (finPairTransport.toFun (z, q)))
-    _ = sumFin n (fun y =>
+          sumFin (k + 1) (fun p =>
+            phaseKernel r (Nat.le_of_lt hr) f x (finPairTransport.toFun (y, p)) *
+              serializedStep schedule (finPairTransport.toFun (y, p))
+                (finPairTransport.toFun (z, q)))) =
+        sumFin n (fun y =>
           f x y * serializedStep schedule
             (phaseEmbed r (Nat.le_of_lt hr) y)
             (finPairTransport.toFun (z, q))) := by
           apply sumFin_congr
           intro y
           exact hphase y
-    _ = sumFin n (fun y =>
-          f x y * (if q.1 = r + 1 then schedule r y z else 0)) := by
-          apply sumFin_congr
-          intro y
-          rw [serializedStep_encoded_active schedule hr y z q]
-    _ = (if q.1 = r + 1 then
-          FinKernel.compose (schedule r) f x z else 0) := by
-          by_cases hq : q.1 = r + 1
-          · simp [hq, FinKernel.compose]
-          · simp [hq, sumFin_zero_values]
-    _ = phaseKernel (r + 1) (by grind) (FinKernel.compose (schedule r) f) x
-          (finPairTransport.toFun (z, q)) := by
-          simp [phaseKernel_encoded]
+      _ = sumFin n (fun y =>
+            f x y * (if q.1 = r + 1 then schedule r y z else 0)) := by
+            apply sumFin_congr
+            intro y
+            rw [serializedStep_encoded_active schedule hr y z q]
+      _ = (if q.1 = r + 1 then
+            FinKernel.compose (schedule r) f x z else 0) := by
+            by_cases hq : q.1 = r + 1
+            · simp [hq, FinKernel.compose]
+            · simp [hq, sumFin_zero_values]
+      _ = phaseKernel (r + 1) (by grind) (FinKernel.compose (schedule r) f) x
+            (finPairTransport.toFun (z, q)) := by
+            simp [phaseKernel_encoded]
+  have h := hencoded (finPairTransport.invFun t).1 (finPairTransport.invFun t).2
+  simpa only [finPair_flatten_roundtrip] using h
 
 /-- Exact serialization theorem at every prefix of a fixed finite horizon. -/
 theorem serialized_prefix {n k : Nat} (schedule : DirectionSchedule n) :
@@ -216,7 +229,7 @@ theorem serialized_prefix {n k : Nat} (schedule : DirectionSchedule n) :
           (FinKernel.compose (serializedStep schedule)
             (kernelIterate (serializedStep schedule) r))
           (FinKernel.dirac (phaseEmbed 0 (Nat.zero_le k))) = _
-      rw [finKernel_compose_associative]
+      rw [← finKernel_compose_associative]
       rw [ih hrle]
       rw [serializedStep_advance_phase schedule hrlt (scheduledPath schedule r)]
       rfl
@@ -228,9 +241,6 @@ theorem physicalProject_after_phaseKernel {n k : Nat} (f : FinKernel n n) :
   funext x z
   unfold FinKernel.compose
   rw [sumFin_product]
-  have hk : phaseIndex k k (Nat.le_refl k) = ⟨k, by grind⟩ := by
-    apply Fin.eq_of_val_eq
-    rfl
   calc
     sumFin n (fun y =>
         sumFin (k + 1) (fun p =>
