@@ -98,6 +98,8 @@ Effects are paired correctness deltas, reported by shard and pooled. They are no
 
 The runner records external work only: actual model calls, exact input/output tokens, projected bytes, reconstruction/retrieval operations, deterministic verification operations, and failures. It does not estimate hidden chain-of-thought work. Natural cost is preserved rather than padded with filler.
 
+The one-command WSL envelope additionally records monotonic wall time around the exact child physical transaction. It writes `s3-wsl-wall-time.json` beside the child transaction summary in the same repo-external artifact root. That sidecar records `time.monotonic_ns` duration, child return code, transaction-summary path, and the transaction-summary SHA-256 when present. The scientific transaction summary is never rewritten to add timing after completion; the sidecar is observability evidence only.
+
 ## llama.cpp physical transaction
 
 The stable future WSL command is:
@@ -106,7 +108,7 @@ The stable future WSL command is:
 python3 -m tools.v2_cognitive_ir_s3_llama_cpp_wsl
 ```
 
-The WSL envelope binds the inner process to the exact clean checkout through `cwd=<repo>` and `<repo>/src` first on `PYTHONPATH`, while relocating only writable transaction state to a fresh repo-external HOME. Real llama.cpp and GGUF paths remain operator-home identities.
+The WSL envelope binds the inner process to the exact clean checkout through `cwd=<repo>` and `<repo>/src` first on `PYTHONPATH`, while relocating only writable transaction state to a fresh repo-external HOME. Real llama.cpp and GGUF paths remain operator-home identities. The wrapper chooses one fresh repo-external artifact root before invoking the inner transaction exactly once, so the transaction summary and wall-time sidecar have one explicit common evidence root.
 
 The inner transaction owns one campaign invocation. It acquires the same kernel-backed localhost/GPU lifecycle lock and creates one fresh llama-server lifetime and unique log for each planned shard. Every shard uses:
 
@@ -129,6 +131,6 @@ Material attestation has two deliberately distinct costs. At the start and end o
 
 The full runtime/material identity must remain equal across all four independently started shard servers. Any boundary hash mismatch, lightweight live-binding drift, process exit, context/slot change, or stat change makes the current shard incomplete and prevents all later shards. The transaction never contacts LM Studio.
 
-A completed campaign is citable only within the frozen same-model S3 scope if all four shards complete and the exact 498/996 ledger, 498 lightweight live-binding checks, eight full material attestations, runtime/material binding, lineage/equality checks, and cleanup conditions pass. Any incomplete shard makes the transaction `S3_INCOMPLETE` and `citable=false`; later shards are not executed.
+A completed campaign is citable only within the frozen same-model S3 scope if all four shards complete and the exact 498/996 ledger, 498 lightweight live-binding checks, eight full material attestations, runtime/material binding, lineage/equality checks, cleanup conditions, and wall-time sidecar are preserved. Any incomplete shard makes the transaction `S3_INCOMPLETE` and `citable=false`; later shards are not executed.
 
 Repository implementation/CI under #2466 performs no model, provider, GPU, S2, or S3 physical execution. A later fresh physical owner must reacquire repository/runtime/material authority before consuming the one-command wrapper.
