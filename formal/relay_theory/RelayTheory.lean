@@ -14,4 +14,5 @@ import RelayTheory.GenericStructuralKernels
 import RelayTheory.GenericMarkovLaws
 import RelayTheory.BehavioralQuotient
 import RelayTheory.ProbeRelative
+import RelayTheory.ProbeDoctrine
 import RelayTheory.Countermodels
