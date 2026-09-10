@@ -87,6 +87,58 @@ def finAssocTransport {a b c : Nat} :
     intro y
     simp [finPair_transport_roundtrip, finPair_flatten_components]
 
+/-- Product map induced by two finite functions under the explicit flattening transport. -/
+def finTensorMap {a b c d : Nat}
+    (f : Fin a → Fin b) (g : Fin c → Fin d) :
+    Fin (a * c) → Fin (b * d) :=
+  fun q =>
+    finPairTransport.toFun
+      (f (finPairTransport.invFun q).1,
+       g (finPairTransport.invFun q).2)
+
+@[simp] theorem finTensorMap_encoded {a b c d : Nat}
+    (f : Fin a → Fin b) (g : Fin c → Fin d)
+    (x : Fin a) (u : Fin c) :
+    finTensorMap f g (finPairTransport.toFun (x, u)) =
+      finPairTransport.toFun (f x, g u) := by
+  simp [finTensorMap, finPair_transport_roundtrip]
+
+/-- Symmetry is natural with respect to arbitrary finite deterministic maps. -/
+theorem finSwap_natural {a b c d : Nat}
+    (f : Fin a → Fin b) (g : Fin c → Fin d) (x : Fin (a * c)) :
+    finSwapTransport.toFun (finTensorMap f g x) =
+      finTensorMap g f (finSwapTransport.toFun x) := by
+  simp [finSwapTransport, finTensorMap, finPair_transport_roundtrip]
+
+/-- Associator is natural with respect to arbitrary finite deterministic maps. -/
+theorem finAssoc_natural
+    {a a' b b' c c' : Nat}
+    (f : Fin a → Fin a') (g : Fin b → Fin b') (h : Fin c → Fin c')
+    (x : Fin ((a * b) * c)) :
+    finAssocTransport.toFun (finTensorMap (finTensorMap f g) h x) =
+      finTensorMap f (finTensorMap g h) (finAssocTransport.toFun x) := by
+  simp [finAssocTransport, finTensorMap, finPair_transport_roundtrip,
+    finPair_flatten_components]
+
+/-- Triangle coherence for the explicit associator and unitors. -/
+theorem finMonoidal_triangle {a b : Nat} (x : Fin ((a * 1) * b)) :
+    finTensorMap (fun z : Fin a => z) finLeftUnitTransport.toFun
+        (finAssocTransport.toFun x) =
+      finTensorMap finRightUnitTransport.toFun (fun z : Fin b => z) x := by
+  simp [finAssocTransport, finTensorMap, finLeftUnitTransport,
+    finRightUnitTransport, finPair_transport_roundtrip,
+    finPair_flatten_components]
+
+/-- Pentagon coherence for the explicit cardinal product associator. -/
+theorem finMonoidal_pentagon {a b c d : Nat}
+    (x : Fin (((a * b) * c) * d)) :
+    finAssocTransport.toFun (finAssocTransport.toFun x) =
+      finTensorMap (fun z : Fin a => z) finAssocTransport.toFun
+        (finAssocTransport.toFun
+          (finTensorMap finAssocTransport.toFun (fun z : Fin d => z) x)) := by
+  simp [finAssocTransport, finTensorMap, finPair_transport_roundtrip,
+    finPair_flatten_components]
+
 /-- Symmetry transport is an exact involution at the flattened interface level. -/
 theorem finSwap_transport_roundtrip {m n : Nat} (x : Fin (m * n)) :
     finSwapTransport.invFun (finSwapTransport.toFun x) = x :=
