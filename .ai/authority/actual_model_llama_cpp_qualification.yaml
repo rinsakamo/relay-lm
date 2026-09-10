@@ -3,20 +3,23 @@ id: actual_model_llama_cpp_qualification
 owner_issue: 2430
 summary: >-
   Evaluation-only llama.cpp/llama-server physical qualification carriage for
-  current RelayLM 1.0 actual-model Stage R, including OpenAI-compatible
+  current RelayLM 1.0 actual-model Stage R, including a restartable pre-wrapper
+  repo-external Python/runtime/import-closure controller gate, same-interpreter
+  handoff into the repository-owned WSL/LocalCodex wrapper, OpenAI-compatible
   reasoning_effort=none Thinking-OFF realization, exact serialized-input counting
-  parity, a repository-owned WSL/LocalCodex operator wrapper, and a one-command
-  transaction that owns one fresh
-  single-slot llama-server process lifetime, one per-launch log, bounded 600-second
-  request waits, exactly one citable Stage R host invocation at most, deterministic
+  parity, and a one-command transaction that owns one fresh single-slot
+  llama-server process lifetime, one per-launch log, bounded 600-second request
+  waits, exactly one citable Stage R host invocation at most, deterministic
   teardown, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID
   classification without changing frozen Core semantics or production backend
   routing identity.
 canonical_surfaces:
 - docs/reference/actual-model-llama-cpp-qualification.md
+- docs/reference/actual-model-llama-cpp-controller-preflight.md
 references:
 - docs/reference/actual-model-stage-r-current.md
 implementation:
+- tools/v1_llama_cpp_controller_preflight.py
 - tools/v1_stage_r_llama_cpp_wsl.py
 - src/relaylm/actual_model_llama_cpp_thinking.py
 - src/relaylm/actual_model_stage_r_llama_cpp.py
@@ -24,6 +27,7 @@ implementation:
 - src/relaylm/providers/llama_cpp_openai.py
 - src/relaylm/providers/llama_cpp_reasoning.py
 tests:
+- tests/unit/test_v1_llama_cpp_controller_preflight.py
 - tests/unit/test_v1_stage_r_llama_cpp_wsl.py
 - tests/unit/test_actual_model_llama_cpp_thinking.py
 - tests/unit/test_actual_model_stage_r_llama_cpp.py
