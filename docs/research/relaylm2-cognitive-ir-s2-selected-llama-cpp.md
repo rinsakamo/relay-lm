@@ -23,12 +23,26 @@ The controller may collect fresh read-only serving, process, artifact, hardware,
 The current WSL Local execution surface is repository-owned and uses the interpreter name that is present on the target Ubuntu/WSL laboratory:
 
 ```text
-python3 -m tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
+python3 -m tools.v2_cognitive_ir_s2_selected_llama_cpp_wsl
 ```
 
 Do not assume a `python` compatibility alias exists. #2436 established that the current target shell exposes `/usr/bin/python3` while `python` is absent; that pre-harness launcher block is historical infrastructure evidence and does not spend S2.
 
-The command owns only the mechanical laboratory lifecycle around the existing scientific host:
+#2440 then established a separate LocalCodex sandbox fact: the operator home may be readable but not writable. The inner transaction historically used `Path.home()` for its lifecycle lock and one-lifetime server log, so the WSL launcher now creates a fresh repo-external writable runtime home and passes the real llama.cpp/GGUF paths explicitly. It also routes the shared lifecycle lock to:
+
+```text
+/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock
+```
+
+The launcher invokes the existing inner transaction module exactly once:
+
+```text
+tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
+```
+
+Changing the child `HOME` is therefore only a writable-state envelope for transaction-owned cache/log paths. It does not change the llama.cpp source root, GGUF artifact identity, provider endpoint, model alias, GPU/runtime identity, selected S2 treatment, or #2363 host boundary.
+
+The inner transaction owns only the mechanical laboratory lifecycle around the existing scientific host:
 
 ```text
 fresh clean exact v2 checkout
@@ -64,11 +78,11 @@ The transaction-owned launch class is:
 --log-file <unique one-lifetime path>
 ```
 
-One harness invocation owns at most one server launch and at most one scientific host invocation. It never reuses, restarts, replaces, or kills a pre-existing listener. Cleanup signals only the exact process handle created by that invocation. A local kernel-backed lock spans the whole server lifetime so independently launched Local agents serialize on the shared port/GPU rather than racing one another.
+One WSL launcher invocation spawns at most one inner transaction. One inner transaction owns at most one server launch and at most one scientific host invocation. Neither layer reuses, restarts, replaces, or kills a pre-existing listener. Cleanup signals only the exact process handle created by that invocation. A local kernel-backed lock spans the whole server lifetime so independently launched Local agents serialize on the shared port/GPU rather than racing one another.
 
-A server startup/readiness/identity failure before host invocation is an `EXECUTION_BLOCKED` mechanical result with zero semantic provider/model calls. Once the selected-S2 host has been invoked, a failure is terminal for that host transaction; the wrapper does not restart the server, retry the host, replay a request, reseed, or fall back to another provider.
+A launcher-environment, server startup/readiness, or runtime-identity failure before host invocation is an `EXECUTION_BLOCKED` mechanical result with zero semantic provider/model calls. Once the selected-S2 host has been invoked, a failure is terminal for that host transaction; the wrapper does not restart the server, retry the host, replay a request, reseed, or fall back to another provider.
 
-The lifecycle wrapper is not a second scientific host. It does not call host-owned freeze/durability primitives and does not alter the #2363 boundary. The existing `run_llama_cpp_selected_s2_transaction(...)` remains the only selected-S2 host entrypoint.
+The writable WSL launcher and lifecycle wrapper are not scientific hosts. They do not call host-owned freeze/durability primitives and do not alter the #2363 boundary. The existing `run_llama_cpp_selected_s2_transaction(...)` remains the only selected-S2 host entrypoint.
 
 The transaction summary records the exact RelayLM repository identity, server PID/source/binary/hash/argv, GGUF hash, GPU identity, fresh request alias/runtime probes, controller identity, host result when reached, artifact references, unique server-log path/hash/size, cleanup disposition, and explicit zero retry/replay/fallback/LM-Studio/repository-mutation counters. Local execution/reconciliation should adopt this summary and its referenced artifacts rather than manually replaying internal requests.
 
@@ -183,6 +197,6 @@ A mechanically discriminating S2 is not an IR winner, ontology result, or archit
 
 ## Historical preservation
 
-Nothing in this adapter rewrites, reruns, or reinterprets completed LM Studio calibration/S2 evidence. In particular, a prior `EXECUTION_BLOCKED` transaction with zero provider/model calls remains exactly that historical result.
+Nothing in this adapter rewrites, reruns, or reinterprets completed LM Studio calibration/S2 evidence. In particular, prior `EXECUTION_BLOCKED` transactions with zero provider/model calls remain exactly those historical results. #2436 stopped before Python harness entry; #2440 entered the transaction wrapper but stopped on a read-only home-directory lifecycle lock before server launch or selected-S2 host entry. Neither spent S2.
 
 Repository preparation itself performs no model/GPU execution. A physical S2 transaction starts only from a fresh exact checkout, fresh external artifact root, fresh #2211/#2363 authority, and fresh WSL controller observations.
