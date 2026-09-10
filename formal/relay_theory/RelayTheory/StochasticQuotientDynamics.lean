@@ -230,7 +230,7 @@ theorem finHiddenMix3_not_dirac :
     have hhalf_ne_one : qHalf ≠ 1 := by grind [qHalf]
     exact hhalf_ne_one hv
   · rw [if_neg h0] at hv
-    have hhalf_ne_zero : qHalf ≠ 0 := ne_of_gt qHalf_pos
+    have hhalf_ne_zero : qHalf ≠ 0 := by grind [qHalf]
     exact hhalf_ne_zero hv
 
 /-- Observing the hidden mixer through `merge01` leaves the coarse state unchanged. -/
