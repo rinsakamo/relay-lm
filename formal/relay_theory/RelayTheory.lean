@@ -23,4 +23,5 @@ import RelayTheory.MonoidalQuotientNegative
 import RelayTheory.StructuralQuotientDescent
 import RelayTheory.StochasticObservationKernels
 import RelayTheory.CopyPreservingCharacterization
+import RelayTheory.KernelObservationMonoidal
 import RelayTheory.Countermodels
