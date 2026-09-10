@@ -5,4 +5,11 @@ import RelayTheory.Alignment
 import RelayTheory.HigherOrder
 import RelayTheory.Stochastic
 import RelayTheory.GenericStochastic
+import RelayTheory.GenericMonoidal
+import RelayTheory.GenericTensor
+import RelayTheory.GenericTensorKernel
+import RelayTheory.GenericInterchange
+import RelayTheory.GenericCoherence
+import RelayTheory.GenericStructuralKernels
+import RelayTheory.GenericMarkovLaws
 import RelayTheory.Countermodels
