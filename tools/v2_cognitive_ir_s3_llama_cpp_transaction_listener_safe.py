@@ -41,12 +41,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     This is a mechanical compatibility envelope only. It changes no S3 calls,
     prompts, seeds, scoring, retry policy, material attestation, or evidence
-    semantics. The child process is dedicated to one transaction invocation,
-    so replacing the historical bind-based predicate is process-local.
+    semantics. The predicate replacement is process-local and restored even if
+    the delegated transaction fails.
     """
 
+    original = transaction._port_is_free
     transaction._port_is_free = _port_has_no_listener
-    return transaction.main(argv)
+    try:
+        return transaction.main(argv)
+    finally:
+        transaction._port_is_free = original
 
 
 if __name__ == "__main__":
