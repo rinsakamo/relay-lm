@@ -37,6 +37,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
 
     repo_root = Path(args.repo_root).resolve()
+    source_root = (repo_root / "src").resolve()
+    if not source_root.is_dir():
+        raise SelectedS2WslLauncherError(
+            f"exact checkout src package root is missing: {source_root}"
+        )
     operator_home = (
         Path(args.operator_home).expanduser().resolve()
         if args.operator_home
@@ -67,11 +72,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     child_env = os.environ.copy()
     child_env["HOME"] = str(runtime_home)
+    child_env["PYTHONPATH"] = _exact_checkout_pythonpath(
+        source_root=source_root,
+        inherited=child_env.get("PYTHONPATH"),
+    )
 
     try:
         completed = subprocess.run(
             command,
             env=child_env,
+            cwd=repo_root,
             check=False,
         )
     except OSError as exc:
@@ -79,6 +89,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"failed to invoke selected-S2 transaction once: {exc}"
         ) from exc
     return int(completed.returncode)
+
+
+def _exact_checkout_pythonpath(*, source_root: Path, inherited: str | None) -> str:
+    source = str(source_root.resolve())
+    if not inherited:
+        return source
+    return os.pathsep.join((source, inherited))
 
 
 def _inner_command(
