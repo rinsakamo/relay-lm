@@ -36,4 +36,5 @@ import RelayTheory.RecoveryCancellation
 import RelayTheory.FinitePivot
 import RelayTheory.FiniteMonicSplitting
 import RelayTheory.FiniteEpicSplitting
+import RelayTheory.MonoidalRecoveryReflection
 import RelayTheory.Countermodels
