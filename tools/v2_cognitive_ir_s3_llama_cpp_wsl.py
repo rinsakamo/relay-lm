@@ -12,7 +12,9 @@ import time
 from collections.abc import Sequence
 
 
-INNER_TRANSACTION_MODULE = "tools.v2_cognitive_ir_s3_llama_cpp_transaction"
+INNER_TRANSACTION_MODULE = (
+    "tools.v2_cognitive_ir_s3_llama_cpp_transaction_listener_safe"
+)
 DEFAULT_SHARED_LOCK_PATH = Path("/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock")
 DEFAULT_LLAMA_CPP_RELATIVE = Path("src") / "llama.cpp"
 DEFAULT_GGUF_RELATIVE = Path("models") / "gguf" / "gemma-4-12B-it-Q4_K_M.gguf"
