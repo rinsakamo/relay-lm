@@ -84,10 +84,10 @@ theorem finKernel_tensor_after_copy_eval {m n : Nat}
       k x y * k x z := by
   unfold FinKernel.compose FinKernel.copy FinKernel.dirac
   calc
-    sumFin m (fun u =>
+    sumFin (m * m) (fun u =>
         (if u = finPairTransport.toFun (x, x) then 1 else 0) *
           FinKernel.tensor k k u (finPairTransport.toFun (y, z))) =
-      sumFin m (fun u =>
+      sumFin (m * m) (fun u =>
         if u = finPairTransport.toFun (x, x) then
           FinKernel.tensor k k u (finPairTransport.toFun (y, z)) else 0) := by
           apply sumFin_congr
@@ -126,9 +126,16 @@ theorem rat_mul_idempotent_zero_or_one (p : Rat)
   by_cases hp : p = 0
   · exact Or.inl hp
   · right
-    have hm : p * 1 = p * p := by simpa using h
-    have hi := congrArg (fun q => p⁻¹ * q) hm
-    simpa [Rat.mul_assoc, Rat.inv_mul_cancel p hp] using hi.symm
+    have hi : p⁻¹ * p = p⁻¹ * (p * p) :=
+      congrArg (fun q => p⁻¹ * q) h
+    have h1p : (1 : Rat) = p := by
+      calc
+        1 = p⁻¹ * p := (Rat.inv_mul_cancel p hp).symm
+        _ = p⁻¹ * (p * p) := hi
+        _ = (p⁻¹ * p) * p := (Rat.mul_assoc _ _ _).symm
+        _ = 1 * p := by rw [Rat.inv_mul_cancel p hp]
+        _ = p := Rat.one_mul p
+    exact h1p.symm
 
 /-- A valid copy-preserving row contains a unit-mass coordinate. -/
 theorem finKernel_valid_preservesCopy_row_has_one {m n : Nat}
@@ -138,7 +145,8 @@ theorem finKernel_valid_preservesCopy_row_has_one {m n : Nat}
     (x : Fin m) :
     ∃ y : Fin n, k x y = 1 := by
   classical
-  by_contra hnone
+  apply Classical.byContradiction
+  intro hnone
   have hallzero : ∀ y : Fin n, k x y = 0 := by
     intro y
     rcases rat_mul_idempotent_zero_or_one (k x y)
