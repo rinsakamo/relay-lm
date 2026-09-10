@@ -251,6 +251,7 @@ theorem finKernel_merge01_observes_zero_one_equal :
   unfold FinKernel.ObservedEq
   unfold finKernelMerge01 finKernelZero3 finKernelOne3
   rw [finKernel_dirac_compose, finKernel_dirac_compose]
+  apply (finKernel_behaviorEq_iff_eq _ _).2
   apply finKernel_dirac_congr
   intro x
   simp [finMerge01]
