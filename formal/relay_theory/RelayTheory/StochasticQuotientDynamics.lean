@@ -218,13 +218,20 @@ theorem finHiddenMix3_not_dirac :
   rcases h with ⟨f, hf⟩
   have hv := congrArg
     (fun k => k (0 : Fin 3) (0 : Fin 3)) hf
+  have h02 : (0 : Fin 3) ≠ (2 : Fin 3) := by decide
+  change
+    (if (0 : Fin 3) = (2 : Fin 3) then
+      (if (0 : Fin 3) = (2 : Fin 3) then (1 : Rat) else 0)
+    else if (0 : Fin 3) = (2 : Fin 3) then 0 else qHalf) =
+      (if (0 : Fin 3) = f 0 then 1 else 0) at hv
+  rw [if_neg h02, if_neg h02] at hv
   by_cases h0 : (0 : Fin 3) = f 0
-  · have hv' : qHalf = 1 := by
-      simpa [finHiddenMix3, FinKernel.dirac, h0] using hv
-    grind [qHalf] at hv'
-  · have hv' : qHalf = 0 := by
-      simpa [finHiddenMix3, FinKernel.dirac, h0] using hv
-    grind [qHalf] at hv'
+  · rw [if_pos h0] at hv
+    have hhalf_ne_one : qHalf ≠ 1 := by grind [qHalf]
+    exact hhalf_ne_one hv
+  · rw [if_neg h0] at hv
+    have hhalf_ne_zero : qHalf ≠ 0 := ne_of_gt qHalf_pos
+    exact hhalf_ne_zero hv
 
 /-- Observing the hidden mixer through `merge01` leaves the coarse state unchanged. -/
 theorem finHiddenMix3_merge01_commutes :
