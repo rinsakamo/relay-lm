@@ -28,4 +28,5 @@ import RelayTheory.QuotientWitnessDeterminacy
 import RelayTheory.ScalarEpicityReduction
 import RelayTheory.MonoidalEpicity
 import RelayTheory.EpicityReversibility
+import RelayTheory.SequentialEpicityReflection
 import RelayTheory.Countermodels
