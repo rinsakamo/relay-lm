@@ -146,6 +146,23 @@ theorem bounded_multidirection_sequentialization_valid {n k : Nat}
   exact ⟨serializedStep_valid schedule hschedule,
     scheduledPath_valid_prefix schedule hschedule k (Nat.le_refl k)⟩
 
+/--
+The exact serialization uses no nonphysical boundary channel: initial phase
+embedding and terminal physical projection are deterministic Dirac kernels and
+therefore stochastic-valid as well.
+-/
+theorem bounded_multidirection_serialization_interfaces_valid {n k : Nat}
+    (schedule : DirectionSchedule n)
+    (hschedule : ∀ r : Nat, r < k → FinKernel.Valid (schedule r)) :
+    FinKernel.Valid (serializedStep (k := k) schedule) ∧
+    FinKernel.Valid (FinKernel.dirac (phaseEmbed (n := n) (k := k) 0 (Nat.zero_le k))) ∧
+    FinKernel.Valid (FinKernel.dirac (physicalProject (n := n) (k := k))) ∧
+    FinKernel.Valid (scheduledPath schedule k) := by
+  exact ⟨serializedStep_valid schedule hschedule,
+    finKernel_dirac_valid (phaseEmbed (n := n) (k := k) 0 (Nat.zero_le k)),
+    finKernel_dirac_valid (physicalProject (n := n) (k := k)),
+    scheduledPath_valid_prefix schedule hschedule k (Nat.le_refl k)⟩
+
 /-- Two deterministic directions on `Fin 2` used as a noncommuting control. -/
 def boundedFlip2 (x : Fin 2) : Fin 2 :=
   if x = (0 : Fin 2) then 1 else 0
