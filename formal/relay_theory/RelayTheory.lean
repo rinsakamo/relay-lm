@@ -18,4 +18,5 @@ import RelayTheory.ProbeDoctrine
 import RelayTheory.StochasticProbeDichotomy
 import RelayTheory.RestrictedContexts
 import RelayTheory.StochasticQuotientDynamics
+import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.Countermodels
