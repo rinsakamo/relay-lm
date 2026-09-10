@@ -1,30 +1,60 @@
 schema_version: 1
 id: continuity_label_invariance_diagnostic
 summary: >-
-  Evaluation-only LM Studio Stage R diagnostic that keeps canonical Continuity
+  Evaluation-only current Stage R diagnostic that keeps canonical Continuity
   semantics fixed while replacing only the model-facing unresolved coordinate
   with the shadow alias open_question, then maps emitted transitions back to
-  canonical unresolved before deterministic RelayLM authority.
+  canonical unresolved before deterministic RelayLM authority. Its current
+  physical carriage is llama.cpp; the historical LM Studio implementation is
+  retained for its semantic contract and is not a fallback.
 owner_issue: 2385
 canonical_surfaces:
 - docs/reference/actual-model-continuity-label-invariance.md
 references:
+- docs/reference/actual-model-llama-cpp-qualification.md
 - docs/reference/actual-model-fixed-continuity-slots.md
 - docs/reference/actual-model-lm-studio-semantic-first.md
 - docs/contracts/cognition-pass-execution.md
 - docs/architecture/continuity-context.md
 implementation:
+- src/relaylm/actual_model_continuity_diagnostic.py
 - src/relaylm/actual_model_stage_r_lm_studio_continuity_label_invariance.py
+- src/relaylm/actual_model_stage_r_llama_cpp_continuity_label_invariance.py
+- src/relaylm/actual_model_stage_r_llama_cpp_continuity_label_invariance_transaction.py
+- tools/v1_stage_r_llama_cpp_continuity_label_invariance_wsl.py
 tests:
+- tests/unit/test_actual_model_continuity_diagnostic.py
 - tests/unit/test_actual_model_stage_r_lm_studio_continuity_label_invariance.py
+- tests/unit/test_actual_model_stage_r_llama_cpp_continuity_label_invariance.py
+- tests/unit/test_actual_model_stage_r_llama_cpp_continuity_label_invariance_transaction.py
+- tests/unit/test_v1_stage_r_llama_cpp_continuity_label_invariance_wsl.py
 qualification_exclusions:
+- path: src/relaylm/actual_model_continuity_diagnostic.py
+  reason: >-
+    Provider-neutral fixed-slot and shadow-label transport used only by
+    evaluation diagnostics; it does not alter production cognition IR or
+    deterministic authority.
 - path: src/relaylm/actual_model_stage_r_lm_studio_continuity_label_invariance.py
   reason: >-
     Evaluation-only shadow label transport and evidence capsule; it does not
     alter production Pass 2 wire, canonical Continuity semantics, or product
     runtime behavior.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_continuity_label_invariance.py
+  reason: >-
+    Evaluation-only llama.cpp carriage and evidence capsule; it does not alter
+    production Pass 1/Pass 2, canonical Continuity semantics, or product
+    runtime behavior.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_continuity_label_invariance_transaction.py
+  reason: >-
+    Diagnostic physical owner selector that reuses the current llama.cpp
+    transaction lifecycle and is not production runtime behavior.
+- path: tools/v1_stage_r_llama_cpp_continuity_label_invariance_wsl.py
+  reason: >-
+    One-command diagnostic operator boundary only; it does not launch a server
+    unless a separate future physical owner invokes it.
 depends_on:
 - fixed_continuity_slot_diagnostic
 - lm_studio_semantic_first_qualification
+- actual_model_llama_cpp_qualification
 - actual_model_evaluation
 - cognitive_turn

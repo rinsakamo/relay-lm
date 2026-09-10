@@ -34,7 +34,11 @@ class LlamaCppTransactionError(RuntimeError):
     """The one-command physical transaction could not proceed truthfully."""
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    host_module: str = HOST_MODULE,
+) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Own one fresh llama-server lifetime around exactly one current "
@@ -92,6 +96,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "semantic_retry_count": 0,
         "replay_count": 0,
         "fallback_count": 0,
+        "fastcal_count": 0,
         "lm_studio_contact_count": 0,
         "repository_mutation_count": 0,
     }
@@ -172,6 +177,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             workspace_root=workspace_root,
             artifact_root=artifact_root,
             replicate_id=args.replicate_id,
+            host_module=host_module,
         )
         summary["host"] = host_result
         host_summary = host_result["summary"]
@@ -435,11 +441,12 @@ def _invoke_host(
     workspace_root: Path,
     artifact_root: Path,
     replicate_id: str,
+    host_module: str = HOST_MODULE,
 ) -> dict[str, Any]:
     command = [
         sys.executable,
         "-m",
-        HOST_MODULE,
+        host_module,
         "--repo-root",
         str(repo_root),
         "--provider-base-url",

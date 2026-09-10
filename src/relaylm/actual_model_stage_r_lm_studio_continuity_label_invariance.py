@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import copy
 import json
 import os
 import sys
@@ -15,15 +14,25 @@ from relaylm.actual_model_boundary import (
     evaluate_actual_model_deterministic_boundary,
     write_actual_model_deterministic_boundary_verdict,
 )
+from relaylm.actual_model_continuity_diagnostic import (
+    CANONICAL_UNRESOLVED_KIND,
+    LABEL_INVARIANCE_DIAGNOSTIC_FORMAT_VERSION,
+    LABEL_INVARIANCE_EXTRACTION_SCHEMA,
+    LABEL_INVARIANCE_SCHEMA_NAME,
+    SHADOW_OPEN_QUESTION_KIND,
+    alias_cognitive_input_json,
+    alias_projected_continuity_context,
+    apply_label_alias_to_request_body,
+    label_alias_prompt,
+    parse_label_alias_wire,
+)
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_execution import run_actual_model_scenario_definition
 from relaylm.actual_model_execution_artifacts import write_actual_model_execution_result
 from relaylm.actual_model_scenarios import ActualModelScenarioSet
 from relaylm.actual_model_stage_r_lm_studio_fixed_continuity_slots import (
-    FIXED_SLOT_EXTRACTION_SCHEMA,
     FixedContinuitySlotDiagnosticProvider,
     _fixed_slot_request_body,
-    _parse_fixed_slot_wire,
 )
 from relaylm.actual_model_stage_r_lm_studio_semantic_first import (
     CANONICAL_FIXTURE_PATH,
@@ -48,7 +57,6 @@ from relaylm.cognition_execution import (
 )
 from relaylm.providers.lm_studio_reasoning import LMStudioReasoningCapabilityAttestation
 from relaylm.providers.openai_compatible import (
-    ProviderProtocolError,
     _load_cognitive_wire_json,
     _require_candidate_sources_in_cognitive_input,
 )
@@ -71,130 +79,17 @@ from relaylm.providers.vllm_reasoning_capability import (
 )
 
 
-LABEL_INVARIANCE_DIAGNOSTIC_FORMAT_VERSION = 1
-LABEL_INVARIANCE_SCHEMA_NAME = "relaylm_continuity_label_invariance_diagnostic"
-CANONICAL_UNRESOLVED_KIND = "unresolved"
-SHADOW_OPEN_QUESTION_KIND = "open_question"
-_SHADOW_SLOT_ORDER = ("referent", SHADOW_OPEN_QUESTION_KIND, "active_task")
-_COGNITIVE_INPUT_OPEN = "<COGNITIVE_INPUT>\n"
-_COGNITIVE_INPUT_CLOSE = "\n</COGNITIVE_INPUT>\n\n<PASS>\n"
-_PASS_1_CLOSE = "</PASS_1_RESPONSE_JSON>\n\n"
+__all__ = [
+    "LABEL_INVARIANCE_EXTRACTION_SCHEMA",
+    "LABEL_INVARIANCE_SCHEMA_NAME",
+    "SHADOW_OPEN_QUESTION_KIND",
+]
 
-
-def _label_invariance_schema() -> dict[str, Any]:
-    schema = copy.deepcopy(FIXED_SLOT_EXTRACTION_SCHEMA)
-    decisions = schema["properties"]["continuity_decisions"]
-    properties = decisions["properties"]
-    open_question_slot = properties[CANONICAL_UNRESOLVED_KIND]
-    open_question_slot["properties"]["transitions"]["items"]["properties"]["kind"] = {
-        "type": "string",
-        "enum": [SHADOW_OPEN_QUESTION_KIND],
-    }
-    decisions["required"] = list(_SHADOW_SLOT_ORDER)
-    decisions["properties"] = {
-        "referent": properties["referent"],
-        SHADOW_OPEN_QUESTION_KIND: open_question_slot,
-        "active_task": properties["active_task"],
-    }
-    return schema
-
-
-LABEL_INVARIANCE_EXTRACTION_SCHEMA = _label_invariance_schema()
-
-
-def _alias_projected_continuity_context(content: str) -> str:
-    try:
-        payload = json.loads(content)
-    except json.JSONDecodeError:
-        return content
-    if not isinstance(payload, dict):
-        return content
-    continuity = payload.get("continuity")
-    if (
-        not isinstance(continuity, dict)
-        or continuity.get("kind") != CANONICAL_UNRESOLVED_KIND
-    ):
-        return content
-    aliased = copy.deepcopy(payload)
-    aliased["continuity"]["kind"] = SHADOW_OPEN_QUESTION_KIND
-    return json.dumps(aliased, ensure_ascii=False, separators=(",", ":"))
-
-
-def _alias_cognitive_input_json(serialized: object) -> object:
-    if not isinstance(serialized, dict):
-        raise ProviderProtocolError(
-            "label-invariance diagnostic expected serialized CognitiveInput object"
-        )
-    aliased = copy.deepcopy(serialized)
-    context = aliased.get("context")
-    if not isinstance(context, list):
-        raise ProviderProtocolError(
-            "label-invariance diagnostic expected serialized CognitiveInput "
-            "context list"
-        )
-    for item in context:
-        if not isinstance(item, dict) or not isinstance(item.get("content"), str):
-            raise ProviderProtocolError(
-                "label-invariance diagnostic expected serialized ContextItem objects"
-            )
-        item["content"] = _alias_projected_continuity_context(item["content"])
-    return aliased
-
-
-def _label_alias_prompt(fixed_prompt: str) -> str:
-    if not fixed_prompt.startswith(_COGNITIVE_INPUT_OPEN):
-        raise ProviderProtocolError(
-            "label-invariance diagnostic cannot identify CognitiveInput boundary"
-        )
-    try:
-        serialized_text, after_cognitive = fixed_prompt[
-            len(_COGNITIVE_INPUT_OPEN) :
-        ].split(_COGNITIVE_INPUT_CLOSE, 1)
-        pass_1_prefix, static_instructions = after_cognitive.split(_PASS_1_CLOSE, 1)
-    except ValueError as exc:
-        raise ProviderProtocolError(
-            "label-invariance diagnostic cannot identify fixed-slot prompt boundaries"
-        ) from exc
-    try:
-        serialized = json.loads(serialized_text)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError(
-            "label-invariance diagnostic CognitiveInput is not valid JSON"
-        ) from exc
-
-    aliased_serialized = _alias_cognitive_input_json(serialized)
-    current_input = aliased_serialized.get("input")
-    source_id = (
-        current_input.get("event_id")
-        if isinstance(current_input, dict)
-        and isinstance(current_input.get("event_id"), str)
-        else None
-    )
-    source_sentinel = "__RELAYLM_LABEL_INVARIANCE_CURRENT_EVENT_ID__"
-    if source_sentinel in static_instructions:
-        raise ProviderProtocolError(
-            "label-invariance diagnostic source sentinel collides with prompt"
-        )
-    protected_instructions = static_instructions
-    if source_id is not None:
-        protected_instructions = protected_instructions.replace(
-            source_id,
-            source_sentinel,
-        )
-    aliased_instructions = protected_instructions.replace(
-        "Unresolved",
-        "Open-question",
-    ).replace(CANONICAL_UNRESOLVED_KIND, SHADOW_OPEN_QUESTION_KIND)
-    if source_id is not None:
-        aliased_instructions = aliased_instructions.replace(source_sentinel, source_id)
-    return (
-        _COGNITIVE_INPUT_OPEN
-        + json.dumps(aliased_serialized, ensure_ascii=False, separators=(",", ":"))
-        + _COGNITIVE_INPUT_CLOSE
-        + pass_1_prefix
-        + _PASS_1_CLOSE
-        + aliased_instructions
-    )
+# Preserve the old module's internal helper names for existing diagnostic tests
+# while keeping the implementation in the provider-neutral module.
+_alias_cognitive_input_json = alias_cognitive_input_json
+_alias_projected_continuity_context = alias_projected_continuity_context
+_label_alias_prompt = label_alias_prompt
 
 
 def _label_alias_request_body(
@@ -214,28 +109,7 @@ def _label_alias_request_body(
         vllm_reasoning_capability=vllm_reasoning_capability,
         lm_studio_reasoning_capability=lm_studio_reasoning_capability,
     )
-    messages = body.get("messages")
-    if not isinstance(messages, list) or len(messages) != 2:
-        raise ProviderProtocolError(
-            "label-invariance diagnostic expected fixed-slot request messages"
-        )
-    user_message = messages[1]
-    if not isinstance(user_message, dict) or not isinstance(
-        user_message.get("content"), str
-    ):
-        raise ProviderProtocolError(
-            "label-invariance diagnostic expected fixed-slot user prompt"
-        )
-    user_message["content"] = _label_alias_prompt(user_message["content"])
-    body["response_format"] = {
-        "type": "json_schema",
-        "json_schema": {
-            "name": LABEL_INVARIANCE_SCHEMA_NAME,
-            "strict": True,
-            "schema": LABEL_INVARIANCE_EXTRACTION_SCHEMA,
-        },
-    }
-    return body
+    return apply_label_alias_to_request_body(body)
 
 
 def _parse_label_alias_wire(
@@ -243,58 +117,7 @@ def _parse_label_alias_wire(
     wire: object,
     completion: object,
 ) -> tuple[CognitionExtractionOutput, dict[str, object]]:
-    if not isinstance(wire, dict) or set(wire) != {
-        "state_candidates",
-        "continuity_decisions",
-    }:
-        raise ProviderProtocolError(
-            "label-invariance extraction must contain exactly state_candidates and "
-            "continuity_decisions"
-        )
-    decisions = wire["continuity_decisions"]
-    if not isinstance(decisions, dict) or set(decisions) != set(_SHADOW_SLOT_ORDER):
-        raise ProviderProtocolError(
-            "label-invariance continuity_decisions must contain exactly referent, "
-            "open_question, and active_task"
-        )
-
-    shadow_decisions = copy.deepcopy(decisions)
-    open_question_slot = decisions[SHADOW_OPEN_QUESTION_KIND]
-    if isinstance(open_question_slot, dict):
-        transitions = open_question_slot.get("transitions")
-        if isinstance(transitions, list):
-            for transition in transitions:
-                if (
-                    not isinstance(transition, dict)
-                    or transition.get("kind") != SHADOW_OPEN_QUESTION_KIND
-                ):
-                    raise ProviderProtocolError(
-                        "label-invariance open_question transition kind must match its "
-                        "containing slot"
-                    )
-
-    canonical_wire = copy.deepcopy(wire)
-    canonical_decisions = canonical_wire["continuity_decisions"]
-    canonical_slot = canonical_decisions.pop(SHADOW_OPEN_QUESTION_KIND)
-    canonical_decisions[CANONICAL_UNRESOLVED_KIND] = canonical_slot
-    canonical_decisions = {
-        "referent": canonical_decisions["referent"],
-        CANONICAL_UNRESOLVED_KIND: canonical_decisions[CANONICAL_UNRESOLVED_KIND],
-        "active_task": canonical_decisions["active_task"],
-    }
-    canonical_wire["continuity_decisions"] = canonical_decisions
-    if isinstance(canonical_slot, dict):
-        transitions = canonical_slot.get("transitions")
-        if isinstance(transitions, list):
-            for transition in transitions:
-                if isinstance(transition, dict):
-                    transition["kind"] = CANONICAL_UNRESOLVED_KIND
-
-    output, _ = _parse_fixed_slot_wire(
-        wire=canonical_wire,
-        completion=completion,
-    )
-    return output, shadow_decisions
+    return parse_label_alias_wire(wire=wire, completion=completion)
 
 
 class ContinuityLabelInvarianceDiagnosticProvider(
