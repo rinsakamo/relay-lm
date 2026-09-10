@@ -1,10 +1,13 @@
 # Continuity semantic-label invariance diagnostic
 
-This reference owns the evaluation-only diagnostic introduced by #2385.
+This reference owns the evaluation-only diagnostic introduced by #2385. The
+current physical carriage is the llama.cpp/llama-server Stage R qualification
+path. The existing LM Studio module remains the historical semantic contract;
+it is not a fallback for current physical admission.
 
 ## Purpose
 
-#2358 made `referent`, `unresolved`, and `active_task` mechanically explicit as fixed slots. Under the current LM Studio Gemma-4 reasoning-OFF treatment, the provider still chose `unresolved = none` on the lifecycle turns that require the canonical `unresolved` set and resolve. The omission therefore survived removal of the variable-list / structural-salience degree of freedom.
+#2358 made `referent`, `unresolved`, and `active_task` mechanically explicit as fixed slots. Under the current fixed-slot reasoning-OFF treatment, the provider still chose `unresolved = none` on the lifecycle turns that require the canonical `unresolved` set and resolve. The omission therefore survived removal of the variable-list / structural-salience degree of freedom.
 
 This diagnostic asks one narrower question:
 
@@ -52,16 +55,34 @@ From that point onward the existing fixed-slot parser, canonical `ContinuityCand
 
 The shadow alias is never accepted or persisted as product Continuity. JSON Schema controls the diagnostic shape only; it is not semantic authority.
 
-## Semantic-first execution
+## Current llama.cpp execution
 
-The diagnostic inherits the current LM Studio semantic-first physical boundary:
+The diagnostic inherits the current llama.cpp physical boundary:
 
-- provider HTTP preflight is zero;
-- stable non-secret binding facts are controller declarations;
-- the first provider request is actual Stage R semantic work;
-- Pass 2 uses the real explicit native structured-output request;
-- production reasoning OFF is requested with `reasoning_effort=none` and requires completion-side evidence;
-- no retry, fallback, reload, restart, model swap, tuning, schema rescue, parser/Validator relaxation, reasoning escalation, or FastCal is permitted.
+- physical runtime, artifact, server PID/log, native JSON Schema, and exact
+  `/v1/chat/completions/input_tokens` accounting are attested by the current
+  llama.cpp host;
+- the one-command WSL/LocalCodex carriage creates fresh workspace/artifact
+  roots and the shared transaction owns one server lifetime and one host;
+- Pass 1 uses the unchanged production request; Pass 2 uses the native
+  fixed-slot diagnostic request with only the `unresolved` label aliased;
+- reasoning OFF is requested as `reasoning_effort=none` and requires
+  completion-side evidence;
+- the exact input-token counter receives the final aliased request body before
+  the provider posts it;
+- no retry, fallback, reload, restart, model swap, tuning, schema rescue,
+  parser/Validator relaxation, reasoning escalation, LM Studio fallback, or
+  FastCal is permitted.
+
+The future owner command is:
+
+```text
+python3 -m tools.v1_stage_r_llama_cpp_continuity_label_invariance_wsl
+```
+
+It is an owner boundary, not an instruction to execute the diagnostic inside
+#2496. #2496 creates that separate physical owner only after repository support
+is merged and stops before any server or provider/model call.
 
 Each successful Pass 2 writes a create-once shadow-decision observation preserving the raw `open_question` choice before canonical translation.
 

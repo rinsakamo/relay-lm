@@ -55,6 +55,7 @@ def test_occupied_port_fails_closed_without_server_or_host(
     assert summary["disposition"] == "MECHANICAL_PRECONDITION_BLOCKED"
     assert summary["server_launch_count"] == 0
     assert summary["host_invocation_count"] == 0
+    assert summary["fastcal_count"] == 0
     assert summary["listener_snapshot"] == "existing listener"
 
 

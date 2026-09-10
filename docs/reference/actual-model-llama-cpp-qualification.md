@@ -26,6 +26,19 @@ GET http://127.0.0.1:1234/slots
 
 LM Studio support and historical evidence remain under their existing owners. They are not fallback authority for this transaction.
 
+The evaluation-only #2385 Continuity label-invariance diagnostic reuses this
+same physical admission and one-command ownership carriage through:
+
+```text
+python3 -m tools.v1_stage_r_llama_cpp_continuity_label_invariance_wsl
+```
+
+That diagnostic changes only its model-facing Pass 2 transport and translates
+the shadow `open_question` slot back to canonical `unresolved` before the
+existing parser, deterministic boundary, and scorer. It does not change
+production cognition wire or Core identity. The command is reserved for a
+separate fresh physical owner; repository support alone does not run it.
+
 ## One-command LocalCodex/WSL operator surface
 
 LocalCodex/WSL uses one repository-owned operator command exactly once, after
@@ -156,7 +169,7 @@ Pass 1 remains ordinary conversation. Pass 2 remains native `response_format.typ
 
 ## Exact serialized-input accounting and bounded waits
 
-Every real Stage R request is counted through llama-server's exact Chat Completions input-token surface before generation. Unknown or unattested request fields fail closed. There is no tokenizer-estimate fallback.
+Every real Stage R request is counted through llama-server's exact Chat Completions input-token surface before generation. For the #2385 diagnostic, this count receives the final fixed-slot and `open_question`-aliased request body actually posted to the provider. Unknown or unattested request fields fail closed. There is no tokenizer-estimate fallback.
 
 The current qualification uses a bounded **600 second wait per existing generation/counter request**:
 

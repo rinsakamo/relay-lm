@@ -35,7 +35,11 @@ class RuntimePaths:
     artifact_path: Path
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    inner_transaction: str = INNER_TRANSACTION,
+) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Invoke the existing v1 llama.cpp Stage R transaction once with "
@@ -50,7 +54,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parents[1]
     paths = _create_runtime_paths(operator_home)
     _prove_child_roots_are_fresh(paths)
-    command = _inner_command(repo_root=repo_root, paths=paths)
+    command = _inner_command(
+        repo_root=repo_root,
+        paths=paths,
+        inner_transaction=inner_transaction,
+    )
     environment = _child_environment(repo_root=repo_root, paths=paths)
 
     print(
@@ -116,11 +124,16 @@ def _prove_child_roots_are_fresh(paths: RuntimePaths) -> None:
             )
 
 
-def _inner_command(*, repo_root: Path, paths: RuntimePaths) -> list[str]:
+def _inner_command(
+    *,
+    repo_root: Path,
+    paths: RuntimePaths,
+    inner_transaction: str = INNER_TRANSACTION,
+) -> list[str]:
     return [
         sys.executable,
         "-m",
-        INNER_TRANSACTION,
+        inner_transaction,
         "--repo-root",
         str(repo_root),
         "--llama-cpp-root",
