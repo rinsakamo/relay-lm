@@ -1,0 +1,17 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_s3_r3
+owner_issue: 2211
+summary: Fresh S3-R3 semantic-invariance campaign authorized by #2517 after #2515 confirmed the S3-R2 terminal as a 512-token max-output ceiling. Preserves the S3-R2 scientific shape, changes only fresh campaign identity/seeds and a uniform 1024-token output envelope, and adds instrumentation-only non-stop response diagnostics while keeping historical S3/S3-R2 imports immutable.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-s3-r3-frozen-campaign.md
+implementation:
+- src/relaylm/v2_cognitive_ir_s3_r3.py
+- tools/v2_cognitive_ir_s3_r3_llama_cpp.py
+- tools/v2_cognitive_ir_s3_r3_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_s3_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_s3_r3.py
+depends_on:
+- relaylm2_cognitive_ir_experiment
+- relaylm2_cognitive_ir_s3_r2
+- relaylm2_physical_execution

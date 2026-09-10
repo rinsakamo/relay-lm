@@ -12,7 +12,7 @@ import time
 from collections.abc import Sequence
 
 
-INNER_TRANSACTION_MODULE = "tools.v2_cognitive_ir_s3_r2_llama_cpp_transaction"
+INNER_TRANSACTION_MODULE = "tools.v2_cognitive_ir_s3_r3_llama_cpp_transaction"
 DEFAULT_SHARED_LOCK_PATH = Path("/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock")
 DEFAULT_LLAMA_CPP_RELATIVE = Path("src") / "llama.cpp"
 DEFAULT_GGUF_RELATIVE = Path("models") / "gguf" / "gemma-4-12B-it-Q4_K_M.gguf"
@@ -92,7 +92,7 @@ def _write_wall_time_sidecar(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Create one writable WSL envelope and invoke the frozen #2211 S3-R2 "
+            "Create one writable WSL envelope and invoke the frozen #2211 S3-R3 "
             "four-shard transaction exactly once."
         )
     )
