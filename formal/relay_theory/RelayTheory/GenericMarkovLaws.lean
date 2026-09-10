@@ -107,9 +107,6 @@ theorem finKernel_tensor_copy_identity (n : Nat) :
            (finPairTransport.invFun q).2)) := by
   rw [finKernel_copy_as_dirac n, finKernel_identity_eq_dirac_id n]
   rw [finKernel_tensor_dirac]
-  apply finKernel_dirac_congr
-  intro q
-  rfl
 
 /-- Tensoring identity with copy remains an exact deterministic map. -/
 theorem finKernel_tensor_identity_copy (n : Nat) :
@@ -120,9 +117,6 @@ theorem finKernel_tensor_identity_copy (n : Nat) :
            finCopyFn (finPairTransport.invFun q).2)) := by
   rw [finKernel_identity_eq_dirac_id n, finKernel_copy_as_dirac n]
   rw [finKernel_tensor_dirac]
-  apply finKernel_dirac_congr
-  intro q
-  rfl
 
 /-- Generic copy is coassociative up to the explicit associator kernel. -/
 theorem finKernel_copy_coassociative (n : Nat) :
@@ -244,6 +238,10 @@ theorem finKernel_fair_copy_ne_independent :
     have h01 : (0 : Fin 2) = (1 : Fin 2) := h0y.trans h1y.symm
     have hv := congrArg Fin.val h01
     grind
+  have hOffEncoded :
+      ∀ y : Fin 2, target ≠ finPairTransport.toFun (y, y) := by
+    intro y hy
+    exact hOff y (by simpa [finCopyFn] using hy)
   have hleft :
       FinKernel.compose (FinKernel.copy 2) finFairKernel src target = 0 := by
     unfold FinKernel.compose
@@ -253,7 +251,7 @@ theorem finKernel_fair_copy_ne_independent :
             apply sumFin_congr
             intro y
             simp [FinKernel.copy, FinKernel.dirac, finFairKernel,
-              finCopyFn, hOff y]
+              hOffEncoded y]
       _ = 0 := by grind [sumFin]
   have hright :
       FinKernel.tensor finFairKernel finFairKernel src target = qHalf * qHalf := by
