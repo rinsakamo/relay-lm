@@ -95,7 +95,7 @@ theorem finNoisyEpic2Inverse_not_valid :
   intro hvalid
   have hnonneg := hvalid.1 (0 : Fin 2) (1 : Fin 2)
   have hneg := finNoisyEpic2Inverse_offDiagonal_neg
-  exact (not_lt_of_ge hnonneg) hneg
+  grind
 
 /-- The noisy epic observation has an exact algebraic recovery kernel. -/
 theorem finNoisyEpic2_hasExactRecovery :
@@ -134,8 +134,10 @@ theorem finFlip2_dirac_self_inverse :
       FinKernel.identity 2 := by
   rw [finKernel_dirac_compose]
   funext x y
+  change (if y = finFlip2 (finFlip2 x) then (1 : Rat) else 0) =
+    (if x = y then 1 else 0)
   rw [finFlip2_involutive x]
-  simp [FinKernel.dirac, FinKernel.identity, eq_comm]
+  simp [eq_comm]
 
 /-- The deterministic binary flip observation is epic. -/
 theorem finFlip2_dirac_observationEpic :
