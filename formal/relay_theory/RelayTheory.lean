@@ -39,4 +39,5 @@ import RelayTheory.FiniteEpicSplitting
 import RelayTheory.MonoidalRecoveryReflection
 import RelayTheory.BoundedMultidirectionSequentialization
 import RelayTheory.BoundedMultidirectionSequentializationValid
+import RelayTheory.CausalOrderProjection
 import RelayTheory.Countermodels
