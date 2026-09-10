@@ -115,7 +115,12 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
           intro h
           apply hxy
           exact congrArg Prod.fst (finPairTransport_toFun_injective h)
-        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, henc]
+        have hencRev :
+            finPairTransport.toFun (y, phaseIndex k 0 (Nat.zero_le k)) ≠
+              finPairTransport.toFun (x, phaseIndex k 0 (Nat.zero_le k)) := by
+          intro h
+          exact henc h.symm
+        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, hencRev]
     · have hp0 : p ≠ phaseIndex k 0 (Nat.zero_le k) := by
         intro h
         apply hp
