@@ -12,10 +12,14 @@ import tempfile
 import time
 
 
-INNER_TRANSACTION_MODULE = "tools.v2_cognitive_ir_p2_termination_qual_transaction"
-DEFAULT_SHARED_LOCK_PATH = Path("/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock")
+INNER_TRANSACTION_MODULE = "tools.v2_cognitive_ir_p2_termination_qual_entry"
+DEFAULT_SHARED_LOCK_PATH = Path(
+    "/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock"
+)
 DEFAULT_LLAMA_CPP_RELATIVE = Path("src") / "llama.cpp"
-DEFAULT_GGUF_RELATIVE = Path("models") / "gguf" / "gemma-4-12B-it-Q4_K_M.gguf"
+DEFAULT_GGUF_RELATIVE = (
+    Path("models") / "gguf" / "gemma-4-12B-it-Q4_K_M.gguf"
+)
 WALL_TIME_SCHEMA = "relaylm2-cognitive-ir-p2-termination-qual-wsl-wall-time-v1"
 
 
@@ -60,7 +64,10 @@ def _inner_command(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Create one writable WSL envelope and invoke P2 termination qualification exactly once."
+        description=(
+            "Create one writable WSL envelope and invoke P2 termination "
+            "qualification exactly once."
+        )
     )
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--operator-home")
@@ -74,12 +81,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     source_root = (repo_root / "src").resolve()
     if not source_root.is_dir():
-        raise P2TerminationQualWslLauncherError(f"exact checkout source root is missing: {source_root}")
+        raise P2TerminationQualWslLauncherError(
+            f"exact checkout source root is missing: {source_root}"
+        )
     llama_cpp_root = operator_home / DEFAULT_LLAMA_CPP_RELATIVE
     artifact_path = operator_home / DEFAULT_GGUF_RELATIVE
 
     runtime_root = Path(
-        tempfile.mkdtemp(prefix="relaylm-v2-2211-p2-termination-qual-wsl-runtime-")
+        tempfile.mkdtemp(
+            prefix="relaylm-v2-2211-p2-termination-qual-wsl-runtime-"
+        )
     ).resolve()
     runtime_home = runtime_root / "home"
     runtime_home.mkdir(parents=True, exist_ok=False)
@@ -90,7 +101,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         DEFAULT_SHARED_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         raise P2TerminationQualWslLauncherError(
-            f"cannot prepare lifecycle-lock directory: {DEFAULT_SHARED_LOCK_PATH.parent}: {exc}"
+            "cannot prepare lifecycle-lock directory: "
+            f"{DEFAULT_SHARED_LOCK_PATH.parent}: {exc}"
         ) from exc
 
     child_env = os.environ.copy()
@@ -110,7 +122,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     started_ns = time.monotonic_ns()
     try:
-        completed = subprocess.run(command, cwd=repo_root, env=child_env, check=False)
+        completed = subprocess.run(
+            command,
+            cwd=repo_root,
+            env=child_env,
+            check=False,
+        )
     except OSError as exc:
         raise P2TerminationQualWslLauncherError(
             f"failed to invoke qualification transaction once: {exc}"
@@ -136,7 +153,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             {
                 "p2_termination_qual_summary_path": str(summary_path),
                 "p2_termination_qual_wsl_wall_time_path": str(wall_time_path),
-                "p2_termination_qual_wsl_wall_time_sha256": _sha256_file(wall_time_path),
+                "p2_termination_qual_wsl_wall_time_sha256": _sha256_file(
+                    wall_time_path
+                ),
                 "wall_seconds": wall_seconds,
             },
             ensure_ascii=False,
