@@ -65,7 +65,7 @@ theorem finKernel_selector_affine
           · subst y
             simp [finSelectorAt]
             grind
-          · simp [finSelectorAt, hy]
+          · simp [finSelectorAt, hy, Rat.add_zero]
     _ = sumFin n (fun y => f x y * obs miss z) +
         sumFin n (fun y =>
           if y = target then
