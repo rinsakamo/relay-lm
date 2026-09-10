@@ -16,4 +16,5 @@ import RelayTheory.BehavioralQuotient
 import RelayTheory.ProbeRelative
 import RelayTheory.ProbeDoctrine
 import RelayTheory.StochasticProbeDichotomy
+import RelayTheory.RestrictedContexts
 import RelayTheory.Countermodels
