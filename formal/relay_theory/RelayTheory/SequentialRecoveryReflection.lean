@@ -16,10 +16,9 @@ theorem finKernel_hasExactRecovery_compose
     FinKernel.compose (FinKernel.compose recoveryA recoveryB)
         (FinKernel.compose obsB obsA) =
       FinKernel.compose recoveryA
-        (FinKernel.compose recoveryB (FinKernel.compose obsB obsA)) := by
-          rw [finKernel_compose_associative obsA obsB recoveryB]
-          exact (finKernel_compose_associative
-            obsA (FinKernel.compose recoveryB obsB) recoveryA).symm
+        (FinKernel.compose recoveryB (FinKernel.compose obsB obsA)) :=
+      (finKernel_compose_associative
+        (FinKernel.compose obsB obsA) recoveryB recoveryA).symm
     _ = FinKernel.compose recoveryA
         (FinKernel.compose (FinKernel.compose recoveryB obsB) obsA) := by
           rw [finKernel_compose_associative obsA obsB recoveryB]
@@ -52,15 +51,6 @@ theorem finKernel_identity_hasExactRecovery (n : Nat) :
     FinKernel.HasExactRecovery (FinKernel.identity n) := by
   exact ⟨FinKernel.identity n,
     finKernel_compose_identity_after (FinKernel.identity n)⟩
-
-/-- On the singleton interface, discard is exactly identity. -/
-theorem finKernel_discard_one_eq_identity :
-    FinKernel.discard 1 = FinKernel.identity 1 := by
-  change FinKernel.dirac (@finDiscardFn 1) =
-    FinKernel.dirac (fun x : Fin 1 => x)
-  apply finKernel_dirac_congr
-  intro x
-  exact (fin_one_eq_zero x).symm
 
 /--
 The injective `Fin 1 -> Fin 2` control followed by binary discard is exactly the
@@ -111,12 +101,14 @@ theorem finKernel_hasExactRecovery_compose_reflect_later_of_earlier_epic
   calc
     FinKernel.compose
         (FinKernel.compose (FinKernel.compose obsA recovery) obsB) obsA =
-      FinKernel.compose obsA
-        (FinKernel.compose recovery (FinKernel.compose obsB obsA)) := by
-          rw [← finKernel_compose_associative obsA obsB
-            (FinKernel.compose obsA recovery)]
-          exact (finKernel_compose_associative
-            (FinKernel.compose obsB obsA) recovery obsA).symm
+      FinKernel.compose (FinKernel.compose obsA recovery)
+        (FinKernel.compose obsB obsA) :=
+      (finKernel_compose_associative obsA obsB
+        (FinKernel.compose obsA recovery)).symm
+    _ = FinKernel.compose obsA
+        (FinKernel.compose recovery (FinKernel.compose obsB obsA)) :=
+      (finKernel_compose_associative
+        (FinKernel.compose obsB obsA) recovery obsA).symm
     _ = FinKernel.compose obsA (FinKernel.identity a) := by
           rw [hrec]
     _ = obsA := finKernel_compose_identity_before obsA
