@@ -26,4 +26,5 @@ import RelayTheory.CopyPreservingCharacterization
 import RelayTheory.KernelObservationMonoidal
 import RelayTheory.QuotientWitnessDeterminacy
 import RelayTheory.ScalarEpicityReduction
+import RelayTheory.MonoidalEpicity
 import RelayTheory.Countermodels
