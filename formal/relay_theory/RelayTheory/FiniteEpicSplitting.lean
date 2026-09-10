@@ -10,8 +10,8 @@ def transpose {a q : Nat} (k : FinKernel a q) : FinKernel q a :=
 
 /-- Exact section/right-inverse interface, dual to `HasExactRecovery`. -/
 def HasExactSection {a q : Nat} (obs : FinKernel a q) : Prop :=
-  ∃ section : FinKernel q a,
-    compose obs section = identity q
+  ∃ sec : FinKernel q a,
+    compose obs sec = identity q
 
 end FinKernel
 
@@ -84,8 +84,8 @@ theorem finKernel_hasExactSection_iff_transpose_hasExactRecovery
     FinKernel.HasExactSection obs ↔
       FinKernel.HasExactRecovery (FinKernel.transpose obs) := by
   constructor
-  · rintro ⟨section, hsection⟩
-    refine ⟨FinKernel.transpose section, ?_⟩
+  · rintro ⟨sec, hsection⟩
+    refine ⟨FinKernel.transpose sec, ?_⟩
     have hT := congrArg (fun k => FinKernel.transpose k) hsection
     rw [finKernel_transpose_compose, finKernel_transpose_identity] at hT
     exact hT
@@ -101,19 +101,19 @@ theorem finKernel_hasExactSection_to_observationEpic
     {a q : Nat} {obs : FinKernel a q}
     (hsection : FinKernel.HasExactSection obs) :
     FinKernel.ObservationEpic obs := by
-  rcases hsection with ⟨section, hright⟩
+  rcases hsection with ⟨sec, hright⟩
   intro r h₁ h₂ hEq
   calc
     h₁ = FinKernel.compose h₁ (FinKernel.identity q) :=
       (finKernel_compose_identity_before h₁).symm
-    _ = FinKernel.compose h₁ (FinKernel.compose obs section) := by
+    _ = FinKernel.compose h₁ (FinKernel.compose obs sec) := by
       rw [hright]
-    _ = FinKernel.compose (FinKernel.compose h₁ obs) section :=
-      finKernel_compose_associative section obs h₁
-    _ = FinKernel.compose (FinKernel.compose h₂ obs) section := by
+    _ = FinKernel.compose (FinKernel.compose h₁ obs) sec :=
+      finKernel_compose_associative sec obs h₁
+    _ = FinKernel.compose (FinKernel.compose h₂ obs) sec := by
       rw [hEq]
-    _ = FinKernel.compose h₂ (FinKernel.compose obs section) :=
-      (finKernel_compose_associative section obs h₂).symm
+    _ = FinKernel.compose h₂ (FinKernel.compose obs sec) :=
+      (finKernel_compose_associative sec obs h₂).symm
     _ = FinKernel.compose h₂ (FinKernel.identity q) := by
       rw [hright]
     _ = h₂ := finKernel_compose_identity_before h₂
