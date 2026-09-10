@@ -1,6 +1,6 @@
 # llama.cpp / llama-server actual-model qualification
 
-Status: current RelayLM 1.0 physical-qualification carriage for the operator-selected local llama.cpp condition. Repository carriage originates in #2409, the request/host hardening lineage is #2421/#2422, and the current one-command transaction harness is owned by #2430. Provider-neutral Stage R semantics remain owned by #1386 and `docs/reference/actual-model-stage-r-current.md`.
+Status: current RelayLM 1.0 physical-qualification carriage for the operator-selected local llama.cpp condition. Repository carriage originates in #2409, the request/host hardening lineage is #2421/#2422, the one-command transaction harness is owned by #2430, and #2523 adds the canonical restartable Python/runtime controller gate before a one-shot wrapper is consumed. Provider-neutral Stage R semantics remain owned by #1386 and `docs/reference/actual-model-stage-r-current.md`.
 
 ## Scope
 
@@ -26,63 +26,78 @@ GET http://127.0.0.1:1234/slots
 
 LM Studio support and historical evidence remain under their existing owners. They are not fallback authority for this transaction.
 
-The evaluation-only #2385 Continuity label-invariance diagnostic reuses this
-same physical admission and one-command ownership carriage through:
+The evaluation-only #2385 Continuity label-invariance diagnostic reuses this same physical admission and one-command ownership carriage through:
 
 ```text
-python3 -m tools.v1_stage_r_llama_cpp_continuity_label_invariance_wsl
+<preflight-python> -m tools.v1_stage_r_llama_cpp_continuity_label_invariance_wsl
 ```
 
-That diagnostic changes only its model-facing Pass 2 transport and translates
-the shadow `open_question` slot back to canonical `unresolved` before the
-existing parser, deterministic boundary, and scorer. It does not change
-production cognition wire or Core identity. The command is reserved for a
-separate fresh physical owner; repository support alone does not run it.
+That diagnostic changes only its model-facing Pass 2 transport and translates the shadow `open_question` slot back to canonical `unresolved` before the existing parser, deterministic boundary, and scorer. It does not change production cognition wire or Core identity. The command is reserved for a separate fresh physical owner; repository support alone does not run it.
 
-## One-command LocalCodex/WSL operator surface
+## Pre-wrapper controller boundary
 
-LocalCodex/WSL uses one repository-owned operator command exactly once, after
-the separate Full Access/localhost permission preflight passes:
+Before any one-shot WSL wrapper is consumed, follow `docs/reference/actual-model-llama-cpp-controller-preflight.md`.
 
-```text
-python3 -m tools.v1_stage_r_llama_cpp_wsl
-```
-
-The operator flow is:
+The operator/controller flow is:
 
 ```text
 LocalCodex
--> Full Access / localhost permission preflight
--> repository-owned wrapper exactly once
+-> Full Access / equivalent localhost permission
+-> restartable CONTROLLER_SETUP
+     exact clean authorized checkout
+     repo-external Python environment
+     declared runtime dependency consistency
+     exact-checkout source binding
+     exact selected inner-module import without main()
+     localhost/runtime/material observations
+-> controller preflight READY
+-> repository-owned wrapper exactly once, using the same interpreter
 -> existing inner transaction
 ```
 
-The wrapper is only a deterministic process/environment boundary. Before the
-inner transaction is invoked, it:
+Controller setup is restartable only while wrapper, server, host, provider and semantic counts remain zero. A missing dependency or import closure is `PRE_WRAPPER_RUNTIME_BLOCKED`; it is not permission to spend a one-shot merely to rediscover the environment defect.
+
+The selected preflight interpreter must satisfy the current repository Python floor, belong to a repo-external virtual environment, contain the current RelayLM runtime dependencies with `pip check` passing, import RelayLM from the exact checkout `src`, and import the exact selected inner transaction without entering `main()`.
+
+After controller preflight is `READY`, use the exact interpreter returned in its `one_shot_command`. Do not switch back to ambient/system `python3`.
+
+For example, after preparing a repo-external environment and binding the exact checkout source:
+
+```text
+<VENV>/bin/python3 -m tools.v1_llama_cpp_controller_preflight \
+  --repo-root <exact checkout> \
+  --expected-head <fresh authorized HEAD> \
+  --expected-tree <fresh authorized tree> \
+  --inner-module relaylm.actual_model_stage_r_llama_cpp_transaction \
+  --wrapper-module tools.v1_stage_r_llama_cpp_wsl
+```
+
+A physical successor using a diagnostic-specific wrapper supplies that wrapper's exact selected inner module instead. The preflight itself starts no server and contacts no provider/model.
+
+## One-command LocalCodex/WSL operator surface
+
+After the controller preflight and all owner-specific non-generative admission checks pass, the ordinary Stage R wrapper is consumed exactly once with the **same selected interpreter**:
+
+```text
+<preflight-python> -m tools.v1_stage_r_llama_cpp_wsl
+```
+
+The wrapper is only a deterministic process/environment boundary. Before the inner transaction is invoked, it:
 
 - captures the real operator `HOME` as `OPERATOR_HOME`;
 - creates one fresh runtime root directly under `/tmp`;
-- creates only `<runtime-root>/home` as the child `runtime_home` and proves it
-  writable;
-- derives `<runtime-root>/workspace` and `<runtime-root>/artifacts` without
-  creating either path;
-- passes those fresh, nonexistent paths as `--workspace-root` and
-  `--artifact-root` to the inner transaction;
-- passes `OPERATOR_HOME/src/llama.cpp` and
-  `OPERATOR_HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf` explicitly;
-- runs from the exact repository root with child `HOME=runtime_home` and
-  `PYTHONPATH=<repo-root>/src` first, followed by the inherited `PYTHONPATH`;
-- invokes the inner transaction once and returns its exit code unchanged.
+- creates only `<runtime-root>/home` as the child `runtime_home` and proves it writable;
+- derives `<runtime-root>/workspace` and `<runtime-root>/artifacts` without creating either path;
+- passes those fresh, nonexistent paths as `--workspace-root` and `--artifact-root` to the inner transaction;
+- passes `OPERATOR_HOME/src/llama.cpp` and `OPERATOR_HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf` explicitly;
+- runs from the exact repository root with child `HOME=runtime_home` and `PYTHONPATH=<repo-root>/src` first, followed by the inherited `PYTHONPATH`;
+- invokes the inner transaction once using its own `sys.executable` and returns its exit code unchanged.
 
-The wrapper does not start `llama-server`, contact a provider/model, invoke the
-Stage R host, interpret semantic classification, retry, replay, fall back, or
-contact LM Studio. In particular, the wrapper/controller must never pre-create
-the workspace or artifact roots: their fresh-nonexistent ownership belongs to
-the existing inner transaction, which creates them with its fail-closed
-`exist_ok=False` contract.
+Because the wrapper uses `sys.executable`, invoking it with the preflight interpreter carries the same validated environment into the child transaction.
 
-The existing inner transaction remains the citable physical laboratory and is
-invoked by the wrapper as:
+The wrapper does not start `llama-server`, contact a provider/model, invoke the Stage R host, interpret semantic classification, retry, replay, fall back, or contact LM Studio. In particular, the wrapper/controller must never pre-create the workspace or artifact roots: their fresh-nonexistent ownership belongs to the existing inner transaction, which creates them with its fail-closed `exist_ok=False` contract.
+
+The existing inner transaction remains the citable physical laboratory and is invoked by the wrapper as:
 
 ```text
 python -m relaylm.actual_model_stage_r_llama_cpp_transaction
@@ -224,13 +239,15 @@ The transaction wrapper does not reinterpret `PASS`, `SEMANTIC_FAIL`, or `INFRA_
 
 ## Classification and pre-host disposition
 
-If the citable host is entered, its classification remains authoritative:
+The controller and transaction classifications are deliberately distinct:
 
-- `PASS`: physical/capability condition valid and all automated current Stage R gates pass;
-- `SEMANTIC_FAIL`: usable physical inference completed but current semantic gates fail;
-- `INFRA_INVALID`: no valid semantic verdict because admission/accounting/capability/transport/runtime evidence fails.
+- `PRE_WRAPPER_RUNTIME_BLOCKED`: restartable controller setup did not establish the selected Python/runtime/import boundary; wrapper/server/host/provider/semantic counts remain zero;
+- `MECHANICAL_PRECONDITION_BLOCKED`: the consumed transaction could not safely establish its owned laboratory before host entry;
+- host `PASS`: physical/capability condition valid and all automated current Stage R gates pass;
+- host `SEMANTIC_FAIL`: usable physical inference completed but current semantic gates fail;
+- host `INFRA_INVALID`: no valid semantic verdict because admission/accounting/capability/transport/runtime evidence fails.
 
-If the transaction cannot safely establish the owned laboratory before host entry, it reports `MECHANICAL_PRECONDITION_BLOCKED`; the citable host invocation count remains zero and no semantic verdict is fabricated.
+A controller block may be repaired only before wrapper consumption. Once a physical owner invokes its repository wrapper, that owner is spent according to its exactly-once contract even if no semantic generation occurs. A later attempt requires a fresh physical owner rather than same-owner interpreter repair/retry.
 
 An automated `PASS` still does not fabricate human/product-quality review. Current #1386 review authority remains separate.
 
@@ -259,16 +276,17 @@ The host also retains its existing `stage-r-llama-cpp-summary.json`, physical bi
 
 ## Invocation
 
-For the current WSL laboratory, after fresh repository/GitHub authority and the
-permission preflight have established that the intended v1 execution is
-allowed, LocalCodex should need only the wrapper command:
+For the current WSL laboratory, first establish fresh repository/GitHub authority, Full Access/equivalent localhost permission, and the canonical controller environment from `actual-model-llama-cpp-controller-preflight.md`.
+
+After the helper returns `READY`, invoke exactly the emitted same-interpreter `one_shot_command`. For ordinary Stage R its shape is:
 
 ```text
-python3 -m tools.v1_stage_r_llama_cpp_wsl
+<preflight-python> -m tools.v1_stage_r_llama_cpp_wsl
 ```
 
-The inner transaction's direct command remains useful for repository-local
-tests and owner implementation diagnostics. Its explicit-root form is:
+Do not replace `<preflight-python>` with an unrelated ambient `python3`.
+
+The inner transaction's direct command remains useful for repository-local tests and owner implementation diagnostics. Its explicit-root form is:
 
 ```text
 python -m relaylm.actual_model_stage_r_llama_cpp_transaction \
@@ -277,9 +295,6 @@ python -m relaylm.actual_model_stage_r_llama_cpp_transaction \
   --artifact-root <fresh-nonexistent-artifact-path>
 ```
 
-Those explicit roots must be nonexistent before the inner transaction starts;
-the wrapper owns that operator-side proof for the canonical LocalCodex/WSL
-path. The controller should read the emitted transaction JSON, reconcile it
-into the owning physical Issue, and not manually replay any internal request.
+Those explicit roots must be nonexistent before the inner transaction starts; the wrapper owns that operator-side proof for the canonical LocalCodex/WSL path. The controller should read the emitted transaction JSON, reconcile it into the owning physical Issue, and not manually replay any internal request.
 
-> Start one clean laboratory, run one executable transaction, preserve its trace, then shut that laboratory down.
+> Prepare and prove the interpreter, start one clean laboratory, run one executable transaction, preserve its trace, then shut that laboratory down.
