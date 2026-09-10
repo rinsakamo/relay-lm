@@ -42,6 +42,8 @@ tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction
 
 Changing the child `HOME` is therefore only a writable-state envelope for transaction-owned cache/log paths. It does not change the llama.cpp source root, GGUF artifact identity, provider endpoint, model alias, GPU/runtime identity, selected S2 treatment, or #2363 host boundary.
 
+#2452 established another pre-host launcher fact: a clean `src/`-layout checkout is not importable by the inner transaction merely because the outer `tools...wsl` wrapper itself is importable. The current launcher therefore executes its one child with the exact checkout as `cwd` and prepends the exact checkout's `<repo>/src` directory to child `PYTHONPATH`, preserving any inherited `PYTHONPATH` after it. This binds `relaylm.*` imports to the selected clean checkout rather than an incidental installed copy while leaving the writable child `HOME` and real operator llama.cpp/GGUF paths unchanged.
+
 The inner transaction owns only the mechanical laboratory lifecycle around the existing scientific host:
 
 ```text
@@ -197,6 +199,6 @@ A mechanically discriminating S2 is not an IR winner, ontology result, or archit
 
 ## Historical preservation
 
-Nothing in this adapter rewrites, reruns, or reinterprets completed LM Studio calibration/S2 evidence. In particular, prior `EXECUTION_BLOCKED` transactions with zero provider/model calls remain exactly those historical results. #2436 stopped before Python harness entry; #2440 entered the transaction wrapper but stopped on a read-only home-directory lifecycle lock before server launch or selected-S2 host entry. Neither spent S2.
+Nothing in this adapter rewrites, reruns, or reinterprets completed LM Studio calibration/S2 evidence. In particular, prior `EXECUTION_BLOCKED` transactions with zero provider/model calls remain exactly those historical results. #2436 stopped before Python harness entry; #2440 entered the transaction wrapper but stopped on a read-only home-directory lifecycle lock before server launch or selected-S2 host entry; #2445 passed the writable lock and then stopped on LocalCodex localhost-binding permission before server launch; #2452 passed the Full Access permission gate and invoked the wrapper once, but its child stopped on the clean-checkout `src/` import-path boundary before transaction `main()`. None spent S2.
 
 Repository preparation itself performs no model/GPU execution. A physical S2 transaction starts only from a fresh exact checkout, fresh external artifact root, fresh #2211/#2363 authority, and fresh WSL controller observations.
