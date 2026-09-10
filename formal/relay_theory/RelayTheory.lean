@@ -21,4 +21,5 @@ import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
 import RelayTheory.StructuralQuotientDescent
+import RelayTheory.StochasticObservationKernels
 import RelayTheory.Countermodels
