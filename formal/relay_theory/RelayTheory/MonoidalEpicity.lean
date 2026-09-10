@@ -184,18 +184,19 @@ theorem finNoisyEpic2_tensor_not_deterministic :
     ¬ FinKernel.DeterministicKernel
       (FinKernel.tensor finNoisyEpic2 finNoisyEpic2) := by
   rintro ⟨f, hf⟩
-  let x := finPairTransport.toFun ((0 : Fin 2), (0 : Fin 2))
-  let y := finPairTransport.toFun ((0 : Fin 2), (0 : Fin 2))
-  have hv := congrFun (congrFun hf x) y
-  have hleft :
-      FinKernel.tensor finNoisyEpic2 finNoisyEpic2 x y =
-        qThreeQuarter * qThreeQuarter := by
-    simp [x, y, finNoisyEpic2]
-  rw [hleft] at hv
-  by_cases hy : y = f x
-  · simp [FinKernel.dirac, hy] at hv
+  let p := finPairTransport.toFun ((0 : Fin 2), (0 : Fin 2))
+  have hv := congrFun (congrFun hf p) p
+  have hencoded := finKernel_tensor_encoded
+    finNoisyEpic2 finNoisyEpic2
+    (0 : Fin 2) (0 : Fin 2) (0 : Fin 2) (0 : Fin 2)
+  change FinKernel.tensor finNoisyEpic2 finNoisyEpic2 p p =
+    qThreeQuarter * qThreeQuarter at hencoded
+  · simpa [p, finNoisyEpic2] using hencoded
+  rw [hencoded] at hv
+  by_cases hp : p = f p
+  · simp [FinKernel.dirac, hp] at hv
     grind [qThreeQuarter]
-  · simp [FinKernel.dirac, hy] at hv
+  · simp [FinKernel.dirac, hp] at hv
     grind [qThreeQuarter]
 
 /-- Positive stochastic product control for monoidal witness determinacy. -/
@@ -223,7 +224,9 @@ theorem finFairKernel_tensor_identity_not_observationEpic :
     have hv := congrFun (congrFun h
       (finPairTransport.toFun ((0 : Fin 2), (0 : Fin 1))))
       (finPairTransport.toFun ((0 : Fin 2), (0 : Fin 1)))
-    simp [h₁, h₂, FinKernel.identity, FinKernel.dirac, finFlip2] at hv
+    dsimp [h₁, h₂] at hv
+    rw [finKernel_tensor_encoded, finKernel_tensor_encoded] at hv
+    simp [FinKernel.identity, FinKernel.dirac, finFlip2] at hv
   have hsame :
       FinKernel.compose h₁
           (FinKernel.tensor finFairKernel (FinKernel.identity 1)) =
@@ -275,7 +278,9 @@ theorem finKernel_tensor_factorization_existsUnique_of_epic
             (FinKernel.tensor obsB obsD) (FinKernel.tensor k l) =
           FinKernel.compose h' (FinKernel.tensor obsA obsC) → h' = h := by
   have hfactor := finKernel_kernelObservationFactors_tensor hk hl
-  have hepic := finKernel_observationEpic_tensor hA hC
+  have hepic :
+      FinKernel.ObservationEpic (FinKernel.tensor obsA obsC) :=
+    finKernel_observationEpic_tensor (obsA := obsA) (obsB := obsC) hA hC
   exact finKernel_kernelObservationFactors_existsUnique hepic hfactor
 
 /-- Acceptance bundle for monoidal witness determinacy. -/
