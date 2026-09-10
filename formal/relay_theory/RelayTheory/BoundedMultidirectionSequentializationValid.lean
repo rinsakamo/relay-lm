@@ -14,14 +14,24 @@ theorem serializedStep_valid {n k : Nat} (schedule : DirectionSchedule n)
   · intro s t
     let si := finPairTransport.invFun s
     let ti := finPairTransport.invFun t
+    change 0 ≤
+      if _h : si.2.1 < k then
+        if ti.2.1 = si.2.1 + 1 then schedule si.2.1 si.1 ti.1 else 0
+      else
+        if ti = si then 1 else 0
     by_cases hactive : si.2.1 < k
-    · by_cases hphase : ti.2.1 = si.2.1 + 1
-      · simpa [serializedStep, si, ti, hactive, hphase] using
-          (hschedule si.2.1 hactive).1 si.1 ti.1
-      · simp [serializedStep, si, ti, hactive, hphase]
-    · by_cases heq : ti = si
-      · simpa [serializedStep, si, ti, hactive, heq] using rat_zero_le_one
-      · simp [serializedStep, si, ti, hactive, heq]
+    · rw [dif_pos hactive]
+      by_cases hphase : ti.2.1 = si.2.1 + 1
+      · rw [if_pos hphase]
+        exact (hschedule si.2.1 hactive).1 si.1 ti.1
+      · rw [if_neg hphase]
+        exact Rat.le_refl
+    · rw [dif_neg hactive]
+      by_cases heq : ti = si
+      · rw [if_pos heq]
+        exact rat_zero_le_one
+      · rw [if_neg heq]
+        exact Rat.le_refl
   · intro s
     let si := finPairTransport.invFun s
     rcases hsi : si with ⟨x, p⟩
