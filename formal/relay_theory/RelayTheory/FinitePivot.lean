@@ -263,18 +263,25 @@ theorem finKernelPivotLift_compose_succ
     (h : FinKernel t a) (x : Fin t) (z : Fin q) :
     FinKernel.compose obs (finKernelPivotLift obs h) x z.succ =
       FinKernel.compose (finKernelPivotBlock obs) h x z := by
-  unfold FinKernel.compose
-  rw [sumFin_succ]
-  rw [finKernelPivotLift_zero]
-  have htail :
-      sumFin a (fun i => finKernelPivotLift obs h x i.succ * obs i.succ z.succ) =
-        sumFin a (fun i => (obs 0 0 * h x i) * obs i.succ z.succ) := by
-    apply sumFin_congr
-    intro i
-    rw [finKernelPivotLift_succ]
-  rw [htail, sumFin_scaled_product]
-  rw [finKernelPivotBlock_compose_formula]
-  grind
+  calc
+    FinKernel.compose obs (finKernelPivotLift obs h) x z.succ =
+        (- sumFin a (fun i => h x i * obs i.succ 0)) * obs 0 z.succ +
+          obs 0 0 * sumFin a (fun i => h x i * obs i.succ z.succ) := by
+            unfold FinKernel.compose
+            rw [sumFin_succ]
+            rw [finKernelPivotLift_zero]
+            have htail :
+                sumFin a (fun i => finKernelPivotLift obs h x i.succ * obs i.succ z.succ) =
+                  sumFin a (fun i => (obs 0 0 * h x i) * obs i.succ z.succ) := by
+              apply sumFin_congr
+              intro i
+              rw [finKernelPivotLift_succ]
+            rw [htail, sumFin_scaled_product]
+    _ = obs 0 0 * sumFin a (fun i => h x i * obs i.succ z.succ) -
+          sumFin a (fun i => h x i * obs i.succ 0) * obs 0 z.succ := by
+            grind
+    _ = FinKernel.compose (finKernelPivotBlock obs) h x z :=
+      (finKernelPivotBlock_compose_formula obs h x z).symm
 
 /--
 Monicity descends to the scaled lower-right pivot block whenever the pivot is
