@@ -195,9 +195,15 @@ theorem finNoisyEpic2_tensor_not_deterministic :
         (0 : Fin 2) (0 : Fin 2) (0 : Fin 2) (0 : Fin 2))
   rw [hencoded] at hv
   by_cases hp : p = f p
-  · simp [FinKernel.dirac, hp] at hv
+  · have hdirac : FinKernel.dirac f p p = 1 := by
+      unfold FinKernel.dirac
+      rw [if_pos hp]
+    rw [hdirac] at hv
     grind [qThreeQuarter]
-  · simp [FinKernel.dirac, hp] at hv
+  · have hdirac : FinKernel.dirac f p p = 0 := by
+      unfold FinKernel.dirac
+      rw [if_neg hp]
+    rw [hdirac] at hv
     grind [qThreeQuarter]
 
 /-- Positive stochastic product control for monoidal witness determinacy. -/
