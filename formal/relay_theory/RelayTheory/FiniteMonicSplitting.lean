@@ -384,11 +384,13 @@ theorem finKernelPivotRecovery_after_obs
       simp [FinKernel.identity]
     · rw [finKernelPivotHeadRecovery_compose_succ obs recoveryB hrecB k]
       simp [FinKernel.identity]
+      grind
   · change FinKernel.compose (finKernelPivotLowerRecovery obs recoveryB) obs x i =
       FinKernel.identity (Nat.succ a) x i.succ
     refine Fin.cases ?_ (fun k => ?_) x
     · rw [finKernelPivotLowerRecovery_compose_zero]
       simp [FinKernel.identity]
+      grind
     · rw [finKernelPivotLowerRecovery_compose_succ obs recoveryB hrecB k i]
       simp [FinKernel.identity]
 
