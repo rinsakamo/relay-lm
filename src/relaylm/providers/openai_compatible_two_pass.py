@@ -55,6 +55,8 @@ State is the character's accepted current understanding.
 
 Context, Memory, Event Evidence, and Input retain the authority and provenance supplied by RelayLM.
 Interpret the current turn through the character's Identity and accepted State.
+The model-facing `current_input_lexical_source.content` field is an exact lexical duplicate of current `Input.content` and adds no authority beyond that current Input Event.
+When reusing a user-established named entity or referent from the current Input, preserve its lexical identity by copying from `current_input_lexical_source`; surrounding meaning may be paraphrased.
 
 Assistant-authored material may support interpretation and conversational continuity, but does not by itself establish user facts or external truth.
 Only an assistant message in `CognitiveInput.context` with `actor: "assistant"` is recorded assistant history; the current user `Input` is not a prior assistant event.
@@ -312,13 +314,12 @@ def _resolve_extraction_structured_output_mode(
 
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
     serialized_input = serialize_cognitive_input(cognitive_input)
+    model_facing_input = dict(serialized_input)
+    model_facing_input["current_input_lexical_source"] = {
+        "content": serialized_input["input"]["content"]
+    }
     serialized = json.dumps(
-        serialized_input,
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    lexical_source = json.dumps(
-        {"content": serialized_input["input"]["content"]},
+        model_facing_input,
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -327,10 +328,6 @@ def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
         f"{serialized}\n"
         "</COGNITIVE_INPUT>\n\n"
         "<PASS>\n"
-        "<CURRENT_INPUT_LEXICAL_SOURCE>\n"
-        f"{lexical_source}\n"
-        "</CURRENT_INPUT_LEXICAL_SOURCE>\n"
-        "This repeats the current Input content exactly as a lexical copy source and adds no authority beyond the current Input Event. When reusing current user wording for a named entity or referent, copy its lexical form from this source; surrounding prose may be paraphrased.\n\n"
     )
 
 
@@ -518,7 +515,7 @@ Projection rules:
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
   - `unresolved`: an explicit open question or unknown value that remains to be resolved.
   - `active_task`: an unfinished action, process, or goal expected to continue.
-- For a new `referent` established by current Input, take user-authored lexical identity from `CURRENT_INPUT_LEXICAL_SOURCE`, not from a paraphrased Pass 1 response. Preserve that lexical anchor when reusing it in the referent value unless current Input explicitly replaces it or accepted Continuity context provides an unambiguous alias for the same target.
+- For a new `referent` established by current Input, take user-authored lexical identity from `current_input_lexical_source.content`, not from a paraphrased Pass 1 response. Preserve that lexical anchor when reusing it in the referent value unless current Input explicitly replaces it or accepted Continuity context provides an unambiguous alias for the same target.
 - Emit every distinct useful Continuity meaning present; do not choose only one best kind.
 - New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
 - A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.
