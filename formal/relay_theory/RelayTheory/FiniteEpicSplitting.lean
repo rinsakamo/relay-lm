@@ -183,6 +183,32 @@ theorem finNoisyEpic2_hasTwoSidedExactInverse :
   finKernel_observationEpic_exactRecovery_twoSided
     finNoisyEpic2_observationEpic finNoisyEpic2_hasExactRecovery
 
+/-- The deterministic binary flip has a stochastic-valid two-sided inverse. -/
+theorem finFlip2_dirac_hasValidStochasticTwoSidedInverse :
+    ∃ inverse : FinKernel 2 2,
+      FinKernel.Valid inverse ∧
+      FinKernel.compose inverse (FinKernel.dirac finFlip2) = FinKernel.identity 2 ∧
+      FinKernel.compose (FinKernel.dirac finFlip2) inverse = FinKernel.identity 2 := by
+  rcases finFlip2_dirac_hasValidStochasticRecovery with
+    ⟨inverse, hvalid, hleft⟩
+  refine ⟨inverse, hvalid, hleft, ?_⟩
+  apply finFlip2_dirac_observationEpic
+    (FinKernel.compose (FinKernel.dirac finFlip2) inverse)
+    (FinKernel.identity 2)
+  calc
+    FinKernel.compose
+        (FinKernel.compose (FinKernel.dirac finFlip2) inverse)
+        (FinKernel.dirac finFlip2) =
+      FinKernel.compose (FinKernel.dirac finFlip2)
+        (FinKernel.compose inverse (FinKernel.dirac finFlip2)) :=
+          (finKernel_compose_associative
+            (FinKernel.dirac finFlip2) inverse (FinKernel.dirac finFlip2)).symm
+    _ = FinKernel.compose (FinKernel.dirac finFlip2) (FinKernel.identity 2) := by
+      rw [hleft]
+    _ = FinKernel.dirac finFlip2 := finKernel_compose_identity_before _
+    _ = FinKernel.compose (FinKernel.identity 2) (FinKernel.dirac finFlip2) :=
+      (finKernel_compose_identity_after _).symm
+
 /--
 Acceptance bundle retaining one-sided and stochastic-valid distinctions while
 exposing finite rational epic splitting and balancedness.
@@ -203,7 +229,10 @@ theorem finKernel_finite_epic_splitting_balancedness_bundle :
       FinKernel.compose inverse finNoisyEpic2 = FinKernel.identity 2 ∧
       FinKernel.compose finNoisyEpic2 inverse = FinKernel.identity 2) ∧
     (¬ FinKernel.HasValidStochasticRecovery finNoisyEpic2) ∧
-    FinKernel.HasValidStochasticRecovery (FinKernel.dirac finFlip2) := by
+    (∃ inverse : FinKernel 2 2,
+      FinKernel.Valid inverse ∧
+      FinKernel.compose inverse (FinKernel.dirac finFlip2) = FinKernel.identity 2 ∧
+      FinKernel.compose (FinKernel.dirac finFlip2) inverse = FinKernel.identity 2) := by
   exact ⟨finKernel_observationEpic_iff_hasExactSection,
     finKernel_epic_and_monic_iff_twoSidedExactInverse,
     finKernel_discard_two_hasExactSection,
@@ -212,6 +241,6 @@ theorem finKernel_finite_epic_splitting_balancedness_bundle :
     finFairKernel_not_hasExactSection,
     finNoisyEpic2_hasTwoSidedExactInverse,
     finNoisyEpic2_not_hasValidStochasticRecovery,
-    finFlip2_dirac_hasValidStochasticRecovery⟩
+    finFlip2_dirac_hasValidStochasticTwoSidedInverse⟩
 
 end RelayTheory
