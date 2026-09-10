@@ -27,6 +27,13 @@ def phaseIndex (k r : Nat) (_hr : r ≤ k) : Fin (k + 1) :=
 @[simp] theorem phaseIndex_val (k r : Nat) (hr : r ≤ k) :
     (phaseIndex k r hr).1 = r := rfl
 
+/-- The constructive product encoding is injective because it has an exact inverse. -/
+theorem finPairTransport_toFun_injective {m n : Nat} :
+    Function.Injective (finPairTransport (m := m) (n := n)).toFun := by
+  intro a b h
+  have h' := congrArg (finPairTransport (m := m) (n := n)).invFun h
+  simpa only [finPair_transport_roundtrip] using h'
+
 /-- Embed a physical state into one declared phase of the augmented finite state. -/
 def phaseEmbed {n k : Nat} (r : Nat) (hr : r ≤ k) :
     Fin n → Fin (n * (k + 1)) :=
@@ -99,8 +106,16 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
         apply Fin.eq_of_val_eq
         simpa [phaseIndex] using hp
       subst p
-      simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex,
-        finPair_transport_roundtrip, eq_comm]
+      by_cases hxy : x = y
+      · subst y
+        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex]
+      · have henc :
+            finPairTransport.toFun (x, phaseIndex k 0 (Nat.zero_le k)) ≠
+              finPairTransport.toFun (y, phaseIndex k 0 (Nat.zero_le k)) := by
+          intro h
+          apply hxy
+          exact congrArg Prod.fst (finPairTransport_toFun_injective h)
+        simp [FinKernel.identity, FinKernel.dirac, phaseEmbed, phaseIndex, hxy, henc]
     · have hp0 : p ≠ phaseIndex k 0 (Nat.zero_le k) := by
         intro h
         apply hp
@@ -114,8 +129,15 @@ theorem phaseKernel_zero_identity_eq_dirac {n k : Nat} :
           simpa [phaseEmbed, finPair_transport_roundtrip] using hpair
         exact congrArg Prod.snd hpair'
       simp [hp, FinKernel.dirac, henc]
-  have h := hencoded (finPairTransport.invFun t).1 (finPairTransport.invFun t).2
-  simpa only [finPair_flatten_roundtrip] using h
+  let ti := finPairTransport.invFun t
+  rcases hti : ti with ⟨y, p⟩
+  have h := hencoded y p
+  have hflat : finPairTransport.toFun (y, p) = t := by
+    calc
+      finPairTransport.toFun (y, p) = finPairTransport.toFun ti := by rw [hti]
+      _ = t := by simpa [ti] using finPair_flatten_roundtrip t
+  rw [hflat] at h
+  exact h
 
 /--
 A single serialized step advances an exact kernel carried entirely at phase `r`
@@ -204,8 +226,15 @@ theorem serializedStep_advance_phase {n k r : Nat}
       _ = phaseKernel (r + 1) (by grind) (FinKernel.compose (schedule r) f) x
             (finPairTransport.toFun (z, q)) := by
             simp [phaseKernel_encoded]
-  have h := hencoded (finPairTransport.invFun t).1 (finPairTransport.invFun t).2
-  simpa only [finPair_flatten_roundtrip] using h
+  let ti := finPairTransport.invFun t
+  rcases hti : ti with ⟨z, q⟩
+  have h := hencoded z q
+  have hflat : finPairTransport.toFun (z, q) = t := by
+    calc
+      finPairTransport.toFun (z, q) = finPairTransport.toFun ti := by rw [hti]
+      _ = t := by simpa [ti] using finPair_flatten_roundtrip t
+  rw [hflat] at h
+  exact h
 
 /-- Exact serialization theorem at every prefix of a fixed finite horizon. -/
 theorem serialized_prefix {n k : Nat} (schedule : DirectionSchedule n) :
