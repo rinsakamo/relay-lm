@@ -32,4 +32,5 @@ import RelayTheory.SequentialEpicityReflection
 import RelayTheory.SplitLaterReflection
 import RelayTheory.DiracRecoverySharpness
 import RelayTheory.SequentialRecoveryReflection
+import RelayTheory.RecoveryCancellation
 import RelayTheory.Countermodels
