@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from datetime import UTC, datetime
 import hashlib
@@ -21,9 +21,9 @@ from relaylm.v2_cognitive_ir_s3 import (
     S3_REGIMES,
     S3_TOTAL_INPUT_TOKEN_REQUESTS,
     S3_TOTAL_SEMANTIC_CALLS,
-    semantic_invariance_gate,
     run_s3_shard,
     s3_call_plan,
+    semantic_invariance_gate,
 )
 from relaylm.v2_transfer_actual_model import ExperimentCompletion
 from tools.v2_cognitive_ir_s2_selected_llama_cpp import (
@@ -61,7 +61,18 @@ from tools.v2_cognitive_ir_s3_llama_cpp import (
 
 
 TRANSACTION_FORMAT_VERSION = 1
-DEFAULT_SHARED_LOCK_PATH = Path("/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock")
+DEFAULT_SHARED_LOCK_PATH = Path(
+    "/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock"
+)
+_LIGHT_PROBE_FIELDS = (
+    "request_model",
+    "build_info",
+    "model_path",
+    "model_ftype",
+    "context",
+    "slot_count",
+    "slot_contexts",
+)
 
 
 class S3TransactionError(RuntimeError):
@@ -69,20 +80,23 @@ class S3TransactionError(RuntimeError):
 
 
 class _BoundS3Client:
-    """Revalidate the exact live llama.cpp binding before every semantic call."""
+    """Perform a lightweight live-binding check before every semantic call.
+
+    Full binary/GGUF SHA-256 attestation is deliberately performed at shard
+    boundaries by the transaction harness. Rehashing a multi-gigabyte GGUF on
+    every one of the 498 semantic calls would turn material attestation into the
+    dominant experimental workload. The per-call probe instead checks the owned
+    process plus /health, /v1/models, /props, /slots and material stat identity.
+    """
 
     def __init__(
         self,
         *,
         inner: S3LlamaCppClient,
-        base_url: str,
-        model: str,
-        controller_identity: Mapping[str, object],
+        live_binding_probe: Callable[[], None],
     ) -> None:
         self.inner = inner
-        self.base_url = base_url
-        self.model = model
-        self.controller_identity = controller_identity
+        self._live_binding_probe = live_binding_probe
         self.live_binding_checks = 0
 
     @property
@@ -108,13 +122,13 @@ class _BoundS3Client:
         *,
         output_kind: str,
     ) -> ExperimentCompletion:
-        probe_llama_cpp_selected_s2_binding(
-            base_url=self.base_url,
-            model=self.model,
-            controller_identity=self.controller_identity,
-        )
+        self._live_binding_probe()
         self.live_binding_checks += 1
-        return self.inner.complete_named(question_id, messages, output_kind=output_kind)
+        return self.inner.complete_named(
+            question_id,
+            messages,
+            output_kind=output_kind,
+        )
 
 
 def _fresh_artifact_root(value: str | None) -> Path:
@@ -122,7 +136,9 @@ def _fresh_artifact_root(value: str | None) -> Path:
         path = Path(value).expanduser().resolve()
         path.mkdir(parents=True, exist_ok=False)
         return path
-    return Path(tempfile.mkdtemp(prefix="relaylm-v2-2211-s3-llama-cpp-artifacts-")).resolve()
+    return Path(
+        tempfile.mkdtemp(prefix="relaylm-v2-2211-s3-llama-cpp-artifacts-")
+    ).resolve()
 
 
 def _new_s3_log_path(regime: str) -> Path:
@@ -136,7 +152,53 @@ def _new_s3_log_path(regime: str) -> Path:
 
 
 def _canonical(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+
+def _material_stat(path: Path) -> dict[str, int]:
+    try:
+        stat = path.stat()
+    except OSError as exc:
+        raise S3TransactionError(f"cannot stat S3 material {path}: {exc}") from exc
+    return {
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "inode": stat.st_ino,
+        "device": stat.st_dev,
+    }
+
+
+def _lightweight_binding_check(
+    *,
+    process: subprocess.Popen[str],
+    expected_probe: Mapping[str, object],
+    server_binary: Path,
+    expected_binary_stat: Mapping[str, int],
+    artifact_path: Path,
+    expected_artifact_stat: Mapping[str, int],
+) -> None:
+    if process.poll() is not None:
+        raise S3TransactionError(
+            "transaction-owned llama-server exited before S3 semantic call"
+        )
+    observed = _probe_server(
+        origin=DEFAULT_ORIGIN,
+        api_base=S3_LLAMA_CPP_ENDPOINT,
+        artifact_path=artifact_path,
+    )
+    for field in _LIGHT_PROBE_FIELDS:
+        if _canonical(observed.get(field)) != _canonical(expected_probe.get(field)):
+            raise S3TransactionError(f"S3 live binding drift before provider call: {field}")
+    if _material_stat(server_binary) != dict(expected_binary_stat):
+        raise S3TransactionError("llama-server material stat changed during S3 shard")
+    if _material_stat(artifact_path) != dict(expected_artifact_stat):
+        raise S3TransactionError("GGUF material stat changed during S3 shard")
 
 
 def _runtime_material(
@@ -171,7 +233,9 @@ def _runtime_material(
     }
 
 
-def _fingerprint(repo: Mapping[str, object], runtime: Mapping[str, object]) -> tuple[str, str]:
+def _fingerprint(
+    repo: Mapping[str, object], runtime: Mapping[str, object]
+) -> tuple[str, str]:
     payload = [
         "relaylm2-cognitive-ir-s3-identity-v1",
         S3_PREREGISTRATION_SHA256,
@@ -209,10 +273,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--llama-cpp-root", default=str(Path.home() / "src" / "llama.cpp"))
+    parser.add_argument(
+        "--llama-cpp-root",
+        default=str(Path.home() / "src" / "llama.cpp"),
+    )
     parser.add_argument(
         "--artifact-path",
-        default=str(Path.home() / "models" / "gguf" / "gemma-4-12B-it-Q4_K_M.gguf"),
+        default=str(
+            Path.home()
+            / "models"
+            / "gguf"
+            / "gemma-4-12B-it-Q4_K_M.gguf"
+        ),
     )
     parser.add_argument("--origin", default=DEFAULT_ORIGIN)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -246,6 +318,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "planned_input_token_requests": S3_TOTAL_INPUT_TOKEN_REQUESTS,
         "server_launch_count": 0,
         "host_shard_count": 0,
+        "full_material_attestation_count": 0,
+        "lightweight_live_binding_check_count": 0,
         "provider_attempts": 0,
         "provider_completions": 0,
         "input_count_attempts": 0,
@@ -269,7 +343,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         repo_identity = {"commit": head, "tree": tree, "clean": True}
         summary["repository"] = repo_identity
         if args.origin.rstrip("/") != DEFAULT_ORIGIN or args.port != DEFAULT_PORT:
-            raise S3TransactionError(f"S3 endpoint must be exactly {DEFAULT_ORIGIN}/v1")
+            raise S3TransactionError(
+                f"S3 endpoint must be exactly {DEFAULT_ORIGIN}/v1"
+            )
         if S3_LLAMA_CPP_ENDPOINT != f"{DEFAULT_ORIGIN}/v1":
             raise AssertionError("S3 transport endpoint drifted from physical transaction")
         if not artifact_path.is_file():
@@ -292,6 +368,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         binary_sha256 = _sha256_file(server_binary)
         artifact_sha256 = _sha256_file(artifact_path)
+        binary_stat = _material_stat(server_binary)
+        artifact_stat = _material_stat(artifact_path)
         gpu_identity = _collect_gpu_identity()
 
         for regime in S3_REGIMES:
@@ -313,6 +391,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "status": "INCOMPLETE",
                 "log_path": str(log_path),
                 "planned_semantic_calls": len(s3_call_plan(regime)),
+                "full_material_attestations": 0,
+                "lightweight_live_binding_checks": 0,
             }
             try:
                 process = _start_server(launch_command)
@@ -339,14 +419,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                     probe=probe,
                 )
                 request_model = str(probe["request_model"])
-                binding = probe_llama_cpp_selected_s2_binding(
+
+                start_binding = probe_llama_cpp_selected_s2_binding(
                     base_url=S3_LLAMA_CPP_ENDPOINT,
                     model=request_model,
                     controller_identity=controller,
                 )
-                attested = binding.get("runtime_attestation")
+                summary["full_material_attestation_count"] += 1
+                shard_summary["full_material_attestations"] = 1
+                attested = start_binding.get("runtime_attestation")
                 if not isinstance(attested, Mapping):
-                    raise S3TransactionError("S3 live runtime attestation is not an object")
+                    raise S3TransactionError(
+                        "S3 live runtime attestation is not an object"
+                    )
                 material = _runtime_material(
                     revision=revision,
                     version=version,
@@ -363,7 +448,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     summary["run_id"] = run_id
                     summary["runtime_material"] = runtime_frozen
                 elif _canonical(material) != _canonical(runtime_frozen):
-                    raise S3TransactionError("runtime/material drift across S3 shard lifetimes")
+                    raise S3TransactionError(
+                        "runtime/material drift across S3 shard lifetimes"
+                    )
 
                 client = S3LlamaCppClient(
                     base_url=S3_LLAMA_CPP_ENDPOINT,
@@ -374,31 +461,76 @@ def main(argv: Sequence[str] | None = None) -> int:
                     temperature=0.0,
                     seed=None,
                 )
+
+                def live_binding_probe() -> None:
+                    if process is None:
+                        raise AssertionError("S3 owned process is unavailable")
+                    _lightweight_binding_check(
+                        process=process,
+                        expected_probe=probe,
+                        server_binary=server_binary,
+                        expected_binary_stat=binary_stat,
+                        artifact_path=artifact_path,
+                        expected_artifact_stat=artifact_stat,
+                    )
+
                 bound = _BoundS3Client(
                     inner=client,
-                    base_url=S3_LLAMA_CPP_ENDPOINT,
-                    model=request_model,
-                    controller_identity=controller,
+                    live_binding_probe=live_binding_probe,
                 )
                 summary["host_shard_count"] += 1
                 result = run_s3_shard(bound, regime)
                 client.require_complete_plan()
                 if bound.live_binding_checks != result.semantic_calls:
-                    raise S3TransactionError("S3 live binding was not checked before every semantic call")
+                    raise S3TransactionError(
+                        "S3 lightweight live binding was not checked before every semantic call"
+                    )
+                shard_summary["lightweight_live_binding_checks"] = (
+                    bound.live_binding_checks
+                )
+                summary["lightweight_live_binding_check_count"] += (
+                    bound.live_binding_checks
+                )
+
+                end_binding = probe_llama_cpp_selected_s2_binding(
+                    base_url=S3_LLAMA_CPP_ENDPOINT,
+                    model=request_model,
+                    controller_identity=controller,
+                )
+                summary["full_material_attestation_count"] += 1
+                shard_summary["full_material_attestations"] = 2
+                if _canonical(end_binding) != _canonical(start_binding):
+                    raise S3TransactionError(
+                        "full runtime/material binding drifted within S3 shard"
+                    )
+                if _material_stat(server_binary) != binary_stat:
+                    raise S3TransactionError(
+                        "llama-server material stat drifted across S3 shard"
+                    )
+                if _material_stat(artifact_path) != artifact_stat:
+                    raise S3TransactionError("GGUF material stat drifted across S3 shard")
+
                 shard_summary.update(asdict(result))
                 shard_summary["status"] = "COMPLETED"
                 shard_summary["provider_attempts"] = client.provider_attempts
                 shard_summary["provider_completions"] = client.provider_completions
                 shard_summary["input_count_attempts"] = client.input_count_attempts
-                shard_summary["input_count_completions"] = client.input_count_completions
-                shard_summary["live_binding_checks"] = bound.live_binding_checks
+                shard_summary["input_count_completions"] = (
+                    client.input_count_completions
+                )
             except Exception as exc:
                 shard_summary["error"] = f"{type(exc).__name__}: {exc}"
                 if client is not None:
                     shard_summary["provider_attempts"] = client.provider_attempts
-                    shard_summary["provider_completions"] = client.provider_completions
-                    shard_summary["input_count_attempts"] = client.input_count_attempts
-                    shard_summary["input_count_completions"] = client.input_count_completions
+                    shard_summary["provider_completions"] = (
+                        client.provider_completions
+                    )
+                    shard_summary["input_count_attempts"] = (
+                        client.input_count_attempts
+                    )
+                    shard_summary["input_count_completions"] = (
+                        client.input_count_completions
+                    )
                 shard_summaries.append(shard_summary)
                 summary["classification"] = "S3_INCOMPLETE"
                 summary["disposition"] = f"STOPPED_AT_{regime.upper()}"
@@ -416,7 +548,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     shard_summary["listener_released"] = False
                     if shard_summary.get("status") == "COMPLETED":
                         shard_summary["status"] = "INCOMPLETE"
-                        shard_summary["error"] = "transaction-owned listener remained after cleanup"
+                        shard_summary["error"] = (
+                            "transaction-owned listener remained after cleanup"
+                        )
                 else:
                     shard_summary["listener_released"] = True
 
@@ -432,25 +566,59 @@ def main(argv: Sequence[str] | None = None) -> int:
             shard_summary["artifact_path"] = str(shard_path)
             shard_summary["artifact_sha256"] = _sha256_file(shard_path)
         else:
-            surface = _pooled_effect(shard_summaries, "surface_perturbation_effect")
-            semantic = _pooled_effect(shard_summaries, "semantic_intervention_effect")
+            surface = _pooled_effect(
+                shard_summaries,
+                "surface_perturbation_effect",
+            )
+            semantic = _pooled_effect(
+                shard_summaries,
+                "semantic_intervention_effect",
+            )
             gate = semantic_invariance_gate(surface, semantic)
             summary["pooled_surface_perturbation_effect"] = surface
             summary["pooled_semantic_intervention_effect"] = semantic
             summary["semantic_invariance_gate"] = gate
             summary["work"] = _sum_work(shard_summaries)
-            summary["provider_attempts"] = sum(int(item["provider_attempts"]) for item in shard_summaries)
-            summary["provider_completions"] = sum(int(item["provider_completions"]) for item in shard_summaries)
-            summary["input_count_attempts"] = sum(int(item["input_count_attempts"]) for item in shard_summaries)
-            summary["input_count_completions"] = sum(int(item["input_count_completions"]) for item in shard_summaries)
+            summary["provider_attempts"] = sum(
+                int(item["provider_attempts"]) for item in shard_summaries
+            )
+            summary["provider_completions"] = sum(
+                int(item["provider_completions"]) for item in shard_summaries
+            )
+            summary["input_count_attempts"] = sum(
+                int(item["input_count_attempts"]) for item in shard_summaries
+            )
+            summary["input_count_completions"] = sum(
+                int(item["input_count_completions"])
+                for item in shard_summaries
+            )
             if summary["provider_attempts"] != S3_TOTAL_SEMANTIC_CALLS:
-                raise S3TransactionError("completed S3 campaign semantic call total drifted")
+                raise S3TransactionError(
+                    "completed S3 campaign semantic call total drifted"
+                )
             if summary["provider_completions"] != S3_TOTAL_SEMANTIC_CALLS:
-                raise S3TransactionError("completed S3 campaign completion total drifted")
+                raise S3TransactionError(
+                    "completed S3 campaign completion total drifted"
+                )
             if summary["input_count_attempts"] != S3_TOTAL_INPUT_TOKEN_REQUESTS:
-                raise S3TransactionError("completed S3 campaign input-token request total drifted")
-            if summary["input_count_completions"] != S3_TOTAL_INPUT_TOKEN_REQUESTS:
-                raise S3TransactionError("completed S3 input-token completion total drifted")
+                raise S3TransactionError(
+                    "completed S3 campaign input-token request total drifted"
+                )
+            if (
+                summary["input_count_completions"]
+                != S3_TOTAL_INPUT_TOKEN_REQUESTS
+            ):
+                raise S3TransactionError(
+                    "completed S3 input-token completion total drifted"
+                )
+            if summary["lightweight_live_binding_check_count"] != S3_TOTAL_SEMANTIC_CALLS:
+                raise S3TransactionError(
+                    "completed S3 per-call lightweight binding count drifted"
+                )
+            if summary["full_material_attestation_count"] != 2 * len(S3_REGIMES):
+                raise S3TransactionError(
+                    "completed S3 shard-boundary full material attestation count drifted"
+                )
             summary["claim"] = S3_CLAIM
             summary["citable"] = True
             summary["classification"] = "S3_COMPLETED"
@@ -460,16 +628,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if summary["provider_attempts"] == 0:
             summary["provider_attempts"] = sum(
-                int(item.get("provider_attempts", 0)) for item in shard_summaries
+                int(item.get("provider_attempts", 0))
+                for item in shard_summaries
             )
             summary["provider_completions"] = sum(
-                int(item.get("provider_completions", 0)) for item in shard_summaries
+                int(item.get("provider_completions", 0))
+                for item in shard_summaries
             )
             summary["input_count_attempts"] = sum(
-                int(item.get("input_count_attempts", 0)) for item in shard_summaries
+                int(item.get("input_count_attempts", 0))
+                for item in shard_summaries
             )
             summary["input_count_completions"] = sum(
-                int(item.get("input_count_completions", 0)) for item in shard_summaries
+                int(item.get("input_count_completions", 0))
+                for item in shard_summaries
             )
         return exit_code
     except (S3TransactionError, SelectedS2TransactionError) as exc:
