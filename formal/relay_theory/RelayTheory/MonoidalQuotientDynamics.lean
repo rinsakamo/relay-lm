@@ -12,26 +12,39 @@ theorem finKernel_tensor_dirac_finTensorMap
     (f : Fin a → Fin b) (g : Fin c → Fin d) :
     FinKernel.tensor (FinKernel.dirac f) (FinKernel.dirac g) =
       FinKernel.dirac (finTensorMap f g) := by
-  simpa [finTensorMap] using finKernel_tensor_dirac f g
+  calc
+    FinKernel.tensor (FinKernel.dirac f) (FinKernel.dirac g) =
+        FinKernel.dirac (fun x =>
+          finPairTransport.toFun
+            (f (finPairTransport.invFun x).1,
+             g (finPairTransport.invFun x).2)) :=
+      finKernel_tensor_dirac f g
+    _ = FinKernel.dirac (finTensorMap f g) := by
+      apply finKernel_dirac_congr
+      intro x
+      rfl
 
 /--
-Exact kernel-level observation factorization is closed under independent tensor.
-The quotient witness is the independent tensor of the two component witnesses.
+Explicit commuting-square tensor lemma.  Keeping the quotient witnesses as
+parameters prevents existential witness choice from hiding the actual tensor
+quotient dynamics.
 -/
-theorem finKernel_kernelFactorsObservation_tensor
+theorem finKernel_tensor_factor_square
     {a b c d qa qb qc qd : Nat}
     {obsA : Fin a → Fin qa} {obsB : Fin b → Fin qb}
     {obsC : Fin c → Fin qc} {obsD : Fin d → Fin qd}
     {k : FinKernel a b} {l : FinKernel c d}
-    (hk : FinKernel.KernelFactorsObservation obsA obsB k)
-    (hl : FinKernel.KernelFactorsObservation obsC obsD l) :
-    FinKernel.KernelFactorsObservation
-      (finTensorMap obsA obsC)
-      (finTensorMap obsB obsD)
-      (FinKernel.tensor k l) := by
-  rcases hk with ⟨hAB, hkEq⟩
-  rcases hl with ⟨hCD, hlEq⟩
-  refine ⟨FinKernel.tensor hAB hCD, ?_⟩
+    {hAB : FinKernel qa qb} {hCD : FinKernel qc qd}
+    (hkEq : FinKernel.compose (FinKernel.dirac obsB) k =
+      FinKernel.compose hAB (FinKernel.dirac obsA))
+    (hlEq : FinKernel.compose (FinKernel.dirac obsD) l =
+      FinKernel.compose hCD (FinKernel.dirac obsC)) :
+    FinKernel.compose
+        (FinKernel.dirac (finTensorMap obsB obsD))
+        (FinKernel.tensor k l) =
+      FinKernel.compose
+        (FinKernel.tensor hAB hCD)
+        (FinKernel.dirac (finTensorMap obsA obsC)) := by
   calc
     FinKernel.compose
         (FinKernel.dirac (finTensorMap obsB obsD))
@@ -61,6 +74,26 @@ theorem finKernel_kernelFactorsObservation_tensor
           rw [finKernel_tensor_dirac_finTensorMap]
 
 /--
+Exact kernel-level observation factorization is closed under independent tensor.
+The quotient witness is the independent tensor of the two component witnesses.
+-/
+theorem finKernel_kernelFactorsObservation_tensor
+    {a b c d qa qb qc qd : Nat}
+    {obsA : Fin a → Fin qa} {obsB : Fin b → Fin qb}
+    {obsC : Fin c → Fin qc} {obsD : Fin d → Fin qd}
+    {k : FinKernel a b} {l : FinKernel c d}
+    (hk : FinKernel.KernelFactorsObservation obsA obsB k)
+    (hl : FinKernel.KernelFactorsObservation obsC obsD l) :
+    FinKernel.KernelFactorsObservation
+      (finTensorMap obsA obsC)
+      (finTensorMap obsB obsD)
+      (FinKernel.tensor k l) := by
+  rcases hk with ⟨hAB, hkEq⟩
+  rcases hl with ⟨hCD, hlEq⟩
+  exact ⟨FinKernel.tensor hAB hCD,
+    finKernel_tensor_factor_square hkEq hlEq⟩
+
+/--
 The stochastic-valid factorization policy is closed under independent tensor.
 Validity of both the concrete context and quotient witness follows from the
 generic tensor-validity theorem.
@@ -78,12 +111,10 @@ theorem finKernel_stochasticFactorsObservation_tensor
       (FinKernel.tensor k l) := by
   rcases hk with ⟨hkValid, hAB, hABValid, hkEq⟩
   rcases hl with ⟨hlValid, hCD, hCDValid, hlEq⟩
-  refine ⟨finKernel_tensor_valid hkValid hlValid, ?_⟩
-  refine ⟨FinKernel.tensor hAB hCD,
-    finKernel_tensor_valid hABValid hCDValid, ?_⟩
-  exact (finKernel_kernelFactorsObservation_tensor
-    (show FinKernel.KernelFactorsObservation obsA obsB k from ⟨hAB, hkEq⟩)
-    (show FinKernel.KernelFactorsObservation obsC obsD l from ⟨hCD, hlEq⟩)).choose_spec
+  exact ⟨finKernel_tensor_valid hkValid hlValid,
+    FinKernel.tensor hAB hCD,
+    finKernel_tensor_valid hABValid hCDValid,
+    finKernel_tensor_factor_square hkEq hlEq⟩
 
 /--
 Independent exact observational equivalences tensor to an exact product
@@ -188,9 +219,9 @@ theorem finKernel_merge01_product_equivalence_survives_hidden_mix_tensor :
     (finTensorMap finMerge01 finMerge01)
     (finTensorMap finMerge01 finMerge01)
     (FinKernel.tensor finHiddenMix3 finHiddenMix3)
-    (finKernel_stochasticFactorsObservation_tensor
-      finHiddenMix3_stochasticFactors_merge01
-      finHiddenMix3_stochasticFactors_merge01).2.choose_spec.2
+    (finKernel_kernelFactorsObservation_tensor
+      finHiddenMix3_kernelFactors_merge01
+      finHiddenMix3_kernelFactors_merge01)
     finKernel_merge01_product_observes_zerozero_onezero_equal
 
 end RelayTheory
