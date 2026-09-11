@@ -4,11 +4,11 @@ import hashlib
 import json
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from relaylm.providers.openai_compatible import ProviderProtocolError
+from relaylm.providers.openai_request_observation import model_facing_request_observation
 
 
 ACTUAL_MODEL_REQUEST_EVIDENCE_FORMAT_VERSION = 1
@@ -246,13 +246,6 @@ class ActualModelRequestEvidence:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class _RequestCaptureContext:
-    recorder: "ActualModelRequestEvidenceRecorder"
-    turn_index: int
-    pass_identity: RequestPassIdentity
-
-
 @dataclass(slots=True)
 class ActualModelRequestEvidenceRecorder:
     """Collect exact attempted requests for one execution without capturing headers."""
@@ -297,15 +290,17 @@ class ActualModelRequestEvidenceRecorder:
         _require_positive_int(turn_index, "turn_index")
         if pass_identity not in _REQUEST_PASSES:
             raise ValueError(f"unsupported request pass identity: {pass_identity}")
-        token = _CURRENT_REQUEST_CAPTURE.set(
-            _RequestCaptureContext(
-                recorder=self,
+
+        def observe(request_body: Mapping[str, Any]) -> None:
+            self.record(
                 turn_index=turn_index,
                 pass_identity=pass_identity,
+                request_body=request_body,
             )
-        )
+
         try:
-            yield
+            with model_facing_request_observation(observe):
+                yield
         except BaseException as exc:
             self._annotate_latest_failure(
                 turn_index=turn_index,
@@ -313,8 +308,6 @@ class ActualModelRequestEvidenceRecorder:
                 exc=exc,
             )
             raise
-        finally:
-            _CURRENT_REQUEST_CAPTURE.reset(token)
 
     def record(
         self,
@@ -365,71 +358,6 @@ class ActualModelRequestEvidenceRecorder:
                 failure_exception_message=exception_message,
             )
             return
-
-
-_CURRENT_REQUEST_CAPTURE: ContextVar[_RequestCaptureContext | None] = ContextVar(
-    "relaylm_actual_model_request_capture",
-    default=None,
-)
-
-
-def capture_model_facing_request(
-    request_body: Mapping[str, Any],
-) -> ActualModelRequestEvidence | None:
-    """Capture a body only when an actual-model execution scope is active.
-
-    Providers call this immediately before invoking their transport. No URL,
-    headers, response, exception, environment, or connection state is captured.
-    """
-
-    context = _CURRENT_REQUEST_CAPTURE.get()
-    if context is None:
-        return None
-    return context.recorder.record(
-        turn_index=context.turn_index,
-        pass_identity=context.pass_identity,
-        request_body=request_body,
-    )
-
-
-def install_model_facing_request_capture(provider: object) -> bool:
-    """Observe an OpenAI-compatible client's exact ``json`` argument.
-
-    The production provider builders remain the sole request-construction
-    authority. Actual-model execution installs this observer around the
-    provider-owned HTTP client so the provider source and request semantics do
-    not need an evidence-only branch. Timing wrappers are followed through
-    their private delegate links, and installation is idempotent for a reused
-    provider instance.
-    """
-
-    current = provider
-    visited: set[int] = set()
-    for _ in range(8):
-        if id(current) in visited:
-            return False
-        visited.add(id(current))
-        client = getattr(current, "_client", None)
-        if isinstance(client, _CapturingAsyncClient):
-            return True
-        if client is not None and callable(getattr(client, "post", None)) and callable(
-            getattr(client, "stream", None)
-        ):
-            try:
-                setattr(current, "_client", _CapturingAsyncClient(client))
-            except (AttributeError, TypeError):
-                return False
-            return True
-        next_provider = None
-        for attribute in ("_delegate", "delegate"):
-            candidate = getattr(current, attribute, None)
-            if candidate is not None and candidate is not current:
-                next_provider = candidate
-                break
-        if next_provider is None:
-            return False
-        current = next_provider
-    return False
 
 
 def canonical_request_body_sha256(request_body: Mapping[str, Any]) -> str:
@@ -525,51 +453,6 @@ def _copy_json_value(value: Any) -> Any:
     if isinstance(value, list):
         return [_copy_json_value(item) for item in value]
     return value
-
-
-class _CapturingAsyncClient:
-    """Minimal transparent client proxy for the provider's JSON request boundary."""
-
-    def __init__(self, delegate: object) -> None:
-        self._delegate = delegate
-
-    async def post(self, *args: Any, **kwargs: Any) -> Any:
-        capture_model_facing_request(kwargs.get("json"))
-        return await self._delegate.post(*args, **kwargs)  # type: ignore[attr-defined]
-
-    def stream(self, *args: Any, **kwargs: Any) -> "_CapturingAsyncStreamContext":
-        return _CapturingAsyncStreamContext(
-            delegate=self._delegate,
-            args=args,
-            kwargs=kwargs,
-        )
-
-    async def aclose(self) -> Any:
-        return await self._delegate.aclose()  # type: ignore[attr-defined]
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._delegate, name)
-
-
-class _CapturingAsyncStreamContext:
-    def __init__(self, *, delegate: object, args: tuple[Any, ...], kwargs: dict[str, Any]) -> None:
-        self._delegate = delegate
-        self._args = args
-        self._kwargs = kwargs
-        self._context: Any = None
-
-    async def __aenter__(self) -> Any:
-        capture_model_facing_request(self._kwargs.get("json"))
-        self._context = self._delegate.stream(  # type: ignore[attr-defined]
-            *self._args,
-            **self._kwargs,
-        )
-        return await self._context.__aenter__()
-
-    async def __aexit__(self, exc_type: object, exc_value: object, traceback: object) -> Any:
-        if self._context is None:
-            return None
-        return await self._context.__aexit__(exc_type, exc_value, traceback)
 
 
 def _require_positive_int(value: object, label: str) -> None:
