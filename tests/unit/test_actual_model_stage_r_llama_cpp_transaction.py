@@ -31,6 +31,26 @@ def _common_monkeypatch(monkeypatch) -> None:
     monkeypatch.setattr(tx, "_git_identity", lambda repo_root: ("h" * 40, "t" * 40))
 
 
+def test_server_log_path_is_artifact_local_and_home_independent(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+
+    def forbidden_home(cls):
+        raise AssertionError("server log allocation must not consult Path.home()")
+
+    monkeypatch.setattr(tx.Path, "home", classmethod(forbidden_home))
+
+    log_path = tx._new_server_log_path(artifact_root=artifact_root)
+
+    assert log_path.parent == artifact_root
+    assert log_path.name.startswith("llama-server-")
+    assert log_path.name.endswith(".log")
+    assert not log_path.exists()
+
+
 def test_occupied_port_fails_closed_without_server_or_host(
     tmp_path: Path,
     monkeypatch,
@@ -73,11 +93,11 @@ def test_owned_server_lifecycle_passes_host_result_through(
     artifact = tmp_path / "model.gguf"
     artifact.write_bytes(b"gguf")
     monkeypatch.setattr(tx, "_collect_gpu_identity", lambda: "RTX 3060")
-    log_path = tmp_path / "server.log"
-    monkeypatch.setattr(tx, "_new_server_log_path", lambda: log_path)
     process = FakeProcess()
 
     def start_server(**kwargs):
+        log_path = kwargs["log_path"]
+        assert log_path.parent == tmp_path / "artifacts"
         log_path.write_text("server log", encoding="utf-8")
         return process, ["llama-server", "-c", "8192", "-np", "1"]
 
@@ -128,6 +148,7 @@ def test_owned_server_lifecycle_passes_host_result_through(
     assert summary["host_invocation_count"] == 1
     assert summary["server"]["pid"] == process.pid
     assert summary["server"]["terminated"] is True
+    assert summary["server"]["log_path"].startswith(str(tmp_path / "artifacts"))
     assert summary["server"]["log_sha256"].startswith("sha256:")
 
 
@@ -145,11 +166,11 @@ def test_semantic_fail_is_not_reinterpreted(
     artifact = tmp_path / "model.gguf"
     artifact.write_bytes(b"gguf")
     monkeypatch.setattr(tx, "_collect_gpu_identity", lambda: "RTX 3060")
-    log_path = tmp_path / "server.log"
-    monkeypatch.setattr(tx, "_new_server_log_path", lambda: log_path)
     process = FakeProcess()
 
     def start_server(**kwargs):
+        log_path = kwargs["log_path"]
+        assert log_path.parent == tmp_path / "artifacts"
         log_path.write_text("server log", encoding="utf-8")
         return process, ["llama-server"]
 
@@ -210,11 +231,11 @@ def test_pre_host_failure_still_terminates_owned_process(
     artifact = tmp_path / "model.gguf"
     artifact.write_bytes(b"gguf")
     monkeypatch.setattr(tx, "_collect_gpu_identity", lambda: "RTX 3060")
-    log_path = tmp_path / "server.log"
-    monkeypatch.setattr(tx, "_new_server_log_path", lambda: log_path)
     process = FakeProcess()
 
     def start_server(**kwargs):
+        log_path = kwargs["log_path"]
+        assert log_path.parent == tmp_path / "artifacts"
         log_path.write_text("server log", encoding="utf-8")
         return process, ["llama-server"]
 
