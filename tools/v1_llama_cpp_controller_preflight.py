@@ -197,13 +197,32 @@ def _require_wrapper_module(wrapper_module: str, repo_root: Path) -> str:
     return str(origin)
 
 
+def _normalized_wrapper_args(values: Sequence[str]) -> list[str]:
+    if isinstance(values, (str, bytes)):
+        raise LlamaCppControllerPreflightError(
+            "wrapper args must be a sequence of strings"
+        )
+    normalized = list(values)
+    if not all(isinstance(value, str) and "\x00" not in value for value in normalized):
+        raise LlamaCppControllerPreflightError(
+            "wrapper args must contain strings without NUL bytes"
+        )
+    return normalized
+
+
 def one_shot_command(
     wrapper_module: str,
     *,
     executable: str | None = None,
+    wrapper_args: Sequence[str] = (),
 ) -> list[str]:
     selected = executable or sys.executable
-    return [selected, "-m", wrapper_module]
+    return [
+        selected,
+        "-m",
+        wrapper_module,
+        *_normalized_wrapper_args(wrapper_args),
+    ]
 
 
 def validate_controller_environment(
@@ -213,6 +232,7 @@ def validate_controller_environment(
     expected_tree: str,
     inner_module: str,
     wrapper_module: str,
+    wrapper_args: Sequence[str] = (),
 ) -> dict[str, object]:
     repo_root = repo_root.resolve()
     floor = _project_python_floor(repo_root)
@@ -258,7 +278,10 @@ def validate_controller_environment(
         "wrapper_origin": wrapper_origin,
         "inner_module": inner_module,
         "inner_main_called": False,
-        "one_shot_command": one_shot_command(wrapper_module),
+        "one_shot_command": one_shot_command(
+            wrapper_module,
+            wrapper_args=wrapper_args,
+        ),
     }
 
 
@@ -274,6 +297,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--expected-tree", required=True)
     parser.add_argument("--inner-module", required=True)
     parser.add_argument("--wrapper-module", required=True)
+    parser.add_argument(
+        "--wrapper-args",
+        nargs=argparse.REMAINDER,
+        default=(),
+        help=(
+            "Opaque arguments appended to the emitted wrapper command; place this "
+            "option last because it consumes the remaining command line."
+        ),
+    )
     args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
 
     try:
@@ -283,6 +315,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             expected_tree=args.expected_tree,
             inner_module=args.inner_module,
             wrapper_module=args.wrapper_module,
+            wrapper_args=args.wrapper_args,
         )
     except Exception as exc:
         payload = {
