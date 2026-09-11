@@ -41,6 +41,7 @@ import RelayTheory.MonoidalRecoveryReflection
 import RelayTheory.BoundedMultidirectionSequentialization
 import RelayTheory.BoundedMultidirectionSequentializationValid
 import RelayTheory.BoundedInterventionSequentialization
+import RelayTheory.AdaptiveFeedbackSequentialization
 import RelayTheory.CausalOrderProjection
 import RelayTheory.ObserverChainRealizers
 import RelayTheory.ProcessMonotonicity
