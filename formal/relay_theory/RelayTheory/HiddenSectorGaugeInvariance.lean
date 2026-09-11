@@ -194,9 +194,10 @@ def recoverSourceFromEnlarged
   rfl
 
 /--
-Acceptance bundle: coherent state relabeling preserves the leave/return and
-intervention predictions, while enlarged observer access exposes the carrier
-that the reduced visible observer hides.
+Acceptance bundle: coherent state relabeling preserves the leave/return
+predictions, while enlarged observer access exposes the carrier that the
+reduced visible observer hides.  The intervention and reduced-collapse
+certificates remain separate named theorems above.
 -/
 theorem hiddenSectorGaugeInvariance_bundle :
     (∀ x : Fin 2,
@@ -208,8 +209,6 @@ theorem hiddenSectorGaugeInvariance_bundle :
           (transportedStep swapRelabeling HiddenCarrierReturn.step
             (transportedStep swapRelabeling HiddenCarrierReturn.step
               (transportedEmbed swapRelabeling HiddenCarrierReturn.embed x))) = x) ∧
-    swapRelabeling_preserves_carrier_lineage ∧
-    reducedObserver_after_one_collapses ∧
     Function.Injective
       (fun x : Fin 2 =>
         enlargedObserver
@@ -221,8 +220,6 @@ theorem hiddenSectorGaugeInvariance_bundle :
   exact ⟨
     swapRelabeling_preserves_one_step_visible,
     swapRelabeling_preserves_two_step_visible,
-    swapRelabeling_preserves_carrier_lineage,
-    reducedObserver_after_one_collapses,
     enlargedObserver_after_one_injective,
     recoverSourceFromEnlarged_after_one⟩
 
