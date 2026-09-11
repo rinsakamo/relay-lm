@@ -50,13 +50,19 @@ theorem observerFamilyRealizes_one_iff_faithfulScalarTime
     · intro x y hxy
       apply (h x y).2
       intro o
-      have ho : o = (0 : Fin 1) := Fin.eq_zero o
+      have ho : o = (0 : Fin 1) := by
+        apply Fin.eq_of_val_eq
+        have hlt := o.isLt
+        grind
       subst o
       exact hxy
   · intro h x y
     constructor
     · intro hxy o
-      have ho : o = (0 : Fin 1) := Fin.eq_zero o
+      have ho : o = (0 : Fin 1) := by
+        apply Fin.eq_of_val_eq
+        have hlt := o.isLt
+        grind
       subst o
       exact h.1 x y hxy
     · intro hxy
@@ -86,6 +92,24 @@ def diamondObserverB (x : Fin 4) : Fin 4 :=
   else if x = (2 : Fin 4) then (1 : Fin 4)
   else x
 
+/-- Observer B preserves every genuine diamond causal comparison. -/
+theorem diamondObserverB_order_preserving :
+    ScalarOrderPreserving diamondCausalOrder diamondObserverB := by
+  intro x y hxy
+  change diamondCausalRel x y at hxy
+  rcases hxy with hxy | hx | hy
+  · have hxy' : x = y := Fin.eq_of_val_eq hxy
+    subst y
+    exact Nat.le_refl _
+  · have hx' : x = (0 : Fin 4) := Fin.eq_of_val_eq hx
+    subst x
+    simp [diamondObserverB]
+  · have hy' : y = (3 : Fin 4) := Fin.eq_of_val_eq hy
+    subst y
+    have hlt := (diamondObserverB x).isLt
+    change (diamondObserverB x).1 ≤ 3
+    grind
+
 /-- The two observer-local scalar rankings used to realize the diamond. -/
 def diamondObserverTime (o : Fin 2) (x : Fin 4) : Fin 4 :=
   if o = (0 : Fin 2) then diamondObserverA x else diamondObserverB x
@@ -109,34 +133,46 @@ No source causal metadata is used by `ObserverInvariantRel`.
 theorem two_chain_observers_exactly_realize_diamond :
     ObserverFamilyRealizes diamondCausalOrder diamondObserverTime := by
   intro x y
-  change diamondCausalRel x y ↔ ObserverInvariantRel diamondObserverTime x y
-  unfold diamondCausalRel ObserverInvariantRel diamondObserverTime
-  have hx := x.isLt
-  have hy := y.isLt
   constructor
-  · intro h o
-    have ho := o.isLt
-    unfold diamondObserverA diamondObserverB
-    split <;> split <;> split <;> simp_all <;> grind
-  · intro h
-    have hA := h (0 : Fin 2)
-    have hB := h (1 : Fin 2)
-    unfold diamondObserverA diamondObserverB at hA hB
-    simp at hA hB
-    grind
+  · intro hxy o
+    by_cases ho : o = (0 : Fin 2)
+    · subst o
+      have hA := diamond_serialization_order_preserving x y hxy
+      simpa [diamondObserverTime, diamondObserverA, diamondSerializationA] using hA
+    · have hB := diamondObserverB_order_preserving x y hxy
+      simpa [diamondObserverTime, ho] using hB
+  · intro hobs
+    have hA : x.1 ≤ y.1 := by
+      simpa [diamondObserverTime, diamondObserverA] using hobs (0 : Fin 2)
+    have hB : (diamondObserverB x).1 ≤ (diamondObserverB y).1 := by
+      simpa [diamondObserverTime] using hobs (1 : Fin 2)
+    by_contra hrel
+    change ¬ diamondCausalRel x y at hrel
+    simp [diamondCausalRel] at hrel
+    have hxlt := x.isLt
+    have hylt := y.isLt
+    have hx1 : x.1 = 1 := by grind
+    have hy2 : y.1 = 2 := by grind
+    have hx' : x = (1 : Fin 4) := Fin.eq_of_val_eq hx1
+    have hy' : y = (2 : Fin 4) := Fin.eq_of_val_eq hy2
+    subst x
+    subst y
+    simp [diamondObserverB] at hB
 
 /-- Both observers preserve every common-past comparison. -/
 theorem diamond_observers_agree_common_past (o : Fin 2) (x : Fin 4) :
     (diamondObserverTime o (0 : Fin 4)).1 ≤ (diamondObserverTime o x).1 := by
   have hrel : diamondCausalOrder.rel (0 : Fin 4) x := by
-    simp [diamondCausalOrder, diamondCausalRel]
+    change diamondCausalRel (0 : Fin 4) x
+    exact Or.inr (Or.inl rfl)
   exact (two_chain_observers_exactly_realize_diamond (0 : Fin 4) x).1 hrel o
 
 /-- Both observers preserve every common-future comparison. -/
 theorem diamond_observers_agree_common_future (o : Fin 2) (x : Fin 4) :
     (diamondObserverTime o x).1 ≤ (diamondObserverTime o (3 : Fin 4)).1 := by
   have hrel : diamondCausalOrder.rel x (3 : Fin 4) := by
-    simp [diamondCausalOrder, diamondCausalRel]
+    change diamondCausalRel x (3 : Fin 4)
+    exact Or.inr (Or.inr rfl)
   exact (two_chain_observers_exactly_realize_diamond x (3 : Fin 4)).1 hrel o
 
 /-- The two observer chains disagree exactly enough to remove the middle comparison. -/
