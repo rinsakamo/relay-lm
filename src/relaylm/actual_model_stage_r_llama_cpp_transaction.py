@@ -28,6 +28,7 @@ DEFAULT_SLOTS = 1
 READY_TIMEOUT_SECONDS = 120.0
 READY_POLL_SECONDS = 0.5
 HOST_MODULE = "relaylm.actual_model_stage_r_llama_cpp"
+DEFAULT_HOST_SUMMARY_FILENAME = "stage-r-llama-cpp-summary.json"
 
 
 class LlamaCppTransactionError(RuntimeError):
@@ -38,6 +39,7 @@ def main(
     argv: Sequence[str] | None = None,
     *,
     host_module: str = HOST_MODULE,
+    host_summary_filename: str = DEFAULT_HOST_SUMMARY_FILENAME,
 ) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -77,6 +79,10 @@ def main(
     artifact_root = _fresh_root(
         args.artifact_root,
         prefix="relaylm-stage-r-llama-cpp-artifacts-",
+    )
+    host_summary_path = _host_summary_path(
+        artifact_root=artifact_root,
+        filename=host_summary_filename,
     )
     summary_path = (
         Path(args.summary_path).expanduser().resolve()
@@ -178,6 +184,7 @@ def main(
             artifact_root=artifact_root,
             replicate_id=args.replicate_id,
             host_module=host_module,
+            host_summary_path=host_summary_path,
         )
         summary["host"] = host_result
         host_summary = host_result["summary"]
@@ -220,6 +227,21 @@ def _fresh_root(value: str | None, *, prefix: str) -> Path:
         path.mkdir(parents=True, exist_ok=False)
         return path
     return Path(tempfile.mkdtemp(prefix=prefix)).resolve()
+
+
+def _host_summary_path(*, artifact_root: Path, filename: str) -> Path:
+    if not isinstance(filename, str) or not filename:
+        raise LlamaCppTransactionError("host summary filename must be a non-empty string")
+    relative = Path(filename)
+    if (
+        relative.is_absolute()
+        or relative.name != filename
+        or filename in {".", ".."}
+    ):
+        raise LlamaCppTransactionError(
+            "host summary filename must be a single file inside artifact root"
+        )
+    return artifact_root / filename
 
 
 def _require_clean_repo(repo_root: Path) -> None:
@@ -442,6 +464,7 @@ def _invoke_host(
     artifact_root: Path,
     replicate_id: str,
     host_module: str = HOST_MODULE,
+    host_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     command = [
         sys.executable,
@@ -500,25 +523,32 @@ def _invoke_host(
     stdout_path.write_text(completed.stdout, encoding="utf-8")
     stderr_path.write_text(completed.stderr, encoding="utf-8")
 
-    host_summary_path = artifact_root / "stage-r-llama-cpp-summary.json"
-    if not host_summary_path.is_file():
+    selected_summary_path = host_summary_path or _host_summary_path(
+        artifact_root=artifact_root,
+        filename=DEFAULT_HOST_SUMMARY_FILENAME,
+    )
+    if selected_summary_path.parent != artifact_root:
         raise LlamaCppTransactionError(
-            "citable Stage R host returned without its required summary artifact"
+            "host summary path must remain directly inside artifact root"
+        )
+    if not selected_summary_path.is_file():
+        raise LlamaCppTransactionError(
+            "citable host returned without its declared summary artifact"
         )
     try:
-        host_summary = json.loads(host_summary_path.read_text(encoding="utf-8"))
+        host_summary = json.loads(selected_summary_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise LlamaCppTransactionError(
-            f"could not read citable Stage R host summary: {exc}"
+            f"could not read citable host summary: {exc}"
         ) from exc
     if not isinstance(host_summary, dict):
-        raise LlamaCppTransactionError("citable Stage R host summary is not an object")
+        raise LlamaCppTransactionError("citable host summary is not an object")
     return {
         "exit_code": completed.returncode,
         "command": shlex.join(command),
         "stdout_path": str(stdout_path),
         "stderr_path": str(stderr_path),
-        "summary_path": str(host_summary_path),
+        "summary_path": str(selected_summary_path),
         "summary": host_summary,
     }
 
