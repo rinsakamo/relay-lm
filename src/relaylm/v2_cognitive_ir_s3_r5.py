@@ -167,7 +167,11 @@ def _spec_sha256() -> str:
 
 
 def validate_s3_r5_preregistration() -> None:
-    validate_s3_r4_preregistration()
+    # R4 is the historical behavioral baseline. Validate it while base still
+    # carries the historical 498-call ledger, but do not re-run that validator
+    # after R5 activation has deliberately rebound the ledger to 996 calls.
+    if base.S3_PREREGISTRATION_SCHEMA != S3_R5_PREREGISTRATION_SCHEMA:
+        validate_s3_r4_preregistration()
     validate_shared_floor_preregistration()
     validate_shared_floor_v2_preregistration()
 
