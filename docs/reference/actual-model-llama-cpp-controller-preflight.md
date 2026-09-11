@@ -87,6 +87,25 @@ semantic_calls = 0
 
 Such controller setup may be discarded and freshly re-established because the scientific one-shot has not begun. Do not splice partial observations from different controller environments.
 
+## Opaque wrapper arguments
+
+Some diagnostic wrappers require explicit controller-supplied artifact paths or other owner-specific arguments. The generic controller preflight may carry those arguments without interpreting them by placing `--wrapper-args` last and supplying the remaining wrapper command tail verbatim:
+
+```bash
+"$VENV/bin/python3" -m tools.v1_llama_cpp_controller_preflight \
+  --repo-root "$REPO_ROOT" \
+  --expected-head "$EXPECTED_HEAD" \
+  --expected-tree "$EXPECTED_TREE" \
+  --inner-module "$INNER_MODULE" \
+  --wrapper-module "$WRAPPER_MODULE" \
+  --wrapper-args \
+  --owner-specific-option "$OWNER_SPECIFIC_VALUE"
+```
+
+`--wrapper-args` consumes the remainder of the preflight command line. The controller validates only that the values are safe argument strings and appends them to the emitted `one_shot_command`; it does not read files, infer semantic meaning, or validate owner-specific scientific content. The selected wrapper/host remains responsible for its own arguments and fail-closed semantics.
+
+Omitting `--wrapper-args` preserves the historical ordinary Stage R command exactly.
+
 ## Same-interpreter handoff
 
 After preflight is `READY`, do not switch back to an ambient/system `python3`.
@@ -103,7 +122,7 @@ or, for the #2516 epistemic-formation physical successor:
 "$VENV/bin/python3" -m tools.v1_stage_r_llama_cpp_epistemic_formation_wsl
 ```
 
-The preflight `one_shot_command` is the canonical interpreter/module pair for that controller cycle.
+The preflight `one_shot_command` is the canonical interpreter/module pair, including any explicitly supplied opaque wrapper arguments, for that controller cycle.
 
 The wrapper still owns its existing fresh runtime HOME and passes its same `sys.executable` to the inner transaction. Workspace and artifact roots remain **transaction-owned and nonexistent before inner invocation**; controller setup must not pre-create them.
 
