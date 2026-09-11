@@ -146,9 +146,13 @@ theorem two_chain_observers_exactly_realize_diamond :
       simpa [diamondObserverTime, diamondObserverA] using hobs (0 : Fin 2)
     have hB : (diamondObserverB x).1 ≤ (diamondObserverB y).1 := by
       simpa [diamondObserverTime] using hobs (1 : Fin 2)
-    by_contra hrel
-    change ¬ diamondCausalRel x y at hrel
-    simp [diamondCausalRel] at hrel
+    change diamondCausalRel x y
+    by_cases hxy : x.1 = y.1
+    · exact Or.inl hxy
+    by_cases hx0 : x.1 = 0
+    · exact Or.inr (Or.inl hx0)
+    by_cases hy3 : y.1 = 3
+    · exact Or.inr (Or.inr hy3)
     have hxlt := x.isLt
     have hylt := y.isLt
     have hx1 : x.1 = 1 := by grind
