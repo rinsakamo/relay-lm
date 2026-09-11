@@ -9,24 +9,22 @@ from typing import AsyncIterator
 import httpx
 import pytest
 
-from relaylm.actual_model_execution_artifacts import (
-    ActualModelExecutionArtifactError,
-    load_actual_model_execution_mapping,
-    write_actual_model_execution_result,
-)
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_evaluation import (
     ActualModelCognitionPassRequests,
     ActualModelRunManifest,
 )
 from relaylm.actual_model_execution import run_actual_model_scenario_definition
-from relaylm.actual_model_scenarios import load_actual_model_scenario_set
+from relaylm.actual_model_execution_artifacts import (
+    ActualModelExecutionArtifactError,
+    load_actual_model_execution_mapping,
+    write_actual_model_execution_result,
+)
 from relaylm.actual_model_request_evidence import (
     ActualModelRequestEvidence,
     ActualModelRequestEvidenceRecorder,
-    capture_model_facing_request,
-    install_model_facing_request_capture,
 )
+from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.cognitive import CognitiveInput, ContextItem
 from relaylm.cognition_execution import (
     CognitionExtractionInput,
@@ -39,7 +37,10 @@ from relaylm.cognition_execution_evidence import (
 )
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.providers.openai_compatible import ProviderProtocolError
+from relaylm.providers.openai_compatible import (
+    OpenAICompatibleProvider,
+    ProviderProtocolError,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -106,7 +107,7 @@ def _recorder() -> ActualModelRequestEvidenceRecorder:
     )
 
 
-def _raw_provider(
+def _two_pass_provider(
     handler,
     *,
     api_key: str | None = None,
@@ -124,21 +125,43 @@ def _raw_provider(
     )
 
 
-def _provider(
-    handler,
-    *,
-    api_key: str | None = None,
-    decoding_config: OpenAICompatibleDecodingConfig | None = None,
-    decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None,
-) -> OpenAICompatibleTwoPassProvider:
-    provider = _raw_provider(
-        handler,
-        api_key=api_key,
-        decoding_config=decoding_config,
-        decoding_capabilities=decoding_capabilities,
+def _single_pass_provider(handler) -> OpenAICompatibleProvider:
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return OpenAICompatibleProvider(
+        base_url="http://provider.test/v1",
+        model="gemma-test",
+        http_client=client,
     )
-    assert install_model_facing_request_capture(provider)
-    return provider
+
+
+def _conversation_response(content: str = "pass one response") -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"choices": [{"message": {"content": content}}]},
+    )
+
+
+def _single_pass_response(content: str = "single response") -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "utterance": content,
+                                "state_candidates": [],
+                                "continuity_candidates": [],
+                            },
+                            ensure_ascii=False,
+                        )
+                    },
+                    "finish_reason": "stop",
+                }
+            ]
+        },
+    )
 
 
 def _empty_extraction_response() -> httpx.Response:
@@ -151,7 +174,8 @@ def _empty_extraction_response() -> httpx.Response:
                         "content": json.dumps(
                             {"state_candidates": [], "continuity_candidates": []}
                         )
-                    }
+                    },
+                    "finish_reason": "stop",
                 }
             ]
         },
@@ -171,14 +195,11 @@ class _StaticSSEStream(httpx.AsyncByteStream):
 
 
 class _DelegateProvider:
-    def __init__(self, delegate: object) -> None:
+    def __init__(self, delegate: OpenAICompatibleTwoPassProvider) -> None:
         self._delegate = delegate
 
-    async def generate_conversation(
-        self,
-        cognitive_input: CognitiveInput,
-    ) -> object:
-        return await self._delegate.generate_conversation(cognitive_input)  # type: ignore[attr-defined]
+    async def generate_conversation(self, cognitive_input: CognitiveInput) -> object:
+        return await self._delegate.generate_conversation(cognitive_input)
 
 
 def _sse_chunk(*, content: str, finish_reason: str | None = None) -> bytes:
@@ -199,17 +220,86 @@ def _sse_chunk(*, content: str, finish_reason: str | None = None) -> bytes:
     ).encode("utf-8")
 
 
-def test_buffered_pass1_exact_request_evidence_is_captured_at_transport_boundary() -> None:
+def test_buffered_single_pass_request_is_captured_at_transport_boundary() -> None:
+    seen: list[dict[str, object]] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
-        body = json.loads(request.content)
-        assert body["stream"] is False
-        return httpx.Response(
-            200,
-            json={"choices": [{"message": {"content": "pass one response"}}]},
-        )
+        seen.append(json.loads(request.content))
+        return _single_pass_response()
 
     async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _provider(handler)
+        provider = _single_pass_provider(handler)
+        recorder = _recorder()
+        try:
+            with recorder.capture(turn_index=1, pass_identity="single_pass"):
+                await provider.generate(_cognitive_input())
+        finally:
+            await provider.aclose()
+        return recorder.records
+
+    records = asyncio.run(run())
+    assert len(records) == 1
+    assert records[0].pass_identity == "single_pass"
+    assert records[0].request_body == seen[0]
+    assert records[0].request_body["stream"] is False
+
+
+def test_streaming_single_pass_request_is_captured_at_transport_boundary() -> None:
+    wire = json.dumps(
+        {
+            "utterance": "streamed response",
+            "state_candidates": [],
+            "continuity_candidates": [],
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert json.loads(request.content)["stream"] is True
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(
+                [
+                    _sse_chunk(content=wire, finish_reason="stop"),
+                    b"data: [DONE]\n\n",
+                ]
+            ),
+        )
+
+    async def run() -> tuple[tuple[ActualModelRequestEvidence, ...], list[str]]:
+        provider = _single_pass_provider(handler)
+        recorder = _recorder()
+        emitted: list[str] = []
+
+        async def emit(content: str) -> None:
+            emitted.append(content)
+
+        try:
+            with recorder.capture(turn_index=2, pass_identity="single_pass"):
+                await provider.stream_generate(_cognitive_input(), emit)
+        finally:
+            await provider.aclose()
+        return recorder.records, emitted
+
+    records, emitted = asyncio.run(run())
+    assert len(records) == 1
+    assert records[0].request_body["stream"] is True
+    assert "".join(emitted) == "streamed response"
+
+
+def test_buffered_pass1_exact_request_evidence_is_captured_at_transport_boundary() -> None:
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append(body)
+        assert body["stream"] is False
+        return _conversation_response()
+
+    async def run() -> tuple[ActualModelRequestEvidence, ...]:
+        provider = _two_pass_provider(handler)
         recorder = _recorder()
         try:
             with recorder.capture(turn_index=1, pass_identity="pass1"):
@@ -223,6 +313,7 @@ def test_buffered_pass1_exact_request_evidence_is_captured_at_transport_boundary
 
     records = asyncio.run(run())
     assert len(records) == 1
+    assert records[0].request_body == seen[0]
     assert records[0].pass_identity == "pass1"
     assert records[0].request_body["model"] == "gemma-test"
     assert records[0].request_body["messages"][1]["content"].startswith(
@@ -232,13 +323,16 @@ def test_buffered_pass1_exact_request_evidence_is_captured_at_transport_boundary
 
 
 def test_buffered_pass2_exact_request_evidence_includes_serialized_input_and_schema() -> None:
+    seen: list[dict[str, object]] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
+        seen.append(body)
         assert body["stream"] is False
         return _empty_extraction_response()
 
     async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _provider(handler)
+        provider = _two_pass_provider(handler)
         recorder = _recorder()
         try:
             with recorder.capture(turn_index=3, pass_identity="pass2"):
@@ -258,6 +352,7 @@ def test_buffered_pass2_exact_request_evidence_includes_serialized_input_and_sch
     records = asyncio.run(run())
     assert len(records) == 1
     body = records[0].request_body
+    assert body == seen[0]
     assert records[0].pass_identity == "pass2"
     assert body["messages"][1]["content"].startswith("<COGNITIVE_INPUT>\n")
     assert '"event_id":"event-now"' in body["messages"][1]["content"]
@@ -281,7 +376,7 @@ def test_streaming_pass1_exact_request_evidence_is_captured_at_transport_boundar
         )
 
     async def run() -> tuple[tuple[ActualModelRequestEvidence, ...], list[str]]:
-        provider = _provider(handler)
+        provider = _two_pass_provider(handler)
         recorder = _recorder()
         emitted: list[str] = []
 
@@ -304,33 +399,44 @@ def test_streaming_pass1_exact_request_evidence_is_captured_at_transport_boundar
     assert len(records) == 1
     assert records[0].pass_identity == "pass1"
     assert records[0].request_body["stream"] is True
-    assert records[0].request_body["messages"][1]["content"].startswith(
-        "<COGNITIVE_INPUT>\n"
-    )
 
 
-def test_capture_installation_reaches_timing_style_provider_delegate() -> None:
+def test_delegate_needs_no_capture_installation_or_client_replacement() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={"choices": [{"message": {"content": "delegated response"}}]},
-        )
+        return _conversation_response("delegated response")
 
-    async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _raw_provider(handler)
+    async def run() -> tuple[tuple[ActualModelRequestEvidence, ...], bool]:
+        provider = _two_pass_provider(handler)
+        original_client = provider._client
         delegated = _DelegateProvider(provider)
         recorder = _recorder()
-        assert install_model_facing_request_capture(delegated)
         try:
             with recorder.capture(turn_index=1, pass_identity="pass1"):
                 await delegated.generate_conversation(_cognitive_input())
+            return recorder.records, provider._client is original_client
+        finally:
+            await provider.aclose()
+
+    records, client_unchanged = asyncio.run(run())
+    assert len(records) == 1
+    assert records[0].request_body["model"] == "gemma-test"
+    assert client_unchanged is True
+
+
+def test_no_request_evidence_is_captured_outside_active_scope() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return _conversation_response()
+
+    async def run() -> tuple[ActualModelRequestEvidence, ...]:
+        provider = _two_pass_provider(handler)
+        recorder = _recorder()
+        try:
+            await provider.generate_conversation(_cognitive_input())
         finally:
             await provider.aclose()
         return recorder.records
 
-    records = asyncio.run(run())
-    assert len(records) == 1
-    assert records[0].request_body["model"] == "gemma-test"
+    assert asyncio.run(run()) == ()
 
 
 def test_request_evidence_preserves_generation_controls_realized_by_provider() -> None:
@@ -340,13 +446,10 @@ def test_request_evidence_preserves_generation_controls_realized_by_provider() -
         assert body["top_p"] == 1.0
         assert body["seed"] == 17
         assert body["max_tokens"] == 41
-        return httpx.Response(
-            200,
-            json={"choices": [{"message": {"content": "controlled response"}}]},
-        )
+        return _conversation_response("controlled response")
 
     async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _provider(
+        provider = _two_pass_provider(
             handler,
             decoding_config=OpenAICompatibleDecodingConfig(
                 temperature=0.2,
@@ -375,8 +478,7 @@ def test_request_evidence_preserves_generation_controls_realized_by_provider() -
             await provider.aclose()
         return recorder.records
 
-    records = asyncio.run(run())
-    body = records[0].request_body
+    body = asyncio.run(run())[0].request_body
     assert body["temperature"] == 0.0
     assert body["top_p"] == 1.0
     assert body["seed"] == 17
@@ -385,16 +487,17 @@ def test_request_evidence_preserves_generation_controls_realized_by_provider() -
 
 def test_request_evidence_is_bound_to_execution_scenario_turn_and_pass() -> None:
     recorder = _recorder()
-    with recorder.capture(turn_index=7, pass_identity="pass2"):
-        capture_model_facing_request(
-            {
-                "model": "gemma-test",
-                "messages": [{"role": "user", "content": "exact"}],
-                "stream": False,
-            }
-        )
+    record = recorder.record(
+        turn_index=7,
+        pass_identity="pass2",
+        request_body={
+            "model": "gemma-test",
+            "messages": [{"role": "user", "content": "exact"}],
+            "stream": False,
+        },
+    )
 
-    mapping = recorder.records[0].to_mapping()
+    mapping = record.to_mapping()
     assert mapping["execution_id"] == "amx-" + "a" * 64
     assert mapping["run_id"] == "amr-" + "b" * 64
     assert mapping["scenario"] == {
@@ -431,13 +534,10 @@ def test_request_material_changes_body_hash_and_stable_evidence_id() -> None:
 
 def test_request_evidence_never_contains_authentication_material() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={"choices": [{"message": {"content": "safe response"}}]},
-        )
+        return _conversation_response("safe response")
 
     async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _provider(handler, api_key="super-secret-api-key")
+        provider = _two_pass_provider(handler, api_key="super-secret-api-key")
         recorder = _recorder()
         try:
             with recorder.capture(turn_index=1, pass_identity="pass1"):
@@ -453,12 +553,12 @@ def test_request_evidence_never_contains_authentication_material() -> None:
     assert "headers" not in records[0].to_mapping()
 
 
-def test_attempted_request_remains_available_when_provider_completion_fails() -> None:
+def test_attempted_request_remains_available_and_annotated_when_provider_fails() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(503, json={"error": "provider unavailable"})
 
     async def run() -> tuple[ActualModelRequestEvidence, ...]:
-        provider = _provider(handler)
+        provider = _two_pass_provider(handler)
         recorder = _recorder()
         try:
             with recorder.capture(turn_index=2, pass_identity="pass2"):
@@ -476,6 +576,23 @@ def test_attempted_request_remains_available_when_provider_completion_fails() ->
     records = asyncio.run(run())
     assert len(records) == 1
     assert records[0].attempted is True
+    assert records[0].failure_exception_type == "ProviderProtocolError"
+    assert records[0].failure_exception_message is not None
+    assert "status=503" in records[0].failure_exception_message
+
+
+def test_request_evidence_source_has_no_runtime_client_replacement() -> None:
+    source = (
+        _REPO_ROOT / "src" / "relaylm" / "actual_model_request_evidence.py"
+    ).read_text(encoding="utf-8")
+    evaluation = (
+        _REPO_ROOT / "src" / "relaylm" / "actual_model_evaluation.py"
+    ).read_text(encoding="utf-8")
+    joined = source + "\n" + evaluation
+    assert "install_model_facing_request_capture" not in joined
+    assert "_CapturingAsyncClient" not in joined
+    assert 'setattr(current, "_client"' not in joined
+    assert "setattr(current, '_client'" not in joined
 
 
 def test_historical_execution_artifact_remains_loadable(tmp_path: Path) -> None:
@@ -528,14 +645,11 @@ def test_execution_artifact_traverses_to_exact_pass_requests_without_filename_gu
         body = json.loads(request.content)
         seen.append(body)
         if "<PASS>\nCONVERSATION" in body["messages"][1]["content"]:
-            return httpx.Response(
-                200,
-                json={"choices": [{"message": {"content": "pass one"}}]},
-            )
+            return _conversation_response("pass one")
         return _empty_extraction_response()
 
     async def run():
-        provider = _raw_provider(handler)
+        provider = _two_pass_provider(handler)
         try:
             return await run_actual_model_scenario_definition(
                 scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
@@ -567,10 +681,7 @@ def test_execution_artifact_traverses_to_exact_pass_requests_without_filename_gu
         }
     assert '"event_id":"' in requests[0]["request_body"]["messages"][1]["content"]
 
-    missing_request_turn = replace(
-        result.evidence.turns[0],
-        request_evidence=(),
-    )
+    missing_request_turn = replace(result.evidence.turns[0], request_evidence=())
     missing_request_result = replace(
         result,
         evidence=replace(
@@ -632,7 +743,7 @@ def test_failed_pass1_attempt_is_persisted_without_fabricating_completion(
         return httpx.Response(503, json={"error": "provider unavailable"})
 
     async def run():
-        provider = _raw_provider(handler)
+        provider = _two_pass_provider(handler)
         try:
             return await run_actual_model_scenario_definition(
                 scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
@@ -670,14 +781,11 @@ def test_failed_pass2_attempt_keeps_prior_and_failing_requests_without_fabricati
         body = json.loads(request.content)
         if calls == 1:
             assert "<PASS>\nCONVERSATION" in body["messages"][1]["content"]
-            return httpx.Response(
-                200,
-                json={"choices": [{"message": {"content": "pass one"}}]},
-            )
+            return _conversation_response("pass one")
         return httpx.Response(503, json={"error": "provider unavailable"})
 
     async def run():
-        provider = _raw_provider(handler)
+        provider = _two_pass_provider(handler)
         try:
             return await run_actual_model_scenario_definition(
                 scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
