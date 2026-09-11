@@ -15,8 +15,6 @@ implementation:
 - src/relaylm/actual_model_stage_r_llama_cpp_semantic_continuity_projection.py
 - src/relaylm/actual_model_stage_r_llama_cpp_semantic_continuity_projection_transaction.py
 - tools/v1_stage_r_llama_cpp_semantic_continuity_projection_wsl.py
-- tools/v1_stage_r_llama_cpp_wsl.py
-- tools/v1_llama_cpp_controller_preflight.py
 tests:
 - tests/unit/test_actual_model_semantic_continuity_projection_carriage.py
 qualification_exclusions:
