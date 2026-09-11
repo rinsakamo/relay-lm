@@ -1,0 +1,18 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_s3_r4
+owner_issue: 2580
+summary: Fresh #2211 S3-R4 repository preregistration after the terminal non-citable #2577 P2 boundedness PASS. Activates only the already-precommitted R4 identity/seeds, preserves the S3-R3 scientific shape, and scopes the qualified 60-80/550 ordinary-summary target margin plus unchanged 120/800 hard admission to R4 P2 formation. This owner authorizes no physical execution.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-s3-r4-frozen-campaign.md
+implementation:
+- src/relaylm/v2_cognitive_ir_s3_r4.py
+- tools/v2_cognitive_ir_s3_r4_llama_cpp.py
+- tools/v2_cognitive_ir_s3_r4_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_s3_r4_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_s3_r4.py
+depends_on:
+- relaylm2_cognitive_ir_experiment
+- relaylm2_cognitive_ir_s3_r3
+- relaylm2_cognitive_ir_p2_boundedness_qual_v2
+- relaylm2_physical_execution
