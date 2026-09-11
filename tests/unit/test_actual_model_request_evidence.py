@@ -561,8 +561,8 @@ def test_attempted_request_remains_available_and_annotated_when_provider_fails()
         provider = _two_pass_provider(handler)
         recorder = _recorder()
         try:
-            with recorder.capture(turn_index=2, pass_identity="pass2"):
-                with pytest.raises(ProviderProtocolError):
+            with pytest.raises(ProviderProtocolError):
+                with recorder.capture(turn_index=2, pass_identity="pass2"):
                     await provider.generate_extraction(
                         CognitionExtractionInput(
                             cognitive_input=_cognitive_input(),
