@@ -40,6 +40,7 @@ def main(
     *,
     host_module: str = HOST_MODULE,
     host_summary_filename: str = DEFAULT_HOST_SUMMARY_FILENAME,
+    host_args: Sequence[str] = (),
 ) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -185,6 +186,7 @@ def main(
             replicate_id=args.replicate_id,
             host_module=host_module,
             host_summary_path=host_summary_path,
+            host_args=host_args,
         )
         summary["host"] = host_result
         host_summary = host_result["summary"]
@@ -242,6 +244,15 @@ def _host_summary_path(*, artifact_root: Path, filename: str) -> Path:
             "host summary filename must be a single file inside artifact root"
         )
     return artifact_root / filename
+
+
+def _normalized_forward_args(values: Sequence[str], *, label: str) -> list[str]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"{label} must be a sequence of strings")
+    normalized = list(values)
+    if not all(isinstance(value, str) and "\x00" not in value for value in normalized):
+        raise TypeError(f"{label} must contain strings without NUL bytes")
+    return normalized
 
 
 def _require_clean_repo(repo_root: Path) -> None:
@@ -465,11 +476,14 @@ def _invoke_host(
     replicate_id: str,
     host_module: str = HOST_MODULE,
     host_summary_path: Path | None = None,
+    host_args: Sequence[str] = (),
 ) -> dict[str, Any]:
+    normalized_host_args = _normalized_forward_args(host_args, label="host_args")
     command = [
         sys.executable,
         "-m",
         host_module,
+        *normalized_host_args,
         "--repo-root",
         str(repo_root),
         "--provider-base-url",
