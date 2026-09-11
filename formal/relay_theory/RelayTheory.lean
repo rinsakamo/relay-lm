@@ -29,6 +29,7 @@ import RelayTheory.ScalarEpicityReduction
 import RelayTheory.MonoidalEpicity
 import RelayTheory.EpicityReversibility
 import RelayTheory.StochasticRecoverabilityPreorder
+import RelayTheory.CorrelationCarrier
 import RelayTheory.SequentialEpicityReflection
 import RelayTheory.SplitLaterReflection
 import RelayTheory.DiracRecoverySharpness
