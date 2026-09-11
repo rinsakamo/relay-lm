@@ -19,27 +19,27 @@ Flat joint labels are interpreted as:
 * `3 = (1,1)`
 
 For source `0` the joint law is fair on `0,3`; for source `1` it is fair on
-`1,2`.  Thus each coordinate marginal is fair and source-blind, while parity
+`1,2`. Thus each coordinate marginal is fair and source-blind, while parity
 recovers the source exactly.
 -/
 def correlationCarrier : FinKernel 2 4 :=
   fun x y =>
-    if x = (0 : Fin 2) then
-      if y = (0 : Fin 4) ∨ y = (3 : Fin 4) then qHalf else 0
+    if x.val = 0 then
+      if y.val = 0 ∨ y.val = 3 then qHalf else 0
     else
-      if y = (1 : Fin 4) ∨ y = (2 : Fin 4) then qHalf else 0
+      if y.val = 1 ∨ y.val = 2 then qHalf else 0
 
 /-- First-coordinate observer on the flat four-point joint interface. -/
 def correlationFirst : Fin 4 → Fin 2 :=
-  fun y => if y = (0 : Fin 4) ∨ y = (1 : Fin 4) then (0 : Fin 2) else (1 : Fin 2)
+  fun y => if y.val = 0 ∨ y.val = 1 then (0 : Fin 2) else (1 : Fin 2)
 
 /-- Second-coordinate observer on the flat four-point joint interface. -/
 def correlationSecond : Fin 4 → Fin 2 :=
-  fun y => if y = (0 : Fin 4) ∨ y = (2 : Fin 4) then (0 : Fin 2) else (1 : Fin 2)
+  fun y => if y.val = 0 ∨ y.val = 2 then (0 : Fin 2) else (1 : Fin 2)
 
 /-- Joint parity observer: equal coordinate bits map to source `0`, unequal to source `1`. -/
 def correlationParity : Fin 4 → Fin 2 :=
-  fun y => if y = (0 : Fin 4) ∨ y = (3 : Fin 4) then (0 : Fin 2) else (1 : Fin 2)
+  fun y => if y.val = 0 ∨ y.val = 3 then (0 : Fin 2) else (1 : Fin 2)
 
 /-- Completely source-blind fair binary observation. -/
 def correlationBlindMarginal : FinKernel 2 2 :=
@@ -107,7 +107,7 @@ theorem correlationCarrier_parity_recovers :
       grind [FinKernel.compose, FinKernel.dirac, FinKernel.identity,
         correlationCarrier, correlationParity, sumFin, qHalf]
 
-/-- The joint carrier therefore has a physically valid stochastic recovery. -/
+/-- The joint carrier therefore has a valid stochastic recovery. -/
 theorem correlationCarrier_hasValidStochasticRecovery :
     FinKernel.HasValidStochasticRecovery correlationCarrier := by
   exact ⟨FinKernel.dirac correlationParity,
