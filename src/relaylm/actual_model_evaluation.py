@@ -17,7 +17,6 @@ from relaylm.actual_model_request_evidence import (
     ActualModelRequestEvidence,
     ActualModelRequestEvidenceRecorder,
     RequestPassIdentity,
-    install_model_facing_request_capture,
 )
 from relaylm.budget_diagnostics import CognitiveBudgetExceededWithDiagnostics
 from relaylm.budget_runtime import (
@@ -676,7 +675,6 @@ class _RecordingProvider:
         request_evidence: ActualModelRequestEvidenceRecorder | None = None,
     ) -> None:
         self.delegate = delegate
-        install_model_facing_request_capture(delegate)
         self.outputs: list[CognitiveOutput] = []
         self.conversation_outputs: list[CognitionConversationOutput] = []
         self.extraction_outputs: list[CognitionExtractionOutput] = []
