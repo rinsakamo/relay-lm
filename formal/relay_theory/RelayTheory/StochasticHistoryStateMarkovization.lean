@@ -86,7 +86,7 @@ theorem compileHistoryLaw_run_eq_append {q : Nat} (law : HistoryLaw q)
     (h path : List (Fin q)) :
     FinitelyBranchingKernel.run (compileHistoryLaw law) h path = h ++ path := by
   induction path generalizing h with
-  | nil => rfl
+  | nil => simp [FinitelyBranchingKernel.run]
   | cons a as ih =>
       change FinitelyBranchingKernel.run (compileHistoryLaw law) (h ++ [a]) as =
         h ++ (a :: as)
