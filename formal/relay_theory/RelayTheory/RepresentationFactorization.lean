@@ -14,13 +14,22 @@ def FactorsThrough {History Old New : Type}
   ∃ migrate : Old → New, ∀ h, migrate (old h) = new h
 
 /--
-Reachable-only factorization avoids imposing any value on old-representation
-points that are not produced by a history.
+The reachable part of an old representation. Keeping reachability in the
+carrier avoids imposing arbitrary values on old-representation points that no
+history produces.
+-/
+def ReachableRepresentation {History Old : Type}
+    (old : History → Old) :=
+  {a : Old // ∃ h, old h = a}
+
+/--
+Reachable-only factorization asks for an exact migration only on old values
+that are actually produced by some history.
 -/
 def FactorsThroughReachable {History Old New : Type}
     (old : History → Old) (new : History → New) : Prop :=
-  ∃ migrate : ∀ a : Old, (∃ h, old h = a) → New,
-    ∀ h, migrate (old h) ⟨h, rfl⟩ = new h
+  ∃ migrate : ReachableRepresentation old → New,
+    ∀ h, migrate ⟨old h, ⟨h, rfl⟩⟩ = new h
 
 /-- Exact total factorization preserves every fiber of the old representation. -/
 theorem factorsThrough_preserves_fibers
@@ -54,7 +63,7 @@ theorem factorsThrough_implies_reachable
     (hFac : FactorsThrough old new) :
     FactorsThroughReachable old new := by
   rcases hFac with ⟨migrate, hmigrate⟩
-  refine ⟨fun a _ => migrate a, ?_⟩
+  refine ⟨fun a => migrate a.1, ?_⟩
   intro h
   exact hmigrate h
 
@@ -67,20 +76,20 @@ theorem factorsThroughReachable_preserves_fibers
     (hOld : old h₁ = old h₂) :
     new h₁ = new h₂ := by
   rcases hFac with ⟨migrate, hmigrate⟩
-  cases hOld
-  have hProof :
-      (⟨h₁, rfl⟩ : ∃ h, old h = old h₁) =
-      (⟨h₂, rfl⟩ : ∃ h, old h = old h₁) :=
-    Subsingleton.elim _ _
+  have hReachable :
+      (⟨old h₁, ⟨h₁, rfl⟩⟩ : ReachableRepresentation old) =
+      ⟨old h₂, ⟨h₂, rfl⟩⟩ := by
+    apply Subtype.ext
+    exact hOld
   calc
-    new h₁ = migrate (old h₁) ⟨h₁, rfl⟩ := (hmigrate h₁).symm
-    _ = migrate (old h₁) ⟨h₂, rfl⟩ := congrArg (migrate (old h₁)) hProof
+    new h₁ = migrate ⟨old h₁, ⟨h₁, rfl⟩⟩ := (hmigrate h₁).symm
+    _ = migrate ⟨old h₂, ⟨h₂, rfl⟩⟩ := congrArg migrate hReachable
     _ = new h₂ := hmigrate h₂
 
 /--
 Fiber preservation is sufficient for exact factorization on reachable old
 representation points. No default inhabitant of the new representation is
-needed because unreachable old points are not totalized.
+needed because unreachable old points are not part of the migration domain.
 -/
 theorem fiber_preservation_implies_factorsThroughReachable
     {History Old New : Type}
@@ -88,8 +97,8 @@ theorem fiber_preservation_implies_factorsThroughReachable
     (hPreserves : ∀ h₁ h₂, old h₁ = old h₂ → new h₁ = new h₂) :
     FactorsThroughReachable old new := by
   classical
-  let migrate : ∀ a : Old, (∃ h, old h = a) → New :=
-    fun _ hReachable => new (Classical.choose hReachable)
+  let migrate : ReachableRepresentation old → New :=
+    fun a => new (Classical.choose a.2)
   refine ⟨migrate, ?_⟩
   intro h
   dsimp [migrate]
