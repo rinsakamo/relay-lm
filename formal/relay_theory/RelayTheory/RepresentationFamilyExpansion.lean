@@ -9,10 +9,10 @@ The map only selects coordinates; it carries no observer or cognitive ontology.
 def reindexRepresentationFamily
     {History SmallIndex LargeIndex : Type}
     {State : LargeIndex → Type}
-    (include : SmallIndex → LargeIndex)
+    (select : SmallIndex → LargeIndex)
     (rep : ∀ j, History → State j) :
-    ∀ i, History → State (include i) :=
-  fun i => rep (include i)
+    ∀ i, History → State (select i) :=
+  fun i => rep (select i)
 
 /--
 Equality of the full family profile implies equality of every reindexed
@@ -21,14 +21,14 @@ subfamily profile.
 theorem familyRepresentation_reindex_eq_of_eq
     {History SmallIndex LargeIndex : Type}
     {State : LargeIndex → Type}
-    (include : SmallIndex → LargeIndex)
+    (select : SmallIndex → LargeIndex)
     (rep : ∀ j, History → State j)
     {h₁ h₂ : History}
     (hEq : familyRepresentation rep h₁ = familyRepresentation rep h₂) :
-    familyRepresentation (reindexRepresentationFamily include rep) h₁ =
-      familyRepresentation (reindexRepresentationFamily include rep) h₂ := by
+    familyRepresentation (reindexRepresentationFamily select rep) h₁ =
+      familyRepresentation (reindexRepresentationFamily select rep) h₂ := by
   funext i
-  exact congrFun hEq (include i)
+  exact congrFun hEq (select i)
 
 /--
 A declared family refines every family obtained by restricting its coordinates.
@@ -38,14 +38,14 @@ history partition at this exact representation layer.
 theorem familyRepresentation_refines_reindex
     {History SmallIndex LargeIndex : Type}
     {State : LargeIndex → Type}
-    (include : SmallIndex → LargeIndex)
+    (select : SmallIndex → LargeIndex)
     (rep : ∀ j, History → State j) :
     RepresentationRefines
       (familyRepresentation rep)
-      (familyRepresentation (reindexRepresentationFamily include rep)) := by
+      (familyRepresentation (reindexRepresentationFamily select rep)) := by
   apply fiber_preservation_implies_factorsThroughReachable
   intro h₁ h₂ hEq
-  exact familyRepresentation_reindex_eq_of_eq include rep hEq
+  exact familyRepresentation_reindex_eq_of_eq select rep hEq
 
 /-- Reindex every small-frame coordinate to the first Bool coordinate. -/
 def firstCoordinateReindex : Bool → Bool :=
