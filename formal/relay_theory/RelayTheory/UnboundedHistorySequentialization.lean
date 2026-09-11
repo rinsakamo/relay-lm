@@ -18,6 +18,14 @@ def historyRun {α : Type} (next : List α → α) (h : List α) : Nat → List 
   | 0 => h
   | k + 1 => historyStep next (historyRun next h k)
 
+/--
+Explicit ordinary one-parameter iteration.  Keeping this tiny surface local
+avoids depending on library notation for function powers.
+-/
+def homogeneousIterate {σ : Type} (step : σ → σ) : Nat → σ → σ
+  | 0, state => state
+  | k + 1, state => step (homogeneousIterate step k state)
+
 /-- Each homogeneous history-state step appends exactly one new symbol. -/
 @[simp] theorem historyStep_length {α : Type} (next : List α → α) (h : List α) :
     (historyStep next h).length = h.length + 1 := by
@@ -29,11 +37,12 @@ iteration of one homogeneous map on the augmented history state.
 -/
 theorem historyRun_eq_iterate {α : Type} (next : List α → α)
     (h : List α) (k : Nat) :
-    historyRun next h k = (historyStep next)^[k] h := by
+    historyRun next h k = homogeneousIterate (historyStep next) k h := by
   induction k with
   | zero => rfl
   | succ k ih =>
-      simp only [historyRun, Function.iterate_succ_apply]
+      change historyStep next (historyRun next h k) =
+        historyStep next (homogeneousIterate (historyStep next) k h)
       rw [ih]
 
 /-- No bounded horizon is hidden in the compiler: the stored history grows by `k`. -/
@@ -52,7 +61,7 @@ theorem historyRun_add {α : Type} (next : List α → α)
   induction j with
   | zero => simp [historyRun]
   | succ j ih =>
-      simp [Nat.add_succ, historyRun, ih]
+      simp [historyRun, ih]
 
 /-- The initial realized history is preserved exactly as a prefix of every later state. -/
 theorem historyRun_extends_initial {α : Type} (next : List α → α)
@@ -123,7 +132,7 @@ unbounded rather than a fixed finite phase register.
 -/
 theorem unbounded_history_sequentialization_bundle {α : Type}
     (next : List α → α) (h : List α) (k : Nat) :
-    historyRun next h k = (historyStep next)^[k] h ∧
+    historyRun next h k = homogeneousIterate (historyStep next) k h ∧
       (historyRun next h k).length = h.length + k ∧
       (∃ tail : List α, historyRun next h k = h ++ tail) := by
   exact ⟨historyRun_eq_iterate next h k,
