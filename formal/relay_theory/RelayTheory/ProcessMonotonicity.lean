@@ -54,14 +54,16 @@ theorem finWorldStep4_self_inverse :
   rw [finKernel_dirac_compose]
   funext x y
   unfold FinKernel.dirac FinKernel.identity
+  change (if y = finWorldSwap4 (finWorldSwap4 x) then (1 : Rat) else 0) =
+    (if x = y then 1 else 0)
   rw [finWorldSwap4_involutive x]
   simp [eq_comm]
 
 /-- One-step observation is exactly the crossed partition. -/
 theorem finWorldObs1_eq_crossed :
     finWorldObs1 = FinKernel.dirac finWorldCoarseB := by
-  simpa [finWorldObs1, finWorldObs0, finWorldStep4, finWorldCoarseB] using
-    (finKernel_dirac_compose finWorldSwap4 finWorldCoarseA)
+  unfold finWorldObs1 finWorldObs0 finWorldStep4 finWorldCoarseB
+  exact finKernel_dirac_compose finWorldSwap4 finWorldCoarseA
 
 /-- Finite recurrence returns the observer channel exactly after two WORLD steps. -/
 theorem finWorldObs2_eq_obs0 : finWorldObs2 = finWorldObs0 := by
@@ -74,20 +76,6 @@ theorem finWorldObs2_eq_obs0 : finWorldObs2 = finWorldObs0 := by
     _ = FinKernel.compose finWorldObs0 (FinKernel.identity 4) := by
       rw [finWorldStep4_self_inverse]
     _ = finWorldObs0 := finKernel_compose_identity_before finWorldObs0
-
-/-- Evaluate arbitrary output post-processing after a deterministic source channel. -/
-theorem finKernel_compose_after_dirac_eval
-    {a b c : Nat} (post : FinKernel b c) (f : Fin a → Fin b)
-    (x : Fin a) (z : Fin c) :
-    FinKernel.compose post (FinKernel.dirac f) x z = post (f x) z := by
-  unfold FinKernel.compose FinKernel.dirac
-  calc
-    sumFin b (fun y => (if y = f x then 1 else 0) * post y z) =
-        sumFin b (fun y => if y = f x then post y z else 0) := by
-      apply sumFin_congr
-      intro y
-      by_cases h : y = f x <;> simp [h]
-    _ = post (f x) z := sumFin_single (f x) (fun y => post y z)
 
 /--
 The crossed deterministic partitions cannot be obtained from each other by any
@@ -105,6 +93,7 @@ theorem finWorldObs0_not_degradesTo_obs1 :
   rw [finKernel_compose_after_dirac_eval] at h0 h1
   simp [FinKernel.dirac, finWorldCoarseA, finWorldCoarseB,
     finWorldSwap4, diamondObserverB] at h0 h1
+  grind
 
 /-- Nor can the crossed partition be post-processed back into the initial one. -/
 theorem finWorldObs1_not_degradesTo_obs0 :
@@ -118,6 +107,7 @@ theorem finWorldObs1_not_degradesTo_obs0 :
   rw [finKernel_compose_after_dirac_eval] at h0 h2
   simp [FinKernel.dirac, finWorldCoarseA, finWorldCoarseB,
     finWorldSwap4, diamondObserverB] at h0 h2
+  grind
 
 /-- Successive observations along this reversible WORLD orbit are incomparable. -/
 theorem finWorld_successive_observations_incomparable :
