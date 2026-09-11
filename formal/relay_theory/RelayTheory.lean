@@ -14,6 +14,7 @@ import RelayTheory.GenericStructuralKernels
 import RelayTheory.GenericMarkovLaws
 import RelayTheory.BehavioralQuotient
 import RelayTheory.ProbeRelative
+import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
 import RelayTheory.StochasticProbeDichotomy
 import RelayTheory.RestrictedContexts
