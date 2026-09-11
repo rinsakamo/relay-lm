@@ -19,8 +19,3 @@ depends_on:
 - relaylm2_cognitive_ir_shared_floor_calibration
 - relaylm2_cognitive_ir_s3_r4
 - relaylm2_physical_execution
-constraints:
-- non_citable
-- architecture_consequence_none
-- fresh_disjoint_seeds
-- no_2610_replay
