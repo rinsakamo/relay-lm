@@ -40,6 +40,7 @@ import RelayTheory.FiniteEpicSplitting
 import RelayTheory.MonoidalRecoveryReflection
 import RelayTheory.BoundedMultidirectionSequentialization
 import RelayTheory.BoundedMultidirectionSequentializationValid
+import RelayTheory.BoundedInterventionSequentialization
 import RelayTheory.CausalOrderProjection
 import RelayTheory.ObserverChainRealizers
 import RelayTheory.ProcessMonotonicity
