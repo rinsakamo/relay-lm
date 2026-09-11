@@ -1,0 +1,42 @@
+schema_version: 1
+id: production_continuity_overlay_diagnostic
+summary: >-
+  Evaluation-only discriminator that restores the full ordinary production T1/T2
+  two-pass path while appending one retained source-grounded formed-meaning
+  overlay only to T2 Pass 2. It distinguishes formation-to-extraction access
+  failure from post-formation production multiplexing without changing Core.
+owner_issue: 2593
+canonical_surfaces:
+- docs/reference/actual-model-production-continuity-overlay-diagnostic.md
+references:
+- docs/reference/actual-model-semantic-continuity-projection-diagnostic.md
+- docs/reference/actual-model-semantic-continuity-projection-physical.md
+- docs/reference/actual-model-llama-cpp-qualification.md
+- docs/contracts/cognition-pass-execution.md
+- docs/architecture/continuity-context.md
+implementation:
+- src/relaylm/actual_model_production_continuity_overlay_diagnostic.py
+- src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_overlay.py
+- src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_overlay_transaction.py
+- tools/v1_stage_r_llama_cpp_production_continuity_overlay_wsl.py
+tests:
+- tests/unit/test_actual_model_production_continuity_overlay_diagnostic.py
+- tests/unit/test_actual_model_production_continuity_overlay_carriage.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_production_continuity_overlay_diagnostic.py
+  reason: >-
+    Evaluation-only request overlay and retained-evidence binding; production
+    two-pass cognition and Continuity semantics do not call this module.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_overlay.py
+  reason: >-
+    Evaluation-only physical host for the #2593 discriminator; it exercises
+    production T1/T2 through existing runtime boundaries without changing product semantics.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_overlay_transaction.py
+  reason: Evaluation-only transaction selector for the #2593 physical diagnostic.
+- path: tools/v1_stage_r_llama_cpp_production_continuity_overlay_wsl.py
+  reason: Operator-only WSL wrapper for the #2593 evaluation diagnostic.
+depends_on:
+- semantic_continuity_projection_physical
+- actual_model_llama_cpp_qualification
+- actual_model_evaluation
+- continuity_context
