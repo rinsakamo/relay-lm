@@ -46,5 +46,6 @@ import RelayTheory.CausalOrderProjection
 import RelayTheory.ObserverChainRealizers
 import RelayTheory.ProcessMonotonicity
 import RelayTheory.IntrinsicKernelDegradation
+import RelayTheory.ReversalClosedOrientation
 import RelayTheory.HiddenCarrierReturn
 import RelayTheory.Countermodels
