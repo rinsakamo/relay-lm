@@ -88,18 +88,7 @@ def _create_runtime_paths(operator_home: Path) -> RuntimePaths:
     ).resolve()
     runtime_home = runtime_root / "home"
     runtime_home.mkdir()
-    _prove_runtime_directory_writable(runtime_home, label="runtime HOME")
-
-    # The inner transaction writes its one-process-lifetime llama-server log
-    # below ``Path.home() / 'logs'``.  Create and prove that exact nested
-    # directory before the sandbox/process boundary so the consumed one-shot
-    # cannot fail merely because the child is no longer permitted to create it.
-    runtime_log_root = runtime_home / "logs"
-    runtime_log_root.mkdir()
-    _prove_runtime_directory_writable(
-        runtime_log_root,
-        label="runtime HOME log directory",
-    )
+    _prove_runtime_home_writable(runtime_home)
 
     workspace_root = runtime_root / "workspace"
     artifact_root = runtime_root / "artifacts"
@@ -115,10 +104,10 @@ def _create_runtime_paths(operator_home: Path) -> RuntimePaths:
     return paths
 
 
-def _prove_runtime_directory_writable(path: Path, *, label: str) -> None:
-    if not path.is_dir() or not os.access(path, os.W_OK):
-        raise RuntimeError(f"{label} is not writable: {path}")
-    probe = path / ".relaylm-wsl-wrapper-write-probe"
+def _prove_runtime_home_writable(runtime_home: Path) -> None:
+    if not runtime_home.is_dir() or not os.access(runtime_home, os.W_OK):
+        raise RuntimeError(f"runtime HOME is not writable: {runtime_home}")
+    probe = runtime_home / ".relaylm-wsl-wrapper-write-probe"
     try:
         probe.write_text("ok\n", encoding="utf-8")
     finally:
