@@ -49,4 +49,5 @@ import RelayTheory.IntrinsicKernelDegradation
 import RelayTheory.ReversalClosedOrientation
 import RelayTheory.HiddenCarrierReturn
 import RelayTheory.RevivalBackflowSeparation
+import RelayTheory.HiddenSectorGaugeInvariance
 import RelayTheory.Countermodels
