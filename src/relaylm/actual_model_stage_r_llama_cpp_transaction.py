@@ -139,7 +139,7 @@ def main(
             )
         gpu_identity = _collect_gpu_identity()
 
-        log_path = _new_server_log_path()
+        log_path = _new_server_log_path(artifact_root=artifact_root)
         process, launch_command = _start_server(
             server_binary=server_binary,
             artifact_path=artifact_path,
@@ -337,11 +337,13 @@ def _collect_gpu_identity() -> str:
     return output
 
 
-def _new_server_log_path() -> Path:
-    root = Path.home() / "logs"
-    root.mkdir(parents=True, exist_ok=True)
+def _new_server_log_path(*, artifact_root: Path) -> Path:
+    if not artifact_root.is_dir():
+        raise LlamaCppTransactionError(
+            f"artifact root must exist before server log allocation: {artifact_root}"
+        )
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
-    return root / f"llama-server-{stamp}-{os.getpid()}.log"
+    return artifact_root / f"llama-server-{stamp}-{os.getpid()}.log"
 
 
 def _start_server(
