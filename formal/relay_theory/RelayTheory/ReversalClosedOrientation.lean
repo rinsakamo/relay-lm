@@ -32,25 +32,42 @@ theorem strictPart_asymmetric {α : Type} {R : α → α → Prop} {x y : α}
   exact hxy.2 hyx.1
 
 /--
-Generic reversal obstruction. If every admissible edge has an admissible reverse,
-then a global strict orientation can classify only diagonal admissible edges.
-No order axioms on `R` are needed.
+Generic constructive reversal obstruction. If every admissible edge has an
+admissible reverse and every nontrivial admissible edge must lie in one strict
+orientation of `R`, then no admissible edge can be nontrivial. No equality
+decision procedure and no order axioms on `R` are needed.
 -/
-theorem reversalClosed_strictlyOrientedBy_only_diagonal
+theorem reversalClosed_strictlyOrientedBy_no_nontrivial_edge
     {α : Type} {Adm R : α → α → Prop}
     (hrev : ReversalClosed Adm)
     (horient : StrictlyOrientedBy Adm R) :
-    ∀ ⦃x y : α⦄, Adm x y → x = y := by
-  intro x y hxy
-  by_contra hne
+    ∀ ⦃x y : α⦄, Adm x y → ¬ x ≠ y := by
+  intro x y hxy hne
   have hforward : StrictPart R x y := horient hxy hne
   have hyx : Adm y x := hrev hxy
   have hbackward : StrictPart R y x := horient hyx (fun h => hne h.symm)
   exact hforward.2 hbackward.1
 
 /--
+On a carrier with decidable equality, the generic obstruction can be stated as
+the familiar diagonal-edge conclusion. Finite Relay Theory carriers have this
+property.
+-/
+theorem reversalClosed_strictlyOrientedBy_only_diagonal
+    {α : Type} [DecidableEq α] {Adm R : α → α → Prop}
+    (hrev : ReversalClosed Adm)
+    (horient : StrictlyOrientedBy Adm R) :
+    ∀ ⦃x y : α⦄, Adm x y → x = y := by
+  intro x y hxy
+  by_cases hEq : x = y
+  · exact hEq
+  · exact False.elim
+      (reversalClosed_strictlyOrientedBy_no_nontrivial_edge hrev horient hxy hEq)
+
+/--
 Therefore reversal-closed admissibility cannot support any nontrivial global
 strict orientation, regardless of which relation is proposed as the arrow.
+This no-go remains constructive on an arbitrary carrier type.
 -/
 theorem reversalClosed_not_supportsStrictOrientation
     {α : Type} {Adm R : α → α → Prop}
@@ -58,8 +75,8 @@ theorem reversalClosed_not_supportsStrictOrientation
     ¬ SupportsStrictOrientation Adm R := by
   intro hsupport
   rcases hsupport.1 with ⟨x, y, hxy, hne⟩
-  have hEq := reversalClosed_strictlyOrientedBy_only_diagonal hrev hsupport.2 hxy
-  exact hne hEq
+  exact reversalClosed_strictlyOrientedBy_no_nontrivial_edge
+    hrev hsupport.2 hxy hne
 
 /--
 A minimal two-way admissibility relation: diagonal edges plus both directions
@@ -92,9 +109,8 @@ theorem twoWayPairAdm_not_strictlyOriented
     {α : Type} {a b : α} (hne : a ≠ b) (R : α → α → Prop) :
     ¬ StrictlyOrientedBy (TwoWayPairAdm a b) R := by
   intro horient
-  have hEq := reversalClosed_strictlyOrientedBy_only_diagonal
-    (twoWayPairAdm_reversalClosed a b) horient (twoWayPairAdm_edge a b)
-  exact hne hEq
+  exact reversalClosed_strictlyOrientedBy_no_nontrivial_edge
+    (twoWayPairAdm_reversalClosed a b) horient (twoWayPairAdm_edge a b) hne
 
 /-- Small finite anti-vacuity control: a genuine binary reversible pair exists. -/
 theorem binary_two_way_pair_obstruction :
