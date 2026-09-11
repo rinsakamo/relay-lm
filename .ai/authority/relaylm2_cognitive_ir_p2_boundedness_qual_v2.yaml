@@ -1,0 +1,20 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_p2_boundedness_qual_v2
+owner_issue: 2211
+summary: Non-citable second mechanical qualification for P2 ordinary-summary boundedness, frozen by #2571 and implemented by #2572 after #2538 showed clean stop but visible-envelope overshoot. Preserves the hard 120-word/800-character admission and 1024 provider ceiling while adding only a lower 60-80-word/550-character prompt target margin; historical S2/S3 and the consumed prior qualification remain immutable, and precommitted S3-R4 seeds remain inactive.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-p2-boundedness-qualification-v2.md
+implementation:
+- src/relaylm/v2_cognitive_ir_p2_boundedness_qual_v2.py
+- tools/v2_cognitive_ir_p2_boundedness_qual_v2_llama_cpp.py
+- tools/v2_cognitive_ir_p2_boundedness_qual_v2_transaction.py
+- tools/v2_cognitive_ir_p2_boundedness_qual_v2_entry.py
+- tools/v2_cognitive_ir_p2_boundedness_qual_v2_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_p2_boundedness_qual_v2.py
+- tests/unit/test_v2_cognitive_ir_p2_boundedness_qual_v2_llama_cpp.py
+- tests/unit/test_v2_cognitive_ir_p2_boundedness_qual_v2_entry.py
+depends_on:
+- relaylm2_cognitive_ir_p2_termination_qual
+- relaylm2_cognitive_ir_experiment
+- relaylm2_physical_execution
