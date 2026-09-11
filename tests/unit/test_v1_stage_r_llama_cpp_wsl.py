@@ -102,6 +102,14 @@ def test_wrapper_refuses_inner_when_runtime_log_directory_is_not_ready(
     operator_home.mkdir()
     monkeypatch.setenv("HOME", str(operator_home))
 
+    runtime_root = tmp_path / "runtime-root"
+
+    def fake_mkdtemp(*, prefix: str, dir: Path) -> str:
+        assert prefix == "relaylm-v1-stage-r-llama-cpp-"
+        assert Path(dir) == wrapper.RUNTIME_ROOT_PARENT
+        runtime_root.mkdir()
+        return str(runtime_root)
+
     observed_probes: list[tuple[Path, str]] = []
 
     def fake_probe(path: Path, *, label: str) -> None:
@@ -112,23 +120,22 @@ def test_wrapper_refuses_inner_when_runtime_log_directory_is_not_ready(
     def forbidden_inner(*args, **kwargs):
         raise AssertionError("inner transaction must not run without log readiness")
 
+    monkeypatch.setattr(wrapper.tempfile, "mkdtemp", fake_mkdtemp)
     monkeypatch.setattr(wrapper, "_prove_runtime_directory_writable", fake_probe)
     monkeypatch.setattr(wrapper.subprocess, "run", forbidden_inner)
 
-    runtime_roots_before = set(Path("/tmp").glob("relaylm-v1-stage-r-llama-cpp-*"))
     with pytest.raises(RuntimeError, match="simulated log directory sandbox denial"):
         wrapper.main([])
-    runtime_roots_after = set(Path("/tmp").glob("relaylm-v1-stage-r-llama-cpp-*"))
 
-    created = runtime_roots_after - runtime_roots_before
-    try:
-        assert len(observed_probes) == 2
-        assert observed_probes[0][1] == "runtime HOME"
-        assert observed_probes[1][1] == "runtime HOME log directory"
-        assert observed_probes[1][0] == observed_probes[0][0] / "logs"
-    finally:
-        for root in created:
-            shutil.rmtree(root, ignore_errors=True)
+    assert len(observed_probes) == 2
+    assert observed_probes[0] == (runtime_root / "home", "runtime HOME")
+    assert observed_probes[1] == (
+        runtime_root / "home" / "logs",
+        "runtime HOME log directory",
+    )
+    assert (runtime_root / "home" / "logs").is_dir()
+    assert not (runtime_root / "workspace").exists()
+    assert not (runtime_root / "artifacts").exists()
 
 
 def test_wrapper_has_no_server_provider_or_model_calls(monkeypatch) -> None:
