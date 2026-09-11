@@ -189,8 +189,8 @@ def validate_s3_r5_preregistration() -> None:
     historical = {
         *CALIBRATION_SEEDS,
         *CALIBRATION_V2_SEEDS,
-        *P2_TERMINATION_QUAL_SEEDS,
-        *P2_BOUNDEDNESS_QUAL_V2_SEEDS,
+        *_flatten(P2_TERMINATION_QUAL_SEEDS),
+        *_flatten(P2_BOUNDEDNESS_QUAL_V2_SEEDS),
         S2_SELECTED_SEED,
         *_flatten(HISTORICAL_S3_V1_SEEDS),
         *_flatten(S3_R2_SEEDS),
