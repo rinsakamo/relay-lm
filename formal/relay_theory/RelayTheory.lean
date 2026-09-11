@@ -14,6 +14,7 @@ import RelayTheory.GenericStructuralKernels
 import RelayTheory.GenericMarkovLaws
 import RelayTheory.BehavioralQuotient
 import RelayTheory.RepresentationFactorization
+import RelayTheory.RepresentationFamily
 import RelayTheory.ProbeRelative
 import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
