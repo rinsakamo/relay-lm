@@ -11,6 +11,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Any, TextIO
 
 from relaylm.v2_cognitive_ir_shared_floor_calibration import (
@@ -61,6 +62,8 @@ TRANSACTION_FORMAT_VERSION = 1
 DEFAULT_SHARED_LOCK_PATH = Path(
     "/tmp/relaylm/locks/llama-server-127.0.0.1-1234.lock"
 )
+CLEANUP_RELEASE_TIMEOUT_SECONDS = 5.0
+CLEANUP_RELEASE_POLL_SECONDS = 0.05
 
 
 class SharedFloorCalibrationTransactionError(RuntimeError):
@@ -90,6 +93,103 @@ def _new_log_path() -> Path:
             f"fresh shared-floor server log already exists: {path}"
         )
     return path
+
+
+def _listening_socket_present(port: int) -> bool | None:
+    """Return whether ss sees a LISTEN socket on port, or None if unavailable."""
+    try:
+        completed = subprocess.run(
+            ["ss", "-H", "-ltn"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    target = str(port)
+    for line in completed.stdout.splitlines():
+        fields = line.split()
+        if len(fields) < 4:
+            continue
+        local_address = fields[3]
+        if local_address.rsplit(":", 1)[-1] == target:
+            return True
+    return False
+
+
+def _wait_until_listener_released(
+    host: str,
+    port: int,
+    *,
+    timeout_seconds: float = CLEANUP_RELEASE_TIMEOUT_SECONDS,
+    poll_seconds: float = CLEANUP_RELEASE_POLL_SECONDS,
+) -> dict[str, object]:
+    """Bound cleanup observation without mistaking TIME_WAIT for a listener."""
+    if timeout_seconds < 0 or poll_seconds < 0:
+        raise ValueError("cleanup release timing values must be non-negative")
+    started = time.monotonic()
+    attempts = 0
+    last_bindable = False
+    last_listener_present: bool | None = None
+    while True:
+        attempts += 1
+        last_bindable = _port_is_free(host, port)
+        last_listener_present = _listening_socket_present(port)
+        elapsed = time.monotonic() - started
+        if last_bindable:
+            return {
+                "released": True,
+                "evidence": "bindable",
+                "attempts": attempts,
+                "elapsed_seconds": elapsed,
+                "last_bindable": last_bindable,
+                "last_listener_present": last_listener_present,
+            }
+        if last_listener_present is False:
+            return {
+                "released": True,
+                "evidence": "listener_absent",
+                "attempts": attempts,
+                "elapsed_seconds": elapsed,
+                "last_bindable": last_bindable,
+                "last_listener_present": last_listener_present,
+            }
+        if elapsed >= timeout_seconds:
+            return {
+                "released": False,
+                "evidence": "cleanup_release_timeout",
+                "attempts": attempts,
+                "elapsed_seconds": elapsed,
+                "last_bindable": last_bindable,
+                "last_listener_present": last_listener_present,
+            }
+        remaining = timeout_seconds - elapsed
+        time.sleep(min(poll_seconds, remaining))
+
+
+def _cleanup_owned_server(
+    process: subprocess.Popen[str],
+    *,
+    port: int,
+) -> dict[str, object]:
+    cleanup = dict(_terminate_owned_process(process))
+    if cleanup.get("terminated") is not True:
+        cleanup["listener_release"] = {
+            "released": False,
+            "evidence": "owned_process_not_terminated",
+            "attempts": 0,
+            "elapsed_seconds": 0.0,
+            "last_bindable": False,
+            "last_listener_present": None,
+        }
+        return cleanup
+    cleanup["listener_release"] = _wait_until_listener_released(
+        "127.0.0.1",
+        port,
+    )
+    return cleanup
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -337,17 +437,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary["error"] = f"{type(exc).__name__}: {exc}"
         exit_code = 2 if summary["host_invocation_count"] else 3
     finally:
+        cleanup: dict[str, object] | None = None
         if process is not None:
-            summary.setdefault("server", {})["cleanup"] = _terminate_owned_process(
-                process
-            )
+            cleanup = _cleanup_owned_server(process, port=args.port)
+            summary.setdefault("server", {})["cleanup"] = cleanup
         if log_path is not None and log_path.is_file():
             summary.setdefault("server", {})["log_sha256"] = _sha256_file(log_path)
             summary["server"]["log_bytes"] = log_path.stat().st_size
-        summary["listener_released"] = _port_is_free("127.0.0.1", args.port)
+        if cleanup is not None:
+            listener_release = cleanup["listener_release"]
+            if not isinstance(listener_release, dict):
+                raise AssertionError("cleanup listener release evidence is malformed")
+            summary["listener_release"] = listener_release
+            summary["listener_released"] = listener_release.get("released") is True
+            cleanup_complete = (
+                cleanup.get("terminated") is True
+                and summary["listener_released"] is True
+            )
+        else:
+            bindable = _port_is_free("127.0.0.1", args.port)
+            summary["listener_release"] = {
+                "released": bindable,
+                "evidence": "no_owned_process_bindability",
+                "attempts": 1,
+                "elapsed_seconds": 0.0,
+                "last_bindable": bindable,
+                "last_listener_present": None,
+            }
+            summary["listener_released"] = bindable
+            cleanup_complete = bindable
         if (
             summary["classification"] != CALIBRATION_INCOMPLETE
-            and not summary["listener_released"]
+            and not cleanup_complete
         ):
             summary["classification"] = CALIBRATION_INCOMPLETE
             summary["disposition"] = "CLEANUP_INCOMPLETE"
