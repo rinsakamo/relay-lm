@@ -82,7 +82,9 @@ theorem preparedObs1_equal_source_rows
     HiddenCarrierReturn.preparedObs1 (0 : Fin 2) out =
       HiddenCarrierReturn.preparedObs1 (1 : Fin 2) out := by
   rw [HiddenCarrierReturn.preparedObs1_eq_constZero]
-  simp [FinKernel.dirac, HiddenCarrierReturn.constZero2]
+  change (if out = (0 : Fin 2) then (1 : Rat) else 0) =
+    (if out = (0 : Fin 2) then 1 else 0)
+  rfl
 
 /--
 The informative #2559 return cannot factor through the collapsed visible cut
@@ -137,8 +139,9 @@ hidden-carrier fixture, despite using a distinct declared mechanism.
 theorem reinjectedObs2_eq_preparedObs2 :
     reinjectedObs2 = HiddenCarrierReturn.preparedObs2 := by
   funext x y
-  simp [reinjectedObs2, reinjectedVisible, reinjectFromSource,
-    HiddenCarrierReturn.preparedObs2, FinKernel.dirac]
+  change (if y = x then (1 : Rat) else 0) =
+    (if y = x then 1 else 0)
+  rfl
 
 /-- The full three observer endpoints match the #2559 leave-and-return shape. -/
 theorem reinjection_endpoint_shape_matches_hidden_carrier :
