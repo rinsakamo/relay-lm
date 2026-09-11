@@ -78,14 +78,14 @@ theorem branchLift_identity_eq_dirac {n b : Nat} (p : Fin b) :
         have hpairs := bounded_finPairTransport_toFun_injective h
         exact (congrArg Prod.snd hpairs).symm
       simp [branchLift, branchEncode, FinKernel.identity, FinKernel.dirac,
-        finPair_transport_roundtrip, hxy, henc, eq_comm]
+        finPair_transport_roundtrip, hxy, henc]
   · have henc :
         finPairTransport.toFun (q, y) ≠ finPairTransport.toFun (p, x) := by
       intro h
       apply hq
       have hpairs := bounded_finPairTransport_toFun_injective h
       exact congrArg Prod.fst hpairs
-    simp [branchLift, branchEncode, FinKernel.identity, FinKernel.dirac,
+    simp [branchLift, branchEncode, FinKernel.dirac,
       finPair_transport_roundtrip, hq, henc]
 
 /--
@@ -125,6 +125,7 @@ theorem programmedSchedule_advance_branch {n b : Nat}
           · subst j
             simp [branchLift_encoded, programmedSchedule_encoded]
           · simp [branchLift_encoded, programmedSchedule_encoded, hj]
+            exact sumFin_zero_values n
     _ = sumFin n (fun y =>
           f x y * (if q = p then programs p r y z else 0)) :=
       sumFin_single p (fun _ =>
@@ -189,6 +190,7 @@ theorem branchProject_after_branchLift {n b : Nat}
               finPair_transport_roundtrip]
           · simp [branchLift_encoded, FinKernel.dirac, branchProject,
               finPair_transport_roundtrip, hq]
+            exact sumFin_zero_values n
     _ = sumFin n (fun y => f x y * (if z = y then 1 else 0)) :=
       sumFin_single p (fun _ =>
         sumFin n (fun y => f x y * (if z = y then 1 else 0)))
