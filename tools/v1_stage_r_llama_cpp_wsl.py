@@ -39,6 +39,7 @@ def main(
     argv: Sequence[str] | None = None,
     *,
     inner_transaction: str = INNER_TRANSACTION,
+    inner_args: Sequence[str] = (),
 ) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -58,6 +59,7 @@ def main(
         repo_root=repo_root,
         paths=paths,
         inner_transaction=inner_transaction,
+        inner_args=inner_args,
     )
     environment = _child_environment(repo_root=repo_root, paths=paths)
 
@@ -129,11 +131,14 @@ def _inner_command(
     repo_root: Path,
     paths: RuntimePaths,
     inner_transaction: str = INNER_TRANSACTION,
+    inner_args: Sequence[str] = (),
 ) -> list[str]:
+    normalized_inner_args = _normalized_forward_args(inner_args, label="inner_args")
     return [
         sys.executable,
         "-m",
         inner_transaction,
+        *normalized_inner_args,
         "--repo-root",
         str(repo_root),
         "--llama-cpp-root",
@@ -145,6 +150,15 @@ def _inner_command(
         "--artifact-root",
         str(paths.artifact_root),
     ]
+
+
+def _normalized_forward_args(values: Sequence[str], *, label: str) -> list[str]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"{label} must be a sequence of strings")
+    normalized = list(values)
+    if not all(isinstance(value, str) and "\x00" not in value for value in normalized):
+        raise TypeError(f"{label} must contain strings without NUL bytes")
+    return normalized
 
 
 def _child_environment(*, repo_root: Path, paths: RuntimePaths) -> dict[str, str]:
