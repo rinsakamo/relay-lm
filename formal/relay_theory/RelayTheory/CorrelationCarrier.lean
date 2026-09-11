@@ -50,13 +50,8 @@ theorem correlationCarrier_valid : FinKernel.Valid correlationCarrier := by
   constructor
   · intro x y
     have hh : 0 ≤ qHalf := Rat.le_of_lt qHalf_pos
-    rcases finTwo_zero_or_one x with hx | hx
-    · subst x
-      rcases finFour_zero_or_one_or_two_or_three y with hy | hy | hy | hy <;>
-        subst y <;> simp [correlationCarrier, hh]
-    · subst x
-      rcases finFour_zero_or_one_or_two_or_three y with hy | hy | hy | hy <;>
-        subst y <;> simp [correlationCarrier, hh]
+    unfold correlationCarrier
+    split <;> split <;> simp [hh]
   · intro x
     rcases finTwo_zero_or_one x with hx | hx
     · subst x
