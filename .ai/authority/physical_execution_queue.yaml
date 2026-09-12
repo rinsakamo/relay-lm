@@ -11,9 +11,11 @@ canonical_surfaces:
 implementation:
 - tools/relay_physical_run.py
 - tools/physical_execution_queue.py
+- tools/physical_execution_queue_smoke_target.py
 tests:
 - tests/unit/test_relay_physical_run.py
 - tests/unit/test_physical_execution_queue.py
+- tests/unit/test_physical_execution_queue_smoke_target.py
 - tests/integration/test_physical_execution_queue_process_smoke.py
 annotations:
 - .ai/skills/physical-execution-queue/SKILL.md

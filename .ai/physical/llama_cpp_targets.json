@@ -3,6 +3,12 @@
   "engine": "llama.cpp",
   "resource_key": "llama-cpp:local-gpu",
   "targets": {
+    "infra:queue-smoke": {
+      "branch": "v1",
+      "module": "tools.physical_execution_queue_smoke_target",
+      "description": "Infrastructure-only queue child; zero provider/model/semantic calls.",
+      "required_distributions": []
+    },
     "v1:stage-r": {
       "branch": "v1",
       "module": "tools.v1_stage_r_llama_cpp_wsl",
