@@ -184,9 +184,10 @@ def test_unresolved_only_builder_holds_context_overlay_and_schema_fixed(
         "I cannot know until the parcel is opened.",
         "what is inside",
         "remains unknown",
-        CURRENT_SOURCE,
+        "E0",
     ):
         assert expected in content
+    assert CURRENT_SOURCE not in content
 
     for removed in (
         "`referent`: a specific subject",
@@ -225,7 +226,7 @@ def test_unresolved_only_parser_accepts_unresolved_and_rejects_other_kinds() -> 
         "key": "parcel_contents",
         "op": "set",
         "value": "contents remain unknown",
-        "sources": [CURRENT_SOURCE],
+        "sources": ["E0"],
         "epistemic_role": "user_assertion",
     }
     output = parse_unresolved_only_completion(
@@ -235,6 +236,7 @@ def test_unresolved_only_parser_accepts_unresolved_and_rejects_other_kinds() -> 
     assert output.state_candidates == ()
     assert len(output.continuity_candidates) == 1
     assert output.continuity_candidates[0].kind == "unresolved"
+    assert output.continuity_candidates[0].sources == (CURRENT_SOURCE,)
 
     referent = dict(unresolved)
     referent.update(kind="referent", key="parcel")
@@ -246,7 +248,7 @@ def test_unresolved_only_parser_accepts_unresolved_and_rejects_other_kinds() -> 
 
 
 def test_unresolved_only_parser_preserves_canonical_source_validation() -> None:
-    with pytest.raises(ProviderProtocolError, match="sources"):
+    with pytest.raises(ProviderProtocolError, match="provenance alias"):
         parse_unresolved_only_completion(
             _envelope(
                 {
@@ -256,7 +258,7 @@ def test_unresolved_only_parser_preserves_canonical_source_validation() -> None:
                             "key": "parcel_contents",
                             "op": "set",
                             "value": "contents remain unknown",
-                            "sources": ["invented-event"],
+                            "sources": ["E999"],
                             "epistemic_role": "user_assertion",
                         }
                     ]
