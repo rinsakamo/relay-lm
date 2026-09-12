@@ -81,6 +81,10 @@ def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
             pass
 
 
+def _is_exact_schema_version(value: object, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
 def _load_policy(repo_root: Path) -> dict[str, object]:
     path = repo_root / POLICY_PATH
     try:
@@ -91,8 +95,8 @@ def _load_policy(repo_root: Path) -> dict[str, object]:
         ) from exc
     if not isinstance(payload, dict):
         raise RelayPhysicalEnvironmentError("physical Python policy root must be an object")
-    if payload.get("schema_version") != 1:
-        raise RelayPhysicalEnvironmentError("physical Python policy schema_version must be 1")
+    if not _is_exact_schema_version(payload.get("schema_version"), 1):
+        raise RelayPhysicalEnvironmentError("physical Python policy schema_version must be integer 1")
     python = payload.get("python")
     requirements = payload.get("requirements")
     major = python.get("major") if isinstance(python, dict) else None
@@ -232,7 +236,9 @@ def _load_current_pointer(root: Path, policy_sha256: str) -> dict[str, object]:
         ) from exc
     if (
         not isinstance(payload, dict)
-        or payload.get("schema_version") != POINTER_SCHEMA_VERSION
+        or not _is_exact_schema_version(
+            payload.get("schema_version"), POINTER_SCHEMA_VERSION
+        )
         or payload.get("policy_sha256") != policy_sha256
         or not _valid_instance_id(payload.get("instance_id"))
     ):
@@ -270,9 +276,14 @@ def _load_local_manifest(instance_home: Path) -> dict[str, object]:
         raise RelayPhysicalEnvironmentError(
             f"cannot load persistent physical Python manifest: {path}: {exc}"
         ) from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != MANIFEST_SCHEMA_VERSION:
+    if (
+        not isinstance(payload, dict)
+        or not _is_exact_schema_version(
+            payload.get("schema_version"), MANIFEST_SCHEMA_VERSION
+        )
+    ):
         raise RelayPhysicalEnvironmentError(
-            "persistent physical Python manifest schema_version must be 1"
+            "persistent physical Python manifest schema_version must be integer 1"
         )
     return payload
 
