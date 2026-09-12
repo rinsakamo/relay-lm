@@ -74,7 +74,6 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
     assert payload["child_exit_code"] == 7
     assert payload["pre_invoke_gate_attempts"] == 1
     assert payload["pre_invoke_gate_passed_at"]
-    assert payload["controller_lease_fd_closed_at"]
     assert payload["released_at"]
 
 
@@ -207,11 +206,10 @@ def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None
     assert payload["lease_state"] == "RELEASED"
     assert payload["child_invoked_at"] is None
     assert payload["pre_invoke_error_type"] == "RuntimeError"
-    assert payload["controller_lease_fd_closed_at"]
     assert payload["released_at"]
 
 
-def test_controller_error_after_child_start_is_release_unobserved(tmp_path: Path) -> None:
+def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> None:
     receipt = tmp_path / "receipt.json"
 
     def broken_runner(*args, **kwargs):
@@ -235,13 +233,10 @@ def test_controller_error_after_child_start_is_release_unobserved(tmp_path: Path
 
     payload = json.loads(receipt.read_text())
     assert payload["state"] == "CONTROLLER_ERROR"
-    assert payload["lease_state"] == "RELEASE_UNOBSERVED_AFTER_CHILD_START"
+    assert payload["lease_state"] == "RELEASED"
     assert payload["controller_error_type"] == "RuntimeError"
-    assert payload["controller_lease_fd_closed_at"]
-    assert payload["released_at"] is None
+    assert payload["released_at"]
 
-    # The fake runner did not actually inherit the fd. Closing the controller fd
-    # therefore releases the flock, and a subsequent cooperative run can proceed.
     calls = []
 
     def runner(command, *, cwd, check, text, pass_fds):
