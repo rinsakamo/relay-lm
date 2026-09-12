@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "engine": "llama.cpp",
+  "resource_key": "llama-cpp:local-gpu",
+  "targets": {
+    "v1:stage-r": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_wsl",
+      "description": "Repository-owned v1 Stage R llama.cpp WSL wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
+    "v1:continuity-only": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_production_continuity_only_wsl",
+      "description": "Repository-owned v1 production Continuity-only llama.cpp wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    }
+  }
+}
