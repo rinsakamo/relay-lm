@@ -10,6 +10,9 @@ from relaylm.providers.openai_compatible_extraction_projection import (
     CONTINUITY_ONLY_EXTRACTION_WIRE_SCHEMA,
     EXTRACTION_WIRE_SCHEMA,
     ExtractionProjectionMode,
+    build_extraction_pass_suffix,
+    continuity_extraction_component,
+    unresolved_only_continuity_extraction_component,
 )
 from relaylm.providers.openai_compatible_two_pass import (
     _extraction_pass_suffix,
@@ -118,3 +121,61 @@ def test_continuity_only_request_uses_same_transport_fields_without_state_schema
     assert "state_candidates" not in diagnostic["response_format"]["json_schema"][
         "schema"
     ]["properties"]
+
+
+def test_unresolved_only_reuses_continuity_schema_without_kind_hint() -> None:
+    diagnostic = _extraction_request_body(
+        model="gemma",
+        extraction_input=_extraction_input(),
+        decoding={"temperature": 0, "top_p": 1},
+        structured_output_mode=CognitionStructuredOutputMode.NATIVE,
+        projection_mode=ExtractionProjectionMode.UNRESOLVED_ONLY,
+    )
+
+    schema = diagnostic["response_format"]["json_schema"]
+    assert schema == {
+        "name": "relaylm_unresolved_only_extraction_output",
+        "strict": True,
+        "schema": CONTINUITY_ONLY_EXTRACTION_WIRE_SCHEMA,
+    }
+    kind_schema = schema["schema"]["properties"]["continuity_candidates"]["items"][
+        "properties"
+    ]["kind"]
+    assert set(kind_schema["enum"]) == {"referent", "unresolved", "active_task"}
+
+
+def test_unresolved_only_removes_other_kind_decision_responsibilities() -> None:
+    source_id = _extraction_input().originating_event_id
+    all_kinds = continuity_extraction_component(source_id)
+    unresolved_only = unresolved_only_continuity_extraction_component(source_id)
+
+    assert "`unresolved`: an explicit open question" in unresolved_only
+    assert "explicitly maintained unknown value" in unresolved_only
+    assert "Unresolved transition example" in unresolved_only
+    assert "current Input Event ID `evt-now`" in unresolved_only
+    assert "`epistemic_role` must be exactly" in unresolved_only
+
+    for removed in (
+        "`referent`: a specific subject",
+        "`active_task`: an unfinished action",
+        "Emit every distinct useful Continuity meaning",
+        "For each Continuity kind",
+        "Referent:",
+        "Active task:",
+    ):
+        assert removed in all_kinds
+        assert removed not in unresolved_only
+
+
+def test_existing_continuity_only_still_uses_full_canonical_continuity_component() -> None:
+    extraction_input = _extraction_input()
+    diagnostic = build_extraction_pass_suffix(
+        extraction_input,
+        mode=ExtractionProjectionMode.CONTINUITY_ONLY,
+    )
+    full_component = continuity_extraction_component(extraction_input.originating_event_id)
+
+    assert full_component in diagnostic
+    assert "Emit every distinct useful Continuity meaning" in diagnostic
+    assert "`referent`: a specific subject" in diagnostic
+    assert "`active_task`: an unfinished action" in diagnostic
