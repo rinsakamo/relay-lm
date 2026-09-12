@@ -105,7 +105,10 @@ def probe_external_busy(
     if matches:
         reasons.append("process:" + ",".join(matches))
     if _listener_busy(host, port):
-        reasons.append(f"port_unavailable:{host}:{port}")
+        # Preserve the existing receipt reason for compatibility. The predicate
+        # now means the target listener address is unavailable for bind, which
+        # includes but is not limited to an active LISTEN socket.
+        reasons.append(f"listener:{host}:{port}")
     return tuple(reasons)
 
 
