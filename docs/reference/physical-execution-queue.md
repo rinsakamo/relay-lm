@@ -58,12 +58,27 @@ instance is retained, so an already-started process that froze the old exact
 interpreter is not broken by directory deletion. Automatic garbage collection
 of old instances is intentionally outside the physical transaction path.
 
+### Legacy local-state migration
+
+The pre-#2760 layout used one mutable root-level `venv/` and
+`python-environment.json`. The hardened runtime does not silently adopt, mutate,
+or delete that legacy state. After this carriage is installed, run one explicit:
+
+```bash
+python3.12 -m tools.relay_physical_env --prepare
+```
+
+for the selected checkout/policy. This creates the policy-addressed namespace.
+The old root-level environment remains inert until the operator removes it in a
+separate non-transactional housekeeping step. Never migrate or delete it while a
+physical transaction is in flight.
+
 The local instance manifest freezes the exact Python identity and a fingerprint
 over all installed distributions. Therefore a later `pip install`, upgrade,
-removal, or interpreter change causes preparation/final-preflight failure
-instead of a silent runtime change. The policy requirement list may use version
-floors; the exact realized environment is the local manifest/fingerprint, not
-the policy text alone.
+removal, interpreter change, or loss of venv isolation causes
+preparation/final-preflight failure instead of a silent runtime change. The
+policy requirement list may use version floors; the exact realized environment
+is the local manifest/fingerprint, not the policy text alone.
 
 RelayLM itself is not installed into a persistent venv. Child processes get an
 exact `PYTHONPATH` containing only the selected checkout root and its `src/`
@@ -209,6 +224,24 @@ resets the idle counter. The lease file descriptor is inherited by the immediate
 child so an outer controller death does not release the lease while that child
 is still alive.
 
+Once the child has inherited the lease descriptor, the controller must **not**
+explicitly issue `LOCK_UN` during cleanup. `flock` state is associated with the
+shared open file description; an explicit unlock by the parent can release the
+lease for the inherited child too. The controller therefore closes only its own
+descriptor. Normal observed child completion is then recorded as `RELEASED`.
+
+If the controller unwinds after `child_invoked_at` but before observing a child
+exit—for example via `SIGINT`/`KeyboardInterrupt`—the receipt is conservative:
+
+```text
+lease_state = RELEASE_UNOBSERVED_AFTER_CHILD_START
+released_at = null
+```
+
+The inherited child may still own the lease. This state is never evidence that a
+second invocation is legal. A later cooperative controller must still acquire
+the same `flock`; it naturally waits until the inherited child descriptor closes.
+
 After the potentially slow final authority/environment gate, the queue performs
 one more external process/port check. If the target address became unavailable,
 it does not invoke the child; it returns to the external-runtime wait, regains
@@ -231,8 +264,8 @@ python3.12 -m pytest -q tests/integration/test_physical_execution_queue_process_
 
 This uses real local processes/sockets but no model/GPU and covers cross-process
 `flock`, external `llama-server` waiting, target-facing port quiescence,
-inherited-lease survival after controller death, and pre-invoke blocking with
-zero child starts.
+inherited-lease survival after abrupt controller death, inherited-lease survival
+through Python `SIGINT` cleanup, and pre-invoke blocking with zero child starts.
 
 ## Receipt and environment evidence
 
