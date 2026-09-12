@@ -53,6 +53,7 @@ import RelayTheory.AdaptiveFeedbackSequentialization
 import RelayTheory.AdaptivePolicyFamilySequentialization
 import RelayTheory.UnboundedHistorySequentialization
 import RelayTheory.StochasticHistoryStateMarkovization
+import RelayTheory.CoarseRelataPrecedence
 import RelayTheory.CausalOrderProjection
 import RelayTheory.ObserverChainRealizers
 import RelayTheory.ProcessMonotonicity
