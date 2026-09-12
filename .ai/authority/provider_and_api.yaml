@@ -85,3 +85,5 @@ tests:
 - tests/unit/test_event_evidence_projection.py
 depends_on:
 - core_architecture
+- cognitive_turn
+- continuity_context
