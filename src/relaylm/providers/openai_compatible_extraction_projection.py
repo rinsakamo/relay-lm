@@ -206,7 +206,7 @@ def continuity_extraction_component(source_id: str) -> str:
 def production_extraction_outro() -> str:
     return """
 Exact top-level shape:
-`{{\"state_candidates\":[],\"continuity_candidates\":[]}}`
+`{\"state_candidates\":[],\"continuity_candidates\":[]}`
 
 Return exactly one JSON object with no extra keys."""
 
@@ -214,7 +214,7 @@ Return exactly one JSON object with no extra keys."""
 def continuity_only_extraction_outro() -> str:
     return """
 Exact top-level shape:
-`{{\"continuity_candidates\":[]}}`
+`{\"continuity_candidates\":[]}`
 
 Return exactly one JSON object with no extra keys."""
 
