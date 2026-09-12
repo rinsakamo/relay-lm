@@ -66,10 +66,15 @@ theorem finKernel_merge01_contextActionEq_stable_under_safe_policy :
       FinKernel.merge01ProbeFamily3
       FinKernel.merge01SafeContextFamily3 := by
   intro k l hkl c hc m f
-  exact finKernel_merge01_safe_context_stable
-    (FinKernel.compose k f)
-    (FinKernel.compose l f)
-    c hc (hkl f)
+  have hAfter :=
+    finKernel_merge01_safe_context_stable
+      (FinKernel.compose k f)
+      (FinKernel.compose l f)
+      c hc (hkl f)
+  simpa only [
+    finKernel_compose_associative f k c,
+    finKernel_compose_associative f l c
+  ] using hAfter
 
 /--
 The expanded policy from #2755 does not make one-step action equivalence a
@@ -81,7 +86,13 @@ theorem finKernel_merge01_contextActionEq_not_stable_under_expanded_policy :
       FinKernel.merge01ProbeFamily3
       FinKernel.merge01ExpandedContextFamily3 := by
   intro hStable
-  have hAfterMove :=
+  have hAfterMove :
+      FinKernel.ContextActionEq
+        FinKernel.merge01ProbeFamily3
+        (FinKernel.compose finKernelMoveOneToTwo
+          (FinKernel.dirac finCollapseHidden3))
+        (FinKernel.compose finKernelMoveOneToTwo
+          (FinKernel.identity 3)) :=
     hStable
       (FinKernel.dirac finCollapseHidden3)
       (FinKernel.identity 3)
