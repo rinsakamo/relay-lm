@@ -273,6 +273,73 @@ def test_parent_death_keeps_lease_until_inherited_child_exits(tmp_path: Path) ->
             lock_file.close()
 
 
+def test_controller_sigint_keeps_lease_until_inherited_child_exits(
+    tmp_path: Path,
+) -> None:
+    resource_key = "process-smoke:controller-sigint"
+    lock_root = tmp_path / "locks"
+    receipt = tmp_path / "receipt.json"
+    child_pid = tmp_path / "child-pid"
+    child_ready = tmp_path / "child-ready"
+    child_done = tmp_path / "child-done"
+    child_code = (
+        "from pathlib import Path; import os,sys,time; "
+        "Path(sys.argv[1]).write_text(str(os.getpid())); "
+        "Path(sys.argv[2]).write_text('ready'); time.sleep(0.9); "
+        "Path(sys.argv[3]).write_text('done')"
+    )
+    helper = _queue_helper(
+        resource_key=resource_key,
+        lock_root=lock_root,
+        receipt=receipt,
+        child_code=child_code,
+        child_args=[child_pid, child_ready, child_done],
+    )
+    orphan_pid: int | None = None
+    lock_file = None
+    try:
+        _wait_for_path(child_ready)
+        orphan_pid = int(child_pid.read_text())
+        helper.send_signal(signal.SIGINT)
+        assert helper.wait(timeout=3) != 0
+
+        lock_path = lock_root / _safe_resource_id(resource_key)
+        lock_file = lock_path.open("a+")
+        with pytest.raises(BlockingIOError):
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        payload = json.loads(receipt.read_text())
+        assert payload["state"] == "CONTROLLER_ERROR"
+        assert payload["child_invoked_at"]
+        assert payload["child_exit_code"] is None
+        assert payload["lease_state"] == "RELEASE_UNOBSERVED_AFTER_CHILD_START"
+        assert payload["released_at"] is None
+        assert payload["controller_lease_fd_closed_at"]
+
+        _wait_for_path(child_done)
+        deadline = time.monotonic() + 2.0
+        while True:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise AssertionError("lease stayed locked after SIGINT child exit")
+                time.sleep(0.01)
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+    finally:
+        if helper.poll() is None:
+            helper.kill()
+            helper.wait(timeout=2)
+        if orphan_pid is not None and not child_done.exists():
+            try:
+                os.kill(orphan_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        if lock_file is not None:
+            lock_file.close()
+
+
 def test_pre_invoke_block_never_starts_real_child(tmp_path: Path) -> None:
     marker = tmp_path / "must-not-exist"
     receipt = tmp_path / "receipt.json"
