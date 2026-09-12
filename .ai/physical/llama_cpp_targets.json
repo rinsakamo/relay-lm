@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "engine": "llama.cpp",
+  "resource_key": "llama-cpp:local-gpu",
+  "targets": {
+    "v2:shared-floor-calibration": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_shared_floor_calibration_llama_cpp_wsl",
+      "description": "Repository-owned v2 Cognitive IR shared-floor calibration wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
+    "v2:attack-observability-calibration": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_attack_observability_calibration_llama_cpp_wsl",
+      "description": "Current R6D attack-observability llama.cpp calibration wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
+    "v2:r6d-d1": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_s3_r6d_d1_llama_cpp_wsl",
+      "description": "Repository-owned v2 S3-R6D D1 shared Structure-vs-cache discriminator wrapper from #2670.",
+      "required_distributions": [
+        "httpx"
+      ]
+    }
+  }
+}

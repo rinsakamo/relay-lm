@@ -1,0 +1,21 @@
+schema_version: 1
+id: physical_execution_queue
+owner_issue: 2660
+summary: >-
+  v2 carriage of the branch-neutral llama.cpp-only one-shot physical controller.
+  LocalCodex selects a repository-registered target while the internal queue
+  serializes the canonical local GPU resource and enforces a final fresh-ref gate.
+canonical_surfaces:
+- docs/reference/physical-execution-queue.md
+- .ai/physical/llama_cpp_targets.json
+implementation:
+- tools/relay_physical_run.py
+- tools/physical_execution_queue.py
+tests:
+- tests/unit/test_relay_physical_run.py
+- tests/unit/test_physical_execution_queue.py
+- tests/integration/test_physical_execution_queue_process_smoke.py
+annotations:
+- .ai/skills/physical-execution-queue/SKILL.md
+depends_on:
+- relaylm2_physical_execution
