@@ -5,16 +5,17 @@ summary: >-
   share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
   visible character response with a minimal suffix; Pass 2 projects semantic
   State/Continuity proposals directly, without a model-authored interpretation
-  scaffold. Response-first scheduling proactively cancels and joins obsolete
-  stale Pass 2 local tasks before a newer Pass 1 begins provider generation.
-  Pass 2 extraction transport is selectable between RelayLM-owned ordinary-message
-  JSON and provider-native JSON Schema constrained output, while RelayLM retains
-  exact IR parsing/type construction plus deterministic State/Continuity authority.
-  Fixed transcript turn replay preserves caller-supplied user/assistant Events,
-  skips Pass 1 generation, and reuses the ordinary originating snapshot, Pass 2,
-  stale guards, and deterministic State/Continuity commit boundary.
-  single_pass remains compatibility/future optimization rather than a Core 1.0
-  quality gate.
+  scaffold. Canonical Pass-2 State and Continuity projection components are
+  factorized while ordinary production assembly remains behavior-preserving.
+  Response-first scheduling proactively cancels and joins obsolete stale Pass 2
+  local tasks before a newer Pass 1 begins provider generation. Pass 2 extraction
+  transport is selectable between RelayLM-owned ordinary-message JSON and
+  provider-native JSON Schema constrained output, while RelayLM retains exact IR
+  parsing/type construction plus deterministic State/Continuity authority. Fixed
+  transcript turn replay preserves caller-supplied user/assistant Events, skips
+  Pass 1 generation, and reuses the ordinary originating snapshot, Pass 2, stale
+  guards, and deterministic State/Continuity commit boundary. single_pass remains
+  compatibility/future optimization rather than a Core 1.0 quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
@@ -35,6 +36,7 @@ implementation:
 - src/relaylm/shadow_turn.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/openai_compatible_extraction_projection.py
 - src/relaylm/providers/openai_compatible_budget.py
 qualification_inputs:
 - docs/contracts/cognition-execution-policy.md
@@ -48,6 +50,7 @@ qualification_inputs:
 - src/relaylm/two_pass_turn.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/openai_compatible_extraction_projection.py
 - src/relaylm/providers/openai_compatible_budget.py
 qualification_exclusions:
 - path: src/relaylm/cognition_execution_evidence.py
@@ -75,6 +78,7 @@ tests:
 - tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
 - tests/unit/test_openai_compatible_two_pass.py
+- tests/unit/test_openai_compatible_extraction_projection.py
 - tests/unit/test_two_pass_prompt_direct_candidates.py
 - tests/unit/test_two_pass_prompt_wire_disambiguation.py
 - tests/unit/test_two_pass_structured_output_mode.py
