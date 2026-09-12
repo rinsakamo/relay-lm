@@ -61,8 +61,8 @@ theorem finKernel_contextActionEq_preserved_by_generated
       intro k l hkl
       simpa only [finKernel_compose_identity_after] using hkl
   | generator hmem =>
-      intro k l hkl
-      exact hStable k l hkl _ hmem
+      intro k l hkl m f
+      exact (hStable k l hkl _ hmem) f
   | seq hk hl ihk ihl =>
       intro k l hkl
       have hFirst := ihk hkl
