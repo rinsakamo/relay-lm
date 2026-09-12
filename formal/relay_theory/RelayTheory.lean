@@ -33,6 +33,7 @@ import RelayTheory.PositiveWeightRobustness
 import RelayTheory.ProbeRelative
 import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
+import RelayTheory.ProbeFamilyRedundancy
 import RelayTheory.StochasticProbeDichotomy
 import RelayTheory.RestrictedContexts
 import RelayTheory.StochasticQuotientDynamics
