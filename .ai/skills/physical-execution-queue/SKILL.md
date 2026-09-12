@@ -26,7 +26,7 @@ authorization:
 5. The pre-hardening root-level `~/.local/share/relaylm/physical/venv` and `python-environment.json` are legacy state. Do not silently adopt, mutate, or delete them. One explicit `--prepare` creates the policy-addressed namespace; legacy cleanup is a separate non-transactional housekeeping action.
 6. If the selected instance drifted, stop. Do not silently install/upgrade/repair. A deliberate non-transactional `--rebuild` creates a fresh immutable instance and atomically moves the policy's `current.json` pointer. It does not delete the previous instance underneath an active process.
 7. Same-policy prepare/rebuild creation is serialized by a policy-specific local `flock`.
-8. Use the branch-local repository target registry at `.ai/physical/llama_cpp_targets.json`. The common runner requires exact `schema_version=1`, `engine=llama.cpp`, and `resource_key=llama-cpp:local-gpu` before consuming it.
+8. Use the branch-local repository target registry at `.ai/physical/llama_cpp_targets.json`. The registry remains an owner-local canonical repository surface, but it is excluded from branch-neutral common-generation identity. The common runner requires exact `schema_version=1`, `engine=llama.cpp`, and `resource_key=llama-cpp:local-gpu` before consuming it.
 9. Prefer the public entrypoint: `python3.12 -m tools.relay_physical_run --target <registered-target>`. Do not assume a generic `python` alias exists.
 10. The runner automatically re-execs through the selected persistent physical Python and gives target children an exact checkout-only `PYTHONPATH` plus `PYTHONNOUSERSITE=1`.
 11. For infrastructure-only qualification, use `infra:queue-smoke`; it performs zero provider/model/semantic calls.
@@ -40,11 +40,11 @@ authorization:
 19. If any authority or selected environment identity drifted during the wait, stop before target invocation, release, reprepare, and requeue. The scientific owner remains unspent.
 20. A policy-pointer switch after the final gate does not delete the frozen old interpreter because rebuild is non-destructive. The exact selected interpreter/fingerprint remains part of the run evidence.
 21. The target retains its own fail-closed listener check as defense in depth. An arbitrary non-cooperating process can still race after the controller's last observation; the controller cannot make external TCP ownership atomic without changing the target lifecycle contract.
-22. The immediate child inherits the cooperative lease file descriptor. After child invocation the controller must never explicitly `LOCK_UN` during cleanup; it closes only its own descriptor so an inherited child keeps the lease until it exits.
-23. If the controller unwinds after `child_invoked_at` but before observing child exit, treat `RELEASE_UNOBSERVED_AFTER_CHILD_START` as conservative infrastructure evidence that the child may still own the lease. It is never permission to retry. A subsequent cooperative run must reacquire the same `flock` normally.
+22. The immediate child inherits the cooperative lease file descriptor so abrupt controller death that bypasses Python cleanup does not release the lease while that immediate child remains alive.
+23. Do not confuse abrupt death with a handled Python interruption. The production child path uses `subprocess.run`; a handled interruption such as `KeyboardInterrupt` terminates/reaps the immediate child before controller cleanup propagates. If `child_invoked_at` was populated, the scientific owner is spent regardless of whether the child completed.
 24. Once a scientific target wrapper is invoked, never retry/replay/reseed/fallback through this controller.
 25. Preserve the target result unchanged. Queue receipts and Python-environment fingerprints are infrastructure-only.
-26. Treat `.ai/physical/llama_cpp_targets.json` as branch-local carriage data, not as branch-neutral common-generation identity. Common HOW must not absorb `v1:*` / `v2:*` target science or THIS-RUN spend policy.
+26. Treat `.ai/physical/llama_cpp_targets.json` as branch-local carriage data for common-generation purposes. Common HOW must not absorb `v1:*` / `v2:*` target science or THIS-RUN spend policy.
 
 A short operator prompt naming the owner/experiment is sufficient. LocalCodex
 must resolve the target and current target-owned procedure from fresh authority;
