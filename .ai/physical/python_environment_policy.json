@@ -1,0 +1,15 @@
+{
+  "python": {
+    "implementation": "CPython",
+    "major": 3,
+    "minor": 12
+  },
+  "requirements": [
+    "PyYAML>=6.0.2",
+    "fastapi>=0.115",
+    "httpx>=0.28",
+    "pydantic>=2.1.1",
+    "uvicorn>=0.34"
+  ],
+  "schema_version": 1
+}

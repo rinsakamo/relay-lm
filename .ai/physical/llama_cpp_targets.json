@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "engine": "llama.cpp",
+  "resource_key": "llama-cpp:local-gpu",
+  "targets": {
+    "infra:queue-smoke": {
+      "branch": "v1",
+      "module": "tools.physical_execution_queue_smoke_target",
+      "description": "Infrastructure-only queue child; zero provider/model/semantic calls.",
+      "required_distributions": []
+    },
+    "v1:stage-r": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_wsl",
+      "description": "Repository-owned v1 Stage R llama.cpp WSL wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
+    "v1:continuity-only": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_production_continuity_only_wsl",
+      "description": "Repository-owned v1 production Continuity-only llama.cpp wrapper.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
+    "v1:unresolved-only": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_production_unresolved_only_wsl",
+      "description": "Repository-owned v1 production unresolved-only llama.cpp wrapper from #2676.",
+      "required_distributions": [
+        "httpx"
+      ]
+    }
+  }
+}
