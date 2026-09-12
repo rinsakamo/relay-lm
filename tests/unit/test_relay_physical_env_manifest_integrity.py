@@ -8,13 +8,19 @@ import pytest
 import tools.relay_physical_env as envtool
 
 
-def _write_policy(root: Path, *, major: object = 3, minor: object = 12) -> None:
+def _write_policy(
+    root: Path,
+    *,
+    schema_version: object = 1,
+    major: object = 3,
+    minor: object = 12,
+) -> None:
     path = root / envtool.POLICY_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": schema_version,
                 "python": {
                     "implementation": "CPython",
                     "major": major,
@@ -27,6 +33,15 @@ def _write_policy(root: Path, *, major: object = 3, minor: object = 12) -> None:
     )
 
 
+def test_policy_rejects_boolean_schema_version(tmp_path: Path) -> None:
+    _write_policy(tmp_path, schema_version=True)
+    with pytest.raises(
+        envtool.RelayPhysicalEnvironmentError,
+        match="schema_version must be integer 1",
+    ):
+        envtool._load_policy(tmp_path)
+
+
 def test_policy_rejects_boolean_python_version_components(tmp_path: Path) -> None:
     _write_policy(tmp_path, major=True)
     with pytest.raises(envtool.RelayPhysicalEnvironmentError, match="invalid physical Python policy"):
@@ -35,6 +50,39 @@ def test_policy_rejects_boolean_python_version_components(tmp_path: Path) -> Non
     _write_policy(tmp_path, minor=False)
     with pytest.raises(envtool.RelayPhysicalEnvironmentError, match="invalid physical Python policy"):
         envtool._load_policy(tmp_path)
+
+
+def test_local_pointer_and_manifest_reject_boolean_schema_versions(
+    tmp_path: Path,
+) -> None:
+    physical_root = tmp_path / "physical"
+    policy_sha256 = "a" * 64
+    instance_id = "1" * 32
+
+    envtool._atomic_write_json(
+        envtool._current_pointer_path(physical_root, policy_sha256),
+        {
+            "schema_version": True,
+            "policy_sha256": policy_sha256,
+            "instance_id": instance_id,
+        },
+    )
+    with pytest.raises(
+        envtool.RelayPhysicalEnvironmentError,
+        match="invalid persistent physical Python pointer",
+    ):
+        envtool._load_current_pointer(physical_root, policy_sha256)
+
+    instance_home = envtool._instances_root(physical_root, policy_sha256) / instance_id
+    envtool._atomic_write_json(
+        instance_home / envtool.LOCAL_MANIFEST_NAME,
+        {"schema_version": True},
+    )
+    with pytest.raises(
+        envtool.RelayPhysicalEnvironmentError,
+        match="schema_version must be integer 1",
+    ):
+        envtool._load_local_manifest(instance_home)
 
 
 def test_manifest_python_executable_drift_is_fail_closed(
