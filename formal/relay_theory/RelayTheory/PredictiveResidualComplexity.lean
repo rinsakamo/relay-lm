@@ -59,7 +59,8 @@ theorem stateSufficient_injective_on_pairwise_distinct
     (hdistinct : PairwisePredictivelyDistinct response sample) :
     Function.Injective (fun i => encode (sample i)) := by
   intro i j hij
-  by_contra hne
+  apply Classical.byContradiction
+  intro hne
   exact hdistinct i j hne (hsuff (sample i) (sample j) hij)
 
 /--
@@ -187,14 +188,15 @@ theorem natEqualityResponse_predictiveEquivalent_iff
     PredictivelyEquivalent natEqualityResponse h₁ h₂ ↔ h₁ = h₂ := by
   constructor
   · intro heq
-    by_contra hne
+    apply Classical.byContradiction
+    intro hne
     have hne' : h₂ ≠ h₁ := by
       intro h
       exact hne h.symm
     have hp := heq h₁
     simp [natEqualityResponse, hne'] at hp
   · intro h
-    subst h₂
+    cases h
     intro probe
     rfl
 
