@@ -27,7 +27,7 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
     probes = iter(
         [
             ("process:llama-server",),
-            ("port_unavailable:127.0.0.1:1234",),
+            ("listener:127.0.0.1:1234",),
             (),
             (),
             (),
@@ -111,7 +111,7 @@ def test_invocation_boundary_busy_reenters_wait_without_child(
         [
             (),
             (),
-            ("port_unavailable:127.0.0.1:1234",),
+            ("listener:127.0.0.1:1234",),
             (),
             (),
             (),
@@ -170,7 +170,7 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
             host=host,
             port=port,
             busy_process_names=(),
-        ) == (f"port_unavailable:{host}:{port}",)
+        ) == (f"listener:{host}:{port}",)
 
     assert port_is_bindable(host, port) is True
     assert selected_tx._port_is_free(host, port) is True
