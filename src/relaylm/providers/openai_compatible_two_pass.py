@@ -40,6 +40,7 @@ from relaylm.providers.openai_compatible_cognition import (
 from relaylm.providers.openai_compatible_reasoning import (
     OpenAICompatibleReasoningRequest,
 )
+from relaylm.providers.openai_request_observation import observe_model_facing_request
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
@@ -154,19 +155,21 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         terminal_finish_reason: str | None = None
 
         try:
+            body = _conversation_request_body(
+                model=self.model,
+                cognitive_input=cognitive_input,
+                stream=True,
+                decoding=decoding_config.to_mapping(),
+                reasoning_request=effective_reasoning,
+                vllm_reasoning_capability=effective_vllm,
+                lm_studio_reasoning_capability=effective_lm_studio,
+            )
+            observe_model_facing_request(body)
             async with self._client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
                 headers=self._headers(),
-                json=_conversation_request_body(
-                    model=self.model,
-                    cognitive_input=cognitive_input,
-                    stream=True,
-                    decoding=decoding_config.to_mapping(),
-                    reasoning_request=effective_reasoning,
-                    vllm_reasoning_capability=effective_vllm,
-                    lm_studio_reasoning_capability=effective_lm_studio,
-                ),
+                json=body,
             ) as response:
                 if not response.is_success:
                     await response.aread()
@@ -265,6 +268,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
     ) -> Any:
         prefix = f"upstream {boundary} request failed"
         try:
+            observe_model_facing_request(body)
             response = await self._client.post(
                 f"{self.base_url}/chat/completions",
                 headers=self._headers(),
