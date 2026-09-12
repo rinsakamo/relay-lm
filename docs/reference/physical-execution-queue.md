@@ -75,10 +75,12 @@ physical transaction is in flight.
 
 The local instance manifest freezes the exact Python identity and a fingerprint
 over all installed distributions. Therefore a later `pip install`, upgrade,
-removal, interpreter change, or loss of venv isolation causes
-preparation/final-preflight failure instead of a silent runtime change. The
-policy requirement list may use version floors; the exact realized environment
-is the local manifest/fingerprint, not the policy text alone.
+removal, interpreter change, manifest executable edit, or loss of venv isolation
+causes preparation/final-preflight failure instead of a silent runtime change.
+Policy, pointer, manifest, and registry schema versions require exact JSON integer
+values; JSON booleans are not accepted as integers. The policy requirement list
+may use version floors; the exact realized environment is the local
+manifest/fingerprint, not the policy text alone.
 
 RelayLM itself is not installed into a persistent venv. Child processes get an
 exact `PYTHONPATH` containing only the selected checkout root and its `src/`
@@ -127,7 +129,7 @@ generation identity. v1 and v2 are expected to register different targets.
 The common runner fails closed on the registry contract before using it:
 
 ```text
-schema_version = 1
+schema_version = integer 1
 engine = llama.cpp
 resource_key = llama-cpp:local-gpu
 ```
@@ -164,6 +166,7 @@ QUEUE / SHARED LEASE
        |
        v
 EXTERNAL LLAMA.CPP QUIESCENCE
+  require process-table root observability
   wait for llama-server / llama-cli / llama-run
   require exact target listener address to be bindable
   never kill or reuse
@@ -199,7 +202,10 @@ LEASE RELEASE
 
 The listener criterion is target-facing **bindability**, not merely successful
 TCP connection. A port can have no accepting listener and still be unavailable
-to the target because of local socket lifecycle state.
+to the target because of local socket lifecycle state. Failure to enumerate the
+process-table root is also fail-closed rather than being interpreted as “no
+external llama.cpp process.” Individual process entries remain best-effort
+because processes can disappear while `/proc` is being traversed.
 
 If repository authority or the selected persistent Python environment changes
 while the job waits, the final gate stops before child invocation. Reprepare and
