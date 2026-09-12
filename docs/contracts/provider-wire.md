@@ -114,9 +114,78 @@ For Continuity `set`, `value` is the proposed JSON semantic value. Nested arrays
 
 For Continuity `resolve`, wire `value` is `null` and is normalized to the semantic resolve form where the value field is absent.
 
-Candidate `sources` remain Event IDs. The provider adapter does not promote Memory document locations into provenance and does not decide whether a proposal is accepted.
+Canonical semantic candidate `sources` remain real RelayLM Event IDs. Memory document locations are never promoted into provenance, and the provider adapter does not decide whether a proposal is accepted.
 
 RelayLM closes the Continuity candidate object itself: unknown candidate fields, unsupported kinds/operations/epistemic roles, missing required fields, and malformed source arrays fail closed. The semantic `value` remains the JSON payload owned by Continuity rather than being narrowed into a provider-specific value vocabulary.
+
+## Two-pass provider-facing provenance aliases
+
+Core 1.0 two-pass OpenAI-compatible requests use a request-local external representation for Event provenance. This representation exists only at the provider boundary; it does not replace canonical Event IDs inside RelayLM.
+
+For each Pass 1 or Pass 2 request, RelayLM deterministically assigns opaque aliases:
+
+```text
+current Input Event ID                    -> E0
+then State.sources, in canonical order    -> E1, E2, ... as first encountered
+then Context.sources, in canonical order  -> next aliases as first encountered
+then Event Evidence IDs, in order         -> next aliases as first encountered
+```
+
+The same real Event ID always maps to the same alias within one request. Repeated references therefore preserve equality and provenance topology while removing arbitrary UUID spelling from the model-facing token sequence.
+
+Only provenance labels are rewritten. RelayLM does not recursively replace matching strings inside semantic content or values. Identity, State meaning, `state_classes`, Context content and actor, Knowledge, Memory, Event Evidence type/actor/timestamp/content, Current Input actor/content, ordering, Pass 1 response text, response schema, decoding controls, and reasoning controls are unchanged by aliasing. Timestamp normalization is not part of this contract.
+
+The two-pass model-facing `CognitiveInput` therefore carries aliases in provenance-bearing positions such as:
+
+```json
+{
+  "state": [
+    {
+      "state_class": "user.identity",
+      "key": "name",
+      "value": "Rin",
+      "sources": ["E1"]
+    }
+  ],
+  "context": [
+    {
+      "content": "Earlier user message",
+      "sources": ["E1"],
+      "actor": "user"
+    }
+  ],
+  "event_evidence": [
+    {
+      "event_id": "E2",
+      "type": "message",
+      "actor": "user",
+      "timestamp": "2026-08-17T00:00:00+00:00",
+      "content": "Recorded occurrence"
+    }
+  ],
+  "input": {
+    "event_id": "E0",
+    "actor": "user",
+    "content": "Current input"
+  }
+}
+```
+
+Pass 2 source examples, source rules, and the accepted-Continuity lifecycle channel use the same request-local aliases. A provider must return candidate `sources` using only aliases present in that originating request. An unknown alias fails closed as a provider protocol error.
+
+After the provider response is parsed into typed candidate shapes, the adapter reverse-maps every candidate source alias to the corresponding real Event ID **before** the existing canonical source-membership validator and before deterministic State/Continuity validation or commit. Consequently:
+
+```text
+provider-facing candidate sources: E0, E1, ...
+        -> adapter reverse map
+canonical candidate sources: real Event IDs
+        -> existing RelayLM source validation
+        -> deterministic State / Continuity authority
+```
+
+No alias is persisted in State, Continuity, the Event Journal, Memory, or canonical semantic evidence. Exact provider-request evidence records the aliased body that was actually sent on the wire; semantic proposal evidence after adapter normalization continues to carry real Event provenance.
+
+Ordinary single-pass OpenAI-compatible cognition is not changed by this two-pass stabilization rule and continues to use its existing provider representation.
 
 ## Degree-hint semantics
 
@@ -148,6 +217,8 @@ provider message Continuity resolve with value:null
     -> semantic Continuity resolve with value absent
 ```
 
+For Core 1.0 two-pass requests, provider-facing provenance aliases are reverse-mapped to real Event IDs as an adapter representation step before canonical source validation. This changes no candidate meaning and grants no new source authority.
+
 Before this normalization, RelayLM verifies the exact combined-IR top-level and candidate shapes. No semantic acceptance, lifecycle interpretation, or calibration is performed by the adapter. State validation and Continuity validation remain downstream deterministic RelayLM authority.
 
 ## CognitiveInput context provenance
@@ -162,7 +233,7 @@ Provider-facing `CognitiveInput.context` may include RelayLM-prepared Working Co
 }
 ```
 
-Actor/source provenance must be preserved. The provider instruction explicitly states that assistant-authored Context supports conversational continuity only and does not prove user facts, preferences, goals, experiences, or external events.
+Actor/source provenance must be preserved. In the two-pass provider representation, the source label itself may be an opaque request-local alias, but its equality relation and canonical real Event provenance are preserved through the adapter mapping. The provider instruction explicitly states that assistant-authored Context supports conversational continuity only and does not prove user facts, preferences, goals, experiences, or external events.
 
 User-authored Context records what the user said but remains bounded by that utterance's temporal and semantic scope; prompt placement does not promote it to timeless external truth.
 
@@ -206,7 +277,7 @@ Provider-facing `CognitiveInput.event_evidence` is a distinct optional layer for
 }
 ```
 
-Event evidence remains separate from Working Context, crystallized Memory, active State, and Current Input. It preserves the real persisted Event ID plus occurrence type, actor, timestamp, and content.
+Event evidence remains separate from Working Context, crystallized Memory, active State, and Current Input. Canonically it preserves the real persisted Event ID plus occurrence type, actor, timestamp, and content. In a Core 1.0 two-pass model-facing request, only that `event_id` label is replaced by its request-local alias; the occurrence metadata and content are unchanged, and the adapter retains the reverse mapping to the real persisted Event ID.
 
 Authority remains source-role-aware:
 
@@ -214,7 +285,7 @@ Authority remains source-role-aware:
 - assistant-authored Event evidence remains assistant-authored and cannot establish user facts or external truth merely because it was retrieved;
 - a retrieved occurrence is not automatically accepted current State.
 
-Real Event-evidence IDs are eligible proposal provenance. The provider wire instruction therefore restricts candidate `sources` to Event IDs present through State, Context, Event Evidence, or the current Input. Memory `location` values remain explicitly ineligible.
+Real Event-evidence IDs are eligible canonical proposal provenance. For two-pass requests, the provider returns their request-local aliases in candidate `sources`; RelayLM reverse-maps them before the ordinary canonical source validator. Memory `location` values remain explicitly ineligible.
 
 The adapter only serializes already-projected Event evidence. It does not widen retrieval scope, read the Event Journal, or choose an Event retrieval budget.
 
