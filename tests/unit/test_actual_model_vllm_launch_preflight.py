@@ -532,10 +532,18 @@ def test_wrapper_exit_keeps_descendant_attributable_and_cleanup_owned(
     )
     try:
         deadline = time.monotonic() + 2
-        while not child_pid_path.exists() and time.monotonic() < deadline:
+        child_pid: int | None = None
+        while time.monotonic() < deadline:
+            try:
+                candidate = int(child_pid_path.read_text(encoding="ascii").strip())
+            except (FileNotFoundError, ValueError):
+                time.sleep(0.01)
+                continue
+            if candidate > 0:
+                child_pid = candidate
+                break
             time.sleep(0.01)
-        assert child_pid_path.exists()
-        child_pid = int(child_pid_path.read_text(encoding="ascii"))
+        assert child_pid is not None
         listener = RuntimeListenerObservation(
             endpoint=RuntimeListenerEndpoint(host="127.0.0.1", port=8000),
             pids=(child_pid,),
