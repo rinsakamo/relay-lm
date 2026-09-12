@@ -120,11 +120,11 @@ The branch-local target registry is:
 .ai/physical/llama_cpp_targets.json
 ```
 
-It is carriage data, not branch-neutral generation identity. v1 and v2 are
-expected to register different targets.
+It remains an owner-local canonical repository surface because each branch must
+own its exact dispatch table, but it is **not** part of branch-neutral common-
+generation identity. v1 and v2 are expected to register different targets.
 
-The common runner nevertheless fails closed on the registry contract before
-using it:
+The common runner fails closed on the registry contract before using it:
 
 ```text
 schema_version = 1
@@ -221,26 +221,22 @@ The queue uses POSIX/WSL `flock`. File existence is not ownership.
 
 After acquisition it requires consecutive idle observations. A busy observation
 resets the idle counter. The lease file descriptor is inherited by the immediate
-child so an outer controller death does not release the lease while that child
-is still alive.
+child, so an **abrupt controller death** that bypasses Python cleanup does not
+release the cooperative lease while that immediate child remains alive.
 
-Once the child has inherited the lease descriptor, the controller must **not**
-explicitly issue `LOCK_UN` during cleanup. `flock` state is associated with the
-shared open file description; an explicit unlock by the parent can release the
-lease for the inherited child too. The controller therefore closes only its own
-descriptor. Normal observed child completion is then recorded as `RELEASED`.
+The production child path uses `subprocess.run`. A handled Python interruption
+such as `KeyboardInterrupt` is different from abrupt controller death: the
+stdlib subprocess runner terminates/reaps the immediate child before propagating
+the interruption back through controller cleanup. The controller may therefore
+release its cooperative lease during that handled unwind. Because
+`child_invoked_at` was already populated, the scientific owner is spent and the
+controller must never retry the target under the same owner.
 
-If the controller unwinds after `child_invoked_at` but before observing a child
-exit—for example via `SIGINT`/`KeyboardInterrupt`—the receipt is conservative:
-
-```text
-lease_state = RELEASE_UNOBSERVED_AFTER_CHILD_START
-released_at = null
-```
-
-The inherited child may still own the lease. This state is never evidence that a
-second invocation is legal. A later cooperative controller must still acquire
-the same `flock`; it naturally waits until the inherited child descriptor closes.
+This distinction is intentional: inherited-FD protection is a crash/hard-death
+defense, not a promise that a handled controller interruption leaves the target
+running. Target-owned cleanup and the next run's external-runtime process/port
+checks remain defense in depth for any descendant runtime that outlives the
+immediate wrapper.
 
 After the potentially slow final authority/environment gate, the queue performs
 one more external process/port check. If the target address became unavailable,
@@ -264,8 +260,8 @@ python3.12 -m pytest -q tests/integration/test_physical_execution_queue_process_
 
 This uses real local processes/sockets but no model/GPU and covers cross-process
 `flock`, external `llama-server` waiting, target-facing port quiescence,
-inherited-lease survival after abrupt controller death, inherited-lease survival
-through Python `SIGINT` cleanup, and pre-invoke blocking with zero child starts.
+inherited-lease survival after abrupt controller death, and pre-invoke blocking
+with zero child starts.
 
 ## Receipt and environment evidence
 
