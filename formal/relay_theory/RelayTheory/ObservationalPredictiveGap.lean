@@ -19,6 +19,16 @@ def ObservationPredictionGap {m n : Nat}
     (f g : FinKernel m n) : Prop :=
   ProbeEq current f g ∧ ¬ ProbeEq future f g
 
+/--
+The declared current probe family is predictively sufficient for the declared
+future/context family when current equivalence never merges a pair that the
+future family distinguishes.  This is a quotient/interface property only.
+-/
+def PredictivelySufficient {n : Nat}
+    (current future : ProbeFamily n) : Prop :=
+  ∀ {m : Nat} (f g : FinKernel m n),
+    ProbeEq current f g → ProbeEq future f g
+
 end FinKernel
 
 /-- Equivalence for the union observer is exactly equivalence for both families. -/
@@ -51,6 +61,34 @@ theorem finKernel_probeEq_future_of_current
     (hcurrent : FinKernel.ProbeEq current f g) :
     FinKernel.ProbeEq future f g := by
   exact finKernel_probeEq_antitone hsub hcurrent
+
+/--
+Global closure: current probe equivalence is predictively sufficient exactly
+when there is no observational/predictive gap for any source arity or pair.
+This is the neutral operational content of the scoped `NoGhost` slogan.
+-/
+theorem finKernel_predictivelySufficient_iff_no_observationPredictionGap
+    {n : Nat}
+    {current future : FinKernel.ProbeFamily n} :
+    FinKernel.PredictivelySufficient current future ↔
+      ∀ {m : Nat} (f g : FinKernel m n),
+        ¬ FinKernel.ObservationPredictionGap current future f g := by
+  constructor
+  · intro hsuff m f g hgap
+    exact hgap.2 (hsuff f g hgap.1)
+  · intro hnogap m f g hcurrent
+    apply Classical.byContradiction
+    intro hfuture
+    exact hnogap f g ⟨hcurrent, hfuture⟩
+
+/-- Probe-family containment is a sufficient condition for predictive sufficiency. -/
+theorem finKernel_predictivelySufficient_of_future_subfamily
+    {n : Nat}
+    {current future : FinKernel.ProbeFamily n}
+    (hsub : ∀ obs, future obs → current obs) :
+    FinKernel.PredictivelySufficient current future := by
+  intro m f g hcurrent
+  exact finKernel_probeEq_future_of_current hsub hcurrent
 
 /-- Containment of all future probes rules out the declared pairwise gap. -/
 theorem finKernel_no_observationPredictionGap_of_future_subfamily
@@ -143,6 +181,15 @@ theorem finKernel_observationalPredictiveGap_fixture :
       finKernelZero3 finKernelOne3 := by
   exact ⟨finKernel_currentMergeFamily_equivalent,
     finKernel_downstreamMergeFamily_not_equivalent⟩
+
+/-- The concrete gap fixture refutes global predictive sufficiency. -/
+theorem finKernel_currentMergeFamily_not_predictivelySufficient :
+    ¬ FinKernel.PredictivelySufficient
+      finKernelCurrentMergeFamily finKernelDownstreamMergeFamily := by
+  intro hsuff
+  have hfuture := hsuff finKernelZero3 finKernelOne3
+    finKernel_currentMergeFamily_equivalent
+  exact finKernel_downstreamMergeFamily_not_equivalent hfuture
 
 /-- Enlarging the current observer with the downstream probe exposes the pair. -/
 theorem finKernel_observationalPredictiveGap_enlargement_fixture :
