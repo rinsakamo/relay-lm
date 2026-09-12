@@ -12,9 +12,10 @@ from tools.relay_physical_env import PhysicalEnvironmentIdentity
 def _write_registry(
     root: Path,
     *,
-    schema_version: int = 1,
+    schema_version: object = 1,
     engine: str = "llama.cpp",
     resource_key: str = "llama-cpp:local-gpu",
+    target_name: str = "demo",
 ) -> None:
     path = root / ".ai" / "physical" / "llama_cpp_targets.json"
     path.parent.mkdir(parents=True)
@@ -25,7 +26,7 @@ def _write_registry(
                 "engine": engine,
                 "resource_key": resource_key,
                 "targets": {
-                    "demo": {
+                    target_name: {
                         "branch": "v2",
                         "module": "tools.demo_target",
                         "description": "demo target",
@@ -88,6 +89,12 @@ def test_registry_rejects_unknown_schema_version(tmp_path: Path) -> None:
         runner._load_targets(tmp_path)
 
 
+def test_registry_rejects_boolean_schema_version(tmp_path: Path) -> None:
+    _write_registry(tmp_path, schema_version=True)
+    with pytest.raises(runner.RelayPhysicalRunError, match="schema_version"):
+        runner._load_targets(tmp_path)
+
+
 def test_registry_rejects_non_llama_cpp_engine(tmp_path: Path) -> None:
     _write_registry(tmp_path, engine="other")
     with pytest.raises(runner.RelayPhysicalRunError, match="llama.cpp"):
@@ -97,6 +104,12 @@ def test_registry_rejects_non_llama_cpp_engine(tmp_path: Path) -> None:
 def test_registry_rejects_resource_key_drift(tmp_path: Path) -> None:
     _write_registry(tmp_path, resource_key="llama-cpp:other-gpu")
     with pytest.raises(runner.RelayPhysicalRunError, match="resource_key"):
+        runner._load_targets(tmp_path)
+
+
+def test_registry_rejects_empty_target_name(tmp_path: Path) -> None:
+    _write_registry(tmp_path, target_name="")
+    with pytest.raises(runner.RelayPhysicalRunError, match="invalid target registry entry"):
         runner._load_targets(tmp_path)
 
 
