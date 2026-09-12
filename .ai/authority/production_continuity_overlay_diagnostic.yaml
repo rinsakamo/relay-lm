@@ -37,6 +37,7 @@ qualification_exclusions:
   reason: Operator-only WSL wrapper for the #2593 evaluation diagnostic.
 depends_on:
 - semantic_continuity_projection_physical
+- two_turn_diagnostic_carriage
 - actual_model_llama_cpp_qualification
 - actual_model_evaluation
 - continuity_context

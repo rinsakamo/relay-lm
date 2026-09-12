@@ -1,0 +1,32 @@
+schema_version: 1
+id: two_turn_diagnostic_carriage
+summary: >-
+  Evaluation-only canonical llama.cpp carriage for bounded two-turn diagnostics.
+  It owns T1/T2 ordering, the T1 production-commit gate, four-generation
+  accounting, fixture/runtime preparation, reasoning-OFF mechanical checks,
+  artifact/result framing, and leaves diagnostic-specific T2 Pass 2 request
+  construction/parsing to an explicitly owned provider strategy.
+owner_issue: 2659
+canonical_surfaces:
+- docs/reference/actual-model-two-turn-diagnostic-carriage.md
+references:
+- docs/reference/actual-model-llama-cpp-qualification.md
+- docs/reference/actual-model-stage-r-current.md
+- docs/contracts/cognition-pass-execution.md
+- docs/architecture/continuity-context.md
+implementation:
+- src/relaylm/actual_model_stage_r_llama_cpp_two_turn_diagnostic.py
+tests:
+- tests/unit/test_actual_model_production_continuity_overlay_carriage.py
+- tests/unit/test_actual_model_production_continuity_only_carriage.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_stage_r_llama_cpp_two_turn_diagnostic.py
+  reason: >-
+    Evaluation-only physical orchestration shared by repository-owned diagnostics.
+    Product cognition, production prompt/schema construction, provider routing,
+    and ordinary runtime execution do not call this module.
+depends_on:
+- actual_model_llama_cpp_qualification
+- actual_model_evaluation
+- cognitive_turn
+- continuity_context

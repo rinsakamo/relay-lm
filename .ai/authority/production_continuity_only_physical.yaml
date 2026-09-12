@@ -1,0 +1,37 @@
+schema_version: 1
+id: production_continuity_only_physical
+summary: >-
+  Repository-owned llama.cpp one-shot physical carriage for the merged #2624
+  production-context Continuity-only discriminator. It executes ordinary
+  production T1, ordinary T2 Pass 1, and exactly one canonical Continuity-only
+  retained-formation T2 Pass 2 without making the product semantic verdict.
+owner_issue: 2659
+canonical_surfaces:
+- docs/reference/actual-model-production-continuity-only-physical.md
+references:
+- docs/reference/actual-model-production-continuity-only-diagnostic.md
+- docs/reference/actual-model-two-turn-diagnostic-carriage.md
+- docs/reference/actual-model-llama-cpp-qualification.md
+- docs/reference/actual-model-stage-r-current.md
+implementation:
+- src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_only.py
+- src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_only_transaction.py
+- tools/v1_stage_r_llama_cpp_production_continuity_only_wsl.py
+tests:
+- tests/unit/test_actual_model_production_continuity_only_carriage.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_only.py
+  reason: >-
+    Evaluation-only physical host for the #2624 discriminator. It delegates
+    production ordering to the canonical diagnostic carriage and T2 diagnostic
+    request construction/parsing to the merged #2624 owner; product runtime does
+    not call this host.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_continuity_only_transaction.py
+  reason: Evaluation-only transaction selector for the #2624 physical discriminator.
+- path: tools/v1_stage_r_llama_cpp_production_continuity_only_wsl.py
+  reason: Operator-only WSL wrapper for the #2624 physical discriminator.
+depends_on:
+- production_continuity_only_diagnostic
+- two_turn_diagnostic_carriage
+- actual_model_llama_cpp_qualification
+- actual_model_evaluation
