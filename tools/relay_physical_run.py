@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
+from dataclasses import dataclass
 import hashlib
 import importlib.metadata
 import importlib.util
 import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import sys
-from collections.abc import Sequence
 
 from tools.physical_execution_queue import (
     DEFAULT_RESOURCE_KEY,
@@ -28,6 +28,7 @@ from tools.relay_physical_env import (
 
 
 TARGETS_PATH = Path(".ai/physical/llama_cpp_targets.json")
+TARGET_REGISTRY_SCHEMA_VERSION = 1
 ENGINE = "llama.cpp"
 DEFAULT_REQUIRED_DISTRIBUTIONS = ("httpx",)
 
@@ -160,9 +161,21 @@ def _load_targets(repo_root: Path) -> dict[str, TargetSpec]:
         raise RelayPhysicalRunError(
             f"cannot load llama.cpp target registry: {path}: {exc}"
         ) from exc
+    if not isinstance(payload, dict):
+        raise RelayPhysicalRunError("target registry root must be an object")
+    if payload.get("schema_version") != TARGET_REGISTRY_SCHEMA_VERSION:
+        raise RelayPhysicalRunError(
+            "target registry schema_version must be exactly "
+            f"{TARGET_REGISTRY_SCHEMA_VERSION}"
+        )
     if payload.get("engine") != ENGINE:
         raise RelayPhysicalRunError(
             f"target registry engine must be exactly {ENGINE!r}"
+        )
+    if payload.get("resource_key") != DEFAULT_RESOURCE_KEY:
+        raise RelayPhysicalRunError(
+            "target registry resource_key must be exactly "
+            f"{DEFAULT_RESOURCE_KEY!r}"
         )
     raw_targets = payload.get("targets")
     if not isinstance(raw_targets, dict) or not raw_targets:
