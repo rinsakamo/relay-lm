@@ -58,7 +58,8 @@ theorem interleavedRelata_forward :
   refine ⟨(0 : Fin 4), (1 : Fin 4), ?_, ?_, ?_⟩
   · rfl
   · rfl
-  · decide
+  · change (0 : Nat) < 1
+    decide
 
 /-- B also precedes A in the same interleaved fixture. -/
 theorem interleavedRelata_reverse :
@@ -66,7 +67,8 @@ theorem interleavedRelata_reverse :
   refine ⟨(1 : Fin 4), (2 : Fin 4), ?_, ?_, ?_⟩
   · rfl
   · rfl
-  · decide
+  · change (1 : Nat) < 2
+    decide
 
 /-- The two coarse relata used by the fixture are distinct. -/
 theorem interleavedRelata_distinct : (0 : Fin 2) ≠ (1 : Fin 2) := by
@@ -94,7 +96,8 @@ theorem contiguousRelata_forward :
   refine ⟨(1 : Fin 4), (2 : Fin 4), ?_, ?_, ?_⟩
   · decide
   · decide
-  · decide
+  · change (1 : Nat) < 2
+    decide
 
 /-- The contiguous control has no reverse B→A coarse edge. -/
 theorem contiguousRelata_no_reverse :
