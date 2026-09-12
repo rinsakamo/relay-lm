@@ -41,7 +41,7 @@ def _cognitive_input() -> CognitiveInput:
                 "key": "coffee",
                 "op": "set",
                 "value": "likes",
-                "sources": ["evt-now", "evt-hidden"],
+                "sources": ["E0", "E999"],
             },
         ),
         (
@@ -51,7 +51,7 @@ def _cognitive_input() -> CognitiveInput:
                 "key": "coffee_followup",
                 "op": "set",
                 "value": "ask about coffee",
-                "sources": ["evt-now", "evt-hidden"],
+                "sources": ["E0", "E999"],
                 "epistemic_role": "user_assertion",
             },
         ),
@@ -91,5 +91,5 @@ def test_two_pass_extraction_rejects_candidate_sources_absent_from_originating_i
                 )
             )
 
-    with pytest.raises(ProviderProtocolError, match="absent from CognitiveInput"):
+    with pytest.raises(ProviderProtocolError, match="provenance alias"):
         asyncio.run(run())

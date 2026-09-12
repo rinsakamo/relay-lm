@@ -131,7 +131,8 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
     assert "state_candidates" in extraction_prompt
     assert "continuity_candidates" in extraction_prompt
     assert '"content":"最近はコーヒーを飲んでるんだね。"' in extraction_prompt
-    assert '"event_id":"evt-now"' in extraction_prompt
+    assert '"event_id":"E0"' in extraction_prompt
+    assert '"event_id":"evt-now"' not in extraction_prompt
 
 
 def test_buffered_conversation_rejects_multiple_upstream_choices() -> None:

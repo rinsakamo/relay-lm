@@ -19,6 +19,7 @@ from relaylm.providers.openai_compatible_decoding import OpenAICompatibleDecodin
 from relaylm.providers.openai_compatible_reasoning import OpenAICompatibleReasoningRequest
 from relaylm.providers.openai_compatible_two_pass import (
     OpenAICompatibleTwoPassProvider,
+    _ProviderFacingProvenanceAliases,
     _conversation_request_body,
     _extraction_request_body,
     _parse_conversation_completion,
@@ -94,6 +95,9 @@ class LlamaCppOpenAICompatibleTwoPassProvider(OpenAICompatibleTwoPassProvider):
             pass_request=pass_request,
             provider=self,
         )
+        aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(
+            extraction_input.cognitive_input
+        )
         body = _extraction_request_body(
             model=self.model,
             extraction_input=extraction_input,
@@ -103,7 +107,7 @@ class LlamaCppOpenAICompatibleTwoPassProvider(OpenAICompatibleTwoPassProvider):
         )
         body.update(self._llama_cpp_reasoning_fields(effective_reasoning))
         envelope = await self._post_two_pass(body=body, boundary="extraction")
-        output = _parse_extraction_completion(envelope)
+        output = aliases.restore_extraction_output(_parse_extraction_completion(envelope))
         _require_candidate_sources_in_cognitive_input(
             output,
             extraction_input.cognitive_input,

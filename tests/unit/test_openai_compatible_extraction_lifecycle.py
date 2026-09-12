@@ -17,7 +17,8 @@ from relaylm.providers.openai_compatible_extraction_projection import (
     ExtractionProjectionMode,
 )
 from relaylm.providers.openai_compatible_two_pass import (
-    _common_cognitive_prefix,
+    _ProviderFacingProvenanceAliases,
+    _common_provider_cognitive_prefix,
     _conversation_request_body,
     _extraction_request_body,
 )
@@ -165,7 +166,9 @@ def test_lifecycle_suffix_orders_discovery_before_read_only_lifecycle_reconcilia
 def test_production_pass2_uses_separated_view_while_pass1_stays_canonical() -> None:
     cognitive_input = _cognitive_input()
     extraction = _extraction(cognitive_input)
-    projection = separate_accepted_continuity_for_extraction(cognitive_input)
+    aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(cognitive_input)
+    provider_input = aliases.alias_cognitive_input(cognitive_input)
+    provider_projection = separate_accepted_continuity_for_extraction(provider_input)
 
     conversation = _conversation_request_body(
         model="synthetic-model",
@@ -189,11 +192,15 @@ def test_production_pass2_uses_separated_view_while_pass1_stays_canonical() -> N
     legacy_content = legacy["messages"][1]["content"]
     production_content = production["messages"][1]["content"]
 
-    assert conversation_content.startswith(_common_cognitive_prefix(cognitive_input))
-    assert legacy_content.startswith(_common_cognitive_prefix(cognitive_input))
-    assert production_content.startswith(
-        _common_cognitive_prefix(projection.cognitive_input)
+    provider_prefix = _common_provider_cognitive_prefix(provider_input)
+    projected_provider_prefix = _common_provider_cognitive_prefix(
+        provider_projection.cognitive_input
     )
+    assert conversation_content.startswith(provider_prefix)
+    assert legacy_content.startswith(provider_prefix)
+    assert production_content.startswith(projected_provider_prefix)
+    assert "source-current_parcel" not in conversation_content
+    assert "source-inspect_parcel" not in production_content
     assert "current_parcel" in conversation_content
     assert "current_parcel" in legacy_content
     assert "current_parcel" in production_content

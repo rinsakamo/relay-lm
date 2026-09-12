@@ -251,7 +251,7 @@ def _validate_and_describe_delta(
     removed_serialized: tuple[dict[str, Any], ...],
 ) -> dict[str, Any]:
     baseline_cognitive_input = extraction_input.cognitive_input
-    source_id = extraction_input.originating_event_id
+    source_id = "E0"
     projection = (
         unresolved_only_extraction_intro()
         + unresolved_only_continuity_extraction_component(source_id)

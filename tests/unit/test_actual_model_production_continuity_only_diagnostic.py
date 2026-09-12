@@ -162,7 +162,7 @@ def test_continuity_only_builder_holds_context_and_overlay_fixed(tmp_path: Path)
         {
             "subject_span": "what is inside",
             "unknown_evidence_span": "remains unknown",
-            "source_event_id": CURRENT_SOURCE,
+            "source_event_id": "E0",
         },
     )
 
@@ -176,10 +176,12 @@ def test_continuity_only_builder_holds_context_and_overlay_fixed(tmp_path: Path)
         "I cannot know until the parcel is opened.",
         "what is inside",
         "remains unknown",
-        CURRENT_SOURCE,
+        "E0",
     ):
         assert expected in production_content
         assert expected in diagnostic_content
+    assert CURRENT_SOURCE not in production_content
+    assert CURRENT_SOURCE not in diagnostic_content
 
     schema = prepared.continuity_only_overlay_body["response_format"]["json_schema"]
     assert schema["name"] == "relaylm_continuity_only_extraction_output"
@@ -203,6 +205,8 @@ def test_continuity_only_overlay_has_no_answer_fields(tmp_path: Path) -> None:
     item = payload["formed_epistemic_observations"][0]
 
     assert set(item) == {"subject_span", "unknown_evidence_span", "source_event_id"}
+    assert item["source_event_id"] == "E0"
+    assert CURRENT_SOURCE not in block
     assert '"kind"' not in block
     assert '"key"' not in block
     assert '"op"' not in block
@@ -232,7 +236,7 @@ def test_continuity_only_parser_uses_canonical_candidate_and_source_contract() -
                         "key": "parcel_contents",
                         "op": "set",
                         "value": "contents remain unknown",
-                        "sources": [CURRENT_SOURCE],
+                        "sources": ["E0"],
                         "epistemic_role": "user_assertion",
                     }
                 ]
@@ -252,7 +256,7 @@ def test_continuity_only_parser_uses_canonical_candidate_and_source_contract() -
             cognitive_input=_input(),
         )
 
-    with pytest.raises(ProviderProtocolError, match="sources"):
+    with pytest.raises(ProviderProtocolError, match="provenance alias"):
         parse_continuity_only_completion(
             _envelope(
                 {
@@ -262,7 +266,7 @@ def test_continuity_only_parser_uses_canonical_candidate_and_source_contract() -
                             "key": "parcel_contents",
                             "op": "set",
                             "value": "contents remain unknown",
-                            "sources": ["invented-event"],
+                            "sources": ["E999"],
                             "epistemic_role": "user_assertion",
                         }
                     ]
