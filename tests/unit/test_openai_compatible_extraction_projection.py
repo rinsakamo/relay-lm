@@ -10,6 +10,7 @@ from relaylm.providers.openai_compatible_extraction_projection import (
     CONTINUITY_ONLY_EXTRACTION_WIRE_SCHEMA,
     EXTRACTION_WIRE_SCHEMA,
     ExtractionProjectionMode,
+    build_extraction_pass_suffix,
     continuity_extraction_component,
     unresolved_only_continuity_extraction_component,
 )
@@ -168,9 +169,9 @@ def test_unresolved_only_removes_other_kind_decision_responsibilities() -> None:
 
 def test_existing_continuity_only_still_uses_full_canonical_continuity_component() -> None:
     extraction_input = _extraction_input()
-    diagnostic = _extraction_pass_suffix(
+    diagnostic = build_extraction_pass_suffix(
         extraction_input,
-        projection_mode=ExtractionProjectionMode.CONTINUITY_ONLY,
+        mode=ExtractionProjectionMode.CONTINUITY_ONLY,
     )
     full_component = continuity_extraction_component(extraction_input.originating_event_id)
 
