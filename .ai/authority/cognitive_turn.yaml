@@ -48,7 +48,6 @@ qualification_inputs:
 - docs/contracts/cognition-pass-execution.md
 - docs/contracts/two-pass-scheduling.md
 - docs/contracts/cognitive-turn.md
-- docs/contracts/provider-pass2-lifecycle-channel.md
 - docs/architecture/cognitive-runtime.md
 - src/relaylm/cognitive.py
 - src/relaylm/cognition_execution.py
