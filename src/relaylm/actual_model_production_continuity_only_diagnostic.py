@@ -170,7 +170,7 @@ def _validate_and_describe_delta(
     continuity_only_overlay_body: dict[str, Any],
     model_overlay: tuple[dict[str, str], ...],
 ) -> dict[str, Any]:
-    source_id = extraction_input.originating_event_id
+    source_id = "E0"
     common_prefix = _common_cognitive_prefix(extraction_input.cognitive_input)
     response_component = extraction_response_component(extraction_input)
     continuity_component = continuity_extraction_component(source_id)
