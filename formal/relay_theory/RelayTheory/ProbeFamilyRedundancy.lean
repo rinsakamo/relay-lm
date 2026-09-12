@@ -105,8 +105,16 @@ theorem finKernel_identityProbeFamily2_probeEq_iff_eq {m : Nat}
   unfold FinKernel.identityProbeFamily2 FinKernel.finIdentityObservation2
   rw [finKernel_probeEq_singleton_iff_observedEq]
   unfold FinKernel.ObservedEq
-  rw [finKernel_compose_identity_after]
-  exact finKernel_behaviorEq_iff_eq f g
+  constructor
+  · intro hObserved
+    have hComposed :
+        FinKernel.compose (FinKernel.identity 2) f =
+          FinKernel.compose (FinKernel.identity 2) g :=
+      (finKernel_behaviorEq_iff_eq _ _).1 hObserved
+    simpa only [finKernel_compose_identity_after] using hComposed
+  · intro hEq
+    subst g
+    exact finKernel_behaviorEq_refl _
 
 /--
 The identity-only and identity-plus-discard families are literally different
