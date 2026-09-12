@@ -32,7 +32,23 @@ wrapper module:
 tools.v1_stage_r_llama_cpp_production_unresolved_only_wsl
 ```
 
-The wrapper requires one explicit repo-external retained-formation artifact with only:
+The wrapper requires one explicit repo-external retained-formation artifact using the canonical mechanically validated #2529 envelope:
+
+```json
+{
+  "diagnostic": "epistemic-formation-t2",
+  "mechanical_validation": "pass",
+  "items": [
+    {
+      "subject_span": "<exact current-input span>",
+      "unknown_evidence_span": "<exact current-input span>",
+      "source_event_id": "<authoritative retained T2 Event ID>"
+    }
+  ]
+}
+```
+
+For this transaction, `items` contains exactly one observation. The item contains exactly these three fields and no others:
 
 ```text
 subject_span
@@ -40,7 +56,9 @@ unknown_evidence_span
 source_event_id
 ```
 
-No Continuity kind/key/op/value, expected answer, scorer label, or repair hint belongs in that artifact.
+`diagnostic` must equal the canonical epistemic-formation diagnostic identity and `mechanical_validation` must equal `pass`. The host validates the retained source against current Stage-R authority and rebinds it to the run-local T2 Event before model-facing use.
+
+No Continuity kind/key/op/value, expected answer, scorer label, repair hint, or other semantic answer belongs anywhere in the retained artifact. The envelope preserves provenance and prior mechanical validation; the exact three-field restriction applies to the single observation item, not to the top-level artifact.
 
 ## Exactly-once semantic ceiling
 
