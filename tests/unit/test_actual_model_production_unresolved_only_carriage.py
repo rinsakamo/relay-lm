@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 from pathlib import Path
 
 import pytest
 
+import relaylm.actual_model_production_continuity_overlay_diagnostic as retained_overlay
 import relaylm.actual_model_stage_r_llama_cpp_production_unresolved_only as host
 import relaylm.actual_model_stage_r_llama_cpp_production_unresolved_only_transaction as selector
 import relaylm.actual_model_stage_r_llama_cpp_two_turn_diagnostic as carriage
@@ -55,6 +57,7 @@ def test_unresolved_only_strategy_reuses_canonical_carriage_and_merged_diagnosti
     assert "prepared.unresolved_only_body" in source
     assert "prepared.unresolved_only_overlay_body" in source
     assert "prepared.diff_receipt" in source
+    assert '"continuity_expectation_supplied": False' in source
 
     for forbidden in (
         ".replace(",
@@ -66,6 +69,78 @@ def test_unresolved_only_strategy_reuses_canonical_carriage_and_merged_diagnosti
         "box_contents_question",
     ):
         assert forbidden not in source
+
+
+def test_retained_formation_loader_rejects_bare_three_field_artifact(
+    tmp_path: Path,
+) -> None:
+    subject = "それの中身は何だと思う？"
+    scenario_revision = f"sha256:{'a' * 64}"
+    source_event_id = retained_overlay.expected_retained_source_event_id(
+        scenario_revision
+    )
+    retained = tmp_path / "bare-retained.json"
+    retained.write_text(
+        json.dumps(
+            {
+                "subject_span": subject,
+                "unknown_evidence_span": subject,
+                "source_event_id": source_event_id,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(Exception, match="diagnostic identity is invalid"):
+        retained_overlay.load_retained_formation_binding(
+            path=retained,
+            scenario_set_revision=scenario_revision,
+            authoritative_t2_content=subject,
+        )
+
+
+def test_retained_formation_loader_accepts_canonical_mechanical_envelope(
+    tmp_path: Path,
+) -> None:
+    subject = "それの中身は何だと思う？"
+    scenario_revision = f"sha256:{'b' * 64}"
+    source_event_id = retained_overlay.expected_retained_source_event_id(
+        scenario_revision
+    )
+    retained = tmp_path / "retained-envelope.json"
+    retained.write_text(
+        json.dumps(
+            {
+                "diagnostic": retained_overlay.FORMATION_DIAGNOSTIC_NAME,
+                "mechanical_validation": "pass",
+                "items": [
+                    {
+                        "subject_span": subject,
+                        "unknown_evidence_span": subject,
+                        "source_event_id": source_event_id,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    binding = retained_overlay.load_retained_formation_binding(
+        path=retained,
+        scenario_set_revision=scenario_revision,
+        authoritative_t2_content=subject,
+    )
+
+    assert binding.artifact_path == str(retained.resolve())
+    assert binding.sha256.startswith("sha256:")
+    assert binding.scenario_set_revision == scenario_revision
+    assert binding.authoritative_t2_content == subject
+    assert len(binding.items) == 1
+    assert binding.items[0].subject_span == subject
+    assert binding.items[0].unknown_evidence_span == subject
+    assert binding.items[0].source_event_id == source_event_id
 
 
 def test_unresolved_only_provider_rejects_a_third_extraction_without_generation() -> None:
