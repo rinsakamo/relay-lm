@@ -207,8 +207,8 @@ def test_d1_activation_binds_shared_only_campaign_and_restores_with_monkeypatch(
         assert base.S3_REGIMES == ("shared",)
         assert base.S3_SEEDS == {"shared": D1_SEEDS}
         assert base.S3_SHARD_CALLS == {"shared": D1_TOTAL_SEMANTIC_CALLS}
-        assert base.S3_TOTAL_SEMANTIC_CALLS == 984
-        assert base.S3_TOTAL_INPUT_TOKEN_REQUESTS == 1968
+        assert base.S3_TOTAL_SEMANTIC_CALLS == D1_TOTAL_SEMANTIC_CALLS
+        assert base.S3_TOTAL_INPUT_TOKEN_REQUESTS == D1_TOTAL_INPUT_TOKEN_REQUESTS
         assert base.S3_CLAIM == D1_CLAIM
         assert base.s3_call_plan is d1_call_plan
 
