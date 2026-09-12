@@ -119,26 +119,40 @@ If ownership is ambiguous, resolve that ambiguity before semantic mutation. Do n
 
 ## 4. Direct canonical convergence
 
-`v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
+`v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default, and current implementation defects must be repaired at their canonical owner rather than bypassed through runtime substitution.
 
-Do not retain:
+Do not retain or introduce:
 
 - old-path aliases or forwarding modules whose only purpose is compatibility;
 - temporary bridges intended for later removal;
 - dual-read or dual-write paths for superseded internal semantics;
 - fallbacks to deprecated RelayLM behavior;
 - monkey patches or shims preserving an obsolete owner;
-- simultaneous old/new semantic authorities.
+- simultaneous old/new semantic authorities;
+- runtime monkeypatching of functions, classes, modules, or attributes to make a production, provider, physical-harness, migration, or repository path succeed;
+- dynamic replacement of a canonical implementation after import, including private-component replacement used to observe or redirect behavior;
+- import hooks or module injection used to route around a defect;
+- hidden fallback paths that silently switch implementation when the canonical path fails;
+- test-only or harness-only wiring that makes a claimed production-equivalent path materially different from production;
+- cross-owner glue that duplicates or synthesizes authority instead of consuming the current canonical owner.
 
 Instead:
 
 ```text
-change the canonical owner / contract
-  → migrate affected internal consumers
-  → remove the superseded path
+observe the defect
+  → identify the current owner / contract
+  → repair or factor that canonical path
+  → migrate affected current consumers when needed
+  → remove the superseded or defective bypass
 ```
 
-Permanent adapters remain valid at genuine external protocol, provider, storage, package, or public-contract boundaries when they translate the current RelayLM contract rather than preserve obsolete internal semantics.
+> **Fix the canonical path; do not make a second path that exists only because the first one is broken.**
+
+Permanent adapters remain valid only at genuine external protocol, provider, storage, package, or public-contract boundaries when they translate the **current** RelayLM contract. An allowed adapter does not preserve a superseded internal implementation, hide failure of the canonical internal path, or invent a second internal owner; it has an explicit owner and executable contract, and the need for the adapter would disappear if the external boundary disappeared.
+
+Tests may use `pytest` monkeypatching, mocks, or test doubles as bounded instrumentation for external side effects, clocks, processes, network, filesystem, randomness, or failure injection. Test instrumentation must not create an alternate production architecture, replace the behavior under test with the expected semantic answer, hide failure of the real canonical path, become required by physical/runtime execution, or encode fixture-specific semantic answers. Prefer explicit seams, dependency injection, fakes, and characterization of the real contract when practical.
+
+Mechanically detectable production runtime substitution under `src/` and `tools/` is rejected by `tools.repository_implementation_integrity`. That deterministic guard complements rather than replaces fresh-head review: whether a bridge, fallback, adapter, or cross-owner realization is semantically legitimate still requires owner-aware review.
 
 ## 5. Owner-local authority convergence
 
@@ -208,7 +222,7 @@ Ask:
 2. Did it add more semantics or machinery than required? Before completion, can necessary additions be integrated into existing principles, deduplicated, or expressed more generally without weakening the intended behavior or authority boundaries?
 3. Does the claimed invariant hold across materially equivalent supported realization paths, and are material counterexamples, failure modes, or authority boundaries under-tested?
 4. Do current-authority docs match the code and distinguish current from deferred behavior?
-5. Does the diff preserve an obsolete bridge, wrapper, dual authority, or implementation-history artifact instead of converging directly?
+5. Does the diff rely on or preserve a runtime monkeypatch, dynamic component replacement, import/module injection, hidden fallback, ad-hoc bridge, obsolete wrapper, dual authority, or implementation-history artifact instead of converging directly on the canonical owner?
 6. Does the cumulative changed-path set still fit the bounded responsibility?
 
 Any material mismatch means the transaction is incomplete. A material sibling finding outside the current mutation boundary is routed to its current owner rather than ignored or absorbed opportunistically. The current transaction must narrow an over-broad completion claim when the finding is not actually part of its responsibility; if the finding remains a counterexample to the claim being made, completion waits for the responsible boundary to be resolved.
@@ -399,7 +413,7 @@ When a repository mutation shape also includes material physical/external execut
 2. **One transaction = one bounded responsibility.**
 3. **Semantic changes are test-first; preservation work uses characterization rather than manufactured RED.**
 4. **One concept = one current owner.**
-5. **Converge directly; do not preserve superseded internal semantics through compatibility machinery.**
+5. **Converge directly: repair the canonical owner/path; do not realize current behavior through runtime substitution, ad-hoc bridges, hidden fallbacks, or preserved superseded internal semantics.**
 6. **Owner-local authority is part of the implementation; derived aggregates are not routine write surfaces.**
 7. **Review and CI evidence belong to the exact current head.**
 8. **Parallel work requires disjoint semantic ownership.**
