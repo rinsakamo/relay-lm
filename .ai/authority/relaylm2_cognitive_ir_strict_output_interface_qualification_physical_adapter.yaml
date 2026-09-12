@@ -1,0 +1,23 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_strict_output_interface_qualification_physical_adapter
+owner_issue: 2748
+summary: >-
+  Zero-GPU executable physical adapter for the #2742/#2744 E4-IFQ1
+  prospective non-treatment strict-output qualification. Freezes live llama.cpp
+  consumer identity and a synthetic structured input-counter preflight before
+  exact 18-case material can exist, binds the native strict-json-schema 18/36
+  campaign into common #2660 HOW, and authorizes no THIS RUN execution.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-strict-output-interface-qualification-physical-adapter.md
+implementation:
+- src/relaylm/v2_cognitive_ir_strict_output_interface_qualification_physical.py
+- tools/v2_cognitive_ir_strict_output_interface_qualification_llama_cpp.py
+- tools/v2_cognitive_ir_strict_output_interface_qualification_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_strict_output_interface_qualification_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_strict_output_interface_qualification_physical.py
+depends_on:
+- relaylm2_cognitive_ir_strict_output_interface_qualification
+- relaylm2_cognitive_ir_semantic_reconstruction_physical_adapter
+- relaylm2_physical_execution
+- physical_execution_queue
