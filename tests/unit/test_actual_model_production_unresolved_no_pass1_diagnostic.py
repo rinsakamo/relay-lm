@@ -189,9 +189,10 @@ def test_no_pass1_builder_changes_only_canonical_pass1_component(tmp_path: Path)
         "inspect the parcel contents",
         "what is inside",
         "remains unknown",
-        CURRENT_SOURCE,
+        "E0",
     ):
         assert fixed in prepared.no_pass1_overlay_body["messages"][1]["content"]
+    assert CURRENT_SOURCE not in prepared.no_pass1_overlay_body["messages"][1]["content"]
 
     assert baseline["messages"][0] == no_pass1["messages"][0]
     assert baseline["response_format"] == no_pass1["response_format"]
@@ -245,7 +246,7 @@ def test_no_pass1_parser_reuses_unresolved_only_contract() -> None:
                         "key": "parcel_contents",
                         "op": "set",
                         "value": "contents remain unknown",
-                        "sources": [CURRENT_SOURCE],
+                        "sources": ["E0"],
                         "epistemic_role": "user_assertion",
                     }
                 ]
@@ -256,6 +257,7 @@ def test_no_pass1_parser_reuses_unresolved_only_contract() -> None:
     assert output.state_candidates == ()
     assert len(output.continuity_candidates) == 1
     assert output.continuity_candidates[0].kind == "unresolved"
+    assert output.continuity_candidates[0].sources == (CURRENT_SOURCE,)
 
 
 def test_no_pass1_source_contains_no_fixture_answer_or_runtime_substitution() -> None:
