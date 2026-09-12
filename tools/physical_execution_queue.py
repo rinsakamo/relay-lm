@@ -215,7 +215,6 @@ def run_queued_command(
         "pre_invoke_gate_passed_at": None,
         "child_invoked_at": None,
         "child_exit_code": None,
-        "controller_lease_fd_closed_at": None,
         "released_at": None,
     }
     _atomic_write_json(receipt_path, receipt)
@@ -339,20 +338,11 @@ def run_queued_command(
         _atomic_write_json(receipt_path, receipt)
         raise
     finally:
-        # Do not explicitly LOCK_UN here. The immediate child inherits this exact
-        # open file description via pass_fds. If the controller is interrupted
-        # while the child is still alive, an explicit unlock by the parent would
-        # release the flock for the child as well. Closing only the controller's
-        # descriptor preserves the lease until the inherited child descriptor is
-        # closed by process exit.
+        if locked:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
         lock_file.close()
-        receipt["controller_lease_fd_closed_at"] = _utc_now()
-        if receipt["child_invoked_at"] is not None and receipt["child_exit_code"] is None:
-            receipt["lease_state"] = "RELEASE_UNOBSERVED_AFTER_CHILD_START"
-            receipt["released_at"] = None
-        else:
-            receipt["lease_state"] = "RELEASED"
-            receipt["released_at"] = _utc_now()
+        receipt["lease_state"] = "RELEASED"
+        receipt["released_at"] = _utc_now()
         _atomic_write_json(receipt_path, receipt)
 
 
