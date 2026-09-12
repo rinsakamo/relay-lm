@@ -58,16 +58,9 @@ theorem splitRun_eq_controlledRun
   | cons input rest ih =>
       cases initial with
       | mk parameter state =>
-          change
-            splitRun parameterNext stateNext
-                (parameterNext parameter state input,
-                 stateNext parameter state input)
-                rest =
-              controlledRun (pairedStep parameterNext stateNext)
-                (parameterNext parameter state input,
-                 stateNext parameter state input)
-                rest
-          exact ih
+          simpa [splitRun, controlledRun, pairedStep] using
+            ih (parameterNext parameter state input,
+                stateNext parameter state input)
 
 /-- A response operator is simply a state/input response function. -/
 abbrev ResponseOperator (State Input : Type) := State → Input → State
@@ -188,6 +181,7 @@ theorem operatorGauge_change_hasLaterBehavioralEffect :
         (keepBoolOperator, false) [true, true]).2 ≠
       (controlledRun (operatorStep frozenBoolMeta)
         (keepBoolOperator, false) [true, true]).2 := by
-  decide
+  simp [controlledRun, operatorStep, pairedStep, switchToCopyOnTrue,
+    keepBoolOperator, copyBoolInputOperator, frozenBoolMeta]
 
 end RelayTheory
