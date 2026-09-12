@@ -1,6 +1,6 @@
 # RelayLM 2.0 — Semantic Reconstruction Probe
 
-Owner: #2709. Scientific parent: #2211. Theory reverse-import owner: #2668.
+Repository-binding owner: #2722. Preregistration owner: #2709. Scientific parent: #2211. Theory reverse-import owner: #2668.
 
 ## Purpose
 
@@ -13,7 +13,8 @@ from
 B. bounded consumer accessibility
 ```
 
-It does not test realized use (C) or operational efficacy (D), does not rerun
+It consumes the scientific contract preregistered by #2709 without redefining
+it. It does not test realized use (C) or operational efficacy (D), does not rerun
 the full #2211 campaign, and does not authorize architecture mutation.
 
 The causal question is:
@@ -28,12 +29,13 @@ The causal question is:
 
 ```text
 #2660 common physical infrastructure = HOW
-#2211 / #2709 experiment contract    = WHAT
+#2211 / #2709 experiment contract    = WHAT / preregistration
+#2722                                = zero-GPU repository binding
 future exactly-once physical owner   = THIS RUN
 #2668 theory reverse import          = completed result -> scoped Level-D only
 ```
 
-This module owns no provider, localhost server, GPU/NVML lifecycle, llama.cpp
+This binding owns no provider, localhost server, GPU/NVML lifecycle, llama.cpp
 process lifecycle, or scientific artifact writer. `PHYSICAL_EXECUTION_AUTHORIZED`
 is false.
 
@@ -269,4 +271,4 @@ Level-D empirical result with treatment, held-fixed coordinates, raw paired
 outcomes/statistics, costs, Grand Null, forbidden inference, architecture
 consequence, and theory pressure. No direct Time/Cosmology export is earned.
 
-Refs #2211 #2660 #2668 #2674 #2677 #2691 #2693 #2695 #2701 #2704 #2709.
+Refs #2211 #2660 #2668 #2674 #2677 #2691 #2693 #2695 #2701 #2704 #2709 #2722.
