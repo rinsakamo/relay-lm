@@ -95,7 +95,7 @@ def test_overlay_rebinds_only_provenance_and_preserves_production_request(tmp_pa
     assert_production_schema_unchanged(request)
     assert request.retained_source_event_id == STABLE_SOURCE
     assert request.run_local_source_event_id == "evt-run-local"
-    assert request.model_overlay == ({"subject_span": "what is inside", "unknown_evidence_span": "remains unknown", "source_event_id": "evt-run-local"},)
+    assert request.model_overlay == ({"subject_span": "what is inside", "unknown_evidence_span": "remains unknown", "source_event_id": "E0"},)
     baseline = request.baseline_body
     overlaid = request.body
     assert set(baseline) == set(overlaid)
@@ -114,12 +114,13 @@ def test_overlay_rebinds_only_provenance_and_preserves_production_request(tmp_pa
     assert "state_candidates" in overlay_user
     assert "continuity_candidates" in overlay_user
     assert STABLE_SOURCE not in overlay_user
+    assert "evt-run-local" not in overlay_user
     overlay_block = overlay_user.split(f"<{OVERLAY_TAG}>\n", 1)[1].split(f"\n</{OVERLAY_TAG}>", 1)[0]
     parsed = json.loads(overlay_block)
     assert set(parsed) == {"formed_epistemic_observations"}
     item = parsed["formed_epistemic_observations"][0]
     assert set(item) == {"subject_span", "unknown_evidence_span", "source_event_id"}
-    assert item["source_event_id"] == "evt-run-local"
+    assert item["source_event_id"] == "E0"
     assert "box_contents_question" not in overlay_block
     assert '"kind"' not in overlay_block
     assert '"key"' not in overlay_block
@@ -137,7 +138,7 @@ def test_overlay_builder_fails_closed_on_production_t2_content_drift(tmp_path: P
 def test_apply_overlay_does_not_mutate_baseline() -> None:
     baseline = {"model": "m", "messages": [{"role": "system", "content": "system"}, {"role": "user", "content": "production"}], "stream": False}
     original = copy.deepcopy(baseline)
-    overlaid = apply_overlay_to_production_request_body(baseline_body=baseline, model_overlay=({"subject_span": "s", "unknown_evidence_span": "e", "source_event_id": "evt"},))
+    overlaid = apply_overlay_to_production_request_body(baseline_body=baseline, model_overlay=({"subject_span": "s", "unknown_evidence_span": "e", "source_event_id": "E0"},))
     assert baseline == original
     assert overlaid is not baseline
     assert overlaid["messages"][1]["content"].startswith("production")
