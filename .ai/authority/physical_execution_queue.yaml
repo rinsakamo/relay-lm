@@ -10,7 +10,7 @@ canonical_surfaces:
 - docs/reference/physical-execution-queue.md
 - .ai/physical/python_environment_policy.json
 - .ai/skills/physical-execution-queue/SKILL.md
-branch_carriage_surfaces:
+references:
 - .ai/physical/llama_cpp_targets.json
 implementation:
 - tools/relay_physical_env.py
