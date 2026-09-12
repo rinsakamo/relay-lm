@@ -138,7 +138,8 @@ def test_pass2_prompt_contains_semantics_and_examples_without_scaffold() -> None
     assert '"state_class":"user.preference","key":"coffee","op":"set","value":"likes"' in prompt
     assert '"state_class":"user.preference","key":"preferred_beverage","op":"set","value":"coffee"' in prompt
     assert '"state_class":"user.preference","key":"coffee","op":"remove","value":null' in prompt
-    assert '"sources":["evt-now"]' in prompt
+    assert '"sources":["E0"]' in prompt
+    assert '"sources":["evt-now"]' not in prompt
     assert "examples demonstrate representation only" in prompt
     assert "never copy example values" in prompt
     assert "turn_interpretation" not in prompt

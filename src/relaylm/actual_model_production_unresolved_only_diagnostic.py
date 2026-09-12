@@ -175,7 +175,7 @@ def _validate_and_describe_delta(
     unresolved_body: dict[str, Any],
     unresolved_overlay_body: dict[str, Any],
 ) -> dict[str, Any]:
-    source_id = extraction_input.originating_event_id
+    source_id = "E0"
     expected_common = _common_cognitive_prefix(extraction_input.cognitive_input) + (
         extraction_response_component(extraction_input)
     )

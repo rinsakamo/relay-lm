@@ -135,7 +135,7 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
     assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
     assert "unchanged accepted meaning -> emit no candidate" in extraction_content
     assert (
-        "every new set/resolve transition must include the current Input Event ID `evt-now` in `sources`"
+        "every new set/resolve transition must include the current Input Event ID `E0` in `sources`"
         in extraction_content
     )
 
@@ -145,7 +145,7 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
             "key": "current_document",
             "op": "set",
             "value": "the draft",
-            "sources": ["evt-now"],
+            "sources": ["E0"],
             "epistemic_role": "user_assertion",
         },
         {
@@ -153,7 +153,7 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
             "key": "document_author",
             "op": "set",
             "value": "author not yet known",
-            "sources": ["evt-now"],
+            "sources": ["E0"],
             "epistemic_role": "user_assertion",
         },
         {
@@ -161,7 +161,7 @@ def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples(
             "key": "verify_document_author",
             "op": "set",
             "value": "verify the document author",
-            "sources": ["evt-now"],
+            "sources": ["E0"],
             "epistemic_role": "user_assertion",
         },
     )

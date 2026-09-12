@@ -2,8 +2,8 @@
 
 This diagnostic keeps the production extraction request intact and appends one
 explicit, non-authoritative formed-observation overlay. The overlay carries no
-Continuity answer: only source-grounded spans and the run-local current Event
-provenance needed by the ordinary canonical source contract.
+Continuity answer: only source-grounded spans and request-local model-facing
+provenance, while separate evidence retains the real run-local Event identity.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.providers.openai_compatible_reasoning import OpenAICompatibleReasoningRequest
 from relaylm.providers.openai_compatible_two_pass import (
     EXTRACTION_WIRE_SCHEMA,
+    _ProviderFacingProvenanceAliases,
     _extraction_request_body,
     _resolve_extraction_structured_output_mode,
 )
@@ -169,6 +170,8 @@ def _run_local_overlay(
     current_event_id = cognitive_input.input.id
     if not isinstance(current_event_id, str) or not current_event_id:
         raise ProviderProtocolError("production T2 current input Event ID is invalid")
+    aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(cognitive_input)
+    current_event_alias = aliases.alias_sources((current_event_id,))[0]
 
     normalized: list[dict[str, str]] = []
     for item in binding.items:
@@ -184,7 +187,7 @@ def _run_local_overlay(
             {
                 "subject_span": item.subject_span,
                 "unknown_evidence_span": item.unknown_evidence_span,
-                "source_event_id": current_event_id,
+                "source_event_id": current_event_alias,
             }
         )
     return tuple(normalized)

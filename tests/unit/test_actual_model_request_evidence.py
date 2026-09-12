@@ -316,10 +316,10 @@ def test_buffered_pass1_exact_request_evidence_is_captured_at_transport_boundary
     assert records[0].request_body == seen[0]
     assert records[0].pass_identity == "pass1"
     assert records[0].request_body["model"] == "gemma-test"
-    assert records[0].request_body["messages"][1]["content"].startswith(
-        "<COGNITIVE_INPUT>\n"
-    )
-    assert '"event_id":"event-now"' in records[0].request_body["messages"][1]["content"]
+    content = records[0].request_body["messages"][1]["content"]
+    assert content.startswith("<COGNITIVE_INPUT>\n")
+    assert '"event_id":"E0"' in content
+    assert '"event_id":"event-now"' not in content
 
 
 def test_buffered_pass2_exact_request_evidence_includes_serialized_input_and_schema() -> None:
@@ -354,10 +354,12 @@ def test_buffered_pass2_exact_request_evidence_includes_serialized_input_and_sch
     body = records[0].request_body
     assert body == seen[0]
     assert records[0].pass_identity == "pass2"
-    assert body["messages"][1]["content"].startswith("<COGNITIVE_INPUT>\n")
-    assert '"event_id":"event-now"' in body["messages"][1]["content"]
+    content = body["messages"][1]["content"]
+    assert content.startswith("<COGNITIVE_INPUT>\n")
+    assert '"event_id":"E0"' in content
+    assert '"event_id":"event-now"' not in content
     assert body["response_format"]["type"] == "json_schema"
-    assert "pass one response" in body["messages"][1]["content"]
+    assert "pass one response" in content
 
 
 def test_streaming_pass1_exact_request_evidence_is_captured_at_transport_boundary() -> None:
