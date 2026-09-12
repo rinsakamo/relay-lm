@@ -1,0 +1,16 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_semantic_reconstruction_strict
+owner_issue: 2769
+summary: >-
+  Zero-GPU repository binding for the fresh E4-SR2 strict-output semantic
+  reconstruction accessibility probe preregistered by #2768 after E4-IFQ1
+  qualified the shared native structured-output measurement interface.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-semantic-reconstruction-strict.md
+implementation:
+- src/relaylm/v2_cognitive_ir_semantic_reconstruction_strict.py
+tests:
+- tests/unit/test_v2_cognitive_ir_semantic_reconstruction_strict.py
+depends_on:
+- relaylm2_cognitive_ir_semantic_reconstruction
+- relaylm2_cognitive_ir_strict_output_interface_qualification
