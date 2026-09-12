@@ -5,6 +5,7 @@ import hashlib
 import importlib.metadata
 import importlib.util
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
@@ -16,6 +17,13 @@ from tools.physical_execution_queue import (
     PreInvokeBlocked,
     QueueConfig,
     run_queued_command,
+)
+from tools.relay_physical_env import (
+    PhysicalEnvironmentIdentity,
+    RelayPhysicalEnvironmentError,
+    _exact_pythonpath,
+    reexec_into_environment,
+    verify_current_environment,
 )
 
 
@@ -47,6 +55,9 @@ class PreparedRun:
     base_remote_head: str
     checkout_remote_head: str | None
     python_executable: str
+    environment_manifest: str
+    environment_policy_sha256: str
+    environment_fingerprint: str
     module_origin: str
     target_args: tuple[str, ...]
 
@@ -230,6 +241,13 @@ def _normalize_target_args(values: Sequence[str]) -> tuple[str, ...]:
     return normalized
 
 
+def _environment_identity(repo_root: Path) -> PhysicalEnvironmentIdentity:
+    try:
+        return verify_current_environment(repo_root=repo_root)
+    except RelayPhysicalEnvironmentError as exc:
+        raise RelayPhysicalRunError(str(exc)) from exc
+
+
 def prepare_run(
     *,
     repo_root: Path,
@@ -237,6 +255,7 @@ def prepare_run(
     target_args: Sequence[str] = (),
 ) -> PreparedRun:
     repo_root = repo_root.resolve()
+    environment = _environment_identity(repo_root)
     targets = _load_targets(repo_root)
     try:
         target = targets[target_name]
@@ -244,10 +263,10 @@ def prepare_run(
         raise RelayPhysicalRunError(
             f"unknown llama.cpp physical target: {target_name}"
         ) from exc
-    python_executable = str(Path(sys.executable).resolve())
+    python_executable = environment.python_executable
     if not Path(python_executable).is_file():
         raise RelayPhysicalRunError(
-            f"current Python executable is unavailable: {python_executable}"
+            f"persistent Python executable is unavailable: {python_executable}"
         )
     head, tree = _repo_identity(repo_root)
     checkout_branch = _current_branch(repo_root)
@@ -274,16 +293,27 @@ def prepare_run(
         base_remote_head=base_remote_head,
         checkout_remote_head=checkout_remote_head,
         python_executable=python_executable,
+        environment_manifest=str(environment.manifest_path),
+        environment_policy_sha256=environment.policy_sha256,
+        environment_fingerprint=environment.distribution_fingerprint,
         module_origin=module_origin,
         target_args=_normalize_target_args(target_args),
     )
 
 
 def final_pre_invoke_gate(prepared: PreparedRun) -> None:
-    current_python = str(Path(sys.executable).resolve())
-    if current_python != prepared.python_executable:
+    environment = _environment_identity(prepared.repo_root)
+    if environment.python_executable != prepared.python_executable:
         raise RelayPhysicalRunError(
-            f"Python interpreter drifted while waiting: {current_python}"
+            "persistent Python executable drifted while waiting"
+        )
+    if environment.policy_sha256 != prepared.environment_policy_sha256:
+        raise RelayPhysicalRunError(
+            "persistent Python policy drifted while waiting"
+        )
+    if environment.distribution_fingerprint != prepared.environment_fingerprint:
+        raise RelayPhysicalRunError(
+            "persistent Python distributions drifted while waiting"
         )
     head, tree = _repo_identity(prepared.repo_root)
     if head != prepared.head or tree != prepared.tree:
@@ -350,8 +380,14 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     return args
 
 
+def _prepare_child_environment(repo_root: Path) -> None:
+    os.environ["PYTHONPATH"] = _exact_pythonpath(repo_root)
+    os.environ["PYTHONNOUSERSITE"] = "1"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    args = _parse_args(raw_argv)
     repo_root = (
         args.repo_root.resolve()
         if args.repo_root is not None
@@ -364,6 +400,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{name}\t{spec.branch}\t{spec.description}")
         return 0
 
+    try:
+        reexec_into_environment(repo_root=repo_root, argv=raw_argv)
+    except RelayPhysicalEnvironmentError as exc:
+        print(
+            "relay physical environment blocked: "
+            f"{exc}. Prepare it once with "
+            "`python3.12 -m tools.relay_physical_env --prepare`.",
+            file=sys.stderr,
+        )
+        return 2
+
+    _prepare_child_environment(repo_root)
     try:
         prepared = prepare_run(
             repo_root=repo_root,
@@ -384,6 +432,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "head": prepared.head,
                 "tree": prepared.tree,
                 "python": prepared.python_executable,
+                "python_environment_manifest": prepared.environment_manifest,
+                "python_environment_policy_sha256": prepared.environment_policy_sha256,
+                "python_environment_fingerprint": prepared.environment_fingerprint,
                 "module": prepared.target.module,
                 "target_argv_sha256": _argv_sha256(command),
             },
