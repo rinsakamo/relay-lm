@@ -9,15 +9,21 @@ import tools.relay_physical_run as runner
 from tools.relay_physical_env import PhysicalEnvironmentIdentity
 
 
-def _write_registry(root: Path, *, engine: str = "llama.cpp") -> None:
+def _write_registry(
+    root: Path,
+    *,
+    schema_version: int = 1,
+    engine: str = "llama.cpp",
+    resource_key: str = "llama-cpp:local-gpu",
+) -> None:
     path = root / ".ai" / "physical" / "llama_cpp_targets.json"
     path.parent.mkdir(parents=True)
     path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": schema_version,
                 "engine": engine,
-                "resource_key": "llama-cpp:local-gpu",
+                "resource_key": resource_key,
                 "targets": {
                     "demo": {
                         "branch": "v2",
@@ -32,7 +38,11 @@ def _write_registry(root: Path, *, engine: str = "llama.cpp") -> None:
     )
 
 
-def _environment(root: Path, *, fingerprint: str = "fingerprint-a") -> PhysicalEnvironmentIdentity:
+def _environment(
+    root: Path,
+    *,
+    fingerprint: str = "fingerprint-a",
+) -> PhysicalEnvironmentIdentity:
     python = str(Path(runner.sys.executable).absolute())
     return PhysicalEnvironmentIdentity(
         home=root / "physical-home",
@@ -72,9 +82,21 @@ def _stub_prepare_dependencies(
     )
 
 
+def test_registry_rejects_unknown_schema_version(tmp_path: Path) -> None:
+    _write_registry(tmp_path, schema_version=2)
+    with pytest.raises(runner.RelayPhysicalRunError, match="schema_version"):
+        runner._load_targets(tmp_path)
+
+
 def test_registry_rejects_non_llama_cpp_engine(tmp_path: Path) -> None:
     _write_registry(tmp_path, engine="other")
     with pytest.raises(runner.RelayPhysicalRunError, match="llama.cpp"):
+        runner._load_targets(tmp_path)
+
+
+def test_registry_rejects_resource_key_drift(tmp_path: Path) -> None:
+    _write_registry(tmp_path, resource_key="llama-cpp:other-gpu")
+    with pytest.raises(runner.RelayPhysicalRunError, match="resource_key"):
         runner._load_targets(tmp_path)
 
 
