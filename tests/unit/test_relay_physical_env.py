@@ -270,16 +270,19 @@ def test_policy_prepare_lock_serializes_cross_process_creation(tmp_path: Path) -
     root = tmp_path / "physical"
     policy_sha256 = "a" * 64
     lock_path = envtool._prepare_lock_path(root, policy_sha256)
-    marker = tmp_path / "acquired"
+    ready_marker = tmp_path / "ready"
+    acquired_marker = tmp_path / "acquired"
     helper_code = "\n".join(
         [
             "import fcntl, sys",
             "from pathlib import Path",
             "lock_path = Path(sys.argv[1])",
-            "marker = Path(sys.argv[2])",
+            "ready = Path(sys.argv[2])",
+            "acquired = Path(sys.argv[3])",
             "handle = lock_path.open('a+')",
+            "ready.write_text('ready')",
             "fcntl.flock(handle.fileno(), fcntl.LOCK_EX)",
-            "marker.write_text('acquired')",
+            "acquired.write_text('acquired')",
             "fcntl.flock(handle.fileno(), fcntl.LOCK_UN)",
             "handle.close()",
         ]
@@ -287,15 +290,21 @@ def test_policy_prepare_lock_serializes_cross_process_creation(tmp_path: Path) -
 
     with envtool._policy_prepare_lock(root, policy_sha256):
         helper = subprocess.Popen(
-            [sys.executable, "-c", helper_code, str(lock_path), str(marker)]
+            [
+                sys.executable,
+                "-c",
+                helper_code,
+                str(lock_path),
+                str(ready_marker),
+                str(acquired_marker),
+            ]
         )
-        try:
-            time.sleep(0.05)
-            assert helper.poll() is None
-            assert marker.exists() is False
-        finally:
-            if helper.poll() is not None and helper.returncode != 0:
-                raise AssertionError("helper failed before lock release")
+        deadline = time.monotonic() + 2.0
+        while not ready_marker.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert ready_marker.read_text(encoding="utf-8") == "ready"
+        assert helper.poll() is None
+        assert acquired_marker.exists() is False
 
     assert helper.wait(timeout=2) == 0
-    assert marker.read_text(encoding="utf-8") == "acquired"
+    assert acquired_marker.read_text(encoding="utf-8") == "acquired"
