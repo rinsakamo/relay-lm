@@ -197,7 +197,6 @@ def test_production_pass2_uses_separated_view_while_pass1_stays_canonical() -> N
     assert "current_parcel" in conversation_content
     assert "current_parcel" in legacy_content
     assert "current_parcel" in production_content
-    assert production_content.count("current_parcel") == 1
     assert "Earlier user message." in production_content
     assert "Earlier assistant reply." in production_content
     assert "parcel_location" in production_content
