@@ -32,6 +32,14 @@
       "required_distributions": [
         "httpx"
       ]
+    },
+    "v1:unresolved-no-pass1": {
+      "branch": "v1",
+      "module": "tools.v1_stage_r_llama_cpp_production_unresolved_no_pass1_wsl",
+      "description": "Repository-owned v1 unresolved-only no-Pass1 discriminator wrapper from #2697.",
+      "required_distributions": [
+        "httpx"
+      ]
     }
   }
 }
