@@ -4,6 +4,7 @@ import argparse
 import fcntl
 import hashlib
 import json
+import math
 import os
 import socket
 import subprocess
@@ -24,6 +25,14 @@ DEFAULT_PORT = 1234
 DEFAULT_POLL_SECONDS = 5.0
 DEFAULT_IDLE_CONFIRMATIONS = 2
 DEFAULT_BUSY_PROCESS_NAMES = ("llama-server", "llama-cli", "llama-run")
+
+
+class PhysicalQueueError(RuntimeError):
+    pass
+
+
+class PreInvokeBlocked(PhysicalQueueError):
+    """The restartable final gate blocked before the scientific child started."""
 
 
 def _utc_now() -> str:
@@ -55,8 +64,10 @@ def _process_executable_names(proc_root: Path = Path("/proc")) -> set[str]:
     names: set[str] = set()
     try:
         entries = list(proc_root.iterdir())
-    except OSError:
-        return names
+    except OSError as exc:
+        raise PhysicalQueueError(
+            f"cannot inspect process table: {proc_root}: {exc}"
+        ) from exc
     for entry in entries:
         if not entry.name.isdigit() or int(entry.name) == os.getpid():
             continue
@@ -69,6 +80,9 @@ def _process_executable_names(proc_root: Path = Path("/proc")) -> set[str]:
         try:
             raw = (entry / "cmdline").read_bytes().split(b"\0", 1)[0]
         except OSError:
+            # Per-process entries race with process exit and may be inaccessible.
+            # The root process table itself is required above; individual entries
+            # are best-effort because disappearing processes are ordinary.
             continue
         if raw:
             names.add(Path(os.fsdecode(raw)).name)
@@ -140,14 +154,6 @@ class QueueConfig:
         )
 
 
-class PhysicalQueueError(RuntimeError):
-    pass
-
-
-class PreInvokeBlocked(PhysicalQueueError):
-    """The restartable final gate blocked before the scientific child started."""
-
-
 def run_queued_command(
     config: QueueConfig,
     command: Sequence[str],
@@ -161,18 +167,19 @@ def run_queued_command(
         raise PhysicalQueueError("child command must not be empty")
     if not isinstance(config.resource_key, str) or not config.resource_key.strip():
         raise PhysicalQueueError("resource_key must be a non-empty string")
-    if not isinstance(config.host, str) or not config.host:
+    if not isinstance(config.host, str) or not config.host.strip():
         raise PhysicalQueueError("host must be a non-empty string")
-    if (
-        isinstance(config.port, bool)
-        or not isinstance(config.port, int)
-        or not 1 <= config.port <= 65535
-    ):
+    if type(config.port) is not int or not 1 <= config.port <= 65535:
         raise PhysicalQueueError("port must be an integer in 1..65535")
-    if config.poll_seconds <= 0:
-        raise PhysicalQueueError("poll_seconds must be > 0")
-    if config.idle_confirmations < 1:
-        raise PhysicalQueueError("idle_confirmations must be >= 1")
+    if (
+        isinstance(config.poll_seconds, bool)
+        or not isinstance(config.poll_seconds, (int, float))
+        or not math.isfinite(config.poll_seconds)
+        or config.poll_seconds <= 0
+    ):
+        raise PhysicalQueueError("poll_seconds must be a finite number > 0")
+    if type(config.idle_confirmations) is not int or config.idle_confirmations < 1:
+        raise PhysicalQueueError("idle_confirmations must be an integer >= 1")
     if not all(
         isinstance(name, str) and name for name in config.busy_process_names
     ):
