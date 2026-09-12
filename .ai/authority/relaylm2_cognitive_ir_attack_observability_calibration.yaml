@@ -1,0 +1,21 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_attack_observability_calibration
+owner_issue: 2669
+summary: >-
+  Repository binding for the #2667 NON_CITABLE treatment-blind attack
+  observability calibration. Keeps K3 fixed and selects the minimum equal
+  target-example visibility needed to make NULL/MISMATCH/SHIFT-post target
+  laws solvable without consulting P0-P6 treatment outcomes.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-attack-observability-calibration.md
+implementation:
+- src/relaylm/v2_cognitive_ir_attack_observability_calibration.py
+- tools/v2_cognitive_ir_attack_observability_calibration_llama_cpp.py
+- tools/v2_cognitive_ir_attack_observability_calibration_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_attack_observability_calibration_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_attack_observability_calibration.py
+depends_on:
+- relaylm2_cognitive_ir_s3_r5
+- relaylm2_cognitive_ir_shared_floor_calibration_v2
+- relaylm2_physical_execution
