@@ -16,6 +16,7 @@ from relaylm.v2_cognitive_ir_s3_r4 import (
     validate_s3_r4_preregistration,
 )
 from relaylm.v2_cognitive_ir_s3_r5 import (
+    S3R5BindingError,
     S3_R5_ACTIVE_COORDINATES,
     S3_R5_FAMILIES_PER_REGIME,
     S3_R5_LABEL,
@@ -303,7 +304,7 @@ def test_s3_r5_exact_paired_helpers_cover_preregistered_boundaries() -> None:
     assert exact_first_arm_superiority_p(5, 0) == pytest.approx(0.03125)
     assert exact_first_arm_superiority_p(4, 0) == pytest.approx(0.0625)
     assert exact_first_arm_superiority_p(5, 1) == pytest.approx(0.109375)
-    with pytest.raises(Exception):
+    with pytest.raises(S3R5BindingError, match="equal length"):
         paired_outcome_cells((True,), (True, False))
 
 
