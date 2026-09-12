@@ -1,8 +1,9 @@
 schema_version: 1
 id: provider_and_api
-summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, explicit no-op-by-default model-facing request observation immediately before cognition transport, canonical factorization of Pass-2 State and Continuity projection responsibilities with production-preserving assembly, decoding including capability-gated per-pass hard output-token carriage, reasoning control including attested LM Studio binary reasoning_effort carriage, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, exact Pass-2 extraction-content normalization of one complete lowercase json Markdown fence before unchanged strict JSON/shape/source validation, backend capability attestation, identity, and public API boundary.
+summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, explicit no-op-by-default model-facing request observation immediately before cognition transport, canonical factorization of Pass-2 State and Continuity projection responsibilities, production Pass-2 accepted-Continuity lifecycle-channel separation after canonical Context/State compilation, decoding including capability-gated per-pass hard output-token carriage, reasoning control including attested LM Studio binary reasoning_effort carriage, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, exact Pass-2 extraction-content normalization of one complete lowercase json Markdown fence before unchanged strict JSON/shape/source validation, backend capability attestation, identity, and public API boundary.
 canonical_surfaces:
 - docs/contracts/provider-wire.md
+- docs/contracts/provider-pass2-lifecycle-channel.md
 - docs/contracts/provider-decoding.md
 - docs/contracts/provider-reasoning.md
 - docs/contracts/provider-identity.md
@@ -11,6 +12,7 @@ implementation:
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 - src/relaylm/providers/openai_compatible_extraction_projection.py
+- src/relaylm/providers/openai_compatible_extraction_lifecycle.py
 - src/relaylm/providers/openai_request_observation.py
 - src/relaylm/providers/openai_compatible_backend.py
 - src/relaylm/providers/vllm_backend.py
@@ -27,6 +29,7 @@ implementation:
 - src/relaylm/server.py
 qualification_inputs:
 - docs/contracts/provider-wire.md
+- docs/contracts/provider-pass2-lifecycle-channel.md
 - docs/contracts/provider-decoding.md
 - docs/contracts/provider-reasoning.md
 - docs/contracts/provider-identity.md
@@ -34,6 +37,7 @@ qualification_inputs:
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 - src/relaylm/providers/openai_compatible_extraction_projection.py
+- src/relaylm/providers/openai_compatible_extraction_lifecycle.py
 - src/relaylm/providers/openai_request_observation.py
 - src/relaylm/providers/openai_compatible_backend.py
 - src/relaylm/providers/vllm_backend.py
@@ -74,6 +78,7 @@ tests:
 - tests/unit/test_openai_compatible_two_pass_fenced_json.py
 - tests/unit/test_openai_request_observation.py
 - tests/unit/test_openai_compatible_extraction_projection.py
+- tests/unit/test_openai_compatible_extraction_lifecycle.py
 - tests/unit/test_lm_studio_reasoning_capabilities.py
 - tests/unit/test_openai_compatible_identity.py
 - tests/unit/test_openai_compatible_cognition_capabilities.py

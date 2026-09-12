@@ -328,6 +328,7 @@ class OpenAICompatibleTwoPassSerializedInputCounter:
             decoding=decoding_config.to_mapping(),
             reasoning_request=effective_reasoning,
             vllm_reasoning_capability=capability,
+            lifecycle_channel_separation=True,
         )
         return _count_model_input(
             request_body=request_body,

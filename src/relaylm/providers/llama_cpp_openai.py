@@ -99,6 +99,7 @@ class LlamaCppOpenAICompatibleTwoPassProvider(OpenAICompatibleTwoPassProvider):
             extraction_input=extraction_input,
             decoding=decoding_config.to_mapping(),
             structured_output_mode=structured_output_mode,
+            lifecycle_channel_separation=True,
         )
         body.update(self._llama_cpp_reasoning_fields(effective_reasoning))
         envelope = await self._post_two_pass(body=body, boundary="extraction")

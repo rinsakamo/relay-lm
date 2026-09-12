@@ -36,6 +36,10 @@ from relaylm.providers.openai_compatible import (
 from relaylm.providers.openai_compatible_cognition import (
     describe_openai_compatible_cognition_capabilities,
 )
+from relaylm.providers.openai_compatible_extraction_lifecycle import (
+    build_lifecycle_separated_extraction_pass_suffix,
+    separate_accepted_continuity_for_extraction,
+)
 from relaylm.providers.openai_compatible_extraction_projection import (
     EXTRACTION_WIRE_SCHEMA as EXTRACTION_WIRE_SCHEMA,
     ExtractionProjectionMode,
@@ -243,6 +247,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 vllm_reasoning_capability=effective_vllm,
                 lm_studio_reasoning_capability=effective_lm_studio,
                 structured_output_mode=structured_output_mode,
+                lifecycle_channel_separation=True,
             ),
             boundary="extraction",
         )
@@ -365,18 +370,38 @@ def _extraction_request_body(
     lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
     structured_output_mode: CognitionStructuredOutputMode = CognitionStructuredOutputMode.PLAIN,
     projection_mode: ExtractionProjectionMode = ExtractionProjectionMode.PRODUCTION,
+    lifecycle_channel_separation: bool = False,
 ) -> dict[str, Any]:
+    request_extraction_input = extraction_input
+    if lifecycle_channel_separation:
+        projection = separate_accepted_continuity_for_extraction(
+            extraction_input.cognitive_input
+        )
+        request_extraction_input = CognitionExtractionInput(
+            cognitive_input=projection.cognitive_input,
+            assistant_response=extraction_input.assistant_response,
+        )
+        extraction_suffix = build_lifecycle_separated_extraction_pass_suffix(
+            request_extraction_input,
+            mode=projection_mode,
+            accepted_items=projection.accepted_items,
+        )
+    else:
+        extraction_suffix = build_extraction_pass_suffix(
+            extraction_input,
+            mode=projection_mode,
+        )
+
     body: dict[str, Any] = {
         "model": model,
         "messages": [
             {"role": "system", "content": COMMON_SYSTEM_INSTRUCTION},
             {
                 "role": "user",
-                "content": _common_cognitive_prefix(extraction_input.cognitive_input)
-                + build_extraction_pass_suffix(
-                    extraction_input,
-                    mode=projection_mode,
-                ),
+                "content": _common_cognitive_prefix(
+                    request_extraction_input.cognitive_input
+                )
+                + extraction_suffix,
             },
         ],
         "stream": False,
