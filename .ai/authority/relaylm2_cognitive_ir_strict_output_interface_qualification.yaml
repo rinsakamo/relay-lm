@@ -1,11 +1,11 @@
 schema_version: 1
 id: relaylm2_cognitive_ir_strict_output_interface_qualification
 owner_issue: 2744
-preregistration_issue: 2742
-scientific_parent_issue: 2211
 summary: >-
   Zero-GPU repository binding for the prospective non-treatment E4-IFQ1
-  strict-output interface qualification triggered by the #2736 format floor.
+  strict-output interface qualification preregistered by #2742 after the #2736
+  format-floor diagnosis, without authorizing physical execution or architecture
+  mutation.
 canonical_surfaces:
 - docs/research/relaylm2-cognitive-ir-strict-output-interface-qualification.md
 implementation:
@@ -14,5 +14,3 @@ tests:
 - tests/unit/test_v2_cognitive_ir_strict_output_interface_qualification.py
 depends_on:
 - relaylm2_cognitive_ir_semantic_reconstruction
-physical_execution_authorized: false
-architecture_consequence: NONE
