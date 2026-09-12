@@ -33,11 +33,17 @@ def _utc_now() -> str:
 def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
-    temp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temp, path)
+    try:
+        temp.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temp, path)
+    finally:
+        try:
+            temp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _safe_resource_id(resource_key: str) -> str:
@@ -153,10 +159,24 @@ def run_queued_command(
 ) -> int:
     if not command:
         raise PhysicalQueueError("child command must not be empty")
+    if not isinstance(config.resource_key, str) or not config.resource_key.strip():
+        raise PhysicalQueueError("resource_key must be a non-empty string")
+    if not isinstance(config.host, str) or not config.host:
+        raise PhysicalQueueError("host must be a non-empty string")
+    if (
+        isinstance(config.port, bool)
+        or not isinstance(config.port, int)
+        or not 1 <= config.port <= 65535
+    ):
+        raise PhysicalQueueError("port must be an integer in 1..65535")
     if config.poll_seconds <= 0:
         raise PhysicalQueueError("poll_seconds must be > 0")
     if config.idle_confirmations < 1:
         raise PhysicalQueueError("idle_confirmations must be >= 1")
+    if not all(
+        isinstance(name, str) and name for name in config.busy_process_names
+    ):
+        raise PhysicalQueueError("busy_process_names must contain non-empty strings")
 
     receipt_path = config.resolved_receipt_path()
     request_id = uuid.uuid4().hex
@@ -195,6 +215,7 @@ def run_queued_command(
         "pre_invoke_gate_passed_at": None,
         "child_invoked_at": None,
         "child_exit_code": None,
+        "controller_lease_fd_closed_at": None,
         "released_at": None,
     }
     _atomic_write_json(receipt_path, receipt)
@@ -264,6 +285,7 @@ def run_queued_command(
             receipt["state"] = "FINAL_PREFLIGHT"
             receipt["quiescent_at"] = _utc_now()
             receipt["pre_invoke_gate_started_at"] = _utc_now()
+            receipt["pre_invoke_gate_passed_at"] = None
             receipt["pre_invoke_gate_attempts"] = (
                 int(receipt["pre_invoke_gate_attempts"]) + 1
             )
@@ -317,11 +339,20 @@ def run_queued_command(
         _atomic_write_json(receipt_path, receipt)
         raise
     finally:
-        if locked:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        # Do not explicitly LOCK_UN here. The immediate child inherits this exact
+        # open file description via pass_fds. If the controller is interrupted
+        # while the child is still alive, an explicit unlock by the parent would
+        # release the flock for the child as well. Closing only the controller's
+        # descriptor preserves the lease until the inherited child descriptor is
+        # closed by process exit.
         lock_file.close()
-        receipt["lease_state"] = "RELEASED"
-        receipt["released_at"] = _utc_now()
+        receipt["controller_lease_fd_closed_at"] = _utc_now()
+        if receipt["child_invoked_at"] is not None and receipt["child_exit_code"] is None:
+            receipt["lease_state"] = "RELEASE_UNOBSERVED_AFTER_CHILD_START"
+            receipt["released_at"] = None
+        else:
+            receipt["lease_state"] = "RELEASED"
+            receipt["released_at"] = _utc_now()
         _atomic_write_json(receipt_path, receipt)
 
 
