@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import hashlib
 
 import relaylm.v2_cognitive_ir_s3 as base
