@@ -19,6 +19,7 @@ import RelayTheory.RepresentationRefinement
 import RelayTheory.RepresentationFamilyExpansion
 import RelayTheory.UniversalRepresentation
 import RelayTheory.BoundedDecoderFactorization
+import RelayTheory.AccessInterfaceTrivialization
 import RelayTheory.ProbeRelative
 import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
