@@ -1,0 +1,18 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_semantic_reconstruction
+owner_issue: 2722
+summary: >-
+  Zero-GPU repository binding for the Relay Theory import preregistered by #2709
+  that separates canonical semantic sufficiency from bounded consumer
+  accessibility using an exact P4/P6 semantic-reconstruction mechanism control,
+  frozen seed/call/resource contracts, deterministic scoring, and paired exact
+  inference without authorizing physical execution or architecture mutation.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-semantic-reconstruction.md
+implementation:
+- src/relaylm/v2_cognitive_ir_semantic_reconstruction.py
+tests:
+- tests/unit/test_v2_cognitive_ir_semantic_reconstruction.py
+depends_on:
+- relaylm2_cognitive_ir_experiment
+- relaylm2_cognitive_ir_current_law_certificate_qualification
