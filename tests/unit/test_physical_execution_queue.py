@@ -7,6 +7,7 @@ import socket
 import pytest
 
 from tools.physical_execution_queue import (
+    PhysicalQueueError,
     PreInvokeBlocked,
     QueueConfig,
     _safe_resource_id,
@@ -14,7 +15,6 @@ from tools.physical_execution_queue import (
     probe_external_busy,
     run_queued_command,
 )
-import tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction as selected_tx
 
 
 class Completed:
@@ -47,7 +47,7 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
         receipt_path=receipt,
         poll_seconds=0.01,
         idle_confirmations=2,
-        target_label="v2:r6d",
+        target_label="common:demo",
         cwd=tmp_path,
     )
 
@@ -74,6 +74,7 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
     assert payload["child_exit_code"] == 7
     assert payload["pre_invoke_gate_attempts"] == 1
     assert payload["pre_invoke_gate_passed_at"]
+    assert payload["controller_lease_fd_closed_at"]
     assert payload["released_at"]
 
 
@@ -156,7 +157,7 @@ def test_invocation_boundary_busy_reenters_wait_without_child(
     assert payload["lease_state"] == "RELEASED"
 
 
-def test_common_port_probe_matches_target_bindability_gate() -> None:
+def test_common_port_probe_uses_target_facing_bindability() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         host, port = holder.getsockname()
@@ -165,7 +166,6 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         # connect-only probing missed: no TCP listener accepts connections, but
         # the target still cannot acquire the exact bind address.
         assert port_is_bindable(host, port) is False
-        assert selected_tx._port_is_free(host, port) is False
         assert probe_external_busy(
             host=host,
             port=port,
@@ -173,7 +173,6 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         ) == (f"listener:{host}:{port}",)
 
     assert port_is_bindable(host, port) is True
-    assert selected_tx._port_is_free(host, port) is True
 
 
 def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None:
@@ -208,9 +207,11 @@ def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None
     assert payload["lease_state"] == "RELEASED"
     assert payload["child_invoked_at"] is None
     assert payload["pre_invoke_error_type"] == "RuntimeError"
+    assert payload["controller_lease_fd_closed_at"]
+    assert payload["released_at"]
 
 
-def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> None:
+def test_controller_error_after_child_start_is_release_unobserved(tmp_path: Path) -> None:
     receipt = tmp_path / "receipt.json"
 
     def broken_runner(*args, **kwargs):
@@ -234,10 +235,13 @@ def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> Non
 
     payload = json.loads(receipt.read_text())
     assert payload["state"] == "CONTROLLER_ERROR"
-    assert payload["lease_state"] == "RELEASED"
+    assert payload["lease_state"] == "RELEASE_UNOBSERVED_AFTER_CHILD_START"
     assert payload["controller_error_type"] == "RuntimeError"
-    assert payload["released_at"]
+    assert payload["controller_lease_fd_closed_at"]
+    assert payload["released_at"] is None
 
+    # The fake runner did not actually inherit the fd. Closing the controller fd
+    # therefore releases the flock, and a subsequent cooperative run can proceed.
     calls = []
 
     def runner(command, *, cwd, check, text, pass_fds):
@@ -262,7 +266,22 @@ def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> Non
     assert calls == [["true"]]
 
 
-def test_invalid_config_does_not_invoke_child(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"resource_key": ""},
+        {"host": ""},
+        {"port": 0},
+        {"port": 65536},
+        {"busy_process_names": ("",)},
+        {"poll_seconds": 0},
+        {"idle_confirmations": 0},
+    ],
+)
+def test_invalid_config_does_not_invoke_child(
+    tmp_path: Path,
+    overrides: dict[str, object],
+) -> None:
     called = False
 
     def runner(*args, **kwargs):
@@ -270,13 +289,14 @@ def test_invalid_config_does_not_invoke_child(tmp_path: Path) -> None:
         called = True
         return Completed(0)
 
-    with pytest.raises(Exception):
+    values: dict[str, object] = {
+        "lock_root": tmp_path / "locks",
+        "receipt_path": tmp_path / "receipt.json",
+    }
+    values.update(overrides)
+    with pytest.raises(PhysicalQueueError):
         run_queued_command(
-            QueueConfig(
-                lock_root=tmp_path / "locks",
-                receipt_path=tmp_path / "receipt.json",
-                poll_seconds=0,
-            ),
+            QueueConfig(**values),
             ["true"],
             child_runner=runner,
         )
@@ -284,7 +304,7 @@ def test_invalid_config_does_not_invoke_child(tmp_path: Path) -> None:
 
 
 def test_empty_command_fails_before_queue(tmp_path: Path) -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(PhysicalQueueError):
         run_queued_command(
             QueueConfig(
                 lock_root=tmp_path / "locks",
