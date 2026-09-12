@@ -168,7 +168,7 @@ def test_no_pass1_builder_changes_only_canonical_pass1_component(tmp_path: Path)
     prefix = _common_cognitive_prefix(extraction.cognitive_input)
     projection = (
         unresolved_only_extraction_intro()
-        + unresolved_only_continuity_extraction_component(CURRENT_SOURCE)
+        + unresolved_only_continuity_extraction_component("E0")
         + unresolved_only_extraction_outro()
     )
     pass1_component = extraction_response_component(extraction)
