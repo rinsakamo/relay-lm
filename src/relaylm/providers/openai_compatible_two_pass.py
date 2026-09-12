@@ -37,7 +37,7 @@ from relaylm.providers.openai_compatible_cognition import (
     describe_openai_compatible_cognition_capabilities,
 )
 from relaylm.providers.openai_compatible_extraction_projection import (
-    EXTRACTION_WIRE_SCHEMA,
+    EXTRACTION_WIRE_SCHEMA as EXTRACTION_WIRE_SCHEMA,
     ExtractionProjectionMode,
     build_extraction_pass_suffix,
     extraction_schema_name,
