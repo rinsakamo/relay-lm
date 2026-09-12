@@ -2,8 +2,12 @@ schema_version: 1
 id: cognitive_turn
 summary: >-
   Core 1.0 two-pass-first ordinary-turn cognition authority. Pass 1 and Pass 2
-  share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
-  visible character response with a minimal suffix; Pass 2 projects semantic
+  share one canonical cognitive prefix through CognitiveInput. At the external
+  OpenAI-compatible two-pass boundary, canonical Event provenance is represented
+  by deterministic request-local aliases and reverse-mapped to real Event IDs
+  before existing source validation and deterministic commit authority; internal
+  Event provenance and persistence remain unchanged. Pass 1 owns the visible
+  character response with a minimal suffix; Pass 2 projects semantic
   State/Continuity proposals directly, without a model-authored interpretation
   scaffold. Canonical Pass-2 State and Continuity projection components are
   factorized; ordinary production Pass 2 separates already-accepted Continuity
@@ -91,6 +95,7 @@ tests:
 - tests/unit/test_two_pass_structured_output_mode.py
 - tests/unit/test_two_pass_completion_metadata.py
 - tests/unit/test_two_pass_source_binding.py
+- tests/unit/test_two_pass_provenance_alias.py
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_single_pass_provider_result_type.py
 - tests/unit/test_streaming_delivery_reconciliation.py
