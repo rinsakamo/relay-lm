@@ -3,21 +3,46 @@
 Status: infrastructure-only execution control owned by #2660. This layer does not
 change v1/v2 scientific semantics or interpret experiment results.
 
-## Fixed engine
+## Fixed engine and fixed local Python substrate
 
-The shared physical path is intentionally **llama.cpp-only**.
+The shared physical path is intentionally **llama.cpp-only** and uses one
+persistent Python environment for both v1 and v2.
 
-There is no engine/provider abstraction in this controller. LM Studio and vLLM
-remain historical or target-specific evidence where already recorded, but they
-are not selectable backends of the common runner.
-
-The current single-GPU LocalCodex resource key is fixed to:
+Default local state:
 
 ```text
-llama-cpp:local-gpu
+~/.local/share/relaylm/physical/
+├── venv/
+└── python-environment.json
 ```
 
-All v1/v2 LocalCodex physical jobs using the local RTX GPU must use that same key.
+`RELAYLM_PHYSICAL_HOME` may override that root.
+
+The repository policy is `.ai/physical/python_environment_policy.json`. It fixes
+the physical bootstrap interpreter to CPython 3.12 and declares the runtime
+dependency floor, including `httpx`. The explicit bootstrap command is:
+
+```bash
+python3.12 -m tools.relay_physical_env --prepare
+```
+
+`--prepare` is idempotent: if the environment already matches its create-once
+local manifest it is reused without reinstalling anything. It never upgrades or
+repairs a drifted environment. A deliberate replacement requires:
+
+```bash
+python3.12 -m tools.relay_physical_env --rebuild
+```
+
+The local manifest freezes the exact Python identity and a fingerprint over all
+installed distributions. Therefore a later `pip install`, upgrade, removal, or
+interpreter change causes preparation/final-preflight failure instead of a
+silent runtime change.
+
+RelayLM itself is not installed into this persistent venv. Child processes get
+an exact `PYTHONPATH` containing only the selected checkout root and its `src/`
+directory, plus `PYTHONNOUSERSITE=1`. This keeps reusable dependencies local
+while product/scientific code always comes from the exact isolated checkout.
 
 ## Public entrypoint
 
@@ -28,22 +53,44 @@ python -m tools.relay_physical_run --list-targets
 python -m tools.relay_physical_run --target <registered-target>
 ```
 
-Target-owned arguments may follow `--`. The public runner never accepts an
-arbitrary executable; every target resolves to:
+For target execution, the runner verifies the persistent environment and
+automatically re-execs itself through:
 
 ```text
-<current exact Python> -m <repository-registered wrapper module> <target args>
+~/.local/share/relaylm/physical/venv/bin/python
+```
+
+If the persistent environment does not exist or has drifted, the runner stops
+before queue/target invocation and tells the operator to run the explicit
+environment preparation/rebuild command. It never performs `pip install` during
+a physical transaction.
+
+Target-owned arguments may follow `--`. Every target resolves to:
+
+```text
+<persistent physical Python> -m <repository-registered wrapper module> <target args>
 ```
 
 `tools.physical_execution_queue` is an internal primitive. LocalCodex should not
 construct `queue -- <arbitrary child command>` as the normal execution surface.
+
+## Shared resource
+
+The current single-GPU LocalCodex resource key is fixed to:
+
+```text
+llama-cpp:local-gpu
+```
+
+All v1/v2 LocalCodex physical jobs using the local RTX GPU use that same key.
 
 ## One-shot controller lifecycle
 
 ```text
 PREPARE
   exact clean checkout
-  exact interpreter
+  persistent Python environment fingerprint
+  exact checkout-only PYTHONPATH
   required distributions
   repository target registry
   fresh protected-branch remote ref
@@ -61,11 +108,13 @@ EXTERNAL LLAMA.CPP QUIESCENCE
        v
 FINAL_PREFLIGHT
   checkout unchanged
-  interpreter unchanged
+  persistent Python executable unchanged
+  environment policy unchanged
+  installed-distribution fingerprint unchanged
   target module unchanged
   required distributions still present
   protected branch remote ref unchanged
-  pushed checkout branch ref unchanged
+  pushed checkout branch remote ref unchanged
        |
        v
 TARGET WRAPPER EXACTLY ONCE
@@ -77,76 +126,60 @@ TARGET-OWNED CLEANUP / RESULT
 LEASE RELEASE
 ```
 
-If the protected branch or pushed execution branch advances while the job waits,
-the final gate stops before child invocation. Reprepare and requeue. That is not a
-scientific retry because target host/provider/semantic counts remain zero.
+If repository authority or the persistent Python environment changes while the
+job waits, the final gate stops before child invocation. Reprepare and requeue.
+That is not a scientific retry because target host/provider/semantic counts
+remain zero.
 
-Fresh Issue/PR ownership and any target-specific authority beyond branch refs are
-still part of the LocalCodex preparation procedure. The target wrapper/host
-retains its existing scientific freeze, call ceilings, artifact and cleanup
-contract.
+Fresh Issue/PR ownership and target-specific authority beyond branch refs remain
+part of the LocalCodex preparation procedure.
 
 ## Lease semantics
 
 The queue uses POSIX/WSL `flock`. File existence is not ownership.
 
 After acquisition it requires consecutive idle observations. A busy observation
-resets the idle counter. The lease file descriptor is deliberately inherited by
-the immediate child process so an outer controller death does not release the
-lease while that child is still alive.
+resets the idle counter. The lease file descriptor is inherited by the immediate
+child so an outer controller death does not release the lease while that child
+is still alive.
 
 The queue does not retry a target after `child_invoked_at` is populated.
 
 ## Zero-GPU process smoke
 
-Before a real llama.cpp/GPU smoke, the OS-level control plane can be checked in one command:
+Before a real llama.cpp/GPU smoke, check the OS-level control plane with:
 
 ```bash
 python -m pytest -q tests/integration/test_physical_execution_queue_process_smoke.py
 ```
 
-This smoke uses real local processes and sockets but no model or GPU. It verifies
-cross-process `flock` serialization, external `llama-server` process waiting,
-listener waiting plus quiescence, inherited-lease survival after controller death,
-and pre-invoke blocking with zero child starts. The deterministic unit suite keeps
-the explicit free -> busy -> free -> free quiescence-reset case.
+This uses real local processes/sockets but no model/GPU and covers cross-process
+`flock`, external `llama-server` waiting, listener quiescence, inherited-lease
+survival after controller death, and pre-invoke blocking with zero child starts.
 
-## Receipt
+## Receipt and environment evidence
 
-The infrastructure receipt separates execution state from lease state.
-
-Important fields include:
+Queue receipts remain infrastructure-only. The public runner also emits:
 
 ```text
-state
-lease_state
-queued_at
-lease_acquired_at
-quiescent_at
-pre_invoke_gate_started_at
-pre_invoke_gate_passed_at
-child_invoked_at
-child_exit_code
-released_at
+python
+python_environment_manifest
+python_environment_policy_sha256
+python_environment_fingerprint
 ```
 
-Terminal execution states include `CHILD_EXITED`, `PRE_INVOKE_BLOCKED`, and
-`CONTROLLER_ERROR`. `lease_state=RELEASED` records resource release separately.
-
-The receipt never synthesizes PASS, SEMANTIC_FAIL, qualification, benchmark, or
-product verdicts.
+These identify the reused local execution substrate without putting it in the
+repository or mixing it with scientific verdicts.
 
 ## LocalCodex prompt shape
 
-The operator-facing instruction should stay short. Example:
+The operator-facing instruction stays short:
 
 ```text
-#2667 を current authority に従って one-shot physical run。
-llama.cpp 共通 runner を使い、他の llama.cpp/GPU 利用中なら終了まで待つ。
-pre-invoke で authority が古くなっていたら scientific transaction を消費せず停止。
-host entry 後は retry/replay/rescue せず evidence をそのまま保存・報告。
+#<physical-owner> を current authority に従って one-shot physical run。
 ```
 
-LocalCodex resolves the registered target and repository-owned scientific
-procedure from current authority; the operator does not hand-build Python,
-server, port, model, HOME, lock, or wrapper argv.
+LocalCodex owns the non-exclusive preparation step. It verifies/reuses the
+persistent physical environment first; only an absent environment may be
+created by the explicit idempotent `--prepare` action. Drift is fail-closed and
+requires explicit `--rebuild`, never an in-transaction repair.
