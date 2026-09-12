@@ -41,6 +41,14 @@
         "httpx"
       ]
     },
+    "v2:strict-output-interface-qualification": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_strict_output_interface_qualification_llama_cpp_wsl",
+      "description": "NON_CITABLE E4-IFQ1 prospective strict-output interface qualification adapter from #2748.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
     "v2:r6d-d1": {
       "branch": "v2",
       "module": "tools.v2_cognitive_ir_s3_r6d_d1_llama_cpp_wsl",
