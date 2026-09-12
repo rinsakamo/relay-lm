@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, replace
 from typing import Any
 
 import httpx
@@ -82,6 +83,112 @@ Respond as this character."""
 
 _EXTRACTION_JSON_FENCE_PREFIX = "```json\n"
 _EXTRACTION_JSON_FENCE_SUFFIX = "\n```"
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderFacingProvenanceAliases:
+    """Request-local opaque aliases for canonical RelayLM Event provenance."""
+
+    pairs: tuple[tuple[str, str], ...]
+
+    @classmethod
+    def from_cognitive_input(
+        cls,
+        cognitive_input: CognitiveInput,
+    ) -> "_ProviderFacingProvenanceAliases":
+        ordered: list[str] = []
+        seen: set[str] = set()
+
+        def add(event_id: str) -> None:
+            if event_id not in seen:
+                seen.add(event_id)
+                ordered.append(event_id)
+
+        add(cognitive_input.input.id)
+        for record in cognitive_input.state:
+            for source in record.sources:
+                add(source)
+        for item in cognitive_input.context:
+            for source in item.sources:
+                add(source)
+        for item in cognitive_input.event_evidence:
+            add(item.event_id)
+
+        return cls(
+            pairs=tuple((event_id, f"E{index}") for index, event_id in enumerate(ordered))
+        )
+
+    def _real_to_alias(self) -> dict[str, str]:
+        return dict(self.pairs)
+
+    def _alias_to_real(self) -> dict[str, str]:
+        return {alias: real for real, alias in self.pairs}
+
+    def alias_sources(self, sources: tuple[str, ...]) -> tuple[str, ...]:
+        mapping = self._real_to_alias()
+        try:
+            return tuple(mapping[source] for source in sources)
+        except KeyError as exc:
+            raise ProviderProtocolError(
+                "provider provenance alias map is missing canonical Event ID: "
+                f"{exc.args[0]}"
+            ) from exc
+
+    def alias_cognitive_input(self, cognitive_input: CognitiveInput) -> CognitiveInput:
+        mapping = self._real_to_alias()
+        try:
+            current_alias = mapping[cognitive_input.input.id]
+        except KeyError as exc:  # pragma: no cover - construction invariant
+            raise ProviderProtocolError(
+                "provider provenance alias map is missing current Input Event ID"
+            ) from exc
+
+        return replace(
+            cognitive_input,
+            state=tuple(
+                replace(record, sources=self.alias_sources(record.sources))
+                for record in cognitive_input.state
+            ),
+            context=tuple(
+                replace(item, sources=self.alias_sources(item.sources))
+                for item in cognitive_input.context
+            ),
+            input=replace(cognitive_input.input, id=current_alias),
+            event_evidence=tuple(
+                replace(item, event_id=mapping[item.event_id])
+                for item in cognitive_input.event_evidence
+            ),
+        )
+
+    def restore_extraction_output(
+        self,
+        output: CognitionExtractionOutput,
+    ) -> CognitionExtractionOutput:
+        mapping = self._alias_to_real()
+
+        def restore_sources(sources: tuple[str, ...]) -> tuple[str, ...]:
+            restored: list[str] = []
+            for source in sources:
+                real = mapping.get(source)
+                if real is None:
+                    raise ProviderProtocolError(
+                        "provider provenance alias is absent from originating CognitiveInput: "
+                        f"{source}"
+                    )
+                restored.append(real)
+            return tuple(restored)
+
+        return replace(
+            output,
+            state_candidates=tuple(
+                replace(candidate, sources=restore_sources(candidate.sources))
+                for candidate in output.state_candidates
+            ),
+            continuity_candidates=tuple(
+                replace(candidate, sources=restore_sources(candidate.sources))
+                for candidate in output.continuity_candidates
+            ),
+        )
 
 
 class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
@@ -238,6 +345,9 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             pass_request=pass_request,
             provider=self,
         )
+        aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(
+            extraction_input.cognitive_input
+        )
         envelope = await self._post_two_pass(
             body=_extraction_request_body(
                 model=self.model,
@@ -251,7 +361,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             ),
             boundary="extraction",
         )
-        output = _parse_extraction_completion(envelope)
+        output = aliases.restore_extraction_output(_parse_extraction_completion(envelope))
         _require_candidate_sources_in_cognitive_input(
             output,
             extraction_input.cognitive_input,
@@ -312,7 +422,26 @@ def _resolve_extraction_structured_output_mode(
     )
 
 
+def _provider_facing_cognitive_input(cognitive_input: CognitiveInput) -> CognitiveInput:
+    aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(cognitive_input)
+    return aliases.alias_cognitive_input(cognitive_input)
+
+
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
+    serialized = json.dumps(
+        serialize_cognitive_input(_provider_facing_cognitive_input(cognitive_input)),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return (
+        "<COGNITIVE_INPUT>\n"
+        f"{serialized}\n"
+        "</COGNITIVE_INPUT>\n\n"
+        "<PASS>\n"
+    )
+
+
+def _common_provider_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
     serialized = json.dumps(
         serialize_cognitive_input(cognitive_input),
         ensure_ascii=False,
@@ -372,11 +501,17 @@ def _extraction_request_body(
     projection_mode: ExtractionProjectionMode = ExtractionProjectionMode.PRODUCTION,
     lifecycle_channel_separation: bool = False,
 ) -> dict[str, Any]:
-    request_extraction_input = extraction_input
+    aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(
+        extraction_input.cognitive_input
+    )
+    provider_input = aliases.alias_cognitive_input(extraction_input.cognitive_input)
+    aliased_extraction_input = CognitionExtractionInput(
+        cognitive_input=provider_input,
+        assistant_response=extraction_input.assistant_response,
+    )
+    request_extraction_input = aliased_extraction_input
     if lifecycle_channel_separation:
-        projection = separate_accepted_continuity_for_extraction(
-            extraction_input.cognitive_input
-        )
+        projection = separate_accepted_continuity_for_extraction(provider_input)
         request_extraction_input = CognitionExtractionInput(
             cognitive_input=projection.cognitive_input,
             assistant_response=extraction_input.assistant_response,
@@ -388,7 +523,7 @@ def _extraction_request_body(
         )
     else:
         extraction_suffix = build_extraction_pass_suffix(
-            extraction_input,
+            aliased_extraction_input,
             mode=projection_mode,
         )
 
@@ -398,7 +533,7 @@ def _extraction_request_body(
             {"role": "system", "content": COMMON_SYSTEM_INSTRUCTION},
             {
                 "role": "user",
-                "content": _common_cognitive_prefix(
+                "content": _common_provider_cognitive_prefix(
                     request_extraction_input.cognitive_input
                 )
                 + extraction_suffix,
