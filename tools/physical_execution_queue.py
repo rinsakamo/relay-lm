@@ -33,7 +33,10 @@ def _utc_now() -> str:
 def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
-    temp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temp.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     os.replace(temp, path)
 
 
@@ -66,11 +69,28 @@ def _process_executable_names(proc_root: Path = Path("/proc")) -> set[str]:
     return names
 
 
-def _listener_busy(host: str, port: int) -> bool:
+def port_is_bindable(host: str, port: int) -> bool:
+    """Return whether the target can bind the configured listener right now.
+
+    This intentionally matches the fail-closed target transaction contract rather
+    than merely asking whether a process currently accepts TCP connections. A
+    port can have no LISTEN socket yet still be temporarily unbindable, for
+    example because of local TCP lifecycle state.
+    """
+
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     with socket.socket(family, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.25)
-        return sock.connect_ex((host, port)) == 0
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _listener_busy(host: str, port: int) -> bool:
+    """Compatibility name for the target-facing port-unavailable predicate."""
+
+    return not port_is_bindable(host, port)
 
 
 def probe_external_busy(
@@ -85,7 +105,7 @@ def probe_external_busy(
     if matches:
         reasons.append("process:" + ",".join(matches))
     if _listener_busy(host, port):
-        reasons.append(f"listener:{host}:{port}")
+        reasons.append(f"port_unavailable:{host}:{port}")
     return tuple(reasons)
 
 
@@ -106,7 +126,9 @@ class QueueConfig:
         if self.receipt_path is not None:
             return self.receipt_path
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return DEFAULT_RECEIPT_ROOT / f"{stamp}-{os.getpid()}-{uuid.uuid4().hex[:8]}.json"
+        return DEFAULT_RECEIPT_ROOT / (
+            f"{stamp}-{os.getpid()}-{uuid.uuid4().hex[:8]}.json"
+        )
 
 
 class PhysicalQueueError(RuntimeError):
@@ -147,7 +169,11 @@ def run_queued_command(
         "receipt_path": str(receipt_path),
         "command_executable": Path(command[0]).name,
         "command_argv_sha256": hashlib.sha256(
-            json.dumps(list(command), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            json.dumps(
+                list(command),
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode("utf-8")
         ).hexdigest(),
         "cwd": str(config.cwd) if config.cwd is not None else None,
         "queued_at": _utc_now(),
@@ -155,11 +181,13 @@ def run_queued_command(
         "lease_state": "REQUESTED",
         "lease_wait_polls": 0,
         "external_busy_polls": 0,
+        "invocation_boundary_busy_polls": 0,
         "external_busy_first_at": None,
         "external_busy_last_at": None,
         "external_busy_last_reasons": [],
         "lease_acquired_at": None,
         "quiescent_at": None,
+        "pre_invoke_gate_attempts": 0,
         "pre_invoke_gate_started_at": None,
         "pre_invoke_gate_passed_at": None,
         "child_invoked_at": None,
@@ -169,6 +197,7 @@ def run_queued_command(
     _atomic_write_json(receipt_path, receipt)
 
     if busy_probe is None:
+
         def default_busy_probe() -> tuple[str, ...]:
             return probe_external_busy(
                 host=config.host,
@@ -177,6 +206,25 @@ def run_queued_command(
             )
 
         busy_probe = default_busy_probe
+
+    def record_external_busy(
+        reasons: tuple[str, ...],
+        *,
+        invocation_boundary: bool,
+    ) -> None:
+        now = _utc_now()
+        receipt["state"] = "WAITING_EXTERNAL_RUNTIME"
+        receipt["external_busy_polls"] = int(receipt["external_busy_polls"]) + 1
+        if invocation_boundary:
+            receipt["invocation_boundary_busy_polls"] = (
+                int(receipt["invocation_boundary_busy_polls"]) + 1
+            )
+        receipt["external_busy_first_at"] = (
+            receipt["external_busy_first_at"] or now
+        )
+        receipt["external_busy_last_at"] = now
+        receipt["external_busy_last_reasons"] = list(reasons)
+        _atomic_write_json(receipt_path, receipt)
 
     lock_file = lock_path.open("a+", encoding="utf-8")
     locked = False
@@ -196,42 +244,51 @@ def run_queued_command(
         receipt["lease_acquired_at"] = _utc_now()
         _atomic_write_json(receipt_path, receipt)
 
-        idle_count = 0
-        while idle_count < config.idle_confirmations:
+        while True:
+            idle_count = 0
+            while idle_count < config.idle_confirmations:
+                reasons = busy_probe()
+                if reasons:
+                    idle_count = 0
+                    record_external_busy(reasons, invocation_boundary=False)
+                else:
+                    idle_count += 1
+                    receipt["state"] = "VERIFYING_QUIESCENCE"
+                    _atomic_write_json(receipt_path, receipt)
+                if idle_count < config.idle_confirmations:
+                    sleeper(config.poll_seconds)
+
+            receipt["state"] = "FINAL_PREFLIGHT"
+            receipt["quiescent_at"] = _utc_now()
+            receipt["pre_invoke_gate_started_at"] = _utc_now()
+            receipt["pre_invoke_gate_attempts"] = (
+                int(receipt["pre_invoke_gate_attempts"]) + 1
+            )
+            _atomic_write_json(receipt_path, receipt)
+
+            if pre_invoke_gate is not None:
+                try:
+                    pre_invoke_gate()
+                except BaseException as exc:
+                    receipt["state"] = "PRE_INVOKE_BLOCKED"
+                    receipt["pre_invoke_error_type"] = type(exc).__name__
+                    receipt["pre_invoke_error"] = str(exc)
+                    _atomic_write_json(receipt_path, receipt)
+                    raise PreInvokeBlocked(str(exc)) from exc
+
+            receipt["pre_invoke_gate_passed_at"] = _utc_now()
+            receipt["state"] = "READY_TO_INVOKE"
+            _atomic_write_json(receipt_path, receipt)
+
+            # Recheck the exact target-facing port condition after the potentially
+            # slow authority/environment gate. If external state changed during
+            # final preflight, return to quiescence without invoking the child.
             reasons = busy_probe()
             if reasons:
-                idle_count = 0
-                now = _utc_now()
-                receipt["state"] = "WAITING_EXTERNAL_RUNTIME"
-                receipt["external_busy_polls"] = int(receipt["external_busy_polls"]) + 1
-                receipt["external_busy_first_at"] = receipt["external_busy_first_at"] or now
-                receipt["external_busy_last_at"] = now
-                receipt["external_busy_last_reasons"] = list(reasons)
-            else:
-                idle_count += 1
-                receipt["state"] = "VERIFYING_QUIESCENCE"
-            _atomic_write_json(receipt_path, receipt)
-            if idle_count < config.idle_confirmations:
+                record_external_busy(reasons, invocation_boundary=True)
                 sleeper(config.poll_seconds)
-
-        receipt["state"] = "FINAL_PREFLIGHT"
-        receipt["quiescent_at"] = _utc_now()
-        receipt["pre_invoke_gate_started_at"] = _utc_now()
-        _atomic_write_json(receipt_path, receipt)
-
-        if pre_invoke_gate is not None:
-            try:
-                pre_invoke_gate()
-            except BaseException as exc:
-                receipt["state"] = "PRE_INVOKE_BLOCKED"
-                receipt["pre_invoke_error_type"] = type(exc).__name__
-                receipt["pre_invoke_error"] = str(exc)
-                _atomic_write_json(receipt_path, receipt)
-                raise PreInvokeBlocked(str(exc)) from exc
-
-        receipt["pre_invoke_gate_passed_at"] = _utc_now()
-        receipt["state"] = "READY_TO_INVOKE"
-        _atomic_write_json(receipt_path, receipt)
+                continue
+            break
 
         receipt["state"] = "RUNNING"
         receipt["child_invoked_at"] = _utc_now()
@@ -278,7 +335,11 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--poll-seconds", type=float, default=DEFAULT_POLL_SECONDS)
-    parser.add_argument("--idle-confirmations", type=int, default=DEFAULT_IDLE_CONFIRMATIONS)
+    parser.add_argument(
+        "--idle-confirmations",
+        type=int,
+        default=DEFAULT_IDLE_CONFIRMATIONS,
+    )
     parser.add_argument(
         "--busy-process-name",
         action="append",
@@ -311,7 +372,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         port=args.port,
         poll_seconds=args.poll_seconds,
         idle_confirmations=args.idle_confirmations,
-        busy_process_names=tuple(args.busy_process_names or DEFAULT_BUSY_PROCESS_NAMES),
+        busy_process_names=tuple(
+            args.busy_process_names or DEFAULT_BUSY_PROCESS_NAMES
+        ),
         target_label=args.target_label,
         cwd=args.cwd,
     )
