@@ -58,16 +58,17 @@ theorem finKernel_contextActionEq_preserved_by_generated
         (FinKernel.compose c l) := by
   induction hc with
   | identity =>
-      intro k l hkl
-      simpa only [finKernel_compose_identity_after] using hkl
+      intro k l hkl m f
+      simpa only [finKernel_compose_identity_after] using hkl f
   | generator hmem =>
       intro k l hkl m f
       exact (hStable k l hkl _ hmem) f
   | seq hk hl ihk ihl =>
-      intro k l hkl
+      intro k l hkl m f
       have hFirst := ihk hkl
       have hSecond := ihl hFirst
-      simpa only [finKernel_compose_associative] using hSecond
+      have hAtSource := hSecond f
+      simpa only [finKernel_compose_associative] using hAtSource
 
 /--
 Equivalently, a relation stable under the declared generators is stable under
