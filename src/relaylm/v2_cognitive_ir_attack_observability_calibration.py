@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Protocol
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import hashlib
 import json
+from typing import Protocol
 
 from relaylm.v2_cognitive_ir_calibration import CALIBRATION_SEEDS
 from relaylm.v2_cognitive_ir_calibration_v2 import CALIBRATION_V2_SEEDS
@@ -391,14 +392,21 @@ def _require_no_wrap(family: TransferFamily) -> None:
     for example in family.source_examples:
         for rule in rules:
             for output_index, input_index in enumerate(rule.permutation):
-                if example.input_values[input_index] + rule.offsets[output_index] >= rule.modulus:
-                    raise AttackObservabilityCalibrationError("source example unexpectedly wraps")
+                if (
+                    example.input_values[input_index] + rule.offsets[output_index]
+                    >= rule.modulus
+                ):
+                    raise AttackObservabilityCalibrationError(
+                        "source example unexpectedly wraps"
+                    )
     for step_index, step in enumerate(family.target_steps):
         rule = family.target_rules[step_index]
         for values in [item.input_values for item in step.examples] + [step.query]:
             for output_index, input_index in enumerate(rule.permutation):
                 if values[input_index] + rule.offsets[output_index] >= rule.modulus:
-                    raise AttackObservabilityCalibrationError("target example/query unexpectedly wraps")
+                    raise AttackObservabilityCalibrationError(
+                        "target example/query unexpectedly wraps"
+                    )
 
 
 def attack_probe_step_index(regime: str) -> int:
@@ -418,7 +426,9 @@ def build_attack_target_only_messages(
     step_index = attack_probe_step_index(family.regime)
     step = family.target_steps[step_index]
     payload = {
-        "instruction": "Infer the current vector transformation and return only a JSON integer array.",
+        "instruction": (
+            "Infer the current vector transformation and return only a JSON integer array."
+        ),
         "modulus": family.modulus,
         "examples": [
             {
@@ -450,18 +460,26 @@ def build_attack_target_only_messages(
     )
 
 
-def _parse_vector(completion: ExperimentCompletion, *, family: TransferFamily) -> tuple[int, ...]:
+def _parse_vector(
+    completion: ExperimentCompletion,
+    *,
+    family: TransferFamily,
+) -> tuple[int, ...]:
     try:
         value = json.loads(completion.content)
     except json.JSONDecodeError as exc:
-        raise AttackObservabilityCalibrationError("target-only completion is not JSON") from exc
+        raise AttackObservabilityCalibrationError(
+            "target-only completion is not JSON"
+        ) from exc
     if (
         not isinstance(value, list)
         or len(value) != S3_VECTOR_WIDTH
         or any(isinstance(item, bool) or not isinstance(item, int) for item in value)
         or any(not 0 <= item < family.modulus for item in value)
     ):
-        raise AttackObservabilityCalibrationError("target-only completion is not a valid vector")
+        raise AttackObservabilityCalibrationError(
+            "target-only completion is not a valid vector"
+        )
     return tuple(value)
 
 
