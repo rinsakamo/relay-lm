@@ -25,6 +25,14 @@
         "httpx"
       ]
     },
+    "v2:current-law-certificate-usability": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_current_law_certificate_qualification_llama_cpp_wsl",
+      "description": "NON_CITABLE R6D G1 current-law certificate usability qualification from #2713.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
     "v2:r6d-d1": {
       "branch": "v2",
       "module": "tools.v2_cognitive_ir_s3_r6d_d1_llama_cpp_wsl",
