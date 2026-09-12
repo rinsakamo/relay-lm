@@ -4,6 +4,7 @@ import argparse
 import fcntl
 import hashlib
 import json
+import math
 import os
 import socket
 import subprocess
@@ -26,6 +27,14 @@ DEFAULT_IDLE_CONFIRMATIONS = 2
 DEFAULT_BUSY_PROCESS_NAMES = ("llama-server", "llama-cli", "llama-run")
 
 
+class PhysicalQueueError(RuntimeError):
+    pass
+
+
+class PreInvokeBlocked(PhysicalQueueError):
+    """The restartable final gate blocked before the scientific child started."""
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -33,11 +42,17 @@ def _utc_now() -> str:
 def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
-    temp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temp, path)
+    try:
+        temp.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temp, path)
+    finally:
+        try:
+            temp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _safe_resource_id(resource_key: str) -> str:
@@ -49,8 +64,10 @@ def _process_executable_names(proc_root: Path = Path("/proc")) -> set[str]:
     names: set[str] = set()
     try:
         entries = list(proc_root.iterdir())
-    except OSError:
-        return names
+    except OSError as exc:
+        raise PhysicalQueueError(
+            f"cannot inspect process table: {proc_root}: {exc}"
+        ) from exc
     for entry in entries:
         if not entry.name.isdigit() or int(entry.name) == os.getpid():
             continue
@@ -63,6 +80,9 @@ def _process_executable_names(proc_root: Path = Path("/proc")) -> set[str]:
         try:
             raw = (entry / "cmdline").read_bytes().split(b"\0", 1)[0]
         except OSError:
+            # Per-process entries race with process exit and may be inaccessible.
+            # The root process table itself is required above; individual entries
+            # are best-effort because disappearing processes are ordinary.
             continue
         if raw:
             names.add(Path(os.fsdecode(raw)).name)
@@ -134,14 +154,6 @@ class QueueConfig:
         )
 
 
-class PhysicalQueueError(RuntimeError):
-    pass
-
-
-class PreInvokeBlocked(PhysicalQueueError):
-    """The restartable final gate blocked before the scientific child started."""
-
-
 def run_queued_command(
     config: QueueConfig,
     command: Sequence[str],
@@ -151,12 +163,41 @@ def run_queued_command(
     sleeper: Callable[[float], None] = time.sleep,
     child_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> int:
-    if not command:
-        raise PhysicalQueueError("child command must not be empty")
-    if config.poll_seconds <= 0:
-        raise PhysicalQueueError("poll_seconds must be > 0")
-    if config.idle_confirmations < 1:
-        raise PhysicalQueueError("idle_confirmations must be >= 1")
+    if (
+        isinstance(command, (str, bytes))
+        or not command
+        or not all(
+            isinstance(argument, str) and "\x00" not in argument
+            for argument in command
+        )
+        or not command[0]
+    ):
+        raise PhysicalQueueError(
+            "child command must be a non-empty string argv without NUL bytes"
+        )
+    if not isinstance(config.resource_key, str) or not config.resource_key.strip():
+        raise PhysicalQueueError("resource_key must be a non-empty string")
+    if not isinstance(config.host, str) or not config.host.strip():
+        raise PhysicalQueueError("host must be a non-empty string")
+    if type(config.port) is not int or not 1 <= config.port <= 65535:
+        raise PhysicalQueueError("port must be an integer in 1..65535")
+    if (
+        isinstance(config.poll_seconds, bool)
+        or not isinstance(config.poll_seconds, (int, float))
+        or not math.isfinite(config.poll_seconds)
+        or config.poll_seconds <= 0
+    ):
+        raise PhysicalQueueError("poll_seconds must be a finite number > 0")
+    if type(config.idle_confirmations) is not int or config.idle_confirmations < 1:
+        raise PhysicalQueueError("idle_confirmations must be an integer >= 1")
+    if not isinstance(config.busy_process_names, tuple) or not all(
+        isinstance(name, str) and name for name in config.busy_process_names
+    ):
+        raise PhysicalQueueError(
+            "busy_process_names must be a tuple of non-empty strings"
+        )
+    if not isinstance(config.target_label, str) or not config.target_label:
+        raise PhysicalQueueError("target_label must be a non-empty string")
 
     receipt_path = config.resolved_receipt_path()
     request_id = uuid.uuid4().hex
@@ -264,6 +305,7 @@ def run_queued_command(
             receipt["state"] = "FINAL_PREFLIGHT"
             receipt["quiescent_at"] = _utc_now()
             receipt["pre_invoke_gate_started_at"] = _utc_now()
+            receipt["pre_invoke_gate_passed_at"] = None
             receipt["pre_invoke_gate_attempts"] = (
                 int(receipt["pre_invoke_gate_attempts"]) + 1
             )

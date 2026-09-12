@@ -7,14 +7,15 @@ import socket
 import pytest
 
 from tools.physical_execution_queue import (
+    PhysicalQueueError,
     PreInvokeBlocked,
     QueueConfig,
+    _process_executable_names,
     _safe_resource_id,
     port_is_bindable,
     probe_external_busy,
     run_queued_command,
 )
-import tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction as selected_tx
 
 
 class Completed:
@@ -47,7 +48,7 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
         receipt_path=receipt,
         poll_seconds=0.01,
         idle_confirmations=2,
-        target_label="v2:r6d",
+        target_label="common:demo",
         cwd=tmp_path,
     )
 
@@ -156,7 +157,7 @@ def test_invocation_boundary_busy_reenters_wait_without_child(
     assert payload["lease_state"] == "RELEASED"
 
 
-def test_common_port_probe_matches_target_bindability_gate() -> None:
+def test_common_port_probe_uses_target_facing_bindability() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         host, port = holder.getsockname()
@@ -165,7 +166,6 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         # connect-only probing missed: no TCP listener accepts connections, but
         # the target still cannot acquire the exact bind address.
         assert port_is_bindable(host, port) is False
-        assert selected_tx._port_is_free(host, port) is False
         assert probe_external_busy(
             host=host,
             port=port,
@@ -173,7 +173,11 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         ) == (f"listener:{host}:{port}",)
 
     assert port_is_bindable(host, port) is True
-    assert selected_tx._port_is_free(host, port) is True
+
+
+def test_process_table_root_failure_is_fail_closed(tmp_path: Path) -> None:
+    with pytest.raises(PhysicalQueueError, match="cannot inspect process table"):
+        _process_executable_names(tmp_path / "missing-proc")
 
 
 def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None:
@@ -208,6 +212,7 @@ def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None
     assert payload["lease_state"] == "RELEASED"
     assert payload["child_invoked_at"] is None
     assert payload["pre_invoke_error_type"] == "RuntimeError"
+    assert payload["released_at"]
 
 
 def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> None:
@@ -262,7 +267,30 @@ def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> Non
     assert calls == [["true"]]
 
 
-def test_invalid_config_does_not_invoke_child(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"resource_key": ""},
+        {"host": ""},
+        {"port": True},
+        {"port": 0},
+        {"port": 65536},
+        {"busy_process_names": ["llama-server"]},
+        {"busy_process_names": ("",)},
+        {"target_label": ""},
+        {"poll_seconds": True},
+        {"poll_seconds": 0},
+        {"poll_seconds": float("nan")},
+        {"poll_seconds": float("inf")},
+        {"idle_confirmations": True},
+        {"idle_confirmations": 0},
+        {"idle_confirmations": 1.5},
+    ],
+)
+def test_invalid_config_does_not_invoke_child(
+    tmp_path: Path,
+    overrides: dict[str, object],
+) -> None:
     called = False
 
     def runner(*args, **kwargs):
@@ -270,27 +298,40 @@ def test_invalid_config_does_not_invoke_child(tmp_path: Path) -> None:
         called = True
         return Completed(0)
 
-    with pytest.raises(Exception):
+    values: dict[str, object] = {
+        "lock_root": tmp_path / "locks",
+        "receipt_path": tmp_path / "receipt.json",
+    }
+    values.update(overrides)
+    with pytest.raises(PhysicalQueueError):
         run_queued_command(
-            QueueConfig(
-                lock_root=tmp_path / "locks",
-                receipt_path=tmp_path / "receipt.json",
-                poll_seconds=0,
-            ),
+            QueueConfig(**values),
             ["true"],
             child_runner=runner,
         )
     assert called is False
 
 
-def test_empty_command_fails_before_queue(tmp_path: Path) -> None:
-    with pytest.raises(Exception):
+@pytest.mark.parametrize(
+    "command",
+    [
+        [],
+        "true",
+        [""],
+        ["true\x00bad"],
+    ],
+)
+def test_invalid_command_fails_before_queue(
+    tmp_path: Path,
+    command: object,
+) -> None:
+    with pytest.raises(PhysicalQueueError):
         run_queued_command(
             QueueConfig(
                 lock_root=tmp_path / "locks",
                 receipt_path=tmp_path / "receipt.json",
             ),
-            [],
+            command,  # type: ignore[arg-type]
         )
 
 

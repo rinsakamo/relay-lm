@@ -3,9 +3,11 @@ id: physical_execution_queue
 owner_issue: 2660
 summary: >-
   v2 carriage of the branch-neutral llama.cpp-only one-shot physical controller.
-  LocalCodex reuses one fingerprinted persistent Python environment across v1/v2,
-  then serializes the canonical local GPU resource and enforces a final fresh-ref
-  and environment-identity gate.
+  LocalCodex selects a policy-addressed fingerprinted persistent Python instance,
+  then serializes the canonical local GPU resource and enforces a final fresh-ref,
+  environment-identity, and invocation-boundary external-runtime gate. The target
+  registry remains branch-local carriage authority and is excluded from any future
+  branch-neutral common-generation identity.
 canonical_surfaces:
 - docs/reference/physical-execution-queue.md
 - .ai/physical/llama_cpp_targets.json
@@ -17,6 +19,7 @@ implementation:
 - tools/physical_execution_queue_smoke_target.py
 tests:
 - tests/unit/test_relay_physical_env.py
+- tests/unit/test_relay_physical_env_manifest_integrity.py
 - tests/unit/test_relay_physical_run.py
 - tests/unit/test_physical_execution_queue.py
 - tests/unit/test_physical_execution_queue_smoke_target.py
