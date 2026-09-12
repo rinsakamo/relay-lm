@@ -30,7 +30,7 @@ The causal question is:
 #2660 common physical infrastructure = HOW
 #2211 / #2709 experiment contract    = WHAT
 future exactly-once physical owner   = THIS RUN
-#2668 theory reverse import          = completed Level-D interpretation
+#2668 theory reverse import          = completed result -> scoped Level-D only
 ```
 
 This module owns no provider, localhost server, GPU/NVML lifecycle, llama.cpp
