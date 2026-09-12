@@ -19,6 +19,7 @@ implementation:
 - tools/physical_execution_queue_smoke_target.py
 tests:
 - tests/unit/test_relay_physical_env.py
+- tests/unit/test_relay_physical_env_manifest_integrity.py
 - tests/unit/test_relay_physical_run.py
 - tests/unit/test_physical_execution_queue.py
 - tests/unit/test_physical_execution_queue_smoke_target.py
