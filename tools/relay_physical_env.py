@@ -4,7 +4,6 @@ import argparse
 from contextlib import contextmanager
 import fcntl
 import hashlib
-import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -90,13 +89,19 @@ def _load_policy(repo_root: Path) -> dict[str, object]:
         raise RelayPhysicalEnvironmentError(
             f"cannot load physical Python policy: {path}: {exc}"
         ) from exc
+    if not isinstance(payload, dict):
+        raise RelayPhysicalEnvironmentError("physical Python policy root must be an object")
     if payload.get("schema_version") != 1:
         raise RelayPhysicalEnvironmentError("physical Python policy schema_version must be 1")
     python = payload.get("python")
     requirements = payload.get("requirements")
     if (
         not isinstance(python, dict)
+        or python.get("implementation") != "CPython"
+        or not isinstance(python.get("major"), int)
+        or not isinstance(python.get("minor"), int)
         or not isinstance(requirements, list)
+        or not requirements
         or not all(isinstance(item, str) and item for item in requirements)
     ):
         raise RelayPhysicalEnvironmentError("invalid physical Python policy")
@@ -105,16 +110,6 @@ def _load_policy(repo_root: Path) -> dict[str, object]:
 
 def _policy_sha256(repo_root: Path) -> str:
     return hashlib.sha256(_canonical_json_bytes(_load_policy(repo_root))).hexdigest()
-
-
-def _distribution_snapshot() -> dict[str, str]:
-    snapshot: dict[str, str] = {}
-    for distribution in importlib.metadata.distributions():
-        name = distribution.metadata.get("Name")
-        if not name:
-            continue
-        snapshot[name.lower()] = distribution.version
-    return snapshot
 
 
 def _distribution_fingerprint(distributions: dict[str, str]) -> str:
@@ -128,16 +123,18 @@ def _exact_pythonpath(repo_root: Path) -> str:
 def _capture_runtime(python_executable: Path, repo_root: Path) -> dict[str, object]:
     script = "\n".join(
         [
-            "import hashlib, importlib.metadata, json, platform, sys",
+            "import hashlib, importlib.metadata, json, sys",
             "items = {}",
             "for distribution in importlib.metadata.distributions():",
             "    name = distribution.metadata.get('Name')",
-            "    if name:",
-            "        items[name.lower()] = distribution.version",
+            "    if isinstance(name, str):",
+            "        key = name.strip().lower().replace('_', '-')",
+            "        if key:",
+            "            items[key] = distribution.version",
             "raw = json.dumps(items, ensure_ascii=False, separators=(',', ':'), sort_keys=True).encode('utf-8')",
             "print(json.dumps({",
             "    'python_executable': sys.executable,",
-            "    'python_version': platform.python_version(),",
+            "    'python_version': sys.version,",
             "    'implementation': sys.implementation.name,",
             "    'prefix': sys.prefix,",
             "    'base_prefix': sys.base_prefix,",
@@ -177,9 +174,9 @@ def _capture_runtime(python_executable: Path, repo_root: Path) -> dict[str, obje
 def _require_policy_python(policy: dict[str, object]) -> None:
     python = policy["python"]
     assert isinstance(python, dict)
-    expected_implementation = python.get("implementation")
-    expected_major = python.get("major")
-    expected_minor = python.get("minor")
+    expected_implementation = python["implementation"]
+    expected_major = python["major"]
+    expected_minor = python["minor"]
     actual_implementation = platform.python_implementation()
     if (
         expected_implementation != actual_implementation
@@ -311,6 +308,10 @@ def _verify_instance(
                 f"persistent physical Python {key} drifted: "
                 f"expected {expected!r}, got {runtime.get(key)!r}"
             )
+    if runtime.get("base_prefix") == runtime.get("prefix"):
+        raise RelayPhysicalEnvironmentError(
+            "persistent physical Python is not an isolated venv"
+        )
     manifest_distributions = manifest.get("distributions")
     if not isinstance(manifest_distributions, dict):
         raise RelayPhysicalEnvironmentError(
@@ -347,8 +348,12 @@ def verify_environment(
     )
 
 
-def verify_current_environment(*, repo_root: Path) -> PhysicalEnvironmentIdentity:
-    identity = verify_environment(repo_root=repo_root)
+def verify_current_environment(
+    *,
+    repo_root: Path,
+    home: Path | None = None,
+) -> PhysicalEnvironmentIdentity:
+    identity = verify_environment(repo_root=repo_root, home=home)
     if Path(sys.executable).resolve() != Path(identity.python_executable).resolve():
         raise RelayPhysicalEnvironmentError(
             "physical runner is not executing inside the selected persistent Python"
