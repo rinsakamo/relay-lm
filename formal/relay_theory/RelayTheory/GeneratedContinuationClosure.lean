@@ -64,9 +64,10 @@ theorem finKernel_contextActionEq_preserved_by_generated
       intro k l hkl m f
       exact (hStable k l hkl _ hmem) f
   | seq hk hl ihk ihl =>
-      intro k l hkl m f
-      have hFirst := ihk hkl
-      have hSecond := ihl hFirst
+      intro k l hkl
+      have hFirst : FinKernel.ContextActionEq P _ _ := ihk hkl
+      have hSecond : FinKernel.ContextActionEq P _ _ := ihl hFirst
+      intro m f
       have hAtSource := hSecond f
       simpa only [finKernel_compose_associative] using hAtSource
 
