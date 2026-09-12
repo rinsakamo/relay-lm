@@ -1,0 +1,22 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_semantic_reconstruction_physical_adapter
+owner_issue: 2723
+summary: >-
+  Zero-GPU executable physical adapter for the #2709/#2722 semantic
+  reconstruction accessibility probe. Freezes live llama.cpp consumer identity
+  before exact scientific family material can exist, binds the plain-text
+  16-family/32-call campaign into common #2660 HOW, and preserves exact scoring,
+  zero rescue, and fail-closed receipts without authorizing THIS RUN.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-semantic-reconstruction-physical-adapter.md
+implementation:
+- src/relaylm/v2_cognitive_ir_semantic_reconstruction_physical.py
+- tools/v2_cognitive_ir_semantic_reconstruction_llama_cpp.py
+- tools/v2_cognitive_ir_semantic_reconstruction_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_semantic_reconstruction_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_semantic_reconstruction_physical.py
+depends_on:
+- relaylm2_cognitive_ir_semantic_reconstruction
+- relaylm2_physical_execution
+- physical_execution_queue
