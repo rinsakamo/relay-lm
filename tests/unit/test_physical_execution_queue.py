@@ -10,6 +10,7 @@ from tools.physical_execution_queue import (
     PhysicalQueueError,
     PreInvokeBlocked,
     QueueConfig,
+    _process_executable_names,
     _safe_resource_id,
     port_is_bindable,
     probe_external_busy,
@@ -174,6 +175,11 @@ def test_common_port_probe_uses_target_facing_bindability() -> None:
     assert port_is_bindable(host, port) is True
 
 
+def test_process_table_root_failure_is_fail_closed(tmp_path: Path) -> None:
+    with pytest.raises(PhysicalQueueError, match="cannot inspect process table"):
+        _process_executable_names(tmp_path / "missing-proc")
+
+
 def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
@@ -266,11 +272,17 @@ def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> Non
     [
         {"resource_key": ""},
         {"host": ""},
+        {"port": True},
         {"port": 0},
         {"port": 65536},
         {"busy_process_names": ("",)},
+        {"poll_seconds": True},
         {"poll_seconds": 0},
+        {"poll_seconds": float("nan")},
+        {"poll_seconds": float("inf")},
+        {"idle_confirmations": True},
         {"idle_confirmations": 0},
+        {"idle_confirmations": 1.5},
     ],
 )
 def test_invalid_config_does_not_invoke_child(
