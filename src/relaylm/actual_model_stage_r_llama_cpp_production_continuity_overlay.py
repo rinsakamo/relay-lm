@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from collections.abc import Sequence
 from typing import Any
@@ -16,9 +17,7 @@ from relaylm.actual_model_production_continuity_overlay_diagnostic import (
     build_overlay_extraction_request_body,
     load_retained_formation_binding,
 )
-from relaylm.actual_model_stage_r_llama_cpp import (
-    _write_json_create_once,
-)
+from relaylm.actual_model_stage_r_llama_cpp import _write_json_create_once
 from relaylm.actual_model_stage_r_llama_cpp_two_turn_diagnostic import (
     HOST_FORMAT_VERSION,
     TwoTurnDiagnosticLlamaProvider,
@@ -110,7 +109,9 @@ class ProductionContinuityOverlayLlamaProvider(TwoTurnDiagnosticLlamaProvider):
                 "model_overlay": list(prepared.model_overlay),
                 "continuity_expectation_supplied": False,
                 "baseline_request_artifact": str(baseline_path),
+                "baseline_request_sha256": _sha256_file(baseline_path),
                 "overlay_request_artifact": str(request_path),
+                "overlay_request_sha256": _sha256_file(request_path),
             },
         )
         self.diagnostic_binding_artifacts.append(binding_path)
@@ -173,6 +174,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         provider_type=ProductionContinuityOverlayLlamaProvider,
         retained_loader=load_retained_formation_binding,
     )
+
+
+def _sha256_file(path: Any) -> str:
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
 
 
 def _zero_counts() -> dict[str, int]:
