@@ -1,4 +1,4 @@
-import Lean.Elab.Tactic.Omega
+import Lean.Elab.Tactic
 
 namespace RelayTheory
 
@@ -139,7 +139,9 @@ theorem fin_succ_not_injective :
         intro h
         have heq : Fin.castSucc i = last := hf h
         have hv := congrArg Fin.val heq
+        have hi := i.isLt
         simp [last] at hv
+        omega
       let g : Fin (n + 1) → Fin n :=
         fun i => finErase pivot (f (Fin.castSucc i)) (hneq i)
       have hg : Function.Injective g := by
@@ -148,8 +150,10 @@ theorem fin_succ_not_injective :
             f (Fin.castSucc i) = f (Fin.castSucc j) := by
           exact finErase_injective pivot (hneq i) (hneq j) hij
         have hijCast : Fin.castSucc i = Fin.castSucc j := hf hfij
-        apply Fin.ext
-        exact congrArg Fin.val hijCast
+        have hv : i.val = j.val := by
+          change (Fin.castSucc i).val = (Fin.castSucc j).val
+          exact congrArg (fun x : Fin (n + 2) => x.val) hijCast
+        exact Fin.ext hv
       exact fin_succ_not_injective n g hg
 
 /--
@@ -224,7 +228,8 @@ does not imply failure of ordinary one-parameter state modeling.
 theorem natEqualityResponse_identity_state_sufficient :
     StateSufficient natEqualityResponse (fun h : Nat => h) := by
   intro h₁ h₂ hstate
-  subst h₂
+  change h₁ = h₂ at hstate
+  cases hstate
   intro probe
   rfl
 
@@ -240,7 +245,8 @@ theorem finEqualityResponse_identity_finite_state_sufficient
       (@finEqualityResponse k)
       (fun h : Fin k => h) := by
   intro h₁ h₂ hstate
-  subst h₂
+  change h₁ = h₂ at hstate
+  cases hstate
   intro probe
   rfl
 
