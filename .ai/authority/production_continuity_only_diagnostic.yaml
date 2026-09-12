@@ -1,0 +1,32 @@
+schema_version: 1
+id: production_continuity_only_diagnostic
+summary: >-
+  Evaluation-only #2624 discriminator that holds production T2 CognitiveInput,
+  Pass 1 response, canonical Continuity projection rules, retained formed-meaning
+  overlay, decoding/reasoning controls, provenance, and transport fixed while
+  removing only new-State extraction instruction/output responsibility. It
+  produces no physical evidence by itself.
+owner_issue: 2624
+canonical_surfaces:
+- docs/reference/actual-model-production-continuity-only-diagnostic.md
+references:
+- docs/reference/actual-model-production-continuity-overlay-diagnostic.md
+- docs/reference/actual-model-stage-r-current.md
+- docs/reference/actual-model-stage-r-oracle.md
+- docs/contracts/cognition-pass-execution.md
+- docs/architecture/continuity-context.md
+implementation:
+- src/relaylm/actual_model_production_continuity_only_diagnostic.py
+tests:
+- tests/unit/test_actual_model_production_continuity_only_diagnostic.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_production_continuity_only_diagnostic.py
+  reason: >-
+    Evaluation-only request discriminator and non-model-facing diff receipt. The
+    ordinary product path does not call this module; canonical production prompt
+    and schema components remain owned by provider_and_api and are not excluded.
+depends_on:
+- production_continuity_overlay_diagnostic
+- actual_model_evaluation
+- provider_and_api
+- continuity_context
