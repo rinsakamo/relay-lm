@@ -1,0 +1,38 @@
+schema_version: 1
+id: production_unresolved_no_pass1_no_accepted_continuity_physical
+summary: >-
+  Thin v1-specific llama.cpp specialization for the #2715 accepted-Continuity
+  context discriminator. Generic one-shot dispatch, persistent Python environment,
+  queue/resource serialization and final fresh-ref authority are consumed from
+  the shared physical_execution_queue contract rather than duplicated here.
+owner_issue: 2715
+canonical_surfaces:
+- docs/reference/actual-model-production-unresolved-no-pass1-no-accepted-continuity-physical.md
+references:
+- docs/reference/actual-model-production-unresolved-no-pass1-no-accepted-continuity-diagnostic.md
+- docs/reference/actual-model-production-unresolved-no-pass1-physical.md
+- docs/reference/actual-model-two-turn-diagnostic-carriage.md
+- docs/reference/physical-execution-queue.md
+- docs/reference/actual-model-llama-cpp-qualification.md
+implementation:
+- src/relaylm/actual_model_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity.py
+- src/relaylm/actual_model_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity_transaction.py
+- tools/v1_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity_wsl.py
+tests:
+- tests/unit/test_actual_model_production_unresolved_no_pass1_no_accepted_continuity_carriage.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity.py
+  reason: >-
+    Evaluation-only v1 strategy layered on the canonical generic two-turn
+    diagnostic carriage; product runtime does not call this host.
+- path: src/relaylm/actual_model_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity_transaction.py
+  reason: Evaluation-only transaction selector for the #2715 discriminator.
+- path: tools/v1_stage_r_llama_cpp_production_unresolved_no_pass1_no_accepted_continuity_wsl.py
+  reason: Thin operator adapter consumed through the shared physical runner.
+depends_on:
+- production_unresolved_no_pass1_no_accepted_continuity_diagnostic
+- production_unresolved_no_pass1_physical
+- two_turn_diagnostic_carriage
+- actual_model_llama_cpp_qualification
+- actual_model_evaluation
+- physical_execution_queue
