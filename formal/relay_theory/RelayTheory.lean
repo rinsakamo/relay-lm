@@ -22,6 +22,7 @@ import RelayTheory.BoundedDecoderFactorization
 import RelayTheory.AccessInterfaceTrivialization
 import RelayTheory.WorkloadInterfaceCompilation
 import RelayTheory.EffectiveRepresentationReduction
+import RelayTheory.AccessibilityEfficacyGap
 import RelayTheory.ProbeRelative
 import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
