@@ -33,6 +33,14 @@
         "httpx"
       ]
     },
+    "v2:semantic-reconstruction": {
+      "branch": "v2",
+      "module": "tools.v2_cognitive_ir_semantic_reconstruction_llama_cpp_wsl",
+      "description": "#2709/#2722 semantic-sufficiency vs consumer-accessibility physical adapter from #2723.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
     "v2:r6d-d1": {
       "branch": "v2",
       "module": "tools.v2_cognitive_ir_s3_r6d_d1_llama_cpp_wsl",
