@@ -31,11 +31,14 @@ authorization:
 10. Do not expose or hand-build `tools.physical_execution_queue -- <arbitrary child>` in normal operation.
 11. The engine is fixed to llama.cpp and the shared resource key is `llama-cpp:local-gpu`.
 12. While queued, another cooperative job causes `WAITING_RESOURCE`.
-13. After lease acquisition, an external llama.cpp process/listener causes `WAITING_EXTERNAL_RUNTIME`. Never kill or reuse it.
-14. The final gate rechecks checkout/ref authority and the persistent Python executable, policy digest, installed-distribution fingerprint, target module, and required distributions.
-15. If any authority or environment identity drifted during the wait, stop before target invocation, release, reprepare, and requeue. The scientific owner remains unspent.
-16. Once a scientific target wrapper is invoked, never retry/replay/reseed/fallback through this controller.
-17. Preserve the target result unchanged. Queue receipts and Python-environment fingerprints are infrastructure-only.
+13. After lease acquisition, an external llama.cpp process or a target listener address that is not presently bindable causes `WAITING_EXTERNAL_RUNTIME`. Never kill or reuse it. Bindability, not only successful TCP connection, is the controller-side listener criterion because the target must be able to acquire that exact address before its owned server launch.
+14. Quiescence requires the configured consecutive idle confirmations before final preflight.
+15. The final gate rechecks checkout/ref authority and the persistent Python executable, policy digest, installed-distribution fingerprint, target module, and required distributions.
+16. After that potentially slow final gate, the controller checks external process/port availability again immediately at the invocation boundary. If busy state appeared during final preflight, do not invoke the child; return to `WAITING_EXTERNAL_RUNTIME`, regain stable quiescence, and rerun final preflight.
+17. If any authority or environment identity drifted during the wait, stop before target invocation, release, reprepare, and requeue. The scientific owner remains unspent.
+18. The target retains its own fail-closed listener check as defense in depth. An arbitrary non-cooperating process can still race after the controller's last observation; the controller cannot make external TCP ownership atomic without changing the target lifecycle contract.
+19. Once a scientific target wrapper is invoked, never retry/replay/reseed/fallback through this controller.
+20. Preserve the target result unchanged. Queue receipts and Python-environment fingerprints are infrastructure-only.
 
 A short operator prompt naming the owner/experiment is sufficient. LocalCodex
 must resolve the target and current target-owned procedure from fresh authority;
