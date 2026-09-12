@@ -1,0 +1,20 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_s3_r6d_d1
+owner_issue: 2670
+summary: >-
+  Repository binding for the #2666 fresh 24-family citable F_SHARED
+  Structure-vs-semantic-cache discriminator. Binds a shared-only one-shard
+  campaign, exact paired analysis, NATURAL_COST/Pareto reporting, and the
+  inherited listener-safe local llama.cpp treatment without changing R5.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-s3-r6d-d1.md
+implementation:
+- src/relaylm/v2_cognitive_ir_s3_r6d_d1.py
+- tools/v2_cognitive_ir_s3_r6d_d1_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_s3_r6d_d1_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_s3_r6d_d1.py
+depends_on:
+- relaylm2_cognitive_ir_s3_r5
+- relaylm2_cognitive_ir_attack_observability_calibration
+- relaylm2_physical_execution
