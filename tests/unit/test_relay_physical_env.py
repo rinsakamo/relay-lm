@@ -115,6 +115,50 @@ def test_distribution_fingerprint_is_order_independent() -> None:
     assert left == right
 
 
+def test_policy_rejects_empty_requirements(tmp_path: Path) -> None:
+    path = tmp_path / envtool.POLICY_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "python": {
+                    "implementation": "CPython",
+                    "major": 3,
+                    "minor": 12,
+                },
+                "requirements": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(envtool.RelayPhysicalEnvironmentError, match="invalid"):
+        envtool._load_policy(tmp_path)
+
+
+def test_policy_rejects_non_cpython_identity(tmp_path: Path) -> None:
+    path = tmp_path / envtool.POLICY_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "python": {
+                    "implementation": "PyPy",
+                    "major": 3,
+                    "minor": 12,
+                },
+                "requirements": ["httpx>=0.28"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(envtool.RelayPhysicalEnvironmentError, match="invalid"):
+        envtool._load_policy(tmp_path)
+
+
 def test_verify_environment_accepts_frozen_snapshot(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -137,6 +181,49 @@ def test_verify_environment_accepts_frozen_snapshot(
     verified = envtool.verify_environment(repo_root=tmp_path, home=root)
 
     assert verified == identity
+
+
+def test_verify_environment_rejects_non_isolated_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_policy(tmp_path)
+    root = tmp_path / "physical"
+    policy_sha256 = envtool._policy_sha256(tmp_path)
+    identity = _write_fake_instance(
+        root=root,
+        policy_sha256=policy_sha256,
+        instance_id="4" * 32,
+    )
+    envtool._select_current_instance(
+        root=root,
+        policy_sha256=policy_sha256,
+        identity=identity,
+    )
+
+    def non_isolated_capture(
+        python_executable: Path,
+        repo_root: Path,
+    ) -> dict[str, object]:
+        del repo_root
+        manifest = json.loads(identity.manifest_path.read_text(encoding="utf-8"))
+        prefix = str((identity.home / envtool.VENV_DIRNAME).absolute())
+        return {
+            "python_executable": str(python_executable.absolute()),
+            "python_version": manifest["python_version"],
+            "implementation": manifest["implementation"],
+            "prefix": prefix,
+            "base_prefix": prefix,
+            "distributions": manifest["distributions"],
+            "distribution_fingerprint": manifest["distribution_fingerprint"],
+        }
+
+    monkeypatch.setattr(envtool, "_capture_runtime", non_isolated_capture)
+    with pytest.raises(
+        envtool.RelayPhysicalEnvironmentError,
+        match="not an isolated venv",
+    ):
+        envtool.verify_environment(repo_root=tmp_path, home=root)
 
 
 def test_verify_environment_rejects_distribution_drift(
