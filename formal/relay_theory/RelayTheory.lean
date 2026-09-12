@@ -16,6 +16,7 @@ import RelayTheory.BehavioralQuotient
 import RelayTheory.RepresentationFactorization
 import RelayTheory.RepresentationFamily
 import RelayTheory.RepresentationRefinement
+import RelayTheory.SourceCarrierReindexing
 import RelayTheory.RepresentationFamilyExpansion
 import RelayTheory.UniversalRepresentation
 import RelayTheory.BoundedDecoderFactorization
