@@ -163,9 +163,13 @@ def _load_targets(repo_root: Path) -> dict[str, TargetSpec]:
         ) from exc
     if not isinstance(payload, dict):
         raise RelayPhysicalRunError("target registry root must be an object")
-    if payload.get("schema_version") != TARGET_REGISTRY_SCHEMA_VERSION:
+    schema_version = payload.get("schema_version")
+    if (
+        type(schema_version) is not int
+        or schema_version != TARGET_REGISTRY_SCHEMA_VERSION
+    ):
         raise RelayPhysicalRunError(
-            "target registry schema_version must be exactly "
+            "target registry schema_version must be exactly integer "
             f"{TARGET_REGISTRY_SCHEMA_VERSION}"
         )
     if payload.get("engine") != ENGINE:
@@ -182,7 +186,7 @@ def _load_targets(repo_root: Path) -> dict[str, TargetSpec]:
         raise RelayPhysicalRunError("target registry must contain targets")
     targets: dict[str, TargetSpec] = {}
     for name, raw in raw_targets.items():
-        if not isinstance(name, str) or not isinstance(raw, dict):
+        if not isinstance(name, str) or not name or not isinstance(raw, dict):
             raise RelayPhysicalRunError("invalid target registry entry")
         module = raw.get("module")
         branch = raw.get("branch")
