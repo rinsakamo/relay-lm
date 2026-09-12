@@ -79,10 +79,8 @@ kind
 key
 value
 sources
- ep istemic_role
+epistemic_role
 ```
-
-(`epistemic_role` is serialized without the spacing shown above.)
 
 The block is prior accepted lifecycle state. It is not a new proposal and does not establish current-turn evidence by itself.
 
