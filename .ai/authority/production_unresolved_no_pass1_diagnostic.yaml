@@ -1,0 +1,35 @@
+schema_version: 1
+id: production_unresolved_no_pass1_diagnostic
+summary: >-
+  Evaluation-only #2697 discriminator that holds the merged production-context
+  unresolved-only request, full T2 CognitiveInput, accepted lifecycle context,
+  retained #2529 formation overlay, canonical unresolved projection grammar,
+  response schema, decoding/reasoning and source validation fixed while removing
+  only the canonical Pass 1 response component from diagnostic T2 Pass 2.
+  It produces no physical evidence by itself.
+owner_issue: 2697
+canonical_surfaces:
+- docs/reference/actual-model-production-unresolved-no-pass1-diagnostic.md
+references:
+- docs/reference/actual-model-production-unresolved-only-diagnostic.md
+- docs/reference/actual-model-production-unresolved-only-physical.md
+- docs/reference/actual-model-two-turn-diagnostic-carriage.md
+- docs/reference/physical-execution-queue.md
+- docs/reference/actual-model-stage-r-current.md
+implementation:
+- src/relaylm/actual_model_production_unresolved_no_pass1_diagnostic.py
+tests:
+- tests/unit/test_actual_model_production_unresolved_no_pass1_diagnostic.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_production_unresolved_no_pass1_diagnostic.py
+  reason: >-
+    Evaluation-only request discriminator and factor receipt. Ordinary production
+    does not call this module; it derives the baseline from the merged unresolved-only
+    diagnostic and changes only the experiment-owned Pass 1 conditioning coordinate.
+depends_on:
+- production_unresolved_only_diagnostic
+- production_continuity_only_diagnostic
+- production_continuity_overlay_diagnostic
+- actual_model_evaluation
+- provider_and_api
+- continuity_context
