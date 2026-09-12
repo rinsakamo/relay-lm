@@ -163,8 +163,18 @@ def run_queued_command(
     sleeper: Callable[[float], None] = time.sleep,
     child_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> int:
-    if not command:
-        raise PhysicalQueueError("child command must not be empty")
+    if (
+        isinstance(command, (str, bytes))
+        or not command
+        or not all(
+            isinstance(argument, str) and "\x00" not in argument
+            for argument in command
+        )
+        or not command[0]
+    ):
+        raise PhysicalQueueError(
+            "child command must be a non-empty string argv without NUL bytes"
+        )
     if not isinstance(config.resource_key, str) or not config.resource_key.strip():
         raise PhysicalQueueError("resource_key must be a non-empty string")
     if not isinstance(config.host, str) or not config.host.strip():
@@ -180,10 +190,14 @@ def run_queued_command(
         raise PhysicalQueueError("poll_seconds must be a finite number > 0")
     if type(config.idle_confirmations) is not int or config.idle_confirmations < 1:
         raise PhysicalQueueError("idle_confirmations must be an integer >= 1")
-    if not all(
+    if not isinstance(config.busy_process_names, tuple) or not all(
         isinstance(name, str) and name for name in config.busy_process_names
     ):
-        raise PhysicalQueueError("busy_process_names must contain non-empty strings")
+        raise PhysicalQueueError(
+            "busy_process_names must be a tuple of non-empty strings"
+        )
+    if not isinstance(config.target_label, str) or not config.target_label:
+        raise PhysicalQueueError("target_label must be a non-empty string")
 
     receipt_path = config.resolved_receipt_path()
     request_id = uuid.uuid4().hex
