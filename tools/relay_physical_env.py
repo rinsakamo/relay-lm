@@ -95,11 +95,15 @@ def _load_policy(repo_root: Path) -> dict[str, object]:
         raise RelayPhysicalEnvironmentError("physical Python policy schema_version must be 1")
     python = payload.get("python")
     requirements = payload.get("requirements")
+    major = python.get("major") if isinstance(python, dict) else None
+    minor = python.get("minor") if isinstance(python, dict) else None
     if (
         not isinstance(python, dict)
         or python.get("implementation") != "CPython"
-        or not isinstance(python.get("major"), int)
-        or not isinstance(python.get("minor"), int)
+        or isinstance(major, bool)
+        or not isinstance(major, int)
+        or isinstance(minor, bool)
+        or not isinstance(minor, int)
         or not isinstance(requirements, list)
         or not requirements
         or not all(isinstance(item, str) and item for item in requirements)
@@ -293,10 +297,15 @@ def _verify_instance(
         raise RelayPhysicalEnvironmentError(
             f"persistent physical Python executable is unavailable: {python_path}"
         )
+    expected_python = str(python_path)
+    if manifest.get("python_executable") != expected_python:
+        raise RelayPhysicalEnvironmentError(
+            "persistent physical Python manifest executable identity drifted"
+        )
     runtime = _capture_runtime(python_path, repo_root)
     expected_prefix = str((instance_home / VENV_DIRNAME).absolute())
     checks = {
-        "python_executable": str(python_path),
+        "python_executable": expected_python,
         "python_version": manifest.get("python_version"),
         "implementation": manifest.get("implementation"),
         "prefix": expected_prefix,
@@ -324,7 +333,7 @@ def _verify_instance(
     return PhysicalEnvironmentIdentity(
         home=instance_home,
         manifest_path=instance_home / LOCAL_MANIFEST_NAME,
-        python_executable=str(python_path),
+        python_executable=expected_python,
         python_version=str(runtime["python_version"]),
         implementation=str(runtime["implementation"]),
         policy_sha256=policy_sha256,
