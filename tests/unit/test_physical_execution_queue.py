@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import socket
 
 import pytest
 
@@ -9,8 +10,11 @@ from tools.physical_execution_queue import (
     PreInvokeBlocked,
     QueueConfig,
     _safe_resource_id,
+    port_is_bindable,
+    probe_external_busy,
     run_queued_command,
 )
+import tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction as selected_tx
 
 
 class Completed:
@@ -23,7 +27,8 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
     probes = iter(
         [
             ("process:llama-server",),
-            ("listener:127.0.0.1:1234",),
+            ("port_unavailable:127.0.0.1:1234",),
+            (),
             (),
             (),
         ]
@@ -65,13 +70,15 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
     assert payload["state"] == "CHILD_EXITED"
     assert payload["lease_state"] == "RELEASED"
     assert payload["external_busy_polls"] == 2
+    assert payload["invocation_boundary_busy_polls"] == 0
     assert payload["child_exit_code"] == 7
+    assert payload["pre_invoke_gate_attempts"] == 1
     assert payload["pre_invoke_gate_passed_at"]
     assert payload["released_at"]
 
 
 def test_quiescence_counter_resets_when_busy_returns(tmp_path: Path) -> None:
-    probes = iter([(), ("process:llama-server",), (), ()])
+    probes = iter([(), ("process:llama-server",), (), (), ()])
     sleeps: list[float] = []
     calls: list[list[str]] = []
 
@@ -95,6 +102,78 @@ def test_quiescence_counter_resets_when_busy_returns(tmp_path: Path) -> None:
     assert result == 0
     assert calls == [["true"]]
     assert len(sleeps) == 3
+
+
+def test_invocation_boundary_busy_reenters_wait_without_child(
+    tmp_path: Path,
+) -> None:
+    probes = iter(
+        [
+            (),
+            (),
+            ("port_unavailable:127.0.0.1:1234",),
+            (),
+            (),
+            (),
+        ]
+    )
+    sleeps: list[float] = []
+    calls: list[list[str]] = []
+    gate_calls = 0
+
+    def gate() -> None:
+        nonlocal gate_calls
+        gate_calls += 1
+
+    def runner(command, *, cwd, check, text, pass_fds):
+        calls.append(command)
+        return Completed(0)
+
+    receipt = tmp_path / "receipt.json"
+    result = run_queued_command(
+        QueueConfig(
+            lock_root=tmp_path / "locks",
+            receipt_path=receipt,
+            poll_seconds=0.01,
+            idle_confirmations=2,
+        ),
+        ["true"],
+        pre_invoke_gate=gate,
+        busy_probe=lambda: next(probes),
+        sleeper=sleeps.append,
+        child_runner=runner,
+    )
+
+    assert result == 0
+    assert gate_calls == 2
+    assert calls == [["true"]]
+    assert len(sleeps) == 3
+    payload = json.loads(receipt.read_text())
+    assert payload["external_busy_polls"] == 1
+    assert payload["invocation_boundary_busy_polls"] == 1
+    assert payload["pre_invoke_gate_attempts"] == 2
+    assert payload["child_invoked_at"]
+    assert payload["lease_state"] == "RELEASED"
+
+
+def test_common_port_probe_matches_target_bindability_gate() -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
+        holder.bind(("127.0.0.1", 0))
+        host, port = holder.getsockname()
+
+        # A bound-but-not-listening socket reproduces the predicate gap that
+        # connect-only probing missed: no TCP listener accepts connections, but
+        # the target still cannot acquire the exact bind address.
+        assert port_is_bindable(host, port) is False
+        assert selected_tx._port_is_free(host, port) is False
+        assert probe_external_busy(
+            host=host,
+            port=port,
+            busy_process_names=(),
+        ) == (f"port_unavailable:{host}:{port}",)
+
+    assert port_is_bindable(host, port) is True
+    assert selected_tx._port_is_free(host, port) is True
 
 
 def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None:
