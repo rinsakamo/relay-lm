@@ -38,6 +38,7 @@ import RelayTheory.StochasticProbeDichotomy
 import RelayTheory.RestrictedContexts
 import RelayTheory.QuotientContextSeparation
 import RelayTheory.ContextPolicyGauge
+import RelayTheory.SequentialContextCongruence
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
