@@ -121,12 +121,12 @@ theorem finKernel_merge01_context_families_differ :
     FinKernel.merge01SafeContextFamily3 ≠
       FinKernel.merge01ExpandedContextFamily3 := by
   intro hEq
-  have hExpandedStable :
-      FinKernel.ContextStableFor
-        FinKernel.merge01ProbeFamily3
-        FinKernel.merge01ExpandedContextFamily3 := by
-    simpa [hEq] using finKernel_merge01_safe_context_stable
-  exact finKernel_merge01_expanded_context_not_stable hExpandedStable
+  apply finKernel_merge01_expanded_context_not_stable
+  intro m f g k hkExpanded hfg
+  have hkSafe : FinKernel.merge01SafeContextFamily3 k := by
+    rw [hEq]
+    exact hkExpanded
+  exact finKernel_merge01_safe_context_stable f g k hkSafe hfg
 
 /--
 Acceptance bundle: one and the same current probe-relative quotient supports a
