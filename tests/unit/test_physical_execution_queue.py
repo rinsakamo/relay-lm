@@ -275,7 +275,9 @@ def test_controller_error_releases_lock_and_records_error(tmp_path: Path) -> Non
         {"port": True},
         {"port": 0},
         {"port": 65536},
+        {"busy_process_names": ["llama-server"]},
         {"busy_process_names": ("",)},
+        {"target_label": ""},
         {"poll_seconds": True},
         {"poll_seconds": 0},
         {"poll_seconds": float("nan")},
@@ -310,14 +312,26 @@ def test_invalid_config_does_not_invoke_child(
     assert called is False
 
 
-def test_empty_command_fails_before_queue(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "command",
+    [
+        [],
+        "true",
+        [""],
+        ["true\x00bad"],
+    ],
+)
+def test_invalid_command_fails_before_queue(
+    tmp_path: Path,
+    command: object,
+) -> None:
     with pytest.raises(PhysicalQueueError):
         run_queued_command(
             QueueConfig(
                 lock_root=tmp_path / "locks",
                 receipt_path=tmp_path / "receipt.json",
             ),
-            [],
+            command,  # type: ignore[arg-type]
         )
 
 
