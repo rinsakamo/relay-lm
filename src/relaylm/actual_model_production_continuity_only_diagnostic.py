@@ -1,6 +1,6 @@
 """Evaluation-only production-context Continuity-only Pass 2 discriminator.
 
-The diagnostic first builds the unchanged production extraction request and the
+This diagnostic first builds the unchanged production extraction request and the
 existing retained-formation overlay request. It then asks the same canonical
 builder for the Continuity-only projection mode and applies the exact same
 three-field retained observation. No model-facing prompt is edited after build.
@@ -43,6 +43,7 @@ from relaylm.providers.openai_compatible_extraction_projection import (
 from relaylm.providers.openai_compatible_reasoning import OpenAICompatibleReasoningRequest
 from relaylm.providers.openai_compatible_two_pass import (
     COMMON_SYSTEM_INSTRUCTION,
+    _ProviderFacingProvenanceAliases,
     _common_cognitive_prefix,
     _completion_content_and_metadata,
     _extraction_request_body,
@@ -137,7 +138,7 @@ def parse_continuity_only_completion(
     *,
     cognitive_input: CognitiveInput,
 ) -> CognitionExtractionOutput:
-    """Use the unchanged candidate parser and source contract for diagnostic output."""
+    """Parse provider aliases, restore canonical Event IDs, then validate sources."""
 
     content, completion = _completion_content_and_metadata(envelope)
     wire = _load_cognitive_wire_json(
@@ -157,6 +158,8 @@ def parse_continuity_only_completion(
         continuity_candidates=continuity_candidates,
         completion=completion,
     )
+    aliases = _ProviderFacingProvenanceAliases.from_cognitive_input(cognitive_input)
+    output = aliases.restore_extraction_output(output)
     _require_candidate_sources_in_cognitive_input(output, cognitive_input)
     return output
 
