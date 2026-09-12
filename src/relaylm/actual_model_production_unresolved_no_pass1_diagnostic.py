@@ -124,7 +124,7 @@ def _build_no_pass1_body(
     if not isinstance(user_message, dict) or user_message.get("role") != "user":
         raise ProviderProtocolError("unresolved-only baseline user message is unexpected")
 
-    source_id = extraction_input.originating_event_id
+    source_id = "E0"
     user_message["content"] = (
         _common_cognitive_prefix(extraction_input.cognitive_input)
         + unresolved_only_extraction_intro()
@@ -141,7 +141,7 @@ def _validate_and_describe_delta(
     no_pass1_body: dict[str, Any],
     no_pass1_overlay_body: dict[str, Any],
 ) -> dict[str, Any]:
-    source_id = extraction_input.originating_event_id
+    source_id = "E0"
     cognitive_prefix = _common_cognitive_prefix(extraction_input.cognitive_input)
     response_component = extraction_response_component(extraction_input)
     unresolved_projection = (
