@@ -12,7 +12,6 @@ canonical_surfaces:
 - docs/reference/physical-execution-queue.md
 - .ai/physical/llama_cpp_targets.json
 - .ai/physical/python_environment_policy.json
-- .ai/skills/physical-execution-queue/SKILL.md
 implementation:
 - tools/relay_physical_env.py
 - tools/relay_physical_run.py
@@ -24,5 +23,7 @@ tests:
 - tests/unit/test_physical_execution_queue.py
 - tests/unit/test_physical_execution_queue_smoke_target.py
 - tests/integration/test_physical_execution_queue_process_smoke.py
+annotations:
+- .ai/skills/physical-execution-queue/SKILL.md
 depends_on:
 - relaylm2_physical_execution
