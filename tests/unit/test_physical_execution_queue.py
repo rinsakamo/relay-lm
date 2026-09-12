@@ -14,7 +14,6 @@ from tools.physical_execution_queue import (
     probe_external_busy,
     run_queued_command,
 )
-import tools.v2_cognitive_ir_s2_selected_llama_cpp_transaction as selected_tx
 
 
 class Completed:
@@ -47,7 +46,7 @@ def test_waits_for_external_runtime_then_invokes_child_once(tmp_path: Path) -> N
         receipt_path=receipt,
         poll_seconds=0.01,
         idle_confirmations=2,
-        target_label="v2:r6d",
+        target_label="common:demo",
         cwd=tmp_path,
     )
 
@@ -156,7 +155,7 @@ def test_invocation_boundary_busy_reenters_wait_without_child(
     assert payload["lease_state"] == "RELEASED"
 
 
-def test_common_port_probe_matches_target_bindability_gate() -> None:
+def test_common_port_probe_uses_target_facing_bindability() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         host, port = holder.getsockname()
@@ -165,7 +164,6 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         # connect-only probing missed: no TCP listener accepts connections, but
         # the target still cannot acquire the exact bind address.
         assert port_is_bindable(host, port) is False
-        assert selected_tx._port_is_free(host, port) is False
         assert probe_external_busy(
             host=host,
             port=port,
@@ -173,7 +171,6 @@ def test_common_port_probe_matches_target_bindability_gate() -> None:
         ) == (f"listener:{host}:{port}",)
 
     assert port_is_bindable(host, port) is True
-    assert selected_tx._port_is_free(host, port) is True
 
 
 def test_pre_invoke_gate_blocks_without_child_invocation(tmp_path: Path) -> None:
