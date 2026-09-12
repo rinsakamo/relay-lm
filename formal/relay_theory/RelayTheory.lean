@@ -25,6 +25,7 @@ import RelayTheory.EffectiveRepresentationReduction
 import RelayTheory.AccessibilityEfficacyGap
 import RelayTheory.OperationalDominance
 import RelayTheory.OperatorStateGauge
+import RelayTheory.CapabilityTrajectorySeparation
 import RelayTheory.ProbeRelative
 import RelayTheory.ObservationalPredictiveGap
 import RelayTheory.ProbeDoctrine
