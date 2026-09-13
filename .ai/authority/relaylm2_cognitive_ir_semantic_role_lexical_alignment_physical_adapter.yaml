@@ -1,0 +1,25 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_semantic_role_lexical_alignment_physical_adapter
+owner_issue: 2857
+summary: >-
+  Zero-GPU executable E4-LX1 physical adapter binding the completed #2847/#2848
+  lexical-alignment versus semantic-role decomposition to protected-v2 common
+  physical g2 and the common llama.cpp runner. Exact preregistered family
+  material remains guarded behind validated live FrozenConsumerIdentity plus
+  the 2/2 synthetic structured-counter preflight. This owner authorizes no
+  THIS RUN execution.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-semantic-role-lexical-alignment-physical-adapter.md
+implementation:
+- src/relaylm/v2_cognitive_ir_semantic_role_lexical_alignment_physical.py
+- tools/v2_cognitive_ir_semantic_role_lexical_alignment_llama_cpp.py
+- tools/v2_cognitive_ir_semantic_role_lexical_alignment_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_semantic_role_lexical_alignment_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_semantic_role_lexical_alignment_physical.py
+depends_on:
+- relaylm2_cognitive_ir_semantic_role_lexical_alignment
+- relaylm2_cognitive_ir_semantic_role_binding_physical_adapter
+- common_physical_generation
+- relaylm2_physical_execution
+- physical_execution_queue
