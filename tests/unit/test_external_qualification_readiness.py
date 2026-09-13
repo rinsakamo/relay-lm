@@ -109,9 +109,13 @@ def _identity(
         "backend": "llama.cpp",
         "runtime": "llama-server",
         "context_capacity": 8192,
-        "decoding": {"temperature": 0},
+        "decoding": {"temperature": "0"},
         "reasoning": {"effort": "none"},
-        "hardware": {"gpu": "RTX 3060", "cpu": "i5-12400"},
+        "hardware": {
+            "gpu": "RTX 3060",
+            "cpu": "i5-12400",
+            "offload": "full-gpu-layers",
+        },
         "retry_policy": "no retry",
         "matched_condition_differences": [],
     }
