@@ -53,7 +53,7 @@ Consumers may pin both identity coordinates:
 ```bash
 python3.12 -m tools.physical_common_generation verify \
   --expect-generation-id relay-common-physical-g1 \
-  --expect-aggregate-identity sha256:786b39f297b3330526e36115b0f8fa56d829d3adb4fc5913af3f385cd05eadc2
+  --expect-aggregate-identity sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5
 ```
 
 A generation id is not allowed to name two aggregate identities. `assert_generation_id_consistent()` enforces that invariant when declarations are compared or imported.

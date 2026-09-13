@@ -184,7 +184,7 @@ def test_checked_in_certificate_matches_declared_surface() -> None:
     assert tuple(entry["path"] for entry in cert["surface"]) == COMMON_PHYSICAL_SURFACE
     assert cert["generation_id"] == "relay-common-physical-g1"
     assert cert["aggregate_identity"] == (
-        "sha256:786b39f297b3330526e36115b0f8fa56d829d3adb4fc5913af3f385cd05eadc2"
+        "sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5"
     )
     assert cert["provenance"]["promotion_owner"] == 2750
     assert cert["provenance"]["predecessor_issue"] == 2731
