@@ -284,7 +284,12 @@ theorem finKernel_merge01_safe_expanded_not_generatedDomainEq :
       FinKernel.merge01SafeContextFamily3 finKernelMoveOneToTwo :=
     (hEq finKernelMoveOneToTwo).2
       finKernel_merge01_move_generated_by_expanded_policy
-  have hAfter :=
+  have hAfter : FinKernel.ContextActionEq
+      FinKernel.merge01ProbeFamily3
+      (FinKernel.compose finKernelMoveOneToTwo
+        (FinKernel.dirac finCollapseHidden3))
+      (FinKernel.compose finKernelMoveOneToTwo
+        (FinKernel.identity 3)) :=
     finKernel_merge01_contextActionEq_stable_under_safe_generated
       (FinKernel.dirac finCollapseHidden3)
       (FinKernel.identity 3)
