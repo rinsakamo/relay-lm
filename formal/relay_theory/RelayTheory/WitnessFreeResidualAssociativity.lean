@@ -95,9 +95,15 @@ theorem finKernel_residualComposeRel_associative_up_to_response_eq {n : Nat}
 
   have hAssoc : FinKernel.FullFutureResponseSpaceEq
       leftCanonical rightCanonical := by
-    simpa only [leftCanonical, rightCanonical] using
-      (finKernel_identityResidualStateEq_associative
-        (P := P) (K := K) hk hl hd)
+    change FinKernel.IdentityResidualStateEq P K
+      (FinKernel.compose d (FinKernel.compose l k))
+      (FinKernel.compose (FinKernel.compose d l) k)
+      (finKernel_generatedContext_compose
+        (finKernel_generatedContext_compose hk hl) hd)
+      (finKernel_generatedContext_compose hk
+        (finKernel_generatedContext_compose hl hd))
+    exact finKernel_identityResidualStateEq_associative
+      (P := P) (K := K) hk hl hd
 
   exact finKernel_fullFutureResponseSpaceEq_trans houtLeft
     (finKernel_fullFutureResponseSpaceEq_trans hAssoc
