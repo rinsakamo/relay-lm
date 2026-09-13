@@ -56,6 +56,7 @@ import RelayTheory.ContextDomainTransport
 import RelayTheory.AdmissibilityDomainIdentifiability
 import RelayTheory.AdmissibilityEfficacyQuotient
 import RelayTheory.AccessRefinementMonotonicity
+import RelayTheory.OperationalAccessRefinement
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
