@@ -41,6 +41,7 @@ import RelayTheory.ContextPolicyGauge
 import RelayTheory.SequentialContextCongruence
 import RelayTheory.GeneratedContinuationClosure
 import RelayTheory.ContextualActionQuotient
+import RelayTheory.ContextualActionCompositionDescent
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
