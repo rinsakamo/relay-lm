@@ -1,0 +1,15 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_semantic_role_lexical_alignment
+owner_issue: 2848
+summary: >-
+  Zero-GPU repository binding for E4-LX1, the fresh same-semantics
+  decomposition of literal output-key alignment from semantic-role
+  descriptiveness preregistered by #2847 after admitted E4-RB1 #2837.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-semantic-role-lexical-alignment.md
+implementation:
+- src/relaylm/v2_cognitive_ir_semantic_role_lexical_alignment.py
+tests:
+- tests/unit/test_v2_cognitive_ir_semantic_role_lexical_alignment.py
+depends_on:
+- relaylm2_cognitive_ir_semantic_role_binding
