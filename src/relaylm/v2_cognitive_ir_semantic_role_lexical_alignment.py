@@ -17,6 +17,7 @@ from relaylm.v2_cognitive_ir_semantic_role_binding import (
     ROLE_EXPLICIT_SURFACE as _RB1_ROLE_EXPLICIT_SURFACE,
     SEMANTIC_COMPLETIONS as _RB1_SEMANTIC_COMPLETIONS,
     PairedTable,
+    RoleBindingScore,
     build_reconstruction_messages as _build_reconstruction_messages,
     decode_surface as _decode_rb1_surface,
     exact_two_sided_sign_p as _exact_two_sided_sign_p,
@@ -25,11 +26,11 @@ from relaylm.v2_cognitive_ir_semantic_role_binding import (
     measurement_admitted as _rb1_measurement_admitted,
     paired_accuracy_difference,
     paired_table as _paired_table,
-    parse_wire_shape,
+    parse_wire_shape as _parse_wire_shape,
     prepare_synthetic_mechanism_control as _prepare_rb1_synthetic_control,
     preregistered_seeds as _rb1_preregistered_seeds,
     response_format as _response_format,
-    score_reconstruction,
+    score_reconstruction as _score_reconstruction,
 )
 
 PREREGISTRATION_ISSUE = 2847
@@ -49,7 +50,6 @@ EXACT_LEXEME_SURFACE, DESCRIPTIVE_SURFACE, OPAQUE_SURFACE = SURFACES
 SEMANTIC_COMPLETIONS = 72
 INPUT_TOKEN_REQUESTS = 144
 MECHANICAL_PREFLIGHT_INPUT_TOKEN_REQUESTS = 2
-
 CONTEXT_LIMIT = 8192
 MAX_OUTPUT_TOKENS = 256
 TEMPERATURE = 0.0
@@ -102,10 +102,10 @@ def derive_family_seed(index: int) -> int:
         or not 0 <= index < FAMILY_COUNT
     ):
         raise SemanticRoleLexicalAlignmentError("family index must be 0..23")
-    raw = hashlib.sha256(
+    digest = hashlib.sha256(
         f"{PREREGISTRATION_LABEL}|family|{index}".encode("utf-8")
     ).digest()
-    return int.from_bytes(raw[:8], "big")
+    return int.from_bytes(digest[:8], "big")
 
 
 def preregistered_seeds() -> tuple[int, ...]:
@@ -150,7 +150,9 @@ def _require_mapping(value: object, *, label: str) -> Mapping[str, object]:
     return value
 
 
-def _descriptive_payload(canonical_truth: Mapping[str, object]) -> dict[str, object]:
+def _descriptive_payload(
+    canonical_truth: Mapping[str, object],
+) -> dict[str, object]:
     return {
         "context": {
             DESCRIPTIVE_CONTEXT_KEY: list(canonical_truth["provenance_handles"]),
@@ -193,9 +195,7 @@ def decode_surface(
         )
 
     explicit_shadow = {
-        "context": {
-            "provenance_handles": context["source_handles"],
-        },
+        "context": {"provenance_handles": context["source_handles"]},
         "relation": {
             "operation": relation["transform_kind"],
             "permutation": relation["index_reordering"],
@@ -237,14 +237,14 @@ def prepare_synthetic_mechanism_control(
     )
     descriptive_payload = _descriptive_payload(truth)
 
+    payloads = {
+        EXACT_LEXEME_SURFACE: exact_payload,
+        DESCRIPTIVE_SURFACE: descriptive_payload,
+        OPAQUE_SURFACE: opaque_payload,
+    }
     decoded = {
-        EXACT_LEXEME_SURFACE: decode_surface(
-            EXACT_LEXEME_SURFACE, exact_payload
-        ),
-        DESCRIPTIVE_SURFACE: decode_surface(
-            DESCRIPTIVE_SURFACE, descriptive_payload
-        ),
-        OPAQUE_SURFACE: decode_surface(OPAQUE_SURFACE, opaque_payload),
+        surface: decode_surface(surface, payload)
+        for surface, payload in payloads.items()
     }
     if any(value != truth for value in decoded.values()):
         raise SemanticRoleLexicalAlignmentError(
@@ -252,9 +252,8 @@ def prepare_synthetic_mechanism_control(
         )
 
     serialized = {
-        EXACT_LEXEME_SURFACE: _json_text(exact_payload),
-        DESCRIPTIVE_SURFACE: _json_text(descriptive_payload),
-        OPAQUE_SURFACE: _json_text(opaque_payload),
+        surface: _json_text(payload)
+        for surface, payload in payloads.items()
     }
     if len(set(serialized.values())) != len(SURFACES):
         raise SemanticRoleLexicalAlignmentError(
@@ -285,6 +284,19 @@ def response_format() -> dict[str, object]:
     return _response_format()
 
 
+def parse_wire_shape(content: str) -> dict[str, object]:
+    """Reuse the prospective E4-RB1 wire-only parser unchanged."""
+    return _parse_wire_shape(content)
+
+
+def score_reconstruction(
+    content: str,
+    canonical_truth: Mapping[str, object],
+) -> RoleBindingScore:
+    """Reuse the E4-RB1 wire/domain/canonical scorer unchanged."""
+    return _score_reconstruction(content, canonical_truth)
+
+
 def semantic_call_plan() -> tuple[tuple[int, int, str], ...]:
     validate_seed_admission()
     plan = tuple(
@@ -310,7 +322,15 @@ class ConfirmatoryContrast:
         return paired_accuracy_difference(self.table)
 
 
-def _mapped_holm(
+def exact_two_sided_sign_p(table: PairedTable) -> float:
+    return _exact_two_sided_sign_p(table)
+
+
+def paired_table(outcomes: Sequence[tuple[bool, bool]]) -> PairedTable:
+    return _paired_table(outcomes)
+
+
+def holm_bonferroni(
     raw_p_values: Mapping[str, float],
 ) -> dict[str, tuple[float, bool]]:
     if set(raw_p_values) != set(CONFIRMATORY_CONTRASTS):
@@ -328,20 +348,6 @@ def _mapped_holm(
         CONFIRMATORY_CONTRASTS[0]: mapped[rb1_h1],
         CONFIRMATORY_CONTRASTS[1]: mapped[rb1_h2],
     }
-
-
-def holm_bonferroni(
-    raw_p_values: Mapping[str, float],
-) -> dict[str, tuple[float, bool]]:
-    return _mapped_holm(raw_p_values)
-
-
-def exact_two_sided_sign_p(table: PairedTable) -> float:
-    return _exact_two_sided_sign_p(table)
-
-
-def paired_table(outcomes: Sequence[tuple[bool, bool]]) -> PairedTable:
-    return _paired_table(outcomes)
 
 
 def confirmatory_analysis(
@@ -467,8 +473,9 @@ def validate_repository_binding() -> None:
         or MECHANICAL_PREFLIGHT_INPUT_TOKEN_REQUESTS != _RB1_PREFLIGHT_REQUESTS
     ):
         raise SemanticRoleLexicalAlignmentError(
-            "E4-LX1 accounting drifted from frozen E4-RB1-compatible envelope"
+            "E4-LX1 accounting drifted from E4-RB1-compatible envelope"
         )
+
     validate_seed_admission()
     if len(semantic_call_plan()) != SEMANTIC_COMPLETIONS:
         raise SemanticRoleLexicalAlignmentError(
@@ -490,7 +497,7 @@ def validate_repository_binding() -> None:
     ):
         if forbidden in encoded:
             raise SemanticRoleLexicalAlignmentError(
-                f"E4-LX1 wire schema contains semantic answer constraint: {forbidden}"
+                f"E4-LX1 wire schema contains semantic constraint: {forbidden}"
             )
 
     if any(FORBIDDEN_RESCUE_COUNTS.values()):
