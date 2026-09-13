@@ -6,9 +6,9 @@ namespace FinKernel
 
 /--
 The exact scalar-response carrier for every generated future continuation,
-every compatible source, and every admitted downstream observation.  This is
-an extensional response object; it does not mention contextual action classes
-or any quotient algebra.
+every compatible source, and every admitted downstream observation.  This
+extensional object does not mention contextual action classes or quotient
+algebra.
 -/
 abbrev FullFutureResponseSpace {n : Nat}
     (P : ProbeFamily n) (K : FutureContextFamily n) :=
@@ -22,10 +22,7 @@ abbrev FullFutureResponseSpace {n : Nat}
   Fin obs.1 →
   Rat
 
-/--
-Full admissible-future response signature of one endomorphic action.  The value
-at an index is the exact scalar response of `obs ∘ c ∘ k ∘ f`.
--/
+/-- Exact full-future response signature of one endomorphic action. -/
 def FullFutureResponse {n : Nat}
     (P : ProbeFamily n) (K : FutureContextFamily n)
     (k : FinKernel n n) : FullFutureResponseSpace P K :=
@@ -39,7 +36,7 @@ def FullFutureResponseSpaceEq {n : Nat}
   ∀ c (hc : GeneratedContext K c) m f obs (hobs : P obs) x z,
     s c hc m f obs hobs x z = t c hc m f obs hobs x z
 
-/-- Two actions have the same complete response signature. -/
+/-- Two actions have the same complete admissible-future response signature. -/
 def FullFutureResponseEq {n : Nat}
     (P : ProbeFamily n) (K : FutureContextFamily n)
     (k l : FinKernel n n) : Prop :=
@@ -48,8 +45,8 @@ def FullFutureResponseEq {n : Nat}
     (FullFutureResponse P K l)
 
 /--
-Residual / derivative action generated directly by reindexing the future
-continuation coordinate.  No quotient transport is used.
+Residual / derivative action defined directly by reindexing the generated
+future coordinate.  No quotient transport is used.
 -/
 def FutureDerivative {n : Nat}
     (P : ProbeFamily n) (K : FutureContextFamily n)
@@ -74,37 +71,9 @@ def DerivativeEqOnSemanticSignatures {n : Nat}
 
 end FinKernel
 
-/-- Full-future response equality is reflexive. -/
-theorem finKernel_fullFutureResponseSpaceEq_refl {n : Nat}
-    {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
-    (s : FinKernel.FullFutureResponseSpace P K) :
-    FinKernel.FullFutureResponseSpaceEq s s := by
-  intro c hc m f obs hobs x z
-  rfl
-
-/-- Full-future response equality is symmetric. -/
-theorem finKernel_fullFutureResponseSpaceEq_symm {n : Nat}
-    {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
-    {s t : FinKernel.FullFutureResponseSpace P K}
-    (h : FinKernel.FullFutureResponseSpaceEq s t) :
-    FinKernel.FullFutureResponseSpaceEq t s := by
-  intro c hc m f obs hobs x z
-  exact (h c hc m f obs hobs x z).symm
-
-/-- Full-future response equality is transitive. -/
-theorem finKernel_fullFutureResponseSpaceEq_trans {n : Nat}
-    {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
-    {s t u : FinKernel.FullFutureResponseSpace P K}
-    (hst : FinKernel.FullFutureResponseSpaceEq s t)
-    (htu : FinKernel.FullFutureResponseSpaceEq t u) :
-    FinKernel.FullFutureResponseSpaceEq s u := by
-  intro c hc m f obs hobs x z
-  exact Eq.trans (hst c hc m f obs hobs x z)
-    (htu c hc m f obs hobs x z)
-
 /--
-Normalization only: closure-relative contextual action equivalence is exactly
-pointwise equality of the independently defined full-future response signature.
+Normalization only: contextual action equivalence is exactly pointwise equality
+of the independently defined full-future response signature.
 -/
 theorem finKernel_contextualActionEq_iff_fullFutureResponseEq {n : Nat}
     {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
@@ -136,8 +105,8 @@ theorem finKernel_fullFutureResponse_compose_as_derivative {n : Nat}
   rw [finKernel_compose_associative k l c]
 
 /--
-Residual composition law on the semantic response-signature image.  The law is
-proved directly from future-index reindexing and ordinary associativity.
+Residual composition law on the semantic response-signature image.  It follows
+directly from future-index reindexing and ordinary associativity.
 -/
 theorem finKernel_futureDerivative_composition_on_signature {n : Nat}
     {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
@@ -179,7 +148,7 @@ theorem finKernel_contextualActionEq_implies_derivativeEqOnSemanticSignatures
     finKernel_compose_associative] using hv
 
 /--
-Faithfulness: equality of derivatives on semantic signatures already recovers
+Faithfulness: equality of derivatives on semantic signatures recovers
 contextual action equivalence.  The identity action signature is sufficient to
 reconstruct the action response signature.
 -/
@@ -225,10 +194,7 @@ theorem finKernel_merge01_safe_collapse_identity_fullFutureResponseEq :
   exact (finKernel_contextualActionEq_iff_fullFutureResponseEq).1
     finKernel_merge01_collapse_identity_contextual_action_eq_safe
 
-/--
-Safe `merge01`: literal collapse and identity also induce the same derivative on
-every semantic response signature.
--/
+/-- Safe `merge01`: collapse and identity induce the same semantic derivative. -/
 theorem finKernel_merge01_safe_collapse_identity_derivativeEq :
     FinKernel.DerivativeEqOnSemanticSignatures
       FinKernel.merge01ProbeFamily3
@@ -242,10 +208,7 @@ theorem finKernel_merge01_safe_collapse_identity_derivativeEq :
     FinKernel.GeneratedContext.identity).1
     finKernel_merge01_collapse_identity_contextual_action_eq_safe
 
-/--
-Expanded `merge01` remains a negative control: the previously merged action
-signatures split once `moveOneToTwo` is admitted.
--/
+/-- Expanded `merge01` still splits the formerly merged response signatures. -/
 theorem finKernel_merge01_expanded_collapse_identity_not_fullFutureResponseEq :
     ¬ FinKernel.FullFutureResponseEq
       FinKernel.merge01ProbeFamily3
@@ -257,19 +220,18 @@ theorem finKernel_merge01_expanded_collapse_identity_not_fullFutureResponseEq :
     ((finKernel_contextualActionEq_iff_fullFutureResponseEq).2 hResponse)
 
 /--
-Acceptance bundle for #2794: response signatures normalize contextual action
-equivalence, composition reconstructs through derivative reindexing, the
-representation is faithful on generated actions, and the safe/expanded fixtures
-retain their positive/negative distinction.
+Acceptance bundle for #2794: composition reconstructs through response
+reindexing, while the safe/expanded anti-cheat fixtures remain non-vacuous.
+Faithfulness and derivative composition are established separately above.
 -/
 theorem finKernel_full_future_response_signature_bundle :
     (∀ {n : Nat}
       {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
-      {k l : FinKernel n n},
-      FinKernel.GeneratedContext K l →
+      {k l : FinKernel n n}
+      (hl : FinKernel.GeneratedContext K l),
       FinKernel.FullFutureResponseSpaceEq
         (FinKernel.FullFutureResponse P K (FinKernel.compose l k))
-        (FinKernel.FutureDerivative P K l ‹FinKernel.GeneratedContext K l›
+        (FinKernel.FutureDerivative P K l hl
           (FinKernel.FullFutureResponse P K k))) ∧
     FinKernel.identity 3 ≠ FinKernel.dirac finCollapseHidden3 ∧
     FinKernel.FullFutureResponseEq
