@@ -52,6 +52,13 @@ def _int(value: Any, where: str) -> int:
     return value
 
 
+def _positive_int(value: Any, where: str) -> int:
+    parsed = _int(value, where)
+    if parsed <= 0:
+        raise CommonGenerationError(f"{where} must be a positive integer")
+    return parsed
+
+
 def _sha1(value: Any, where: str) -> str:
     if not isinstance(value, str) or SHA1_RE.fullmatch(value) is None:
         raise CommonGenerationError(f"{where} must be a lowercase 40-hex Git SHA-1")
@@ -117,10 +124,8 @@ def validate_certificate(value: Any) -> dict[str, Any]:
     _keys(provenance, PROVENANCE_KEYS, "provenance")
     _sha1(provenance["origin_commit"], "provenance.origin_commit")
     _sha1(provenance["origin_tree"], "provenance.origin_tree")
-    if _int(provenance["promotion_owner"], "provenance.promotion_owner") != 2750:
-        raise CommonGenerationError("provenance.promotion_owner must be exactly 2750")
-    if _int(provenance["predecessor_issue"], "provenance.predecessor_issue") != 2731:
-        raise CommonGenerationError("provenance.predecessor_issue must be exactly 2731")
+    _positive_int(provenance["promotion_owner"], "provenance.promotion_owner")
+    _positive_int(provenance["predecessor_issue"], "provenance.predecessor_issue")
     _sha1(provenance["predecessor_commit"], "provenance.predecessor_commit")
     return value
 
@@ -173,11 +178,22 @@ def assert_generation_id_consistent(certificates: Iterable[Mapping[str, Any]]) -
             )
 
 
-def build_certificate(root: Path, *, generation_id: str, origin_commit: str, origin_tree: str, predecessor_commit: str) -> dict[str, Any]:
+def build_certificate(
+    root: Path,
+    *,
+    generation_id: str,
+    origin_commit: str,
+    origin_tree: str,
+    promotion_owner: int,
+    predecessor_issue: int,
+    predecessor_commit: str,
+) -> dict[str, Any]:
     if not isinstance(generation_id, str) or GENERATION_RE.fullmatch(generation_id) is None:
         raise CommonGenerationError("generation_id has invalid syntax")
     _sha1(origin_commit, "origin_commit")
     _sha1(origin_tree, "origin_tree")
+    _positive_int(promotion_owner, "promotion_owner")
+    _positive_int(predecessor_issue, "predecessor_issue")
     _sha1(predecessor_commit, "predecessor_commit")
     entries: list[dict[str, str]] = []
     pairs: list[tuple[str, str]] = []
@@ -197,8 +213,8 @@ def build_certificate(root: Path, *, generation_id: str, origin_commit: str, ori
         "provenance": {
             "origin_commit": origin_commit,
             "origin_tree": origin_tree,
-            "promotion_owner": 2750,
-            "predecessor_issue": 2731,
+            "promotion_owner": promotion_owner,
+            "predecessor_issue": predecessor_issue,
             "predecessor_commit": predecessor_commit,
         },
     })
@@ -221,6 +237,8 @@ def _main(argv: list[str] | None = None) -> int:
     generate.add_argument("--generation-id", required=True)
     generate.add_argument("--origin-commit", required=True)
     generate.add_argument("--origin-tree", required=True)
+    generate.add_argument("--promotion-owner", required=True, type=int)
+    generate.add_argument("--predecessor-issue", required=True, type=int)
     generate.add_argument("--predecessor-commit", required=True)
     generate.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
@@ -240,6 +258,8 @@ def _main(argv: list[str] | None = None) -> int:
             generation_id=args.generation_id,
             origin_commit=args.origin_commit,
             origin_tree=args.origin_tree,
+            promotion_owner=args.promotion_owner,
+            predecessor_issue=args.predecessor_issue,
             predecessor_commit=args.predecessor_commit,
         )
         rendered = _dump(result)

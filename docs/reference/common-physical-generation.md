@@ -67,11 +67,13 @@ python3.12 -m tools.physical_common_generation generate \
   --generation-id <new-generation-id> \
   --origin-commit <fresh-protected-commit> \
   --origin-tree <fresh-protected-tree> \
+  --promotion-owner <promotion-issue-number> \
+  --predecessor-issue <predecessor-issue-number> \
   --predecessor-commit <qualified-predecessor> \
   --output .ai/physical/common_generation.json
 ```
 
-Branches may carry different generation ids legitimately. Target registries and scientific campaigns do not affect common-generation identity.
+`promotion_owner` and `predecessor_issue` are positive issue numbers carried as provenance; the common generator does not hard-code the bootstrap #2750/#2731 pair. Branches may carry different generation ids legitimately. Target registries and scientific campaigns do not affect common-generation identity.
 
 ## Bootstrap lineage
 

@@ -36,6 +36,8 @@ def _certificate(root: Path) -> dict[str, object]:
         generation_id="relay-common-physical-g1",
         origin_commit=ORIGIN,
         origin_tree=TREE,
+        promotion_owner=2750,
+        predecessor_issue=2731,
         predecessor_commit=PREDECESSOR,
     )
 
@@ -128,6 +130,36 @@ def test_same_generation_and_identity_is_not_a_collision(tmp_path: Path) -> None
     assert_generation_id_consistent([cert, copy.deepcopy(cert)])
 
 
+@pytest.mark.parametrize("field", ["promotion_owner", "predecessor_issue"])
+def test_provenance_issue_numbers_are_generic_positive_integers(tmp_path: Path, field: str) -> None:
+    cert = _certificate(tmp_path)
+    provenance = cert["provenance"]
+    assert isinstance(provenance, dict)
+    provenance[field] = 9999
+    validate_certificate(cert)
+    provenance[field] = 0
+    with pytest.raises(CommonGenerationError, match="positive integer"):
+        validate_certificate(cert)
+    provenance[field] = True
+    with pytest.raises(CommonGenerationError, match="must be an integer"):
+        validate_certificate(cert)
+
+
+def test_build_certificate_carries_generic_provenance(tmp_path: Path) -> None:
+    _write_surface(tmp_path)
+    cert = build_certificate(
+        tmp_path,
+        generation_id="relay-common-physical-g2",
+        origin_commit=ORIGIN,
+        origin_tree=TREE,
+        promotion_owner=9001,
+        predecessor_issue=8999,
+        predecessor_commit=PREDECESSOR,
+    )
+    assert cert["provenance"]["promotion_owner"] == 9001
+    assert cert["provenance"]["predecessor_issue"] == 8999
+
+
 def test_branch_local_and_science_surfaces_are_excluded() -> None:
     excluded = {
         ".ai/authority/physical_execution_queue.yaml",
@@ -154,6 +186,8 @@ def test_checked_in_certificate_matches_declared_surface() -> None:
     assert cert["aggregate_identity"] == (
         "sha256:786b39f297b3330526e36115b0f8fa56d829d3adb4fc5913af3f385cd05eadc2"
     )
+    assert cert["provenance"]["promotion_owner"] == 2750
+    assert cert["provenance"]["predecessor_issue"] == 2731
 
 
 def test_checked_in_certificate_verifies_checkout() -> None:
