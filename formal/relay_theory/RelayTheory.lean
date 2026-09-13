@@ -62,6 +62,7 @@ import RelayTheory.ReachableClassSupportSufficiency
 import RelayTheory.MutualGeneratedClassCoverage
 import RelayTheory.GeneratedClassCoveragePreorder
 import RelayTheory.ReachableDynamicsSupportIdentifiability
+import RelayTheory.RelationalReachableDynamicsEquivalence
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
