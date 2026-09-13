@@ -38,6 +38,51 @@ def SourceSubstitutionSuccessorRel {n : Nat}
 
 end FinKernel
 
+/--
+Witness-free sequential laws for the source-substitution presentation on the
+reachable residual carrier.  Reachability premises are explicit so the
+universal relation cannot become vacuous on arbitrary raw response functions.
+This is a theory-local interface bundle, not an ontology claim or Mathlib
+algebra instance.
+-/
+structure FinKernel.SourceSubstitutionSuccessorRelLaws {n : Nat}
+    (P : FinKernel.ProbeFamily n)
+    (K : FinKernel.FutureContextFamily n) where
+  total : ∀ {s t : FinKernel.FullFutureResponseSpace P K},
+    FinKernel.ReachableResidualState P K s →
+    FinKernel.ReachableResidualState P K t →
+    ∃ u : FinKernel.FullFutureResponseSpace P K,
+      FinKernel.SourceSubstitutionSuccessorRel P K s t u ∧
+      FinKernel.ReachableResidualState P K u
+  functional : ∀ {s t u u' : FinKernel.FullFutureResponseSpace P K},
+    FinKernel.ReachableResidualState P K s →
+    FinKernel.ReachableResidualState P K t →
+    FinKernel.SourceSubstitutionSuccessorRel P K s t u →
+    FinKernel.SourceSubstitutionSuccessorRel P K s t u' →
+    FinKernel.FullFutureResponseSpaceEq u u'
+  identity_later : ∀ {s u : FinKernel.FullFutureResponseSpace P K},
+    FinKernel.ReachableResidualState P K s →
+    FinKernel.SourceSubstitutionSuccessorRel P K s
+      (FinKernel.ResidualIdentityState P K) u →
+    FinKernel.FullFutureResponseSpaceEq u s
+  identity_earlier : ∀ {s u : FinKernel.FullFutureResponseSpace P K},
+    FinKernel.ReachableResidualState P K s →
+    FinKernel.SourceSubstitutionSuccessorRel P K
+      (FinKernel.ResidualIdentityState P K) s u →
+    FinKernel.FullFutureResponseSpaceEq u s
+  associative : ∀ {a b c ab bc out₁ out₂ :
+      FinKernel.FullFutureResponseSpace P K},
+    FinKernel.ReachableResidualState P K a →
+    FinKernel.ReachableResidualState P K b →
+    FinKernel.ReachableResidualState P K c →
+    FinKernel.ReachableResidualState P K ab →
+    FinKernel.ReachableResidualState P K bc →
+    FinKernel.SourceSubstitutionSuccessorRel P K a b ab →
+    FinKernel.SourceSubstitutionSuccessorRel P K ab c out₁ →
+    FinKernel.SourceSubstitutionSuccessorRel P K b c bc →
+    FinKernel.SourceSubstitutionSuccessorRel P K a bc out₂ →
+    FinKernel.FullFutureResponseSpaceEq out₁ out₂
+
 /-- Source substitution respects extensional response equality. -/
 theorem finKernel_sourceSubstituteResponse_respects_response_eq {n : Nat}
     {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
@@ -238,6 +283,59 @@ theorem finKernel_sourceSubstitutionSuccessorRel_functional_on_reachable {n : Na
     ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel hs ht).2 h)
     ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel hs ht).2 h')
 
+/-- The residual identity state belongs to the reachable carrier. -/
+theorem finKernel_residualIdentityState_reachable {n : Nat}
+    {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n} :
+    FinKernel.ReachableResidualState P K
+      (FinKernel.ResidualIdentityState P K) := by
+  unfold FinKernel.ResidualIdentityState
+  exact finKernel_generated_identityResidualState_reachable
+    (P := P) (K := K) (l := FinKernel.identity n)
+      FinKernel.GeneratedContext.identity
+
+/--
+All earned witness-free sequential laws transport to the source-substitution
+presentation on reachable states.  No second dynamics is proved independently:
+each nontrivial law is obtained by converting source-substitution edges through
+the characterization theorem and applying the existing residual law.
+-/
+theorem finKernel_sourceSubstitutionSuccessorRel_laws {n : Nat}
+    (P : FinKernel.ProbeFamily n) (K : FinKernel.FutureContextFamily n) :
+    FinKernel.SourceSubstitutionSuccessorRelLaws P K := by
+  have hIdentity : FinKernel.ReachableResidualState P K
+      (FinKernel.ResidualIdentityState P K) :=
+    finKernel_residualIdentityState_reachable
+  refine {
+    total := ?_,
+    functional := ?_,
+    identity_later := ?_,
+    identity_earlier := ?_,
+    associative := ?_
+  }
+  · intro s t hs ht
+    exact finKernel_sourceSubstitutionSuccessorRel_total_on_reachable hs ht
+  · intro s t u u' hs ht h h'
+    exact finKernel_sourceSubstitutionSuccessorRel_functional_on_reachable
+      hs ht h h'
+  · intro s u hs h
+    exact finKernel_residualComposeRel_identity_later
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        hs hIdentity).2 h)
+  · intro s u hs h
+    exact finKernel_residualComposeRel_identity_earlier
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        hIdentity hs).2 h)
+  · intro a b c ab bc out₁ out₂ ha hb hc hab hbc hAB hLeft hBC hRight
+    exact finKernel_residualComposeRel_associative_up_to_response_eq
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        ha hb).2 hAB)
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        hab hc).2 hLeft)
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        hb hc).2 hBC)
+      ((finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel
+        ha hbc).2 hRight)
+
 /--
 Safe `merge01`: source-substitution presentation preserves the existing
 representative-gauge equality of the composite outputs.
@@ -283,13 +381,8 @@ theorem finKernel_source_substitution_characterization_bundle :
         (FinKernel.ResidualComposeRel P K s t u ↔
           FinKernel.SourceSubstitutionSuccessorRel P K s t u)) ∧
     (∀ {n : Nat}
-      {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
-      {s t : FinKernel.FullFutureResponseSpace P K},
-      FinKernel.ReachableResidualState P K s →
-      FinKernel.ReachableResidualState P K t →
-        ∃ u : FinKernel.FullFutureResponseSpace P K,
-          FinKernel.SourceSubstitutionSuccessorRel P K s t u ∧
-          FinKernel.ReachableResidualState P K u) ∧
+      (P : FinKernel.ProbeFamily n) (K : FinKernel.FutureContextFamily n),
+      FinKernel.SourceSubstitutionSuccessorRelLaws P K) ∧
     FinKernel.FullFutureResponseSpaceEq
       (FinKernel.IdentityResidualState
         FinKernel.merge01ProbeFamily3
@@ -318,8 +411,8 @@ theorem finKernel_source_substitution_characterization_bundle :
   · intro n P K s t u hs ht
     exact finKernel_residualComposeRel_iff_sourceSubstitutionSuccessorRel hs ht
   · constructor
-    · intro n P K s t hs ht
-      exact finKernel_sourceSubstitutionSuccessorRel_total_on_reachable hs ht
+    · intro n P K
+      exact finKernel_sourceSubstitutionSuccessorRel_laws P K
     · exact ⟨finKernel_merge01_safe_sourceSubstitution_composite_gauge,
         finKernel_merge01_expanded_sourceSubstitution_distinction_survives⟩
 
