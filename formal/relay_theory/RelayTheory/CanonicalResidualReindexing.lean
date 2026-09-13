@@ -164,10 +164,12 @@ theorem finKernel_reindexFullFutureResponse_composition {n : Nat}
     {P : FinKernel.ProbeFamily n} {K : FinKernel.FutureContextFamily n}
     (r q : FinKernel.GeneratedContinuationIndex K →
       FinKernel.GeneratedContinuationIndex K) :
-    FinKernel.FullFutureResponseOperatorEq
-      (FinKernel.ReindexFullFutureResponse (fun i => q (r i)))
-      (fun s => FinKernel.ReindexFullFutureResponse r
-        (FinKernel.ReindexFullFutureResponse q s)) := by
+    FinKernel.FullFutureResponseOperatorEq (P := P) (K := K)
+      (FinKernel.ReindexFullFutureResponse (P := P) (K := K)
+        (fun i => q (r i)))
+      (fun s : FinKernel.FullFutureResponseSpace P K =>
+        FinKernel.ReindexFullFutureResponse (P := P) (K := K) r
+          (FinKernel.ReindexFullFutureResponse (P := P) (K := K) q s)) := by
   intro s c hc m f obs hobs x z
   rfl
 
@@ -180,14 +182,14 @@ theorem finKernel_canonicalResidual_composition {n : Nat}
     {k l : FinKernel n n}
     (hk : FinKernel.GeneratedContext K k)
     (hl : FinKernel.GeneratedContext K l) :
-    FinKernel.FullFutureResponseOperatorEq
-      (FinKernel.ReindexFullFutureResponse
+    FinKernel.FullFutureResponseOperatorEq (P := P) (K := K)
+      (FinKernel.ReindexFullFutureResponse (P := P) (K := K)
         (FinKernel.GeneratedRightShift (FinKernel.compose l k)
           (FinKernel.GeneratedContext.seq hk hl)))
-      (fun s =>
-        FinKernel.ReindexFullFutureResponse
+      (fun s : FinKernel.FullFutureResponseSpace P K =>
+        FinKernel.ReindexFullFutureResponse (P := P) (K := K)
           (FinKernel.GeneratedRightShift l hl)
-          (FinKernel.ReindexFullFutureResponse
+          (FinKernel.ReindexFullFutureResponse (P := P) (K := K)
             (FinKernel.GeneratedRightShift k hk) s)) := by
   rw [finKernel_generatedRightShift_composition hk hl]
   exact finKernel_reindexFullFutureResponse_composition
@@ -204,14 +206,31 @@ theorem finKernel_futureDerivative_composition_all_responses {n : Nat}
     {k l : FinKernel n n}
     (hk : FinKernel.GeneratedContext K k)
     (hl : FinKernel.GeneratedContext K l) :
-    FinKernel.FullFutureResponseOperatorEq
+    FinKernel.FullFutureResponseOperatorEq (P := P) (K := K)
       (FinKernel.FutureDerivative P K (FinKernel.compose l k)
         (FinKernel.GeneratedContext.seq hk hl))
-      (fun s => FinKernel.FutureDerivative P K l hl
-        (FinKernel.FutureDerivative P K k hk s)) := by
+      (fun s : FinKernel.FullFutureResponseSpace P K =>
+        FinKernel.FutureDerivative P K l hl
+          (FinKernel.FutureDerivative P K k hk s)) := by
   intro s c hc m f obs hobs x z
-  simp only [FinKernel.FutureDerivative]
-  rw [finKernel_compose_associative k l c]
+  calc
+    FinKernel.FutureDerivative P K (FinKernel.compose l k)
+          (FinKernel.GeneratedContext.seq hk hl)
+          s c hc m f obs hobs x z =
+        FinKernel.ReindexFullFutureResponse (P := P) (K := K)
+          (FinKernel.GeneratedRightShift (FinKernel.compose l k)
+            (FinKernel.GeneratedContext.seq hk hl))
+          s c hc m f obs hobs x z := rfl
+    _ = FinKernel.ReindexFullFutureResponse (P := P) (K := K)
+          (FinKernel.GeneratedRightShift l hl)
+          (FinKernel.ReindexFullFutureResponse (P := P) (K := K)
+            (FinKernel.GeneratedRightShift k hk) s)
+          c hc m f obs hobs x z :=
+      finKernel_canonicalResidual_composition hk hl
+        s c hc m f obs hobs x z
+    _ = FinKernel.FutureDerivative P K l hl
+          (FinKernel.FutureDerivative P K k hk s)
+          c hc m f obs hobs x z := rfl
 
 /--
 The canonical reindexing presentation carries exactly the same semantic-image
