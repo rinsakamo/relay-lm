@@ -21,8 +21,8 @@ from relaylm.providers.openai_compatible_two_pass import (
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
-LEGACY_PRODUCTION_SUFFIX_SHA256 = (
-    "7dea2101a8039e81d1905ee34072a5dae14b3f51ccf02796d1aad3351daf264b"
+CURRENT_PRODUCTION_SUFFIX_SHA256 = (
+    "b5030bbce5007d647d334699691a31f2b135da0151166a9bd8f8b7600c54087c"
 )
 
 
@@ -46,11 +46,11 @@ def _extraction_input() -> CognitionExtractionInput:
     )
 
 
-def test_factorization_preserves_exact_legacy_production_suffix() -> None:
+def test_factorization_has_exact_current_production_suffix() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
     assert hashlib.sha256(suffix.encode("utf-8")).hexdigest() == (
-        LEGACY_PRODUCTION_SUFFIX_SHA256
+        CURRENT_PRODUCTION_SUFFIX_SHA256
     )
 
 

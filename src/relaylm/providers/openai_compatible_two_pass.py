@@ -75,7 +75,8 @@ A current Input that denies an assistant statement or action is not evidence tha
 
 Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
-Preserve user-provided names and normally use the user's language."""
+Preserve user-provided names and normally use the user's language.
+When reusing a user-established meaning-bearing named entity or referent from the current Input, preserve its lexical identity from the exact lexical source when changing it would change the referenced entity; surrounding wording may be paraphrased naturally. `current_input_lexical_source` is an exact lexical duplicate of the current Input Event content for this purpose only; it adds no authority or provenance beyond that Input."""
 
 CONVERSATION_PASS_SUFFIX = """CONVERSATION
 
@@ -427,9 +428,28 @@ def _provider_facing_cognitive_input(cognitive_input: CognitiveInput) -> Cogniti
     return aliases.alias_cognitive_input(cognitive_input)
 
 
+def _model_facing_cognitive_payload(
+    cognitive_input: CognitiveInput,
+    *,
+    already_aliased: bool,
+) -> dict[str, Any]:
+    current_content = cognitive_input.input.payload.get("content")
+    if not isinstance(current_content, str):
+        raise ProviderProtocolError("current input Event must contain string payload.content")
+
+    model_input = (
+        cognitive_input
+        if already_aliased
+        else _provider_facing_cognitive_input(cognitive_input)
+    )
+    serialized = serialize_cognitive_input(model_input)
+    serialized["current_input_lexical_source"] = {"content": current_content}
+    return serialized
+
+
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
     serialized = json.dumps(
-        serialize_cognitive_input(_provider_facing_cognitive_input(cognitive_input)),
+        _model_facing_cognitive_payload(cognitive_input, already_aliased=False),
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -443,7 +463,7 @@ def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
 
 def _common_provider_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
     serialized = json.dumps(
-        serialize_cognitive_input(cognitive_input),
+        _model_facing_cognitive_payload(cognitive_input, already_aliased=True),
         ensure_ascii=False,
         separators=(",", ":"),
     )
