@@ -1,0 +1,17 @@
+schema_version: 1
+id: common_physical_generation
+owner_issue: 2750
+summary: >-
+  Branch-local repository authority for immutable branch-neutral common physical
+  control-plane generation certificates, verification tooling, and their human
+  reference contract. This owner records HOW generation identity only and does
+  not authorize target registration, THIS-RUN spend, or scientific execution.
+canonical_surfaces:
+- .ai/physical/common_generation.json
+- docs/reference/common-physical-generation.md
+implementation:
+- tools/physical_common_generation.py
+tests:
+- tests/unit/test_physical_common_generation.py
+depends_on:
+- physical_execution_queue
