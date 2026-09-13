@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generation_id": "relay-common-physical-g1",
+  "generation_id": "relay-common-physical-g2",
   "git_object_format": "sha1",
-  "aggregate_identity": "sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5",
+  "aggregate_identity": "sha256:bb983011905bdd8b5393c2c3459b691289f5ced9a41561bb8dc7f642fa330b87",
   "surface": [
     {"path": ".ai/physical/python_environment_policy.json", "git_blob_oid": "d670e85178017971008e7ff10e2ab612d4085470"},
     {"path": ".ai/skills/physical-execution-queue/SKILL.md", "git_blob_oid": "7a2b9b7c19e9109290bd739aaa562dc8ecc3e4ce"},
@@ -10,19 +10,19 @@
     {"path": "tests/integration/test_physical_execution_queue_process_smoke.py", "git_blob_oid": "42831205969a6cf2e46ee2f0d6ace0ef73bdf634"},
     {"path": "tests/unit/test_physical_execution_queue.py", "git_blob_oid": "cbff746a0a0a192c4f405cbd7e3f203b71b73cd3"},
     {"path": "tests/unit/test_physical_execution_queue_smoke_target.py", "git_blob_oid": "33abb4494d8446635c6bbd15275979802565f7f1"},
-    {"path": "tests/unit/test_relay_physical_env.py", "git_blob_oid": "b6328135587549500c9998dced34410d4ae5edb3"},
+    {"path": "tests/unit/test_relay_physical_env.py", "git_blob_oid": "ae3cf885597024266aa6c9378f025965ded954b6"},
     {"path": "tests/unit/test_relay_physical_env_manifest_integrity.py", "git_blob_oid": "4a9cbe371e2fd4c9cb7671ae7dc4ed73791f20a7"},
     {"path": "tests/unit/test_relay_physical_run.py", "git_blob_oid": "4a6fa715d30a49af9f818f77d28e92f4b1d00c18"},
     {"path": "tools/physical_execution_queue.py", "git_blob_oid": "8a4ea5f0fcb729342a6cc6d1bfa50921e2685eef"},
     {"path": "tools/physical_execution_queue_smoke_target.py", "git_blob_oid": "f1280e86c69e8be0c5f6a218d8a6d4f8d4271611"},
-    {"path": "tools/relay_physical_env.py", "git_blob_oid": "8afa9cb87de822a950b9949c677f621401f78e44"},
+    {"path": "tools/relay_physical_env.py", "git_blob_oid": "056c86e1dd31ee567677cbbb30c86166c0cd19e9"},
     {"path": "tools/relay_physical_run.py", "git_blob_oid": "9a1ca17b4052558462dae960dbe37b38fb48b4f4"}
   ],
   "provenance": {
-    "origin_commit": "10324f14bad1882d62544aa22272733f90f2f5b0",
-    "origin_tree": "afdc87a13371f9bec0d9cd55f9fe1dfed3c16dff",
-    "promotion_owner": 2750,
-    "predecessor_issue": 2731,
-    "predecessor_commit": "a073362fbd7b455e8387021b9394b156b024e467"
+    "origin_commit": "3bd301b35fe45b1984d732b2439cdd38a849a46b",
+    "origin_tree": "1149a660cd63ec686637f07286776bd8c998b035",
+    "promotion_owner": 2799,
+    "predecessor_issue": 2750,
+    "predecessor_commit": "8451050fc0c52e090f2e1c2c6c5d2b8121ca159f"
   }
 }
