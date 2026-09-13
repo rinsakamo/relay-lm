@@ -104,7 +104,7 @@ theorem finKernel_root_sourceSubstitutionSuccessorRel_of_trivial {n : Nat}
 Any two response systems whose reachable quotients are both singleton-root
 systems are equivalent under the abstract reachable-dynamics interface.
 -/
-theorem finKernel_reachableResponseDynamicsEquiv_of_trivial {n : Nat}
+def finKernel_reachableResponseDynamicsEquiv_of_trivial {n : Nat}
     {P : FinKernel.ProbeFamily n} {K L : FinKernel.FutureContextFamily n}
     (hK : FinKernel.ReachableResponseTrivial P K)
     (hL : FinKernel.ReachableResponseTrivial P L) :
@@ -297,7 +297,7 @@ theorem finKernel_merge01_empty_safe_not_generatedDomainEq :
 Despite the genuinely different generated domains, the reachable complete-
 response/source-substitution dynamics are explicitly equivalent.
 -/
-theorem finKernel_merge01_empty_safe_responseDynamicsEquiv :
+def finKernel_merge01_empty_safe_responseDynamicsEquiv :
     FinKernel.ReachableResponseDynamicsEquiv
       FinKernel.merge01ProbeFamily3
       (FinKernel.emptyFutureContextFamily 3)
@@ -345,10 +345,10 @@ theorem finKernel_admissibility_domain_identifiability_bundle :
     ¬ FinKernel.GeneratedDomainEq
       (FinKernel.emptyFutureContextFamily 3)
       FinKernel.merge01SafeContextFamily3 ∧
-    FinKernel.ReachableResponseDynamicsEquiv
+    Nonempty (FinKernel.ReachableResponseDynamicsEquiv
       FinKernel.merge01ProbeFamily3
       (FinKernel.emptyFutureContextFamily 3)
-      FinKernel.merge01SafeContextFamily3 ∧
+      FinKernel.merge01SafeContextFamily3) ∧
     FinKernel.ReachableResponseTrivial
       FinKernel.merge01ProbeFamily3
       (FinKernel.emptyFutureContextFamily 3) ∧
@@ -359,7 +359,7 @@ theorem finKernel_admissibility_domain_identifiability_bundle :
       FinKernel.merge01ProbeFamily3
       FinKernel.merge01ExpandedContextFamily3 := by
   exact ⟨finKernel_merge01_empty_safe_not_generatedDomainEq,
-    finKernel_merge01_empty_safe_responseDynamicsEquiv,
+    ⟨finKernel_merge01_empty_safe_responseDynamicsEquiv⟩,
     finKernel_merge01_empty_reachableResponseTrivial,
     finKernel_merge01_safe_reachableResponseTrivial,
     finKernel_merge01_expanded_not_reachableResponseTrivial⟩
