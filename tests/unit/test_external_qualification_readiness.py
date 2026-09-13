@@ -236,6 +236,7 @@ def test_pre_rc_plan_is_ready_without_claiming_citable_execution() -> None:
     assert result["status"] == "READY_EXCEPT_EXACT_RC"
     assert result["relaylm_release"] is None
     assert result["physical_carriage"]["registered"] is False
+    assert result["comparator_participant_identity"] is None
     assert result["fingerprint"].startswith("sha256:")
 
 
@@ -281,6 +282,7 @@ def test_execution_freeze_reuses_exact_release_and_manifest_contracts() -> None:
     result = validate_launch_readiness(_frozen_plan())
     assert result["status"] == "EXECUTION_FROZEN"
     assert result["relaylm_release"]["commit"] == "d" * 40
+    assert result["comparator_participant_identity"]["runtime"] == "llama-server"
     assert [item["axis_id"] for item in result["release_cases"]] == [
         "memconflict",
         "longmemeval-update",
@@ -298,6 +300,16 @@ def test_execution_freeze_rejects_comparator_or_adapter_drift() -> None:
     ):
         validate_launch_readiness(comparator_drift)
 
+    full_identity_drift = _frozen_plan()
+    full_identity_drift["release_cases"][1]["manifest"]["participants"][2][
+        "identity"
+    ]["runtime"] = "different-runtime"
+    with pytest.raises(
+        ExternalQualificationReadinessError,
+        match="same exact serious comparator participant identity",
+    ):
+        validate_launch_readiness(full_identity_drift)
+
     adapter_drift = _frozen_plan()
     adapter_drift["release_cases"][1]["manifest"]["adapter"]["identity"] = "wrong-adapter"
     with pytest.raises(
@@ -305,6 +317,18 @@ def test_execution_freeze_rejects_comparator_or_adapter_drift() -> None:
         match="adapter does not match plan",
     ):
         validate_launch_readiness(adapter_drift)
+
+
+def test_execution_freeze_rejects_physical_carriage_backend_drift() -> None:
+    raw = _frozen_plan()
+    raw["release_cases"][1]["manifest"]["participants"][3]["identity"][
+        "backend"
+    ] = "other-backend"
+    with pytest.raises(
+        ExternalQualificationReadinessError,
+        match="relaylm_exact_rc backend does not match physical carriage",
+    ):
+        validate_launch_readiness(raw)
 
 
 def test_execution_freeze_rejects_mixed_release_candidates() -> None:
