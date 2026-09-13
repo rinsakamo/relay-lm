@@ -31,13 +31,25 @@ theorem finKernel_generatedClassCovered_implies_accessActionRefines {n : Nat}
   have hcd : FinKernel.ContextActionEq P c d :=
     finKernel_contextualActionEq_implies_actionEq hcdK
   intro m f
-  have hLeft := hcd (FinKernel.compose k f)
-  have hMiddle := (hL d hd) f
-  have hRight :=
-    (finKernel_contextActionEq_symm hcd) (FinKernel.compose l f)
-  have hChain := finKernel_probeEq_trans hLeft
+  have hLeft :
+      FinKernel.ProbeEq P
+        (FinKernel.compose (FinKernel.compose c k) f)
+        (FinKernel.compose (FinKernel.compose d k) f) := by
+    simpa only [finKernel_compose_associative] using
+      hcd (FinKernel.compose k f)
+  have hMiddle :
+      FinKernel.ProbeEq P
+        (FinKernel.compose (FinKernel.compose d k) f)
+        (FinKernel.compose (FinKernel.compose d l) f) :=
+    (hL d hd) f
+  have hRight :
+      FinKernel.ProbeEq P
+        (FinKernel.compose (FinKernel.compose d l) f)
+        (FinKernel.compose (FinKernel.compose c l) f) := by
+    simpa only [finKernel_compose_associative] using
+      (finKernel_contextActionEq_symm hcd) (FinKernel.compose l f)
+  exact finKernel_probeEq_trans hLeft
     (finKernel_probeEq_trans hMiddle hRight)
-  simpa only [finKernel_compose_associative] using hChain
 
 /-- Mutual generated contextual-class coverage reconstructs global action equality. -/
 theorem finKernel_mutualGeneratedClassCoverage_implies_accessActionEq {n : Nat}
