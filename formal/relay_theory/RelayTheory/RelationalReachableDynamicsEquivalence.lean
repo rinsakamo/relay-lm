@@ -47,13 +47,11 @@ def finKernel_reachableClassDynamicsCorrespondence_refl {n : Nat}
     right_functional := by
       intro s t u hst hsu
       have htu : t = u := hst.symm.trans hsu
-      subst u
-      exact finKernel_fullFutureResponseSpaceEq_refl t
+      exact (finKernel_fullFutureResponseSpaceEq_iff_eq).2 htu
     left_functional := by
       intro s u t hst hut
       have hsu : s = u := hst.trans hut.symm
-      subst u
-      exact finKernel_fullFutureResponseSpaceEq_refl s
+      exact (finKernel_fullFutureResponseSpaceEq_iff_eq).2 hsu
     root := rfl
     successor_forward := by
       intro sK tK uK sL tL uL hs ht hu hSucc
@@ -173,9 +171,13 @@ theorem finKernel_reachableDynamicsEq_trans {n : Nat}
 theorem finKernel_reachableDynamicsEq_equivalence {n : Nat}
     (P : FinKernel.ProbeFamily n) :
     Equivalence (FinKernel.ReachableDynamicsEq P) := by
-  exact ⟨finKernel_reachableDynamicsEq_refl P,
-    fun _ _ => finKernel_reachableDynamicsEq_symm,
-    fun _ _ _ => finKernel_reachableDynamicsEq_trans⟩
+  refine ⟨?_, ?_, ?_⟩
+  · intro K
+    exact finKernel_reachableDynamicsEq_refl P K
+  · intro K L hKL
+    exact finKernel_reachableDynamicsEq_symm hKL
+  · intro K L M hKL hLM
+    exact finKernel_reachableDynamicsEq_trans hKL hLM
 
 /-- Common realized contextual-class support implies intrinsic dynamics equality. -/
 theorem finKernel_accessClassSupportEq_implies_reachableDynamicsEq {n : Nat}
