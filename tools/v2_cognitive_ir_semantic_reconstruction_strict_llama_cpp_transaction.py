@@ -18,7 +18,6 @@ from relaylm.v2_cognitive_ir_semantic_reconstruction_strict import (
 )
 from relaylm.v2_cognitive_ir_semantic_reconstruction_strict_physical import (
     CLAIM,
-    StrictSemanticReconstructionCampaignResult,
     validate_physical_adapter_binding,
 )
 from tools.v2_cognitive_ir_s2_host import probe_s2_git_repository
