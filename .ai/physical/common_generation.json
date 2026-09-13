@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "generation_id": "relay-common-physical-g1",
+  "git_object_format": "sha1",
+  "aggregate_identity": "sha256:786b39f297b3330526e36115b0f8fa56d829d3adb4fc5913af3f385cd05eadc2",
+  "surface": [
+    {"path": ".ai/physical/python_environment_policy.json", "git_blob_oid": "d670862e6ccc7d46499f22750919f80472943034"},
+    {"path": ".ai/skills/physical-execution-queue/SKILL.md", "git_blob_oid": "7a2d7eb5e2263a3aa2a097b120feb90293393fa7"},
+    {"path": "docs/reference/physical-execution-queue.md", "git_blob_oid": "65c1f6615e85289d6dbd6d1213f7f1d9330016c2"},
+    {"path": "tests/integration/test_physical_execution_queue_process_smoke.py", "git_blob_oid": "4283f55c381c5206f8aac199f7e595bd41d4a2a0"},
+    {"path": "tests/unit/test_physical_execution_queue.py", "git_blob_oid": "cbff4486954ac815070659d86a580017776408a5"},
+    {"path": "tests/unit/test_physical_execution_queue_smoke_target.py", "git_blob_oid": "33abb2e33ee96155c81fbff497b81ae30b625e98"},
+    {"path": "tests/unit/test_relay_physical_env.py", "git_blob_oid": "b632233faf60c9d785b1adfc12dea9b79e2eda04"},
+    {"path": "tests/unit/test_relay_physical_env_manifest_integrity.py", "git_blob_oid": "4a9829a7695534718c55bc910332a4cf406aefbc"},
+    {"path": "tests/unit/test_relay_physical_run.py", "git_blob_oid": "4a6ba3c93ee0dccd58a8cc723801442df4b79d39"},
+    {"path": "tools/physical_execution_queue.py", "git_blob_oid": "8a4cd58495042464992807000401e9dffb9f6162"},
+    {"path": "tools/physical_execution_queue_smoke_target.py", "git_blob_oid": "f128cbd1a64b25dac0b43ed58d9ed1ea4a6ea1d9"},
+    {"path": "tools/relay_physical_env.py", "git_blob_oid": "8afa8122db9a801bf88a47bed6fe4051df0c9b9c"},
+    {"path": "tools/relay_physical_run.py", "git_blob_oid": "9a1ca6e636496554faece082908cd678ac823ccc"}
+  ],
+  "provenance": {
+    "origin_commit": "10324f14bad1882d62544aa22272733f90f2f5b0",
+    "origin_tree": "afdc87a13371f9bec0d9cd55f9fe1dfed3c16dff",
+    "promotion_owner": 2750,
+    "predecessor_issue": 2731,
+    "predecessor_commit": "a073362fbd7b455e8387021b9394b156b024e467"
+  }
+}
