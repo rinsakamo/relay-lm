@@ -16,6 +16,7 @@ implementation:
 - tools/v2_cognitive_ir_semantic_reconstruction_strict_llama_cpp_wsl.py
 tests:
 - tests/unit/test_v2_cognitive_ir_semantic_reconstruction_strict_physical.py
+- tests/unit/test_v2_cognitive_ir_semantic_reconstruction_strict_spend_boundary.py
 depends_on:
 - relaylm2_cognitive_ir_semantic_reconstruction_strict
 - relaylm2_cognitive_ir_semantic_reconstruction_physical_adapter
