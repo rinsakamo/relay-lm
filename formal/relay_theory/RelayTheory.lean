@@ -46,6 +46,7 @@ import RelayTheory.FullFutureResponseSignatures
 import RelayTheory.CanonicalResidualReindexing
 import RelayTheory.ReachableResidualOrbit
 import RelayTheory.ResidualCarrierNonDeterminacy
+import RelayTheory.ExtensionalResidualComposition
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
