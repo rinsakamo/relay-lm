@@ -368,13 +368,21 @@ def verify_environment(
     )
 
 
+def _active_environment_matches(identity: PhysicalEnvironmentIdentity) -> bool:
+    active_python = Path(sys.executable).absolute()
+    expected_python = Path(identity.python_executable).absolute()
+    active_prefix = Path(sys.prefix).absolute()
+    expected_prefix = (identity.home / VENV_DIRNAME).absolute()
+    return active_python == expected_python and active_prefix == expected_prefix
+
+
 def verify_current_environment(
     *,
     repo_root: Path,
     home: Path | None = None,
 ) -> PhysicalEnvironmentIdentity:
     identity = verify_environment(repo_root=repo_root, home=home)
-    if Path(sys.executable).resolve() != Path(identity.python_executable).resolve():
+    if not _active_environment_matches(identity):
         raise RelayPhysicalEnvironmentError(
             "physical runner is not executing inside the selected persistent Python"
         )
@@ -493,8 +501,8 @@ def prepare_environment(
 
 def reexec_into_environment(*, repo_root: Path, argv: Sequence[str]) -> None:
     identity = verify_environment(repo_root=repo_root)
-    target = Path(identity.python_executable).resolve()
-    if Path(sys.executable).resolve() == target:
+    target = Path(identity.python_executable).absolute()
+    if _active_environment_matches(identity):
         return
     environment = dict(os.environ)
     environment["PYTHONPATH"] = _exact_pythonpath(repo_root)
