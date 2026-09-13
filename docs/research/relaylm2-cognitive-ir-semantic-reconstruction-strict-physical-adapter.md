@@ -112,7 +112,7 @@ Each persisted cell carries family/seed/arm identity, semantic digest, canonical
 
 Before exact materialization, any unprovable repository/common-generation/registry/runtime/model/context/slot/context-shift/reasoning/strict-schema/counter condition blocks execution.
 
-After a semantic provider attempt has begun, completed cells and observable ledgers are retained. There is no retry, replay, reseed, fallback, hidden repair, or model judge. Any measurement gate failure after scientific spend is classified by #2769 as:
+After any scientific `/input_tokens` request attempt or semantic provider request attempt has begun, completed cells and observable ledgers are retained. A counter failure between `/input_tokens` accounting and the provider POST is therefore already scientific spend, even when `provider_attempts == 0`. There is no retry, replay, reseed, fallback, hidden repair, or model judge. Any measurement gate failure after scientific spend is classified by #2769 as:
 
 ```text
 MEASUREMENT_OR_RUNTIME_FAILURE_AFTER_SCIENTIFIC_SPEND
@@ -122,7 +122,7 @@ A failed or partial transaction cannot be completed by a second invocation under
 
 ## CI and physical execution boundary
 
-Repository CI uses synthetic-only payload factories and fake HTTP clients. It performs zero provider/model/GPU/llama-server work. Tests prove guarded materialization, 24/48/96 accounting, 2/2 pre-material counter freeze, exact native schema/envelope, P4/P6 semantic pairing, terminal failure semantics, common-generation pinning, and common-target routing.
+Repository CI uses synthetic-only payload factories and fake HTTP clients. It performs zero provider/model/GPU/llama-server work. Tests prove guarded materialization, 24/48/96 accounting, 2/2 pre-material counter freeze, exact native schema/envelope, P4/P6 semantic pairing, count-only and provider-attempt terminal failure semantics, common-generation pinning, and common-target routing.
 
 #2774 itself authorizes no physical run. Only after this adapter is merged, protected-v2 post-merge CI is GREEN, reconciliation and the #2211 handoff are persisted/read back, and a fresh duplicate-owner search is clear may a separate exactly-once physical owner authorize one canonical common-runner invocation.
 
