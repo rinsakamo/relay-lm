@@ -183,6 +183,7 @@ def _continuity_instruction_parts(source_id: str) -> tuple[tuple[str, str], ...]
         ("common", "- New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.\n"),
         ("referent", "- A subject mentioned only as the current turn's topic is not a referent candidate; a bare intention to discuss or continue it does not establish cross-turn reference.\n"),
         ("referent", "- Emit a new `referent` only when the current Input explicitly establishes a cross-turn pointer, alias, or future-reference plan.\n"),
+        ("referent", "- A Continuity `referent` must denote the same target established by the user. When a referent comes from the current Input, preserve its meaning-bearing lexical anchor from the exact `current_input_lexical_source` unless the current Input explicitly replaces it or accepted Continuity provides an unambiguous accepted alias for the same target.\n"),
         ("common", "- A Context item whose content is a `continuity` JSON record is an already accepted temporary Continuity item, not a new proposal or prior assistant utterance.\n"),
         ("multi_kind", "- For each Continuity kind, compare the current Input with the accepted item independently: `set` for a new meaning, `resolve` for a current resolution, and no candidate for an unchanged meaning.\n"),
         ("common", "- Never copy an accepted item's prior `sources` into a new transition; every transition caused by the current turn uses the current Input Event ID.\n"),
