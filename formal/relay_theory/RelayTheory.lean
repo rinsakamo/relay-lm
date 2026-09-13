@@ -44,6 +44,7 @@ import RelayTheory.ContextualActionQuotient
 import RelayTheory.ContextualActionCompositionDescent
 import RelayTheory.FullFutureResponseSignatures
 import RelayTheory.CanonicalResidualReindexing
+import RelayTheory.ReachableResidualOrbit
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
