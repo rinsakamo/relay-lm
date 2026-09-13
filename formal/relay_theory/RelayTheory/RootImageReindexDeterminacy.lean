@@ -234,25 +234,14 @@ theorem finKernel_merge01_safe_rightShift_rootImageEq :
       (FinKernel.GeneratedRightShift
         (FinKernel.identity 3)
         FinKernel.GeneratedContext.identity) := by
-  change FinKernel.FullFutureResponseSpaceEq
-    (FinKernel.ReindexFullFutureResponse
-      (FinKernel.GeneratedRightShift
-        (FinKernel.dirac finCollapseHidden3)
-        finKernel_merge01_collapse_generated_safe)
-      (FinKernel.FullFutureResponse
-        FinKernel.merge01ProbeFamily3
-        FinKernel.merge01SafeContextFamily3
-        (FinKernel.identity 3)))
-    (FinKernel.ReindexFullFutureResponse
-      (FinKernel.GeneratedRightShift
-        (FinKernel.identity 3)
-        FinKernel.GeneratedContext.identity)
-      (FinKernel.FullFutureResponse
-        FinKernel.merge01ProbeFamily3
-        FinKernel.merge01SafeContextFamily3
-        (FinKernel.identity 3)))
-  simpa only [FinKernel.IdentityResidualState] using
-    finKernel_merge01_safe_identityResidualStateEq
+  change FinKernel.IdentityResidualStateEq
+    FinKernel.merge01ProbeFamily3
+    FinKernel.merge01SafeContextFamily3
+    (FinKernel.dirac finCollapseHidden3)
+    (FinKernel.identity 3)
+    finKernel_merge01_collapse_generated_safe
+    FinKernel.GeneratedContext.identity
+  exact finKernel_merge01_safe_identityResidualStateEq
 
 /-- Safe root-image equality therefore determines equality on every reachable response state. -/
 theorem finKernel_merge01_safe_rightShift_reindexEqOnReachable :
