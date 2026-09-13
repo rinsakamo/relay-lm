@@ -26,6 +26,7 @@ from relaylm.v2_cognitive_ir_semantic_reconstruction_strict import (
     REASONING,
     REQUEST_SEED,
     SEMANTIC_COMPLETIONS,
+    STREAM,
     TEMPERATURE,
     PairedTable,
     ReconstructionVerdict,
@@ -256,8 +257,15 @@ def run_strict_semantic_reconstruction_campaign(
                     output_kind="strict_semantic_payload",
                 )
             except Exception as exc:
-                attempts = int(client.provider_attempts)
-                if attempts <= len(cells):
+                provider_attempts = int(client.provider_attempts)
+                input_count_attempts = int(client.input_count_attempts)
+                completed_input_count_attempts = (
+                    INPUT_TOKEN_REQUESTS_PER_SEMANTIC_CALL * len(cells)
+                )
+                if (
+                    provider_attempts <= len(cells)
+                    and input_count_attempts <= completed_input_count_attempts
+                ):
                     raise
                 verdict = classify_result(
                     None,
@@ -366,6 +374,10 @@ def validate_physical_adapter_binding() -> None:
     if TEMPERATURE != 0.0 or REASONING != "none" or REQUEST_SEED is not None:
         raise StrictSemanticReconstructionPhysicalBindingError(
             "E4-SR2 decoding envelope drifted"
+        )
+    if STREAM is not False:
+        raise StrictSemanticReconstructionPhysicalBindingError(
+            "E4-SR2 streaming envelope drifted"
         )
     if PARALLEL_SEMANTIC_SLOTS != 1:
         raise StrictSemanticReconstructionPhysicalBindingError(
