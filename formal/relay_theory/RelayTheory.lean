@@ -50,6 +50,7 @@ import RelayTheory.ExtensionalResidualComposition
 import RelayTheory.WitnessFreeResidualAssociativity
 import RelayTheory.UnaryResidualTransitionReconstruction
 import RelayTheory.RootImageReindexDeterminacy
+import RelayTheory.ResidualLawNonCharacterization
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
