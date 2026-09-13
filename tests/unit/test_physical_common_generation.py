@@ -182,12 +182,15 @@ def test_checked_in_certificate_matches_declared_surface() -> None:
     certificate_path = repo_root / ".ai/physical/common_generation.json"
     cert = validate_certificate(json.loads(certificate_path.read_text(encoding="utf-8")))
     assert tuple(entry["path"] for entry in cert["surface"]) == COMMON_PHYSICAL_SURFACE
-    assert cert["generation_id"] == "relay-common-physical-g1"
+    assert cert["generation_id"] == "relay-common-physical-g2"
     assert cert["aggregate_identity"] == (
-        "sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5"
+        "sha256:bb983011905bdd8b5393c2c3459b691289f5ced9a41561bb8dc7f642fa330b87"
     )
-    assert cert["provenance"]["promotion_owner"] == 2750
-    assert cert["provenance"]["predecessor_issue"] == 2731
+    assert cert["provenance"]["origin_commit"] == "3bd301b35fe45b1984d732b2439cdd38a849a46b"
+    assert cert["provenance"]["origin_tree"] == "1149a660cd63ec686637f07286776bd8c998b035"
+    assert cert["provenance"]["promotion_owner"] == 2799
+    assert cert["provenance"]["predecessor_issue"] == 2750
+    assert cert["provenance"]["predecessor_commit"] == "8451050fc0c52e090f2e1c2c6c5d2b8121ca159f"
 
 
 def test_checked_in_certificate_verifies_checkout() -> None:
@@ -195,4 +198,4 @@ def test_checked_in_certificate_verifies_checkout() -> None:
     certificate_path = repo_root / ".ai/physical/common_generation.json"
     cert = validate_certificate(json.loads(certificate_path.read_text(encoding="utf-8")))
     identity = verify_checkout(repo_root, cert)
-    assert identity["generation_id"] == "relay-common-physical-g1"
+    assert identity["generation_id"] == "relay-common-physical-g2"

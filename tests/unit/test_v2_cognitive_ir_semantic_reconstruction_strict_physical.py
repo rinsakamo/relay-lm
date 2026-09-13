@@ -340,9 +340,9 @@ def test_wsl_adapter_pins_current_common_generation_and_routes_transaction(
 ) -> None:
     root = Path(__file__).resolve().parents[2]
     identity = strict_wsl.verify_common_physical_binding(root)
-    assert identity["generation_id"] == "relay-common-physical-g1"
+    assert identity["generation_id"] == "relay-common-physical-g2"
     assert identity["aggregate_identity"] == (
-        "sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5"
+        "sha256:bb983011905bdd8b5393c2c3459b691289f5ced9a41561bb8dc7f642fa330b87"
     )
 
     observed: list[tuple[str, str]] = []

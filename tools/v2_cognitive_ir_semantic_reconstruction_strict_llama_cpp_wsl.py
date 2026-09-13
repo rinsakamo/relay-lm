@@ -18,9 +18,9 @@ INNER_TRANSACTION_MODULE_STRICT_SEMANTIC_RECONSTRUCTION = (
 WALL_TIME_SCHEMA_STRICT_SEMANTIC_RECONSTRUCTION = (
     "relaylm2-cognitive-ir-semantic-reconstruction-strict-wsl-wall-time-v1"
 )
-COMMON_PHYSICAL_GENERATION_ID = "relay-common-physical-g1"
+COMMON_PHYSICAL_GENERATION_ID = "relay-common-physical-g2"
 COMMON_PHYSICAL_AGGREGATE_IDENTITY = (
-    "sha256:5cc6444f473a748d56de7da7d5a56e564a7e29d919e00b6afcfd01a7fcd4edd5"
+    "sha256:bb983011905bdd8b5393c2c3459b691289f5ced9a41561bb8dc7f642fa330b87"
 )
 TARGET_NAME = "v2:semantic-reconstruction-strict"
 TARGET_BRANCH = "v2"
