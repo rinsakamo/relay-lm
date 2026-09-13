@@ -1,18 +1,23 @@
 schema_version: 1
 id: external_qualification
-summary: External public-benchmark runner and evidence contract for exact-RC bounded qualification without RelayLM Core semantic mutation.
+summary: External public-benchmark runner, launch-readiness, and evidence contract for exact-RC bounded qualification without RelayLM Core semantic mutation.
 owner_issue: 1981
 canonical_surfaces:
 - docs/reference/external-qualification.md
+- docs/reference/external-qualification-readiness.md
 references:
 - docs/contracts/release-identity.md
 - docs/reference/actual-model-cognition-execution-evidence.md
 implementation:
 - tools/external_qualification.py
+- tools/external_qualification_readiness.py
 - tools/memconflict_adapter.py
+- tools/longmemeval_adapter.py
 tests:
 - tests/unit/test_external_qualification.py
 - tests/unit/test_external_qualification_durable.py
+- tests/unit/test_external_qualification_readiness.py
 - tests/unit/test_memconflict_adapter.py
+- tests/unit/test_longmemeval_adapter.py
 depends_on:
 - release_engineering
