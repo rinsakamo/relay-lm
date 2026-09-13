@@ -53,6 +53,7 @@ import RelayTheory.RootImageReindexDeterminacy
 import RelayTheory.ResidualLawNonCharacterization
 import RelayTheory.SourceSubstitutionCharacterization
 import RelayTheory.ContextDomainTransport
+import RelayTheory.AdmissibilityDomainIdentifiability
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
