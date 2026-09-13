@@ -76,6 +76,7 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
             "status": "READY_EXCEPT_EXACT_RC",
             "axes": axes,
             "comparator": comparator,
+            "comparator_participant_identity": None,
             "physical_carriage": carriage,
             "release_cases": [],
             "relaylm_release": None,
@@ -101,6 +102,7 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
     planned_by_id = {item["axis_id"]: item for item in axes}
     normalized_cases: list[dict[str, object]] = []
     release_identity: dict[str, object] | None = None
+    frozen_comparator_identity: dict[str, object] | None = None
     seen_axis_ids: set[str] = set()
 
     for index, item in enumerate(release_cases):
@@ -145,16 +147,41 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
             for participant in manifest["participants"]
             if isinstance(participant, Mapping)
         }
-        comparator_plan = _mapping(
-            participants["serious_comparator"], "serious comparator participant"
+        direct_identity = _participant_identity(
+            participants,
+            "same_model_direct",
+            axis_id,
         )
-        comparator_identity = _mapping(
-            comparator_plan["identity"], "serious comparator identity"
+        comparator_identity = _participant_identity(
+            participants,
+            "serious_comparator",
+            axis_id,
+        )
+        relay_identity = _participant_identity(
+            participants,
+            "relaylm_exact_rc",
+            axis_id,
         )
         for field in ("implementation", "source_revision", "version", "license"):
             if comparator_identity[field] != comparator[field]:
                 raise ExternalQualificationReadinessError(
                     f"release case {axis_id} comparator {field} does not match plan"
+                )
+        if frozen_comparator_identity is None:
+            frozen_comparator_identity = dict(comparator_identity)
+        elif _canonical_json(comparator_identity) != _canonical_json(
+            frozen_comparator_identity
+        ):
+            raise ExternalQualificationReadinessError(
+                "all execution-freeze cases must bind the same exact serious comparator participant identity"
+            )
+        for slot_name, identity in (
+            ("same_model_direct", direct_identity),
+            ("relaylm_exact_rc", relay_identity),
+        ):
+            if identity["backend"] != carriage["backend"]:
+                raise ExternalQualificationReadinessError(
+                    f"release case {axis_id} {slot_name} backend does not match physical carriage"
                 )
 
         current_release = _mapping(
@@ -181,12 +208,14 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
             "execution freeze does not cover every planned axis exactly once"
         )
     assert release_identity is not None
+    assert frozen_comparator_identity is not None
     normalized = {
         "format_version": READINESS_FORMAT_VERSION,
         "phase": phase,
         "status": "EXECUTION_FROZEN",
         "axes": axes,
         "comparator": comparator,
+        "comparator_participant_identity": frozen_comparator_identity,
         "physical_carriage": carriage,
         "release_cases": normalized_cases,
         "relaylm_release": release_identity,
@@ -287,6 +316,21 @@ def _physical_carriage(raw: object) -> dict[str, object]:
         "resource_key": _text(value["resource_key"], "physical resource_key"),
         "registered": registered,
     }
+
+
+def _participant_identity(
+    participants: Mapping[str, object],
+    slot: str,
+    axis_id: str,
+) -> Mapping[str, object]:
+    plan = _mapping(
+        participants.get(slot),
+        f"release case {axis_id} {slot} participant",
+    )
+    return _mapping(
+        plan.get("identity"),
+        f"release case {axis_id} {slot} identity",
+    )
 
 
 def _with_fingerprint(value: Mapping[str, object]) -> dict[str, object]:
