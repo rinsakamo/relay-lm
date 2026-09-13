@@ -1,0 +1,50 @@
+schema_version: 1
+id: actual_model_crystallization_llama_cpp
+owner_issue: 2811
+summary: >-
+  Evaluation-only off-turn Crystallization carriage onto the current v1
+  llama.cpp physical reference. It reuses the provider-neutral Crystallization
+  semantics, exact native-schema request, llama.cpp runtime attestation,
+  reasoning_effort=none realization, serialized-input counter, shared queue, and
+  transaction-owned lifecycle without entering product runtime routing or making
+  a scientific quality conclusion.
+canonical_surfaces:
+- docs/reference/actual-model-crystallization-llama-cpp.md
+references:
+- docs/reference/actual-model-crystallization-evidence.md
+- docs/reference/actual-model-crystallization-host-runner.md
+- docs/reference/actual-model-crystallization-quality-fixture.md
+- docs/reference/actual-model-llama-cpp-qualification.md
+- docs/reference/physical-execution-queue.md
+- docs/contracts/crystallization.md
+- docs/contracts/provider-reasoning.md
+implementation:
+- src/relaylm/actual_model_crystallization_llama_cpp.py
+- src/relaylm/actual_model_crystallization_llama_cpp_transaction.py
+- src/relaylm/providers/llama_cpp_crystallization.py
+- tools/v1_crystallization_llama_cpp_wsl.py
+tests:
+- tests/unit/test_actual_model_crystallization_llama_cpp.py
+qualification_exclusions:
+- path: src/relaylm/actual_model_crystallization_llama_cpp.py
+  reason: >-
+    Evaluation-only llama.cpp Crystallization host and evidence binding; it does
+    not modify production Crystallization semantics or product runtime routing.
+- path: src/relaylm/actual_model_crystallization_llama_cpp_transaction.py
+  reason: >-
+    Physical transaction selector that reuses the current llama.cpp lifecycle;
+    it is not a production server or provider path.
+- path: src/relaylm/providers/llama_cpp_crystallization.py
+  reason: >-
+    Evaluation-only provider adapter that preserves the existing Crystallization
+    prompt/schema/parser and adds only the current llama.cpp wire controls.
+- path: tools/v1_crystallization_llama_cpp_wsl.py
+  reason: >-
+    Operator-only WSL boundary with fresh roots; repository work never invokes
+    it and it has no alternate runtime or fallback path.
+depends_on:
+- actual_model_evaluation
+- actual_model_llama_cpp_qualification
+- crystallization
+- physical_execution_queue
+- provider_and_api
