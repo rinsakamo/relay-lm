@@ -69,7 +69,10 @@ theorem finKernel_contextualActionEq_implies_actionEq {n : Nat}
     {k l : FinKernel n n}
     (h : FinKernel.ContextualActionEq P K k l) :
     FinKernel.ContextActionEq P k l := by
-  have hId := h (FinKernel.identity n) FinKernel.GeneratedContext.identity
+  have hId : FinKernel.ContextActionEq P
+      (FinKernel.compose (FinKernel.identity n) k)
+      (FinKernel.compose (FinKernel.identity n) l) :=
+    h (FinKernel.identity n) FinKernel.GeneratedContext.identity
   intro m f
   simpa only [finKernel_compose_identity_after] using hId f
 
@@ -89,7 +92,10 @@ theorem finKernel_contextualActionEq_postcompose_generated {n : Nat}
   intro c hc
   have hcd : FinKernel.GeneratedContext K (FinKernel.compose c d) :=
     FinKernel.GeneratedContext.seq hd hc
-  have hAll := h (FinKernel.compose c d) hcd
+  have hAll : FinKernel.ContextActionEq P
+      (FinKernel.compose (FinKernel.compose c d) k)
+      (FinKernel.compose (FinKernel.compose c d) l) :=
+    h (FinKernel.compose c d) hcd
   intro m f
   have hAtSource := hAll f
   simpa only [finKernel_compose_associative] using hAtSource
@@ -122,8 +128,14 @@ theorem finKernel_merge01_collapse_identity_not_contextual_action_eq_expanded :
       (FinKernel.dirac finCollapseHidden3)
       (FinKernel.identity 3) := by
   intro h
-  have hAfterMove := h finKernelMoveOneToTwo
-    finKernel_merge01_move_generated_by_expanded_policy
+  have hAfterMove : FinKernel.ContextActionEq
+      FinKernel.merge01ProbeFamily3
+      (FinKernel.compose finKernelMoveOneToTwo
+        (FinKernel.dirac finCollapseHidden3))
+      (FinKernel.compose finKernelMoveOneToTwo
+        (FinKernel.identity 3)) :=
+    h finKernelMoveOneToTwo
+      finKernel_merge01_move_generated_by_expanded_policy
   exact finKernel_merge01_collapse_identity_break_after_move hAfterMove
 
 /--
