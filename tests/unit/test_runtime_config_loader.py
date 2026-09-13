@@ -297,7 +297,7 @@ runtime:
     assert resolved.config.runtime.calibration_profile == "fastcal-v1"
     assert resolved.calibration_profile is not None
     assert resolved.calibration_profile.name == "fastcal-v1"
-    assert resolved.calibration_profile.target_window == 4096
+    assert resolved.calibration_profile.target_window == 4352
     assert resolved.calibration_profile.output_allowance == 512
     assert resolved.calibration_profile.authority == "#1388 FastCal v1"
     assert resolved.source_for("runtime.calibration_profile") is ConfigSource.CONFIG_FILE
@@ -311,7 +311,7 @@ runtime:
         "source": "config_file",
     }
     assert values["runtime.calibration_profile.target_window"] == {
-        "value": 4096,
+        "value": 4352,
         "source": "canonical_default",
     }
     assert values["runtime.calibration_profile.output_allowance"] == {
@@ -375,7 +375,7 @@ def test_calibrated_total_defaults_require_explicit_1387_policy_and_counter(
     budget = resolved.config.runtime.cognitive_budget
 
     assert budget is not None
-    assert budget.total.model_context_window == 4096
+    assert budget.total.model_context_window == 4352
     assert budget.total.reserved_output_tokens == 512
     assert resolved.source_for(
         "runtime.cognitive_budget.total.model_context_window"
@@ -406,7 +406,7 @@ def test_explicit_cognitive_budget_total_beats_calibrated_defaults(
         "runtime.cognitive_budget.total.reserved_output_tokens"
     ) is ConfigSource.CONFIG_FILE
     assert resolved.calibration_profile is not None
-    assert resolved.calibration_profile.target_window == 4096
+    assert resolved.calibration_profile.target_window == 4352
 
 
 def test_explicit_cognitive_budget_total_precedence_is_leaf_level(

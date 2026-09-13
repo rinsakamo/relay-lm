@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from relaylm.budget import (
@@ -32,6 +34,11 @@ from relaylm.runtime_config import (
     SecretEnvReference,
     ServerRuntimeConfig,
     TokenCounterCapabilityConfig,
+)
+from relaylm.calibration_profile import CalibrationProfile
+from relaylm.calibration_profiles import (
+    CALIBRATION_PROFILES,
+    FASTCAL_V1_CALIBRATION_PROFILE,
 )
 from relaylm.runtime_config_loader import (
     RuntimeConfigOverrides,
@@ -80,6 +87,25 @@ def test_runtime_configuration_precedence_is_leaf_level_and_deterministic() -> N
         ConfigSource.CONFIG_FILE,
         ConfigSource.CANONICAL_DEFAULT,
     )
+
+
+def test_calibration_profile_type_and_registry_have_distinct_owners() -> None:
+    assert CalibrationProfile is FASTCAL_V1_CALIBRATION_PROFILE.__class__
+    assert CALIBRATION_PROFILES["fastcal-v1"] is FASTCAL_V1_CALIBRATION_PROFILE
+    assert FASTCAL_V1_CALIBRATION_PROFILE.target_window == 4352
+    assert FASTCAL_V1_CALIBRATION_PROFILE.output_allowance == 512
+    assert FASTCAL_V1_CALIBRATION_PROFILE.authority == "#1388 FastCal v1"
+
+
+def test_numeric_calibration_registry_has_one_production_writer() -> None:
+    root = Path(__file__).resolve().parents[2]
+    runtime_source = (root / "src/relaylm/runtime_config.py").read_text(encoding="utf-8")
+    registry_source = (root / "src/relaylm/calibration_profiles.py").read_text(encoding="utf-8")
+
+    assert "target_window=" not in runtime_source
+    assert "output_allowance=" not in runtime_source
+    assert registry_source.count("target_window=") == 1
+    assert registry_source.count("output_allowance=") == 1
 
 
 def test_runtime_config_rejects_coerced_or_unsupported_format_version() -> None:

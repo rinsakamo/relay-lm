@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 
-from tools.repository_authority import load_declarations, qualification_fingerprint
+from tools.repository_authority import (
+    load_declarations,
+    qualification_fingerprint,
+    qualification_manifest,
+)
 from tools.repository_qualification_coverage import qualification_coverage_gaps
 
 
@@ -73,4 +78,60 @@ def test_core_semantic_qualification_fingerprint_matches_freeze() -> None:
         "core semantic qualification fingerprint mismatch:\n"
         f"expected: {expected}\n"
         f"actual:   {actual}"
+    )
+
+
+def test_calibration_numeric_mutation_is_neutral_but_stable_semantics_are_significant(
+    tmp_path: Path,
+) -> None:
+    """Freeze both sides of the pre-Calibration Core boundary in an isolated copy."""
+
+    isolated = tmp_path / "repository"
+    shutil.copytree(
+        REPOSITORY_ROOT,
+        isolated,
+        ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache"),
+    )
+    roots = ("crystallization", "runtime_configuration")
+    declarations = load_declarations(REPOSITORY_ROOT)
+    baseline = qualification_fingerprint(
+        REPOSITORY_ROOT,
+        declarations,
+        roots=roots,
+    )
+    manifest = qualification_manifest(isolated, load_declarations(isolated), roots=roots)
+    selected = {
+        path
+        for owner in manifest["owners"]
+        for path in owner["qualification_inputs"]
+    }
+    numeric_path = "src/relaylm/calibration_profiles.py"
+    stable_path = "src/relaylm/calibration_profile.py"
+    assert numeric_path not in selected
+    assert stable_path in selected
+
+    numeric_file = isolated / numeric_path
+    numeric = numeric_file.read_text(encoding="utf-8")
+    assert numeric.count("target_window=4352") == 1
+    numeric_file.write_text(numeric.replace("target_window=4352", "target_window=4353"), encoding="utf-8")
+    assert (
+        qualification_fingerprint(
+            isolated,
+            load_declarations(isolated),
+            roots=roots,
+        )
+        == baseline
+    )
+
+    stable_file = isolated / stable_path
+    stable = stable_file.read_text(encoding="utf-8")
+    assert stable.count("if value <= 0:") == 1
+    stable_file.write_text(stable.replace("if value <= 0:", "if value < 0:"), encoding="utf-8")
+    assert (
+        qualification_fingerprint(
+            isolated,
+            load_declarations(isolated),
+            roots=roots,
+        )
+        != baseline
     )

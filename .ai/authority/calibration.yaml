@@ -1,12 +1,17 @@
 schema_version: 1
 id: calibration
-summary: Calibration experiment matrix, candidate sweeps, continuation policy, and default provenance.
+summary: Calibration experiment matrix, candidate sweeps, continuation policy, numeric profile registry, and default provenance.
 owner_issue: 1388
 canonical_surfaces:
 - docs/contracts/calibration-evidence.md
 - docs/contracts/calibration-candidate-sweep.md
 - docs/contracts/calibration-protected-workload.md
 - docs/contracts/calibration-continuation-gate.md
+implementation:
+- src/relaylm/calibration_profiles.py
+qualification_exclusions:
+- path: src/relaylm/calibration_profiles.py
+  reason: "Mutable #1388 FastCal numeric carriage is downstream of pre-Calibration Core qualification."
 depends_on:
 - actual_model_evaluation
 - cognitive_budget

@@ -52,7 +52,7 @@ CLI > environment > runtime file > canonical default
 
 `--cognition-mode` selects only the existing #1533 execution-mode vocabulary and is paired with `RELAYLM_COGNITION_MODE` and `runtime.cognition.mode`. Omission resolves to the canonical `two_pass` topology default; `auto` and `shadow_two_pass` still fail ordinary serving admission later rather than being silently reinterpreted. Calibration selection does not rewrite this cognition mode.
 
-`--calibration-profile` / `runtime.calibration_profile` selects the current named #1388 authority `fastcal-v1`. It carries desired `target_window=4096`, `output_allowance=512`, and authority `#1388 FastCal v1`; it is a different concept from a Cognitive Profile name and is never used to resolve the OpenAI request `model`. Unsupported names fail closed, and transient VRAM/admission observations are not part of the calibration identity.
+`--calibration-profile` / `runtime.calibration_profile` selects the current named #1388 authority `fastcal-v1`. It carries desired `target_window=4352`, `output_allowance=512`, and authority `#1388 FastCal v1`; it is a different concept from a Cognitive Profile name and is never used to resolve the OpenAI request `model`. Unsupported names fail closed, and transient VRAM/admission observations are not part of the calibration identity.
 
 ## Cognitive Profile operator boundary
 

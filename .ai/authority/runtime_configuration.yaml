@@ -1,12 +1,14 @@
 schema_version: 1
 id: runtime_configuration
-summary: Release runtime configuration, Cognitive Profile registry and routing carriage, two-pass-first cognition carriage, Pass 2 structured-output transport selection, bounded stale-extraction scheduling consumption, explicit single-pass/two-pass Cognitive Budget carriage with provider hard-output-limit safety validation, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
+summary: Release runtime configuration, Cognitive Profile registry and routing carriage, stable calibration-profile type/selection/carriage semantics, downstream calibration-registry consumption, two-pass-first cognition carriage, Pass 2 structured-output transport selection, bounded stale-extraction scheduling consumption, explicit single-pass/two-pass Cognitive Budget carriage with provider hard-output-limit safety validation, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
 owner_issue: 1446
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
 - docs/contracts/runtime-assembly.md
 - docs/contracts/runtime-operator.md
 implementation:
+- src/relaylm/calibration_profile.py
+- src/relaylm/calibration_profiles.py
 - src/relaylm/runtime_config.py
 - src/relaylm/runtime_config_loader.py
 - src/relaylm/runtime_assembly.py
@@ -15,7 +17,11 @@ implementation:
 - src/relaylm/cli.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
+qualification_exclusions:
+- path: src/relaylm/calibration_profiles.py
+  reason: "Shared downstream integration realization; #1388 Calibration remains the semantic owner of mutable numeric carriage outside the pre-Calibration Core closure."
 qualification_inputs:
+- src/relaylm/calibration_profile.py
 - src/relaylm/runtime_config.py
 - src/relaylm/runtime_config_loader.py
 - src/relaylm/runtime_assembly.py
