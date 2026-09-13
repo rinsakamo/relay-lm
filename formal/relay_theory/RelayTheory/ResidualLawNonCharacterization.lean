@@ -202,7 +202,13 @@ theorem finKernel_fullFutureResponseSpace_context_index_audit {n : Nat}
   intro c hc m f obs hobs x z
   rfl
 
-/-- Acceptance bundle for the #2822 first transaction. -/
+/--
+Acceptance bundle for the #2822 first transaction.  The first conjunct is a
+generic non-characterization countermodel; the second only records that the
+current Relay residual relation satisfies the same law shape.  In particular,
+this bundle does not assert that the XOR/OR alternatives inhabit
+`FullFutureResponseSpace P K`, nor that Relay residual dynamics is arbitrary.
+-/
 theorem residual_law_noncharacterization_bundle :
     (∃ D₁ D₂ : ObservedResidualDynamics Bool Bool,
       D₁.root = D₂.root ∧
