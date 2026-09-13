@@ -120,7 +120,7 @@ def test_doctor_json_reports_selected_fastcal_values_and_authority(
         "source": "config_file",
     }
     assert values["runtime.calibration_profile.target_window"] == {
-        "value": 4096,
+        "value": 4352,
         "source": "canonical_default",
     }
     assert values["runtime.calibration_profile.output_allowance"] == {

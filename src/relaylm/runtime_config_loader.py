@@ -23,6 +23,8 @@ from relaylm.budget import (
     TotalBudgetConfig,
 )
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.calibration_profile import CalibrationProfile
+from relaylm.calibration_profiles import CALIBRATION_PROFILES
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.cognition_execution import (
     CognitionPassRequest,
@@ -37,8 +39,6 @@ from relaylm.runtime_config import (
     DEFAULT_SERVER_HOST,
     DEFAULT_SERVER_PORT,
     RUNTIME_CONFIG_FORMAT_VERSION,
-    CALIBRATION_PROFILES,
-    CalibrationProfile,
     RUNTIME_CONFIG_PATH_ENV,
     CognitiveProfileConfig,
     CognitiveProfileProviderConfig,

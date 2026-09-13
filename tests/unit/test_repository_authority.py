@@ -55,6 +55,16 @@ def test_the_global_authority_view_is_reconstructable_from_owner_local_facts() -
     assert derived["development_workflow"] == ("repository_authority",)
 
 
+def test_calibration_carriage_does_not_create_an_owner_dependency_cycle() -> None:
+    declarations = {
+        declaration.id: declaration for declaration in load_declarations(REPOSITORY_ROOT)
+    }
+
+    assert "actual_model_evaluation" in declarations["calibration"].depends_on
+    assert "runtime_configuration" not in declarations["calibration"].depends_on
+    assert "calibration" not in declarations["runtime_configuration"].depends_on
+
+
 def test_each_owner_declaration_is_written_only_by_its_own_semantic_owner() -> None:
     declarations = load_declarations(REPOSITORY_ROOT)
 

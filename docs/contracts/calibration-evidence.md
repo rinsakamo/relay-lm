@@ -12,6 +12,25 @@ This contract fixes **what a calibration experiment must vary and record before 
 
 Calibration owns the experiment matrix, numeric candidates under test, breakpoint analysis, candidate profiles, default provenance, and later recalibration decisions.
 
+The current carried `fastcal-v1` registry is the downstream production surface
+owned by Calibration at `src/relaylm/calibration_profiles.py`. It consumes the
+completed #2844 result without recomputing it: `target_window = 4352`,
+`output_allowance = 512`, and authority `#1388 FastCal v1`. The registry is
+deliberately outside the pre-Calibration `core-semantic-v1` owner closure;
+changing its numeric result must not change the semantic Core identity. The
+stable `CalibrationProfile` schema and validation remain runtime-configuration
+semantics, and runtime configuration consumes this registry without adding a
+reverse authority dependency.
+
+### #2858 Core identity transition
+
+This boundary repair advances the expected `core-semantic-v1` fingerprint from
+`sha256:18e7c1a1496ecc077adcb0b50acaedcd9ce84685c0519e7b4170fff6af7125cb`
+to `sha256:7e09ae8c0203c41efb9a7e36a68e5c291984141c39d0cd9fcfb5c3a7090e1a81`.
+The reason is qualification-boundary restructuring and stable
+semantic-surface separation; the `4352` result is not a pre-Calibration
+semantic input.
+
 Calibration does not redefine:
 
 - Cognitive Budget protection tiers, legal degradation order, or fail-before-generation semantics;

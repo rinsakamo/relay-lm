@@ -21,6 +21,7 @@ A Character Package is one valid Cognitive Package specialization. Runtime confi
 Canonical implementation:
 
 - `src/relaylm/runtime_config.py`
+- `src/relaylm/calibration_profile.py`
 - `src/relaylm/runtime_config_loader.py`
 - `src/relaylm/runtime_assembly.py`
 - `src/relaylm/cognitive_profile.py`
@@ -164,7 +165,13 @@ When `two_pass` is combined with `runtime.cognitive_budget`, omission semantics 
 
 ### Calibration-profile naming
 
-`runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. The current supported selection is `fastcal-v1`, whose auditable values are `target_window: 4096`, `output_allowance: 512`, and authority `#1388 FastCal v1`. The target is a desired Cognitive Budget window, not a physical VRAM/KV guarantee; transient free VRAM, profiler admission, and one launch's effective KV capacity are runtime/operator observations. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile. Unsupported calibration names fail closed.
+`runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. The stable `CalibrationProfile` type and its validation semantics belong to runtime configuration, while the mutable numeric registry is owned by Calibration and consumed through the loader. The current supported selection is `fastcal-v1`, whose auditable values are `target_window: 4352`, `output_allowance: 512`, and authority `#1388 FastCal v1`. The target is a desired Cognitive Budget window, not a physical VRAM/KV guarantee; transient free VRAM, profiler admission, and one launch's effective KV capacity are runtime/operator observations. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile. Unsupported calibration names fail closed.
+
+Runtime configuration consumes the downstream registry through the shared
+`src/relaylm/calibration_profiles.py` realization. That file is explicitly
+excluded from this owner's pre-Calibration Core inputs: its mutable numeric
+meaning remains Calibration authority, while this owner supplies the stable
+profile type, selection, precedence, and fail-closed carriage semantics.
 
 ### Pass 2 structured-output transport
 
@@ -198,7 +205,7 @@ The switch affects only how Pass 2 structure is constrained on the external prov
 
 ## Cognitive Budget boundary
 
-`runtime.cognitive_budget` carries the existing #1387 total-budget equation, deterministic degradation policy, and token-counter capability selection. When an explicit Cognitive Budget is present together with `calibration_profile: fastcal-v1`, omitted `total.model_context_window` and `total.reserved_output_tokens` resolve to the #1388 values `4096` and `512`. Explicit total leaves remain higher precedence and are not overwritten. The calibration selection alone never creates a Cognitive Budget; `policy` and `token_counter` remain required and are never synthesized.
+`runtime.cognitive_budget` carries the existing #1387 total-budget equation, deterministic degradation policy, and token-counter capability selection. When an explicit Cognitive Budget is present together with `calibration_profile: fastcal-v1`, omitted `total.model_context_window` and `total.reserved_output_tokens` resolve to the #1388 values `4352` and `512`. Explicit total leaves remain higher precedence and are not overwritten. The calibration selection alone never creates a Cognitive Budget; `policy` and `token_counter` remain required and are never synthesized.
 
 For explicit `single_pass`, the structure maps to the existing single-pass `CognitiveBudgetRuntimeConfig`.
 
@@ -275,7 +282,7 @@ runtime.cognition.mode    = two_pass
 
 There is no default public Cognitive Profile name or root: at least one Profile binding is required.
 
-`runtime.calibration_profile` has no default selection. If explicitly selected, `fastcal-v1` exposes `target_window = 4096`, `output_allowance = 512`, and `authority = #1388 FastCal v1` through effective configuration diagnostics. It does not provide reasoning/decoding values, retrieval or Continuity controls, a BudgetPlan/degradation policy, a token-counter implementation, provider capability, or a physical memory guarantee.
+`runtime.calibration_profile` has no default selection. If explicitly selected, `fastcal-v1` exposes `target_window = 4352`, `output_allowance = 512`, and `authority = #1388 FastCal v1` through effective configuration diagnostics. It does not provide reasoning/decoding values, retrieval or Continuity controls, a BudgetPlan/degradation policy, a token-counter implementation, provider capability, or a physical memory guarantee.
 
 `runtime.cognition.mode = two_pass` comes from #1533 architecture authority. It is not a #1388 numeric calibration value.
 

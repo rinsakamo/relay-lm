@@ -3,9 +3,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from types import MappingProxyType
 from urllib.parse import urlsplit
 
+from relaylm.calibration_profile import CalibrationProfile  # noqa: F401
+from relaylm.calibration_profiles import (  # noqa: F401
+    CALIBRATION_PROFILES,
+    FASTCAL_V1_CALIBRATION_PROFILE,
+)
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
 from relaylm.budget_enforcement import TokenCountMode
 from relaylm.cognitive import CognitionExecutionMode
@@ -365,33 +369,5 @@ def _require_optional_type(name: str, value: object, expected: type[object]) -> 
         raise TypeError(f"{name} must be {expected.__name__} or None")
 
 
-@dataclass(frozen=True, slots=True)
-class CalibrationProfile:
-    """Auditable #1388 values carried by one named runtime selection."""
-
-    name: str
-    target_window: int
-    output_allowance: int
-    authority: str
-
-    def __post_init__(self) -> None:
-        _require_non_empty_string("calibration_profile.name", self.name)
-        _require_positive_int(
-            "calibration_profile.target_window", self.target_window
-        )
-        _require_positive_int(
-            "calibration_profile.output_allowance", self.output_allowance
-        )
-        _require_non_empty_string("calibration_profile.authority", self.authority)
-
-
-FASTCAL_V1_CALIBRATION_PROFILE = CalibrationProfile(
-    name="fastcal-v1",
-    target_window=4096,
-    output_allowance=512,
-    authority="#1388 FastCal v1",
-)
-
-CALIBRATION_PROFILES = MappingProxyType(
-    {FASTCAL_V1_CALIBRATION_PROFILE.name: FASTCAL_V1_CALIBRATION_PROFILE}
-)
+# Keep the historical runtime_config import paths available while the numeric
+# registry itself remains canonical under the calibration owner.
