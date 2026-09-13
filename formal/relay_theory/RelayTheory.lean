@@ -60,6 +60,7 @@ import RelayTheory.OperationalAccessRefinement
 import RelayTheory.ActionQuotientSufficiency
 import RelayTheory.ReachableClassSupportSufficiency
 import RelayTheory.MutualGeneratedClassCoverage
+import RelayTheory.GeneratedClassCoveragePreorder
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
