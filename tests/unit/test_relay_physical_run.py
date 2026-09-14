@@ -68,7 +68,7 @@ def test_all_registered_target_requirements_are_policy_constructible() -> None:
     ) == ()
 
 
-def test_installed_llama_cpp_target_covers_no_isolation_build_requirements() -> None:
+def test_physical_policy_covers_no_isolation_build_requirements() -> None:
     root = Path(__file__).parents[2]
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     build_requirements = pyproject["build-system"]["requires"]
@@ -79,13 +79,15 @@ def test_installed_llama_cpp_target_covers_no_isolation_build_requirements() -> 
         runner._requirement_distribution_name(requirement)
         for requirement in build_requirements
     }
-    target = runner._load_targets(root)["v1:installed-llama-cpp"]
-    declared = {
-        runner._normalize_distribution_name(name)
-        for name in target.required_distributions
+    policy = runner._load_policy(root)
+    policy_requirements = policy["requirements"]
+    assert isinstance(policy_requirements, list)
+    guaranteed = {
+        runner._requirement_distribution_name(requirement)
+        for requirement in policy_requirements
     }
 
-    assert required_for_no_isolation <= declared
+    assert required_for_no_isolation <= guaranteed
 
 
 def _stub_prepare_dependencies(
