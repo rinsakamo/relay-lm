@@ -19,8 +19,12 @@ Default local state:
 `RELAYLM_PHYSICAL_HOME` may override that root.
 
 The repository policy is `.ai/physical/python_environment_policy.json`. It fixes
-the physical bootstrap interpreter to CPython 3.12 and declares the runtime
-dependency floor, including `httpx`. The explicit bootstrap command is:
+the physical bootstrap interpreter to CPython 3.12 and declares the complete,
+reusable orchestration dependency floor, including the `build` frontend and
+`httpx`. Every `required_distributions` entry in the target registry must be
+constructible from this policy; the registry-policy consistency check rejects a
+target that silently depends on another substrate. The explicit bootstrap
+command is:
 
 ```bash
 python3.12 -m tools.relay_physical_env --prepare
@@ -33,6 +37,9 @@ repairs a drifted environment. A deliberate replacement requires:
 ```bash
 python3.12 -m tools.relay_physical_env --rebuild
 ```
+
+Changing the policy changes the manifest identity and therefore requires this
+explicit replacement; `--prepare` never repairs an existing environment.
 
 The local manifest freezes the exact Python identity and a fingerprint over all
 installed distributions. Therefore a later `pip install`, upgrade, removal, or

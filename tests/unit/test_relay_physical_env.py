@@ -47,6 +47,17 @@ def test_distribution_fingerprint_is_order_independent() -> None:
     assert left == right
 
 
+def test_policy_declares_build_distribution() -> None:
+    policy = envtool._load_policy(Path(__file__).parents[2])
+
+    guaranteed = {
+        envtool._requirement_distribution_name(requirement)
+        for requirement in policy["requirements"]
+    }
+
+    assert "build" in guaranteed
+
+
 def test_verify_environment_accepts_frozen_local_snapshot(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -141,3 +152,24 @@ def test_prepare_reuses_verified_environment_without_reinstall(
     identity = envtool.prepare_environment(repo_root=tmp_path, home=home)
 
     assert identity is expected
+
+
+def test_prepare_rejects_policy_drift_without_rebuild(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_policy(tmp_path)
+    home = tmp_path / "physical"
+    (home / envtool.VENV_DIRNAME).mkdir(parents=True)
+
+    def reject_drift(*, repo_root: Path, home: Path) -> envtool.PhysicalEnvironmentIdentity:
+        raise envtool.RelayPhysicalEnvironmentError(
+            "persistent physical Python policy changed; explicit rebuild is required"
+        )
+
+    monkeypatch.setattr(envtool, "verify_environment", reject_drift)
+
+    with pytest.raises(
+        envtool.RelayPhysicalEnvironmentError,
+        match="run explicit --rebuild",
+    ):
+        envtool.prepare_environment(repo_root=tmp_path, home=home)
