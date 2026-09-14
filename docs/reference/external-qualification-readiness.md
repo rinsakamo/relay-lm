@@ -8,13 +8,13 @@ This surface extends the completed #1981 external-qualification harness. It does
 
 ## Boundary
 
-The repository already owns the architecture-neutral evidence runner in `tools/external_qualification.py` and the proven MemConflict RelayLM adapter in `tools/memconflict_adapter.py`.
+The repository already owns the architecture-neutral evidence runner in `tools/external_qualification.py` and the MemConflict RelayLM adapter in `tools/memconflict_adapter.py`.
 
 #2821 adds only the pre-execution layer needed to establish that a bounded two-axis release qualification can be launched without discovering missing identities after the exact RC is cut:
 
 - `tools/external_qualification_readiness.py` validates a two-axis launch plan and an eventual exact execution freeze;
 - `tools/longmemeval_adapter.py` maps the released LongMemEval `knowledge-update` shape into timestamp-preserving governed transcript ingestion without exposing gold labels to the model;
-- physical-target registration is deliberately sequenced after #2811 because #2811 currently owns a write to the shared llama.cpp target registry.
+- `tools/v1_external_qualification_llama_cpp_gate.py` is the zero-generation shared-runner admission gate for a frozen exact-RC plan.
 
 No provider, benchmark question, judge, server, GPU, Crystallization, or FastCal call belongs to this preparation surface.
 
@@ -35,7 +35,9 @@ This status is explicitly non-citable. Exact comparator revisions, dataset revis
 - every manifest is citable and binds the same exact #1447 RC;
 - the existing A/C/D requirements remain satisfied;
 - every case matches its planned benchmark and adapter;
-- the serious comparator implementation/source revision/version/license matches the preselected comparator identity across the frozen cases.
+- the serious comparator implementation/source revision/version/license matches the preselected comparator identity across the frozen cases;
+- the complete serious-comparator participant identity is identical across axes;
+- A and D bind the physical-carriage backend required by the plan.
 
 Only then does validation return:
 
@@ -47,7 +49,7 @@ EXECUTION_FROZEN
 
 ## Preferred bounded Core 1.0 ring
 
-The following is a current preparation choice, not immutable execution authority. Fresh upstream verification is required again immediately before a citable run.
+The following is a preparation choice, not immutable execution authority. Fresh upstream verification is required again immediately before a citable run.
 
 ### Axis 1 — conflict / temporal validity
 
@@ -73,7 +75,7 @@ The future execution controller remains responsible for running each question ex
 
 ## Preferred serious comparator
 
-Current reconnaissance selects Hindsight as the preferred C-slot family because, as of #2821 creation, its public project is self-hostable, actively maintained, permissively licensed, supports local/OpenAI-compatible inference, and publishes reproducible long-term-memory benchmark work including LongMemEval.
+Preparation-time reconnaissance selects Hindsight as the preferred C-slot family. This is not execution authority.
 
 Do not encode a floating `main`, `latest` container, vendor headline score, or remembered release number as qualification authority. At execution freeze record the exact source revision, version, deployment, license observation, physical model, provider/runtime, decoding/reasoning controls, and unavoidable matched-condition differences in the existing #1981 participant identity.
 
@@ -89,21 +91,47 @@ Preparation-time references only:
 
 Repository licenses and benchmark/dataset licensing remain execution-time identity fields. Preparation-time observations do not substitute for a fresh citable license/revision check.
 
-## Physical sequencing
+## Registered physical admission path
 
-The local release reference currently uses the shared llama.cpp queue/resource boundary. #2811 is simultaneously preparing off-turn Crystallization carriage and is expected to mutate `.ai/physical/llama_cpp_targets.json`.
+The shared llama.cpp target registry exposes:
 
-Therefore #2821 must not create a parallel edit to that registry while #2811 is an active writer. The benchmark physical target is registered only after fresh authority shows that the shared boundary is free. Until then, a pre-RC plan may name the intended target and resource while `registered=false`; execution freeze rejects that state.
+```text
+target: v1:external-qualification
+module: tools.v1_external_qualification_llama_cpp_gate
+engine: llama.cpp
+resource: llama-cpp:local-gpu
+```
+
+The operator-facing admission command is:
+
+```bash
+python -m tools.relay_physical_run \
+  --target v1:external-qualification -- \
+  --plan /absolute/path/to/execution-freeze.json
+```
+
+This target is intentionally an **admission gate, not a benchmark executor**. The common physical runner first proves the exact checkout, fresh protected-branch ancestry, persistent Python identity, module origin, and shared-resource queue ownership. The target then requires the plan to validate as `EXECUTION_FROZEN` and requires its physical carriage to be exactly:
+
+```text
+target       = v1:external-qualification
+backend      = llama.cpp
+resource_key = llama-cpp:local-gpu
+registered   = true
+```
+
+A successful admission emits a bounded receipt containing the readiness fingerprint and exact RelayLM release identity while asserting zero semantic generations, zero benchmark questions, zero judge calls, and zero llama-server launches.
+
+That receipt is not #1449 result evidence and authorizes no generation by itself. The future exact-RC scientific owner must consume fresh authority, the frozen plan, and its own bounded execution ceiling before invoking any A/C/D participant or judge. The gate deliberately does not accept an arbitrary executable or participant command.
 
 The responsibility split remains:
 
 ```text
-shared physical runner / queue = HOW
+shared physical runner / queue = HOW / admission
 benchmark adapters + launch plan = WHAT
-future exact-RC benchmark owner = THIS RUN
+future exact-RC benchmark owner = THIS RUN / generation spend
 ```
 
-The future exact-RC owner, not this readiness surface, owns bounded execution count, exact physical attestation, and the first immutable result.
+Scientific exactly-once ownership stays outside the common runner.
 
 ## Hard non-goals
 
@@ -111,14 +139,16 @@ This preparation does not:
 
 - run a moving `v1` as release evidence;
 - run any model or judge;
+- launch llama-server merely to validate readiness;
 - alter State, Continuity, MEMORY, Context, prompts, provider semantics, Cognitive Budget, or FastCal;
 - tune product behavior to MemConflict or LongMemEval examples;
 - freeze a comparator or benchmark version before execution-time verification;
 - broaden the pre-1.0 benchmark into the full #1924 research matrix;
+- provide an arbitrary-command escape hatch through the shared physical runner;
 - touch `main`, `v2`, or the user's primary dirty checkout.
 
 ## Acceptance direction
 
 Before the actual #1449 run starts, one plan must reach `EXECUTION_FROZEN` with two distinct axes, current exact benchmark/dataset/adapter identities, one preselected serious comparator, one exact #1447 RC, registered physical carriage, no-semantic-retry policy, and exact-infrastructure-resume policy.
 
-The readiness validator is a gate, not an executor. Passing it authorizes no generation by itself.
+That frozen plan must then pass `v1:external-qualification` admission under fresh shared-runner authority. Passing readiness or physical admission authorizes no generation by itself.
