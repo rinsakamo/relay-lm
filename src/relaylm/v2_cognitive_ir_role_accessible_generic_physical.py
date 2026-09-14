@@ -32,7 +32,7 @@ from relaylm.v2_cognitive_ir_role_accessible_generic import (
     RoleAccessibleRepresentations,
     _generate_shared_family as _repository_generate_shared_family,
     build_formation_messages,
-    build_target_messages,
+    build_target_messages as _build_target_prompt,
     confirmatory_analysis,
     descriptive_typed_vs_legacy,
     generate_synthetic_shared_family as _repository_generate_synthetic_shared_family,
@@ -230,6 +230,16 @@ def prepare_physical_representations(
         learned_rule=learned_rule,
         provenance_handles=provenance_handles(family),
     )
+
+
+def build_target_messages(
+    surface: str,
+    prepared: RoleAccessibleRepresentations,
+    family: TransferFamily,
+) -> tuple[dict[str, str], ...]:
+    """Adapt the frozen #2900 target prompt to the S3 transport message boundary."""
+
+    return _build_target_prompt(surface, prepared, family).messages
 
 
 def physical_call_plan() -> tuple[str, ...]:
@@ -663,6 +673,7 @@ __all__ = [
     "DownstreamCell",
     "RoleAccessibleGenericCampaignResult",
     "RoleAccessibleGenericPhysicalError",
+    "build_target_messages",
     "freeze_consumer_identity",
     "generate_scientific_shared_family",
     "generate_synthetic_shared_family",
