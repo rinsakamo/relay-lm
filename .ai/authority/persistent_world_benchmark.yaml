@@ -1,0 +1,16 @@
+schema_version: 1
+id: persistent_world_benchmark
+owner_issue: 2894
+summary: >-
+  Deterministic repository preparation for the #2888 Persistent WORLD
+  Continuity Benchmark. This owner validates retained benchmark evidence and
+  causal/provenance invariants without launching Minecraft, calling a model,
+  changing RelayLM Core semantics, or spending a physical benchmark run.
+canonical_surfaces:
+- docs/reference/persistent-world-benchmark.md
+implementation:
+- tools/persistent_world_evidence.py
+tests:
+- tests/unit/test_persistent_world_evidence.py
+depends_on:
+- physical_execution_queue
