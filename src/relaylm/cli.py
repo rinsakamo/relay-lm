@@ -183,6 +183,7 @@ def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--profile-name")
     parser.add_argument("--profile-root")
     parser.add_argument("--provider-adapter")
+    parser.add_argument("--provider-backend")
     parser.add_argument("--provider-base-url")
     parser.add_argument("--provider-model")
     parser.add_argument("--provider-api-key-env")
@@ -197,6 +198,7 @@ def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
         profile_name=args.profile_name,
         profile_root=args.profile_root,
         provider_adapter=args.provider_adapter,
+        provider_backend=args.provider_backend,
         provider_base_url=args.provider_base_url,
         provider_model=args.provider_model,
         provider_api_key_env=args.provider_api_key_env,
@@ -217,6 +219,7 @@ def _print_doctor_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
         f"default_model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
+    _print_llama_cpp_capability_summary(prepared, stdout)
     stdout.write(f"server: {_summary_value(config.server.host)}:{config.server.port}\n")
     stdout.write(_runtime_layers_summary(prepared) + "\n")
 
@@ -231,6 +234,7 @@ def _print_serve_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
         f"default_model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
+    _print_llama_cpp_capability_summary(prepared, stdout)
     stdout.write(f"listen: {_summary_value(config.server.host)}:{config.server.port}\n")
     stdout.write(_runtime_layers_summary(prepared) + "\n")
 
@@ -243,6 +247,31 @@ def _print_profiles_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
             f"root={_summary_value(str(profile.package.root))} "
             f"physical_model={_summary_value(profile.physical_model)}\n"
         )
+
+
+def _print_llama_cpp_capability_summary(
+    prepared: PreparedRuntime,
+    stdout: TextIO,
+) -> None:
+    capabilities = prepared.assembly.provider_diagnostics
+    if not capabilities:
+        return
+    token_counter = capabilities.get("token_counter")
+    token_counter_mode = (
+        token_counter.get("mode")
+        if isinstance(token_counter, Mapping)
+        else "unavailable"
+    )
+    stdout.write(
+        "llama.cpp capabilities: "
+        f"request_model={_summary_value(str(capabilities.get('request_model', '')))} "
+        f"streaming={capabilities.get('streaming_supported')} "
+        f"structured_output={capabilities.get('native_structured_output_supported')} "
+        f"reasoning_off={capabilities.get('reasoning_effort_none_supported')} "
+        f"token_counter={_summary_value(str(token_counter_mode))} "
+        f"cache_policy={_summary_value(str(capabilities.get('cache_policy', '')))} "
+        f"context_shift={_summary_value(str(capabilities.get('context_shift', '')))}\n"
+    )
 
 
 def _summary_value(value: str) -> str:

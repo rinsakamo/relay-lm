@@ -43,6 +43,35 @@ The semantic StateCandidate and ContinuityCandidate contracts still treat `value
 
 Provider-native `response_format`, JSON Schema, grammar, or constrained-decoding features may exist, but they are not required to define or enforce this RelayLM contract.
 
+## llama.cpp external-process wire
+
+When `provider.backend=llama_cpp`, the installed provider remains an
+OpenAI-compatible client of an externally managed `llama-server`. RelayLM does
+not launch or own the llama.cpp process lifecycle. The production provider
+realizer is `LlamaCppOpenAICompatibleTwoPassProvider`; it reuses the canonical
+semantic prompts, provenance aliases, parsers, Pass 2 projection, response-first
+turn authority, and stale-extraction protections.
+
+The Core 1.0 ordinary-request baseline is explicit on every llama.cpp wire
+request:
+
+```json
+{"cache_prompt": false}
+```
+
+Buffered Pass 1 uses `stream: false`, streaming Pass 1 uses `stream: true`, and
+Pass 2 extraction remains buffered. `reasoning_effort: none` is carried only
+for an explicitly resolved provider-neutral OFF request backed by the exact
+condition's attestation; it is never inferred from the backend spelling or
+model name. Native strict JSON Schema is carried for Pass 2 only when the
+condition-specific attestation explicitly supports it. Unsupported explicit
+reasoning or structured-output requests fail before transport.
+
+The llama.cpp streaming implementation owns the backend-specific request body
+and reuses the canonical SSE parser and final validation. Visible Pass 1 text
+is emitted first; a later Pass 2 failure does not retract it, and a stale Pass 2
+cannot overwrite newer State/Continuity authority.
+
 ## State wire value forms
 
 For State `set`, model-facing `value` may be either:

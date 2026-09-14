@@ -25,6 +25,9 @@ implementation:
 - src/relaylm/providers/lm_studio_reasoning.py
 - src/relaylm/providers/openai_compatible_identity.py
 - src/relaylm/providers/openai_compatible_cognition.py
+- src/relaylm/providers/llama_cpp_backend.py
+- src/relaylm/providers/llama_cpp_openai.py
+- src/relaylm/providers/llama_cpp_reasoning.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
 qualification_inputs:
@@ -50,6 +53,9 @@ qualification_inputs:
 - src/relaylm/providers/lm_studio_reasoning.py
 - src/relaylm/providers/openai_compatible_identity.py
 - src/relaylm/providers/openai_compatible_cognition.py
+- src/relaylm/providers/llama_cpp_backend.py
+- src/relaylm/providers/llama_cpp_openai.py
+- src/relaylm/providers/llama_cpp_reasoning.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
 tests:
@@ -83,6 +89,9 @@ tests:
 - tests/unit/test_lm_studio_reasoning_capabilities.py
 - tests/unit/test_openai_compatible_identity.py
 - tests/unit/test_openai_compatible_cognition_capabilities.py
+- tests/unit/test_llama_cpp_backend.py
+- tests/unit/test_llama_cpp_openai_two_pass.py
+- tests/unit/test_llama_cpp_reasoning_capabilities.py
 - tests/unit/test_event_evidence_projection.py
 depends_on:
 - core_architecture

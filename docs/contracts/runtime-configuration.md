@@ -48,7 +48,7 @@ profiles:
 
 provider:
   adapter: openai_compatible
-  backend: lm_studio        # generic | vllm | lm_studio
+  backend: lm_studio        # generic | vllm | lm_studio | llama_cpp
   base_url: http://127.0.0.1:1234/v1
   model: default-physical-model
   api_key:                  # optional reference only
@@ -255,7 +255,7 @@ CLI/programmatic override
   > canonical default
 ```
 
-Current named bindings include single-Profile name/root convenience inputs, provider adapter/base URL/model/secret reference, server host/port, calibration-profile selection, and cognition execution mode. Cognition mode is exposed as:
+Current named bindings include single-Profile name/root convenience inputs, provider adapter/backend/base URL/model/secret reference, server host/port, calibration-profile selection, and cognition execution mode. Cognition mode is exposed as:
 
 ```text
 --cognition-mode MODE
@@ -266,6 +266,20 @@ runtime.cognition.mode
 All three select only the existing #1533 closed vocabulary. They do not create a new mode or numeric policy. CLI beats environment, environment beats runtime YAML, and omission falls back to canonical `two_pass`.
 
 Complex multi-Profile registries, Profile-local provider mappings, Pass 1/Pass 2 controls, including `pass2.structured_output_mode`, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
+
+The backend leaf also has a bounded CLI/environment surface:
+
+```text
+--provider-backend NAME
+RELAYLM_PROVIDER_BACKEND
+provider.backend
+```
+
+Resolution is still `CLI > environment > runtime file > canonical default`.
+`llama_cpp`, `llama-cpp`, and `llama.cpp` resolve to canonical `llama_cpp`.
+Unknown spellings fail closed. Selecting `llama_cpp` does not synthesize
+capability; its `provider.llama_cpp` block must carry a complete explicit
+attestation for installed assembly.
 
 ## Current defaults
 
@@ -299,11 +313,19 @@ adapter = API protocol family
 backend = selected implementation/dialect
 ```
 
-The backend vocabulary is provider-owned. Runtime configuration resolves only the canonical machine IDs `generic`, `vllm`, and `lm_studio`; it does not perform backend detection or duplicate provider wire mappings.
+The backend vocabulary is provider-owned. Runtime configuration resolves only the canonical machine IDs `generic`, `vllm`, `lm_studio`, and `llama_cpp`; it does not perform backend detection or duplicate provider wire mappings.
 
 A known backend name does not by itself prove that every specialized capability is available. Assembly/preflight may reuse the common OpenAI-compatible transport while preserving the selected backend identity, but any requested backend-specific control still requires a proven provider-owned realizer and otherwise fails closed.
 
 The same rule applies to hard output limits and `structured_output_mode=auto`: backend naming or generic OpenAI compatibility is not sufficient affirmative capability evidence by itself. Assembly consumes provider-owned capability truth; it does not infer support from field spelling.
+
+For `llama_cpp`, the `provider.llama_cpp` block is a content-free serialized
+attestation containing the exact upstream revision/build, request-model and
+artifact/template identity, context-shift policy, streaming/native-schema/
+reasoning-OFF support, decoding controls, and `cache_policy: disabled`.
+Context shift enabled is rejected. The exact input-token counter is assembled
+from this identity and uses the full request plus same-message-shape empty-
+content framing; the runtime does not fall back to heuristic tokenization.
 
 ## Secrets
 

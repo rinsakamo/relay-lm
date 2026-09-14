@@ -24,6 +24,7 @@ Current named CLI overrides remain bounded:
 --profile-name NAME
 --profile-root PATH
 --provider-adapter NAME
+--provider-backend NAME
 --provider-base-url URL
 --provider-model MODEL
 --provider-api-key-env ENV_NAME
@@ -156,6 +157,12 @@ At this boundary:
 - generic OpenAI-compatible serving is available, but generic compatibility alone does not attest specialized controls such as hard output-limit carriage;
 - vLLM specialized assembly requires its explicit provider-owned reasoning capability attestation where reasoning controls are used;
 - LM Studio is assembly-capable through the common OpenAI-compatible transport when no unsupported LM Studio-specific reasoning override is requested. Its resolved backend identity and diagnostics remain `lm_studio`.
+- llama.cpp is a first-class external-process backend. It requires a complete condition-specific attestation, selects the dedicated two-pass provider, carries `cache_prompt=false` on ordinary requests, and does not launch or supervise `llama-server`.
+
+For llama.cpp, doctor reports the attested request model, streaming/native
+structured-output/reasoning-OFF capability, exact counter mode, disabled cache
+policy, and context-shift safety without generation or semantic inspection.
+Arbitrary BYOM GGUF quality or capability is not certified by this path.
 
 Exact provider-specific reasoning and output-limit realization remain provider-owned. Unsupported explicit controls fail during assembly/preflight before serving; the operator layer does not guess or silently drop them.
 

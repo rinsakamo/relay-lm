@@ -50,6 +50,7 @@ class PreparedRuntime:
             "status": "ok",
             "checks": dict(sorted(self.checks.items())),
             "effective_config": self.resolved.effective_diagnostics(),
+            "provider_capabilities": dict(self.assembly.provider_diagnostics),
         }
 
 

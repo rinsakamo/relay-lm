@@ -64,6 +64,13 @@ Reasoning controls are outside this decoding contract. Current provider reasonin
 
 `OpenAICompatibleDecodingConfig` therefore remains limited to decoding/output controls; the absence of reasoning fields from that type neither implies reasoning support nor reasoning unavailability for the canonical provider request path.
 
+For llama.cpp, explicit decoding controls are accepted only when included in
+the exact condition-specific attestation. The production path does not infer
+support from `llama_cpp`, `llama.cpp`, a GGUF suffix, or a model family. The
+cache policy is separate from decoding: Core 1.0 always carries
+`cache_prompt=false` on ordinary llama.cpp Pass 1, streaming Pass 1, and Pass
+2 requests, and does not implement cache-on optimization.
+
 ## Machine-readable cognition capability facts
 
 `OpenAICompatibleCognitionCapabilityFacts` exposes the current adapter facts needed by the COGP consumer boundary without changing the stable P4 provider identity or its historical serialization.

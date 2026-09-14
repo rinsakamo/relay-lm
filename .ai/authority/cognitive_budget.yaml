@@ -15,6 +15,7 @@ implementation:
 - src/relaylm/budget_diagnostics.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/providers/llama_cpp_backend.py
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
 qualification_inputs:
@@ -24,6 +25,7 @@ qualification_inputs:
 - src/relaylm/budget_enforcement.py
 - src/relaylm/budget_runtime.py
 - src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/providers/llama_cpp_backend.py
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
 qualification_exclusions:

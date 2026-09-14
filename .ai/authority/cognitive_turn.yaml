@@ -44,6 +44,7 @@ implementation:
 - src/relaylm/shadow_turn.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/llama_cpp_backend.py
 - src/relaylm/providers/openai_compatible_extraction_projection.py
 - src/relaylm/providers/openai_compatible_extraction_lifecycle.py
 - src/relaylm/providers/openai_compatible_budget.py
@@ -59,6 +60,7 @@ qualification_inputs:
 - src/relaylm/two_pass_turn.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/llama_cpp_backend.py
 - src/relaylm/providers/openai_compatible_extraction_projection.py
 - src/relaylm/providers/openai_compatible_extraction_lifecycle.py
 - src/relaylm/providers/openai_compatible_budget.py

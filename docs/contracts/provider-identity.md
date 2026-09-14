@@ -1,6 +1,6 @@
 # OpenAI-compatible provider capability and configuration identity
 
-Status: #1456 P4 stable provider-owned identity surface plus #1545 R3A backend vocabulary and vLLM backend attestation for RelayLM v1.
+Status: #1456 P4 stable provider-owned identity surface plus #1545 R3A backend vocabulary and #2898 llama.cpp release carriage for RelayLM v1.
 
 This contract exposes stable, content-free provider identity so Actual-model Evaluation (#1386) and Release Runtime / Configuration (#1446) can consume provider capabilities and applied request configuration without private adapter inspection.
 
@@ -36,6 +36,7 @@ The provider-owned canonical backend IDs currently are:
 generic
 vllm
 lm_studio
+llama_cpp
 ```
 
 Their human-facing display names are:
@@ -44,11 +45,24 @@ Their human-facing display names are:
 generic    -> Generic OpenAI-compatible
 vllm       -> vLLM
 lm_studio  -> LM Studio
+llama_cpp  -> llama.cpp
 ```
 
 `openai_compatible` is deliberately **not** a backend ID; it remains the adapter/protocol identity above.
 
-`generic` represents the existing unspecialized OpenAI-compatible path. `vllm` and `lm_studio` identify backend-specific dialect families without claiming that every backend-specific capability is already implemented or applicable to every configured model/runtime.
+`generic` represents the existing unspecialized OpenAI-compatible path. `vllm`, `lm_studio`, and `llama_cpp` identify backend-specific dialect families without claiming that every backend-specific capability is already implemented or applicable to every configured model/runtime.
+
+`llama_cpp` is a first-class external-process backend. RelayLM speaks the
+OpenAI-compatible Chat Completions and input-token surfaces of an externally
+managed `llama-server`; RelayLM does not bundle, launch, supervise, or replace
+that process. Its canonical display name is `llama.cpp` and its bounded input
+aliases are `llama_cpp`, `llama-cpp`, and `llama.cpp`.
+
+The selected spelling does not attest a capability. A serializable,
+condition-specific llama.cpp attestation must bind the exact runtime/model
+identity, streaming, native structured output, reasoning-OFF, decoding,
+context-shift, cache, and exact-counter facts before assembly can use them.
+Arbitrary BYOM GGUF artifacts are therefore not automatically qualified.
 
 Machine identity and display text are separate. `resolve_openai_compatible_backend(...)` accepts only an explicit bounded alias set, trims surrounding whitespace, and case-folds input. It never fuzzy-matches or auto-detects a backend. For example, `vLLM` resolves to canonical machine ID `vllm`, while unknown spellings and undeclared backends fail closed.
 
@@ -82,6 +96,31 @@ attestation source endpoints
 `model_root` and `max_model_len` are **reported serving metadata**, not immutable model-artifact identity. #1386 remains responsible for exact model/tokenizer/artifact evidence identity where required.
 
 The vLLM attestation deliberately does not infer reasoning capability, reasoning mode, token-budget applicability, structured-output support, or decoding capability merely because the backend is vLLM or because a model name appears in `/v1/models`. Those facts require their own provider-owned capability/wire proof.
+
+## llama.cpp release capability attestation
+
+`src/relaylm/providers/llama_cpp_backend.py` is the production-owned
+capability and counter boundary. It is intentionally independent from
+`actual_model_*` evaluation hosts. The configured attestation binds:
+
+```text
+backend = llama_cpp
+request model and external runtime/model identity
+reasoning_effort=none support
+native strict structured-output support
+streaming support
+explicit decoding controls
+cache policy = disabled
+context shift = disabled
+exact /v1/chat/completions/input_tokens counter and framing identity
+```
+
+The Core 1.0 cache baseline is conservative: every ordinary buffered Pass 1,
+streaming Pass 1, and Pass 2 request carries `cache_prompt: false`. Cache reuse
+is not a release optimization or a quality claim. The pinned upstream source
+contract for the qualified carriage is llama.cpp revision
+`e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`, build `10874`; a different
+revision/model/template condition requires a new attestation.
 
 This module parses supplied API responses and creates a typed identity record. Repository CI does not pretend to contact the operator's live vLLM server; live response acquisition belongs to the later host/preflight integration that can actually reach the configured deployment.
 
@@ -185,6 +224,8 @@ For #1446, the identity is an owner-defined provider surface that runtime diagno
 - human display spelling never becomes canonical machine identity;
 - unknown backend identity is never fuzzy-matched into support;
 - vLLM family identity never implies model-specific reasoning capability;
+- llama.cpp backend identity never implies model, GGUF, streaming, reasoning, structured-output, cache, or token-counter capability;
+- llama.cpp runtime/model identity is condition-specific and is not inferred from a model family or filename;
 - capability tokens describe declared adapter/provider support, not successful model behavior;
 - seed-field support is not a deterministic-model guarantee;
 - decoding configuration describes exactly carried explicit request fields, not evaluator metadata;
