@@ -1,0 +1,25 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_role_specificity_physical_adapter
+owner_issue: 2889
+summary: >-
+  Zero-GPU common llama.cpp adapter binding for E4-RS1 role-function
+  specificity versus generic lexical/category transparency. This owner binds
+  guarded post-FrozenConsumerIdentity materialization, strict-output transport,
+  transaction lifecycle, WSL/common-runner routing, and one protected target;
+  it does not authorize THIS RUN.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-role-specificity-physical-adapter.md
+implementation:
+- src/relaylm/v2_cognitive_ir_role_specificity_physical.py
+- tools/v2_cognitive_ir_role_specificity_llama_cpp.py
+- tools/v2_cognitive_ir_role_specificity_llama_cpp_transaction.py
+- tools/v2_cognitive_ir_role_specificity_llama_cpp_wsl.py
+tests:
+- tests/unit/test_v2_cognitive_ir_role_specificity_physical.py
+depends_on:
+- relaylm2_cognitive_ir_role_specificity
+- relaylm2_cognitive_ir_semantic_reconstruction_physical_adapter
+- relaylm2_cognitive_ir_semantic_role_binding_physical_adapter
+- common_physical_generation
+- relaylm2_physical_execution
+- physical_execution_queue
