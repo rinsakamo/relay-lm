@@ -25,10 +25,10 @@ the repository-selected `hatchling` build backend required by the current
 `--no-isolation` installed-wheel path, and `httpx`. Every
 `required_distributions` entry in the target registry must be constructible
 from this policy; the registry-policy consistency check rejects a target that
-silently depends on another substrate. Installed-wheel targets must also name
-the distributions required by `[build-system].requires`, so a missing build
-backend fails before queue/target-child invocation. The explicit bootstrap
-command is:
+silently depends on another substrate. The repository test suite also requires
+the physical policy to cover every distribution declared by
+`[build-system].requires`, so a future build-backend change cannot leave the
+persistent substrate incomplete. The explicit bootstrap command is:
 
 ```bash
 python3.12 -m tools.relay_physical_env --prepare
