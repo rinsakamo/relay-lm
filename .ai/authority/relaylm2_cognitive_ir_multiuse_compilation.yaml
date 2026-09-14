@@ -1,0 +1,20 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_multiuse_compilation
+owner_issue: 2919
+summary: >-
+  Zero-GPU repository binding for E6-CE1, the prospective multi-use semantic
+  compilation gate preregistered by #2918 after E5-RA1 #2914 separated
+  role-function accessibility from typed Memory/Structure packaging. This
+  owner binds fresh F_SHARED K3 families with three held-out future probes,
+  strong-summary and semantic-cache controls, a generic role-functional
+  reusable-rule arm, family-level exact inference, horizon-3 observable work
+  accounting, and architecture consequence NONE.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-multiuse-compilation.md
+implementation:
+- src/relaylm/v2_cognitive_ir_multiuse_compilation.py
+tests:
+- tests/unit/test_v2_cognitive_ir_multiuse_compilation.py
+depends_on:
+- relaylm2_cognitive_ir_s3_r5
+- relaylm2_cognitive_ir_role_accessible_generic
