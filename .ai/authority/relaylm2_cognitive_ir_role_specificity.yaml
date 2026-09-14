@@ -1,0 +1,15 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_role_specificity
+owner_issue: 2884
+summary: >-
+  Zero-GPU repository binding for E4-RS1, the prospective same-semantics
+  decomposition of role-function specificity from generic lexical/category
+  transparency preregistered by #2883 after admitted E4-LX1 #2871.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-role-specificity.md
+implementation:
+- src/relaylm/v2_cognitive_ir_role_specificity.py
+tests:
+- tests/unit/test_v2_cognitive_ir_role_specificity.py
+depends_on:
+- relaylm2_cognitive_ir_semantic_role_lexical_alignment
