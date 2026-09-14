@@ -282,9 +282,19 @@ def test_horizon3_work_is_component_vector_without_scalarization() -> None:
         target_wall_seconds=2.5,
     )
     mapping = work.as_mapping()
-    assert tuple(mapping) == ("C_build", "C_store", "C_project", "C_model")
-    assert "total" not in mapping
-    assert "scalar" not in mapping
+    assert tuple(mapping) == (
+        "C_build",
+        "C_store",
+        "C_project",
+        "C_model",
+        "C_total_horizon3",
+    )
+    assert mapping["C_total_horizon3"] == {
+        "component_names": ["C_build", "C_store", "C_project", "C_model"],
+        "scalarized": False,
+    }
+    assert "total" not in mapping["C_total_horizon3"]
+    assert "scalar" not in mapping["C_total_horizon3"]
 
 
 def test_repository_authority_is_zero_gpu_and_zero_rescue() -> None:
