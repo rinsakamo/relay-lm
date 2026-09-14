@@ -1,0 +1,20 @@
+schema_version: 1
+id: relaylm2_cognitive_ir_role_accessible_generic
+owner_issue: 2900
+summary: >-
+  Zero-GPU repository binding for E5-RA1, the prospective downstream-use
+  decomposition of explicit Memory/Structure packaging from role-function
+  accessibility preregistered by #2899 after admitted E4-RS1 #2897. This
+  owner preserves one shared model-formed learned-rule lineage, historical
+  P4/P6 behavior, a new non-ontological role-functional generic control,
+  exact paired H1/H2 inference, and architecture consequence NONE.
+canonical_surfaces:
+- docs/research/relaylm2-cognitive-ir-role-accessible-generic.md
+implementation:
+- src/relaylm/v2_cognitive_ir_role_accessible_generic.py
+tests:
+- tests/unit/test_v2_cognitive_ir_role_accessible_generic.py
+depends_on:
+- relaylm2_cognitive_ir_s3_r5
+- relaylm2_cognitive_ir_role_specificity
+- relaylm2_cognitive_ir_role_specificity_physical_adapter
