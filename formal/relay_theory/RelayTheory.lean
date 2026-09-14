@@ -64,6 +64,7 @@ import RelayTheory.GeneratedClassCoveragePreorder
 import RelayTheory.ReachableDynamicsSupportIdentifiability
 import RelayTheory.RelationalReachableDynamicsEquivalence
 import RelayTheory.RootReconstruction
+import RelayTheory.SuccessorReflectionReconstruction
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
