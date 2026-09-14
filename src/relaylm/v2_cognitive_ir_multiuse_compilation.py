@@ -813,7 +813,7 @@ class Horizon3Work:
             raise MultiuseCompilationError("observable work wall times must be >= 0")
 
     def as_mapping(self) -> dict[str, object]:
-        return {
+        components: dict[str, object] = {
             "C_build": {
                 "formation_calls": self.formation_calls,
                 "formation_input_tokens": self.formation_input_tokens,
@@ -829,6 +829,13 @@ class Horizon3Work:
                 "target_input_tokens": self.target_input_tokens,
                 "target_output_tokens": self.target_output_tokens,
                 "target_wall_seconds": float(self.target_wall_seconds),
+            },
+        }
+        return {
+            **components,
+            "C_total_horizon3": {
+                "component_names": list(components),
+                "scalarized": False,
             },
         }
 
