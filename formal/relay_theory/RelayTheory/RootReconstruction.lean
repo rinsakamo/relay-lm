@@ -145,35 +145,34 @@ theorem finKernel_unpointed_root_image_is_reachableTwoSidedUnit {n : Nat}
 
 /--
 Any unpointed reachable-dynamics correspondence reconstructs the explicit root
-relation because the reachable two-sided unit is unique.
+relation because the reachable two-sided unit is unique.  The existential image
+of the root is eliminated only inside the proposition-valued `root` field, so no
+representative-selection function or choice principle is introduced.
 -/
 def finKernel_reachableClassDynamicsCorrespondence_of_unpointed {n : Nat}
     {P : FinKernel.ProbeFamily n}
     {K L : FinKernel.FutureContextFamily n}
     (h : FinKernel.UnpointedReachableDynamicsCorrespondence P K L) :
     FinKernel.ReachableClassDynamicsCorrespondence P K L := by
-  have hRootK : FinKernel.ReachableResidualState P K
-      (FinKernel.ResidualIdentityState P K) :=
-    finKernel_residualIdentityState_reachable
-  rcases h.total_left hRootK with ⟨tL, htL, hRootRel⟩
-  have htUnit : FinKernel.ReachableTwoSidedUnit P L tL :=
-    finKernel_unpointed_root_image_is_reachableTwoSidedUnit h htL hRootRel
-  have hRootL : FinKernel.ReachableTwoSidedUnit P L
-      (FinKernel.ResidualIdentityState P L) :=
-    finKernel_residualIdentityState_reachableTwoSidedUnit P L
-  have htRoot : tL = FinKernel.ResidualIdentityState P L :=
-    finKernel_reachableTwoSidedUnit_eq htUnit hRootL
-  have hRoot : h.rel
-      (FinKernel.ResidualIdentityState P K)
-      (FinKernel.ResidualIdentityState P L) := by
-    simpa only [htRoot] using hRootRel
   exact {
     rel := h.rel
     total_left := h.total_left
     total_right := h.total_right
     right_functional := h.right_functional
     left_functional := h.left_functional
-    root := hRoot
+    root := by
+      have hRootK : FinKernel.ReachableResidualState P K
+          (FinKernel.ResidualIdentityState P K) :=
+        finKernel_residualIdentityState_reachable
+      rcases h.total_left hRootK with ⟨tL, htL, hRootRel⟩
+      have htUnit : FinKernel.ReachableTwoSidedUnit P L tL :=
+        finKernel_unpointed_root_image_is_reachableTwoSidedUnit h htL hRootRel
+      have hRootL : FinKernel.ReachableTwoSidedUnit P L
+          (FinKernel.ResidualIdentityState P L) :=
+        finKernel_residualIdentityState_reachableTwoSidedUnit P L
+      have htRoot : tL = FinKernel.ResidualIdentityState P L :=
+        finKernel_reachableTwoSidedUnit_eq htUnit hRootL
+      simpa only [htRoot] using hRootRel
     successor_forward := h.successor_forward
     successor_backward := h.successor_backward
   }
