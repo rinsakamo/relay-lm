@@ -20,11 +20,15 @@ Default local state:
 
 The repository policy is `.ai/physical/python_environment_policy.json`. It fixes
 the physical bootstrap interpreter to CPython 3.12 and declares the complete,
-reusable orchestration dependency floor, including the `build` frontend and
-`httpx`. Every `required_distributions` entry in the target registry must be
-constructible from this policy; the registry-policy consistency check rejects a
-target that silently depends on another substrate. The explicit bootstrap
-command is:
+reusable orchestration dependency floor, including the `build` frontend,
+the repository-selected `hatchling` build backend required by the current
+`--no-isolation` installed-wheel path, and `httpx`. Every
+`required_distributions` entry in the target registry must be constructible
+from this policy; the registry-policy consistency check rejects a target that
+silently depends on another substrate. The repository test suite also requires
+the physical policy to cover every distribution declared by
+`[build-system].requires`, so a future build-backend change cannot leave the
+persistent substrate incomplete. The explicit bootstrap command is:
 
 ```bash
 python3.12 -m tools.relay_physical_env --prepare

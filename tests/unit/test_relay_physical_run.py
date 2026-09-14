@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -65,6 +66,28 @@ def test_all_registered_target_requirements_are_policy_constructible() -> None:
     assert runner._missing_policy_distributions(
         Path(__file__).parents[2], targets
     ) == ()
+
+
+def test_physical_policy_covers_no_isolation_build_requirements() -> None:
+    root = Path(__file__).parents[2]
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    build_requirements = pyproject["build-system"]["requires"]
+    assert isinstance(build_requirements, list)
+    assert all(isinstance(item, str) and item for item in build_requirements)
+
+    required_for_no_isolation = {"build"} | {
+        runner._requirement_distribution_name(requirement)
+        for requirement in build_requirements
+    }
+    policy = runner._load_policy(root)
+    policy_requirements = policy["requirements"]
+    assert isinstance(policy_requirements, list)
+    guaranteed = {
+        runner._requirement_distribution_name(requirement)
+        for requirement in policy_requirements
+    }
+
+    assert required_for_no_isolation <= guaranteed
 
 
 def _stub_prepare_dependencies(

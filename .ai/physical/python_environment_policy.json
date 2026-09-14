@@ -8,6 +8,7 @@
     "PyYAML>=6.0.2",
     "build",
     "fastapi>=0.115",
+    "hatchling>=1.25",
     "httpx>=0.28",
     "pydantic>=2.1.1",
     "uvicorn>=0.34"
