@@ -12,6 +12,20 @@ from tools.relay_physical_env import PhysicalEnvironmentIdentity
 def _write_registry(root: Path, *, engine: str = "llama.cpp") -> None:
     path = root / ".ai" / "physical" / "llama_cpp_targets.json"
     path.parent.mkdir(parents=True)
+    (root / ".ai" / "physical" / "python_environment_policy.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "python": {
+                    "implementation": "CPython",
+                    "major": 3,
+                    "minor": 12,
+                },
+                "requirements": ["httpx>=0.28"],
+            }
+        ),
+        encoding="utf-8",
+    )
     path.write_text(
         json.dumps(
             {
@@ -43,6 +57,14 @@ def _environment(root: Path, *, fingerprint: str = "fingerprint-a") -> PhysicalE
         policy_sha256="policy-a",
         distribution_fingerprint=fingerprint,
     )
+
+
+def test_all_registered_target_requirements_are_policy_constructible() -> None:
+    targets = runner._load_targets(Path(__file__).parents[2])
+
+    assert runner._missing_policy_distributions(
+        Path(__file__).parents[2], targets
+    ) == ()
 
 
 def _stub_prepare_dependencies(
@@ -118,6 +140,80 @@ def test_prepare_run_rejects_remote_checkout_drift(
         runner.RelayPhysicalRunError, match="fresh remote branch head"
     ):
         runner.prepare_run(repo_root=tmp_path, target_name="demo")
+
+
+def test_required_distribution_absence_blocks_before_queue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_registry(tmp_path)
+    registry = json.loads(
+        (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").read_text()
+    )
+    registry["targets"]["demo"]["required_distributions"] = ["build"]
+    (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").write_text(
+        json.dumps(registry), encoding="utf-8"
+    )
+    _stub_prepare_dependencies(tmp_path, monkeypatch)
+
+    with pytest.raises(
+        runner.RelayPhysicalRunError,
+        match="not guaranteed by the persistent Python policy",
+    ):
+        runner.prepare_run(repo_root=tmp_path, target_name="demo")
+
+
+def test_missing_runtime_distribution_blocks_before_queue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_registry(tmp_path)
+    registry = json.loads(
+        (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").read_text()
+    )
+    registry["targets"]["demo"]["required_distributions"] = ["httpx"]
+    (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").write_text(
+        json.dumps(registry), encoding="utf-8"
+    )
+    _stub_prepare_dependencies(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        runner,
+        "_require_distributions",
+        lambda names: (_ for _ in ()).throw(
+            runner.RelayPhysicalRunError(
+                "required runtime distributions are missing: httpx"
+            )
+        ),
+    )
+
+    with pytest.raises(
+        runner.RelayPhysicalRunError,
+        match="required runtime distributions are missing",
+    ):
+        runner.prepare_run(repo_root=tmp_path, target_name="demo")
+
+
+def test_required_distribution_presence_passes_preparation_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_registry(tmp_path)
+    registry = json.loads(
+        (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").read_text()
+    )
+    registry["targets"]["demo"]["required_distributions"] = ["httpx"]
+    (tmp_path / ".ai" / "physical" / "llama_cpp_targets.json").write_text(
+        json.dumps(registry), encoding="utf-8"
+    )
+    _stub_prepare_dependencies(tmp_path, monkeypatch)
+    checked: list[tuple[str, ...]] = []
+    monkeypatch.setattr(
+        runner,
+        "_require_distributions",
+        lambda names: checked.append(tuple(names)),
+    )
+
+    prepared = runner.prepare_run(repo_root=tmp_path, target_name="demo")
+
+    assert prepared.target.required_distributions == ("httpx",)
+    assert checked == [("httpx",)]
 
 
 def test_final_gate_blocks_if_protected_branch_advanced(
@@ -202,6 +298,56 @@ def test_final_gate_blocks_if_persistent_environment_drifted(
         runner.RelayPhysicalRunError, match="distributions drifted"
     ):
         runner.final_pre_invoke_gate(prepared)
+
+
+def test_final_gate_accepts_present_required_distribution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = runner.TargetSpec(
+        name="demo",
+        module="tools.demo_target",
+        branch="v2",
+        description="demo",
+        required_distributions=("httpx",),
+    )
+    environment = _environment(tmp_path)
+    prepared = runner.PreparedRun(
+        target=target,
+        repo_root=tmp_path,
+        head="a" * 40,
+        tree="b" * 40,
+        checkout_branch="infra/demo",
+        base_remote_head="c" * 40,
+        checkout_remote_head="a" * 40,
+        python_executable=environment.python_executable,
+        environment_manifest=str(environment.manifest_path),
+        environment_policy_sha256="policy-a",
+        environment_fingerprint="fingerprint-a",
+        module_origin=str(tmp_path / "tools" / "demo_target.py"),
+        target_args=(),
+    )
+    checked: list[tuple[str, ...]] = []
+    monkeypatch.setattr(runner, "_environment_identity", lambda root: environment)
+    monkeypatch.setattr(runner, "_repo_identity", lambda root: ("a" * 40, "b" * 40))
+    monkeypatch.setattr(
+        runner,
+        "_remote_head",
+        lambda root, branch, required: "c" * 40 if branch == "v2" else "a" * 40,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_require_distributions",
+        lambda names: checked.append(tuple(names)),
+    )
+    monkeypatch.setattr(
+        runner,
+        "_module_origin",
+        lambda module, root: str(root / "tools" / "demo_target.py"),
+    )
+
+    runner.final_pre_invoke_gate(prepared)
+
+    assert checked == [("httpx",)]
 
 
 def test_child_pythonpath_is_exact_checkout(

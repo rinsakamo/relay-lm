@@ -5,6 +5,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 import shutil
@@ -18,6 +19,7 @@ POLICY_PATH = Path(".ai/physical/python_environment_policy.json")
 DEFAULT_PHYSICAL_HOME = Path.home() / ".local" / "share" / "relaylm" / "physical"
 LOCAL_MANIFEST_NAME = "python-environment.json"
 VENV_DIRNAME = "venv"
+_DISTRIBUTION_NAME_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 
 
 class RelayPhysicalEnvironmentError(RuntimeError):
@@ -64,6 +66,19 @@ def _sha256(payload: object) -> str:
     return hashlib.sha256(_canonical_json(payload)).hexdigest()
 
 
+def _normalize_distribution_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _requirement_distribution_name(requirement: str) -> str:
+    match = _DISTRIBUTION_NAME_RE.match(requirement)
+    if match is None:
+        raise RelayPhysicalEnvironmentError(
+            f"physical Python policy requirement has no distribution name: {requirement!r}"
+        )
+    return _normalize_distribution_name(match.group(1))
+
+
 def _load_policy(repo_root: Path) -> dict[str, object]:
     path = repo_root / POLICY_PATH
     try:
@@ -88,6 +103,8 @@ def _load_policy(repo_root: Path) -> dict[str, object]:
         or not all(isinstance(item, str) and item for item in requirements)
     ):
         raise RelayPhysicalEnvironmentError("invalid physical Python policy")
+    for requirement in requirements:
+        _requirement_distribution_name(requirement)
     return payload
 
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from tools.physical_execution_queue import (
     DEFAULT_RESOURCE_KEY,
@@ -22,6 +22,9 @@ from tools.relay_physical_env import (
     PhysicalEnvironmentIdentity,
     RelayPhysicalEnvironmentError,
     _exact_pythonpath,
+    _load_policy,
+    _normalize_distribution_name,
+    _requirement_distribution_name,
     reexec_into_environment,
     verify_current_environment,
 )
@@ -197,6 +200,37 @@ def _load_targets(repo_root: Path) -> dict[str, TargetSpec]:
     return targets
 
 
+def _missing_policy_distributions(
+    repo_root: Path,
+    targets: Mapping[str, TargetSpec],
+) -> tuple[str, ...]:
+    policy = _load_policy(repo_root)
+    requirements = policy["requirements"]
+    assert isinstance(requirements, list)
+    guaranteed = {
+        _requirement_distribution_name(requirement) for requirement in requirements
+    }
+    required = {
+        _normalize_distribution_name(name)
+        for target in targets.values()
+        for name in target.required_distributions
+    }
+    return tuple(sorted(required - guaranteed))
+
+
+def _validate_target_policy_consistency(
+    repo_root: Path,
+    targets: Mapping[str, TargetSpec],
+) -> None:
+    missing = _missing_policy_distributions(repo_root, targets)
+    if missing:
+        raise RelayPhysicalRunError(
+            "target registry requires distributions not guaranteed by the "
+            "persistent Python policy: "
+            + ", ".join(missing)
+        )
+
+
 def _module_origin(module_name: str, repo_root: Path) -> str:
     try:
         spec = importlib.util.find_spec(module_name)
@@ -255,8 +289,9 @@ def prepare_run(
     target_args: Sequence[str] = (),
 ) -> PreparedRun:
     repo_root = repo_root.resolve()
-    environment = _environment_identity(repo_root)
     targets = _load_targets(repo_root)
+    _validate_target_policy_consistency(repo_root, targets)
+    environment = _environment_identity(repo_root)
     try:
         target = targets[target_name]
     except KeyError as exc:
