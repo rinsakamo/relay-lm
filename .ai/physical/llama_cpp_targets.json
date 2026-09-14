@@ -23,7 +23,6 @@
       "description": "Repository-owned v1 installed-artifact llama.cpp release-path proof harness.",
       "required_distributions": [
         "build",
-        "hatchling",
         "httpx"
       ]
     },
