@@ -24,6 +24,8 @@ DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 8090
 
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_HEX_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ConfigSource(str, Enum):
@@ -123,6 +125,90 @@ class CognitiveProfileConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class LlamaCppCapabilityConfig:
+    """Serializable, content-free attestation for one llama.cpp condition.
+
+    The values are intentionally explicit.  Runtime assembly never turns a
+    ``llama_cpp`` spelling, model family, or GGUF suffix into a capability.
+    """
+
+    upstream_revision: str
+    build_info: str
+    model_alias: str
+    model_path: str
+    model_ftype: str
+    artifact_sha256: str
+    chat_template_sha256: str
+    context_limit: int
+    total_slots: int
+    context_shift_enabled: bool
+    reasoning_effort_none_supported: bool
+    native_structured_output_supported: bool
+    streaming_supported: bool
+    decoding_controls: tuple[str, ...]
+    cache_policy: str
+
+    def __post_init__(self) -> None:
+        if not _HEX_REVISION_RE.fullmatch(self.upstream_revision):
+            raise ValueError("provider.llama_cpp.upstream_revision must be lowercase 40-hex")
+        for name in ("build_info", "model_alias", "model_path", "model_ftype"):
+            _require_non_empty_string(f"provider.llama_cpp.{name}", getattr(self, name))
+        for name in ("artifact_sha256", "chat_template_sha256"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not _SHA256_RE.fullmatch(value):
+                raise ValueError(
+                    f"provider.llama_cpp.{name} must be a lowercase sha256 digest"
+                )
+        _require_positive_int("provider.llama_cpp.context_limit", self.context_limit)
+        _require_positive_int("provider.llama_cpp.total_slots", self.total_slots)
+        for name in (
+            "context_shift_enabled",
+            "reasoning_effort_none_supported",
+            "native_structured_output_supported",
+            "streaming_supported",
+        ):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"provider.llama_cpp.{name} must be bool")
+        if self.context_shift_enabled:
+            raise ValueError(
+                "provider.llama_cpp.context_shift_enabled must be false for release"
+            )
+        if not isinstance(self.decoding_controls, tuple):
+            raise TypeError("provider.llama_cpp.decoding_controls must be a tuple")
+        if any(not isinstance(item, str) or not item.strip() for item in self.decoding_controls):
+            raise ValueError(
+                "provider.llama_cpp.decoding_controls must contain non-empty strings"
+            )
+        if len(set(self.decoding_controls)) != len(self.decoding_controls):
+            raise ValueError("provider.llama_cpp.decoding_controls must be unique")
+        if tuple(sorted(self.decoding_controls)) != self.decoding_controls:
+            raise ValueError("provider.llama_cpp.decoding_controls must be sorted")
+        if self.cache_policy != "disabled":
+            raise ValueError(
+                "provider.llama_cpp.cache_policy must be exactly 'disabled'"
+            )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "upstream_revision": self.upstream_revision,
+            "build_info": self.build_info,
+            "model_alias": self.model_alias,
+            "model_path": self.model_path,
+            "model_ftype": self.model_ftype,
+            "artifact_sha256": self.artifact_sha256,
+            "chat_template_sha256": self.chat_template_sha256,
+            "context_limit": self.context_limit,
+            "total_slots": self.total_slots,
+            "context_shift_enabled": self.context_shift_enabled,
+            "reasoning_effort_none_supported": self.reasoning_effort_none_supported,
+            "native_structured_output_supported": self.native_structured_output_supported,
+            "streaming_supported": self.streaming_supported,
+            "decoding_controls": list(self.decoding_controls),
+            "cache_policy": self.cache_policy,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderRuntimeConfig:
     """Release-facing provider selection without provider-wire reinterpretation."""
 
@@ -131,6 +217,7 @@ class ProviderRuntimeConfig:
     model: str
     backend: OpenAICompatibleBackendId = OpenAICompatibleBackendId.GENERIC
     api_key: SecretEnvReference | None = None
+    llama_cpp: LlamaCppCapabilityConfig | None = None
 
     def __post_init__(self) -> None:
         if self.adapter != "openai_compatible":
@@ -142,6 +229,12 @@ class ProviderRuntimeConfig:
         _require_non_empty_string("provider.model", self.model)
         if self.api_key is not None and not isinstance(self.api_key, SecretEnvReference):
             raise TypeError("provider.api_key must be SecretEnvReference or None")
+        if self.llama_cpp is not None and not isinstance(
+            self.llama_cpp, LlamaCppCapabilityConfig
+        ):
+            raise TypeError(
+                "provider.llama_cpp must be LlamaCppCapabilityConfig or None"
+            )
 
 
 @dataclass(frozen=True, slots=True)

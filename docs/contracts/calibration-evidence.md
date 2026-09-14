@@ -31,6 +31,13 @@ The reason is qualification-boundary restructuring and stable
 semantic-surface separation; the `4352` result is not a pre-Calibration
 semantic input.
 
+The #2898 installed llama.cpp release-carriage transaction advances the
+current expected Core fingerprint to
+`sha256:2fa3515c9edcb8abb26acd6051d480546e4a083c1320932ddcab2f98745e49b5`.
+This is a repository authority/installed-carriage identity transition only.
+Historical #2865, #2873, #2874, and #2880 physical evidence remains bound to
+its original Core and is not silently rebound or upgraded by this change.
+
 Calibration does not redefine:
 
 - Cognitive Budget protection tiers, legal degradation order, or fail-before-generation semantics;

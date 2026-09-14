@@ -49,6 +49,7 @@ from relaylm.runtime_config import (
     EffectiveConfigValue,
     EventRetrievalRuntimeConfig,
     ExplicitCognitiveBudgetConfig,
+    LlamaCppCapabilityConfig,
     MemoryRetrievalRuntimeConfig,
     ProviderRuntimeConfig,
     RuntimeConfig,
@@ -305,6 +306,9 @@ def resolve_runtime_config(
         provenance=provenance,
         required=True,
     )
+    llama_cpp_capability = _parse_llama_cpp_capability(
+        _file_value(raw, "provider", "llama_cpp")
+    )
     server_host = _resolve_string_leaf(
         "server.host",
         cli_value=active_overrides.server_host,
@@ -371,6 +375,7 @@ def resolve_runtime_config(
             base_url=provider_base_url,
             model=provider_model,
             api_key=provider_api_key_ref,
+            llama_cpp=llama_cpp_capability,
         )
     except ValueError as exc:
         _invalid_value("provider.base_url", str(exc))
@@ -524,7 +529,7 @@ def _validate_file_shape(
         _reject_unknown(
             provider,
             "provider",
-            {"adapter", "backend", "base_url", "model", "api_key"},
+            {"adapter", "backend", "base_url", "model", "api_key", "llama_cpp"},
         )
         if "adapter" in provider:
             adapter = _string(provider["adapter"], "provider.adapter")
@@ -544,6 +549,8 @@ def _validate_file_shape(
             secret = _mapping(provider["api_key"], "provider.api_key")
             _require_exact_keys(secret, "provider.api_key", {"env"})
             _secret_reference(secret["env"], field="provider.api_key.env")
+        if "llama_cpp" in provider:
+            _parse_llama_cpp_capability(provider["llama_cpp"])
 
     if "server" in raw:
         server = _mapping(raw["server"], "server")
@@ -973,6 +980,79 @@ def _parse_count_character_envelope(
             floor_chars=floor_chars,
         )
     except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_llama_cpp_capability(raw: object) -> LlamaCppCapabilityConfig | None:
+    if raw is _MISSING:
+        return None
+    path = "provider.llama_cpp"
+    mapping = _mapping(raw, path)
+    required = {
+        "upstream_revision",
+        "build_info",
+        "model_alias",
+        "model_path",
+        "model_ftype",
+        "artifact_sha256",
+        "chat_template_sha256",
+        "context_limit",
+        "total_slots",
+        "context_shift_enabled",
+        "reasoning_effort_none_supported",
+        "native_structured_output_supported",
+        "streaming_supported",
+        "decoding_controls",
+        "cache_policy",
+    }
+    _require_exact_keys(mapping, path, required)
+    revision = _string(mapping["upstream_revision"], f"{path}.upstream_revision")
+    build_info = _string(mapping["build_info"], f"{path}.build_info")
+    model_alias = _string(mapping["model_alias"], f"{path}.model_alias")
+    model_path = _string(mapping["model_path"], f"{path}.model_path")
+    model_ftype = _string(mapping["model_ftype"], f"{path}.model_ftype")
+    artifact_sha256 = _string(mapping["artifact_sha256"], f"{path}.artifact_sha256")
+    chat_template_sha256 = _string(
+        mapping["chat_template_sha256"], f"{path}.chat_template_sha256"
+    )
+    context_limit = _integer(mapping["context_limit"], f"{path}.context_limit")
+    total_slots = _integer(mapping["total_slots"], f"{path}.total_slots")
+    for name in (
+        "context_shift_enabled",
+        "reasoning_effort_none_supported",
+        "native_structured_output_supported",
+        "streaming_supported",
+    ):
+        if not isinstance(mapping[name], bool):
+            _invalid_type(f"{path}.{name}", "must be a boolean")
+    controls_raw = mapping["decoding_controls"]
+    if not isinstance(controls_raw, list):
+        _invalid_type(f"{path}.decoding_controls", "must be a sequence")
+    controls: list[str] = []
+    for index, value in enumerate(controls_raw):
+        controls.append(_string(value, f"{path}.decoding_controls.{index}"))
+    cache_policy = _string(mapping["cache_policy"], f"{path}.cache_policy")
+    try:
+        return LlamaCppCapabilityConfig(
+            upstream_revision=revision,
+            build_info=build_info,
+            model_alias=model_alias,
+            model_path=model_path,
+            model_ftype=model_ftype,
+            artifact_sha256=artifact_sha256,
+            chat_template_sha256=chat_template_sha256,
+            context_limit=context_limit,
+            total_slots=total_slots,
+            context_shift_enabled=mapping["context_shift_enabled"],
+            reasoning_effort_none_supported=mapping["reasoning_effort_none_supported"],
+            native_structured_output_supported=mapping[
+                "native_structured_output_supported"
+            ],
+            streaming_supported=mapping["streaming_supported"],
+            decoding_controls=tuple(controls),
+            cache_policy=cache_policy,
+        )
+    except (TypeError, ValueError) as exc:
         _invalid_value(path, str(exc))
 
 

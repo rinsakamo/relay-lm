@@ -20,16 +20,28 @@ from relaylm.continuity import ContinuityContext
 from relaylm.providers.lm_studio_reasoning import (
     LMStudioReasoningCapabilityAttestation,
 )
+from relaylm.providers.llama_cpp_backend import (
+    LlamaCppCapabilityAttestation,
+    LlamaCppChatInputCounter,
+    LlamaCppTwoPassSerializedInputCounter,
+    build_llama_cpp_capability,
+)
+from relaylm.providers.llama_cpp_openai import LlamaCppOpenAICompatibleTwoPassProvider
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_backend import (
     OpenAICompatibleBackendId,
     decoding_capabilities_for_backend,
 )
+from relaylm.providers.openai_compatible_decoding import OpenAICompatibleDecodingConfig
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
-from relaylm.runtime_config import ProviderRuntimeConfig, RuntimeConfigErrorCode
+from relaylm.runtime_config import (
+    LlamaCppCapabilityConfig,
+    ProviderRuntimeConfig,
+    RuntimeConfigErrorCode,
+)
 from relaylm.runtime_config_loader import ResolvedRuntimeConfig
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.turn import ContinuityRuntime, EventRetrievalBudget, MemoryRetrievalBudget
@@ -81,6 +93,7 @@ class RuntimeAssembly:
     memory_budget: MemoryRetrievalBudget | None = None
     event_budget: EventRetrievalBudget | None = None
     cognitive_budget: CognitiveBudgetRuntime | None = None
+    provider_diagnostics: Mapping[str, object] = field(default_factory=dict)
 
     def app_kwargs(self) -> dict[str, Any]:
         """Arguments accepted by ``server.create_app`` without semantic rewriting."""
@@ -102,6 +115,7 @@ def assemble_runtime(
     token_counter_capabilities: Mapping[str, TokenCounterCapability] | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     lm_studio_reasoning_capability: LMStudioReasoningCapabilityAttestation | None = None,
+    llama_cpp_capability: LlamaCppCapabilityAttestation | None = None,
 ) -> RuntimeAssembly:
     """Construct current owner objects from one validated runtime configuration.
 
@@ -124,6 +138,12 @@ def assemble_runtime(
         raise TypeError(
             "lm_studio_reasoning_capability must be "
             "LMStudioReasoningCapabilityAttestation or None"
+        )
+    if llama_cpp_capability is not None and not isinstance(
+        llama_cpp_capability, LlamaCppCapabilityAttestation
+    ):
+        raise TypeError(
+            "llama_cpp_capability must be LlamaCppCapabilityAttestation or None"
         )
     if vllm_reasoning_capability is not None and lm_studio_reasoning_capability is not None:
         raise RuntimeAssemblyError(
@@ -148,6 +168,73 @@ def assemble_runtime(
                 "select two_pass or explicit single_pass"
             ),
         )
+
+    if (
+        config.provider.llama_cpp is not None
+        and config.provider.backend is not OpenAICompatibleBackendId.LLAMA_CPP
+    ):
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="provider.llama_cpp",
+            message="llama.cpp capability configuration requires provider.backend=llama_cpp",
+        )
+
+    effective_llama_cpp_capability: LlamaCppCapabilityAttestation | None = None
+    provider_diagnostics: dict[str, object] = {}
+    if config.provider.backend is OpenAICompatibleBackendId.LLAMA_CPP:
+        if cognition.mode is CognitionExecutionMode.SINGLE_PASS:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                field="runtime.cognition.mode",
+                message=(
+                    "llama.cpp single_pass is not qualified for the release wire; "
+                    "use two_pass"
+                ),
+            )
+        configured = _build_llama_cpp_capability(config.provider.llama_cpp)
+        if configured is not None and llama_cpp_capability is not None:
+            if configured != llama_cpp_capability:
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.INVALID_COMBINATION,
+                    field="provider.llama_cpp",
+                    message=(
+                        "injected llama.cpp capability does not match the serialized "
+                        "provider.llama_cpp attestation"
+                    ),
+                )
+        effective_llama_cpp_capability = llama_cpp_capability or configured
+        if effective_llama_cpp_capability is None:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                field="provider.llama_cpp",
+                message=(
+                    "llama.cpp requires an explicit serialized capability attestation; "
+                    "backend spelling cannot supply one"
+                ),
+            )
+        if effective_llama_cpp_capability.request_model != config.provider.model:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                field="provider.model",
+                message=(
+                    "configured provider model does not match the attested llama.cpp "
+                    "request model"
+                ),
+            )
+        for index, profile in enumerate(config.profiles):
+            if (
+                profile.provider.model is not None
+                and profile.provider.model != effective_llama_cpp_capability.request_model
+            ):
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                    field=f"profiles[{index}].provider.model",
+                    message=(
+                        "profile physical model does not match the attested llama.cpp "
+                        "request model"
+                    ),
+                )
+        provider_diagnostics = effective_llama_cpp_capability.to_mapping()
 
     if config.provider.backend is OpenAICompatibleBackendId.VLLM:
         if vllm_reasoning_capability is None:
@@ -212,7 +299,10 @@ def assemble_runtime(
                             "loaded LM Studio model does not attest reasoning option off"
                         ),
                     )
-    elif config.provider.backend is OpenAICompatibleBackendId.GENERIC:
+    elif config.provider.backend in {
+        OpenAICompatibleBackendId.GENERIC,
+        OpenAICompatibleBackendId.LLAMA_CPP,
+    }:
         if vllm_reasoning_capability is not None or lm_studio_reasoning_capability is not None:
             raise RuntimeAssemblyError(
                 RuntimeConfigErrorCode.INVALID_COMBINATION,
@@ -229,9 +319,25 @@ def assemble_runtime(
             ),
         )
 
-    provider_decoding_capabilities = decoding_capabilities_for_backend(
-        config.provider.backend
+    provider_decoding_capabilities = (
+        effective_llama_cpp_capability.decoding_capabilities
+        if effective_llama_cpp_capability is not None
+        else decoding_capabilities_for_backend(config.provider.backend)
     )
+
+    registered_token_counter_capabilities = dict(token_counter_capabilities or {})
+    if effective_llama_cpp_capability is not None:
+        registered_token_counter_capabilities.setdefault(
+            effective_llama_cpp_capability.counter_capability,
+            TokenCounterCapability(
+                mode=TokenCountMode.EXACT,
+                factory=lambda provider_config: _build_llama_cpp_counter(
+                    provider_config,
+                    capability=effective_llama_cpp_capability,
+                    api_key=resolved.secrets.provider_api_key,
+                ),
+            ),
+        )
 
     if runtime.cognitive_budget is not None and (
         runtime.memory_retrieval is not None or runtime.event_retrieval is not None
@@ -274,7 +380,7 @@ def assemble_runtime(
     cognitive_budget = _assemble_cognitive_budget(
         config.provider,
         runtime.cognitive_budget,
-        token_counter_capabilities or {},
+        registered_token_counter_capabilities,
         cognition_mode=cognition.mode,
         pass1_request=cognition.pass1,
         pass2_request=cognition.pass2,
@@ -285,22 +391,36 @@ def assemble_runtime(
     )
 
     provider_type = (
-        OpenAICompatibleTwoPassProvider
-        if cognition.mode is CognitionExecutionMode.TWO_PASS
-        else OpenAICompatibleProvider
+        LlamaCppOpenAICompatibleTwoPassProvider
+        if effective_llama_cpp_capability is not None
+        else (
+            OpenAICompatibleTwoPassProvider
+            if cognition.mode is CognitionExecutionMode.TWO_PASS
+            else OpenAICompatibleProvider
+        )
     )
     profile_runtimes: list[CognitiveProfileRuntime] = []
     for index, profile in enumerate(config.profiles):
         physical_model = profile.provider.model or config.provider.model
         try:
-            provider = provider_type(
-                base_url=config.provider.base_url,
-                model=physical_model,
-                api_key=resolved.secrets.provider_api_key,
-                decoding_capabilities=provider_decoding_capabilities,
-                vllm_reasoning_capability=vllm_reasoning_capability,
-                lm_studio_reasoning_capability=lm_studio_reasoning_capability,
-            )
+            provider_kwargs: dict[str, object] = {
+                "base_url": config.provider.base_url,
+                "model": physical_model,
+                "api_key": resolved.secrets.provider_api_key,
+                "decoding_capabilities": provider_decoding_capabilities,
+                "vllm_reasoning_capability": vllm_reasoning_capability,
+                "lm_studio_reasoning_capability": lm_studio_reasoning_capability,
+            }
+            if effective_llama_cpp_capability is not None:
+                provider_kwargs.update(
+                    {
+                        "llama_cpp_capability": effective_llama_cpp_capability,
+                        "llama_cpp_reasoning_capability": (
+                            effective_llama_cpp_capability.reasoning_capability
+                        ),
+                    }
+                )
+            provider = provider_type(**provider_kwargs)
         except (TypeError, ValueError) as exc:
             raise RuntimeAssemblyError(
                 RuntimeConfigErrorCode.PROVIDER_INVALID,
@@ -342,6 +462,62 @@ def assemble_runtime(
         memory_budget=memory_budget,
         event_budget=event_budget,
         cognitive_budget=cognitive_budget,
+        provider_diagnostics=provider_diagnostics,
+    )
+
+
+def _build_llama_cpp_capability(
+    config: LlamaCppCapabilityConfig | None,
+) -> LlamaCppCapabilityAttestation | None:
+    if config is None:
+        return None
+    try:
+        return build_llama_cpp_capability(
+            upstream_revision=config.upstream_revision,
+            build_info=config.build_info,
+            model_alias=config.model_alias,
+            model_path=config.model_path,
+            model_ftype=config.model_ftype,
+            artifact_sha256=config.artifact_sha256,
+            chat_template_sha256=config.chat_template_sha256,
+            context_limit=config.context_limit,
+            total_slots=config.total_slots,
+            context_shift_enabled=config.context_shift_enabled,
+            reasoning_effort_none_supported=config.reasoning_effort_none_supported,
+            native_structured_output_supported=config.native_structured_output_supported,
+            streaming_supported=config.streaming_supported,
+            decoding_controls=frozenset(config.decoding_controls),
+            cache_policy=config.cache_policy,
+        )
+    except (TypeError, ValueError) as exc:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+            field="provider.llama_cpp",
+            message="serialized llama.cpp capability could not be constructed",
+        ) from exc
+
+
+def _build_llama_cpp_counter(
+    provider_config: ProviderRuntimeConfig,
+    *,
+    capability: LlamaCppCapabilityAttestation,
+    api_key: str | None,
+) -> LlamaCppTwoPassSerializedInputCounter:
+    if provider_config.model != capability.request_model:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+            field="runtime.cognitive_budget.token_counter.capability",
+            message="llama.cpp counter model does not match attested capability",
+        )
+    return LlamaCppTwoPassSerializedInputCounter(
+        model=provider_config.model,
+        count_input=LlamaCppChatInputCounter(
+            base_url=provider_config.base_url,
+            runtime_identity=capability.runtime_identity,
+            api_key=api_key,
+        ),
+        capability=capability,
+        decoding_config=OpenAICompatibleDecodingConfig(),
     )
 
 

@@ -109,6 +109,25 @@ RelayLM bounded(N)
 
 Configured-runtime vLLM capability evidence classifies each control independently as `unsupported`, `accepted_but_effect_unproven`, `semantically_attested`, or `malformed_or_ambiguous`. Protocol acceptance alone is not semantic proof, and unsupported or ambiguous observations never receive a fallback wire.
 
+## llama.cpp exact OFF realization
+
+The production llama.cpp backend uses the provider-neutral OFF contract only
+when the configured exact runtime/model/template attestation says that
+`reasoning_effort=none` is supported. The pinned release source is llama.cpp
+revision `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`, build `10874`, where the
+server's Chat Completions parser maps that field to the chat-template
+Thinking-OFF input.
+
+The backend name, model name, GGUF extension, or model family never supplies
+this capability. An unattested OFF request, a bounded reasoning budget, or any
+other reasoning mode fails closed before provider transport. Omission remains
+omission for callers that did not explicitly request OFF.
+
+The production runtime does not import `actual_model_llama_cpp.py` or another
+evaluation host to obtain this fact. Later physical qualification may observe
+the external server and produce the serialized condition attestation, but that
+observation is outside the installed release-carriage transaction.
+
 ## Shared fail-closed rules
 
 - explicit mode without exact capability fails before generation;

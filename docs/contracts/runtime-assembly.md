@@ -30,6 +30,7 @@ RuntimeAssembly
   MemoryRetrievalBudget | None
   EventRetrievalBudget | None
   CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig | None
+  provider_diagnostics
 ```
 
 `RuntimeAssembly.app_kwargs()` exposes exactly the values accepted by `server.create_app`; it does not reinterpret them.
@@ -64,7 +65,7 @@ Assembly follows #1533 rather than selecting topology itself.
 The Core 1.0 release/reference path constructs, for each configured Profile:
 
 ```text
-OpenAICompatibleTwoPassProvider
+      OpenAICompatibleTwoPassProvider or LlamaCppOpenAICompatibleTwoPassProvider
 + Profile-local CognitionExecutionRuntime
 + independently resolved Pass 1 / Pass 2 requests
 ```
@@ -95,7 +96,7 @@ Runtime configuration carries:
 
 ```text
 provider.adapter = openai_compatible
-provider.backend = generic | vllm | lm_studio
+provider.backend = generic | vllm | lm_studio | llama_cpp
 ```
 
 Current assembly behavior:
@@ -103,12 +104,24 @@ Current assembly behavior:
 - `generic` — ordinary OpenAI-compatible transport without claiming backend-specific capability truth;
 - `vllm` — assembly-capable only with the explicit provider-owned reasoning capability attestation required by the current vLLM realizer;
 - `lm_studio` — ordinary OpenAI-compatible buffered/two-pass transport is assembly-capable when LM Studio-specific reasoning controls are omitted. The resolved backend identity remains `lm_studio`; assembly does not rewrite it to `generic`.
+- `llama_cpp` — two-pass assembly selects the production-owned `LlamaCppOpenAICompatibleTwoPassProvider` only with a complete serialized condition attestation. The external llama-server is not launched by RelayLM. Single-pass is fail-closed for Core 1.0.
 
 Provider-owned backend capability mapping is also the authority for whether an explicit per-pass hard output limit can be carried. A known backend may expose that proven control; `generic` compatibility alone does not prove it. Budget assembly fails closed when a required hard output limit cannot be attested.
+
+The llama.cpp attestation exposes content-free diagnostics for request model,
+streaming, native structured output, reasoning OFF, exact token-counter mode,
+cache policy, context-shift safety, and runtime/model identity. Backend spelling,
+model family, and GGUF suffix are never capability inference. Profile physical
+models that differ from the attested request model fail closed instead of
+sharing one condition identity.
 
 LM Studio capability metadata and exact Chat Completions reasoning realization are separate concerns. #1545 owns LM Studio capability attestation, while exact LM Studio Chat Completions reasoning wire remains separately qualified. An unsupported explicit Pass 1/Pass 2 reasoning control fails `capability_unavailable` before serving rather than being silently omitted or guessed onto a vendor field.
 
 Reusing the common OpenAI-compatible transport for requests that require no backend-specific wire is not a backend-identity fallback. A backend-specific selection is preserved in resolved configuration and diagnostics, and any requested specialized capability still requires its provider-owned realizer.
+
+`provider_diagnostics` is operator metadata only. It contains no API-key
+material, Cognitive Package text, State, Continuity, MEMORY, Event, or prompt
+content.
 
 Raw API-key material comes only from `RuntimeSecretInputs` and is not copied into effective diagnostics, Profile objects intended for diagnostics, or assembly representation.
 

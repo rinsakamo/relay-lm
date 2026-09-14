@@ -512,7 +512,7 @@ def test_registry_target_is_distinct_and_core_fingerprint_stays_frozen() -> None
         REPO_ROOT,
         load_declarations(REPO_ROOT),
         roots=("crystallization", "runtime_configuration"),
-    ) == expected == "sha256:7e09ae8c0203c41efb9a7e36a68e5c291984141c39d0cd9fcfb5c3a7090e1a81"
+    ) == expected == "sha256:2fa3515c9edcb8abb26acd6051d480546e4a083c1320932ddcab2f98745e49b5"
 
 
 def test_retained_evidence_run_id_can_feed_current_cry2_review_without_generation() -> None:

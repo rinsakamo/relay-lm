@@ -22,26 +22,53 @@ def _character(root: Path) -> Path:
     return root
 
 
-def _runtime_config(path: Path, character: Path, *, host: str = "127.0.0.1") -> Path:
-    path.write_text(
-        "\n".join(
-            [
-                "format_version: 1",
-                "profiles:",
-                "  - name: cli-test",
-                f"    root: {character}",
-                "provider:",
-                "  adapter: openai_compatible",
-                "  base_url: http://127.0.0.1:1234/v1",
-                "  model: test-model",
-                "server:",
-                f"  host: {host}",
-                "  port: 8090",
-                "",
-            ]
-        ),
-        encoding="utf-8",
+def _runtime_config(
+    path: Path,
+    character: Path,
+    *,
+    host: str = "127.0.0.1",
+    backend: str | None = None,
+    llama_capability: bool = False,
+) -> Path:
+    lines = [
+        "format_version: 1",
+        "profiles:",
+        "  - name: cli-test",
+        f"    root: {character}",
+        "provider:",
+        "  adapter: openai_compatible",
+    ]
+    if backend is not None:
+        lines.append(f"  backend: {backend}")
+    lines.extend(
+        [
+            "  base_url: http://127.0.0.1:1234/v1",
+            "  model: test-model",
+        ]
     )
+    if llama_capability:
+        lines.extend(
+            [
+                "  llama_cpp:",
+                "    upstream_revision: e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d",
+                "    build_info: llama.cpp-10874",
+                "    model_alias: test-model",
+                "    model_path: /models/test-model.gguf",
+                "    model_ftype: Q4_K_M",
+                "    artifact_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "    chat_template_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "    context_limit: 8192",
+                "    total_slots: 1",
+                "    context_shift_enabled: false",
+                "    reasoning_effort_none_supported: true",
+                "    native_structured_output_supported: true",
+                "    streaming_supported: true",
+                "    decoding_controls: [max_output_tokens, temperature, top_p]",
+                "    cache_policy: disabled",
+            ]
+        )
+    lines.extend(["server:", f"  host: {host}", "  port: 8090", ""])
+    path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
 
@@ -90,6 +117,52 @@ def test_doctor_json_is_non_secret_and_reports_effective_sources(tmp_path: Path)
     rendered = stdout.getvalue() + stderr.getvalue()
     assert "never-print-this" not in rendered
     assert report["effective_config"]["secrets"]["provider.api_key"]["configured"] is True
+
+
+def test_llama_cpp_doctor_reports_attested_capabilities_without_generation(
+    tmp_path: Path,
+) -> None:
+    character = _character(tmp_path / "character")
+    config = _runtime_config(
+        tmp_path / "runtime.yaml",
+        character,
+        backend="generic",
+        llama_capability=True,
+    )
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        [
+            "doctor",
+            "--config",
+            str(config),
+            "--provider-backend",
+            "llama.cpp",
+            "--json",
+        ],
+        environ={"RELAYLM_PROVIDER_BACKEND": "generic"},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 0
+    report = json.loads(stdout.getvalue())
+    capabilities = report["provider_capabilities"]
+    assert capabilities["backend"] == "llama_cpp"
+    assert capabilities["request_model"] == "test-model"
+    assert capabilities["streaming_supported"] is True
+    assert capabilities["native_structured_output_supported"] is True
+    assert capabilities["reasoning_effort_none_supported"] is True
+    assert capabilities["cache_policy"] == "disabled"
+    assert capabilities["context_shift"] == "disabled"
+    assert report["effective_config"]["values"]["provider.backend"] == {
+        "value": "llama_cpp",
+        "source": "cli",
+    }
+    rendered = stdout.getvalue() + stderr.getvalue()
+    assert "A valid test identity" not in rendered
+    assert "SOUL" not in rendered
 
 
 def test_doctor_json_reports_selected_fastcal_values_and_authority(

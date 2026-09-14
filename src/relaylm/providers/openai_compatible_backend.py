@@ -14,6 +14,7 @@ class OpenAICompatibleBackendId(StrEnum):
     GENERIC = "generic"
     VLLM = "vllm"
     LM_STUDIO = "lm_studio"
+    LLAMA_CPP = "llama_cpp"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,10 @@ _CANONICAL_BACKENDS: tuple[OpenAICompatibleBackend, ...] = (
         id=OpenAICompatibleBackendId.LM_STUDIO,
         display_name="LM Studio",
     ),
+    OpenAICompatibleBackend(
+        id=OpenAICompatibleBackendId.LLAMA_CPP,
+        display_name="llama.cpp",
+    ),
 )
 
 _BACKEND_BY_ID = {backend.id: backend for backend in _CANONICAL_BACKENDS}
@@ -59,6 +64,9 @@ _BACKEND_ALIASES: dict[str, OpenAICompatibleBackendId] = {
     "lm_studio": OpenAICompatibleBackendId.LM_STUDIO,
     "lm-studio": OpenAICompatibleBackendId.LM_STUDIO,
     "lm studio": OpenAICompatibleBackendId.LM_STUDIO,
+    "llama_cpp": OpenAICompatibleBackendId.LLAMA_CPP,
+    "llama-cpp": OpenAICompatibleBackendId.LLAMA_CPP,
+    "llama.cpp": OpenAICompatibleBackendId.LLAMA_CPP,
 }
 
 
@@ -101,7 +109,10 @@ def decoding_capabilities_for_backend(
 
     if not isinstance(backend_id, OpenAICompatibleBackendId):
         raise TypeError("backend_id must be OpenAICompatibleBackendId")
-    if backend_id is OpenAICompatibleBackendId.GENERIC:
+    if backend_id in {
+        OpenAICompatibleBackendId.GENERIC,
+        OpenAICompatibleBackendId.LLAMA_CPP,
+    }:
         return OpenAICompatibleDecodingCapabilities()
     return OpenAICompatibleDecodingCapabilities(
         supported_controls=frozenset(
