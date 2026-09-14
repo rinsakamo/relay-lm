@@ -375,6 +375,8 @@ class _FakeHttpClient:
         self.requests: list[tuple[str, dict[str, object]]] = []
 
     def post(self, url: str, *, headers=None, json=None):
+        import json as json_module
+
         del headers
         body = dict(json or {})
         self.requests.append((url, body))
@@ -385,7 +387,7 @@ class _FakeHttpClient:
             return _FakeResponse({"input_tokens": 12 if has_content else 4})
         schema = body["response_format"]["json_schema"]["name"]
         if schema == "relaylm2_s3_reusable_rule":
-            content = json.dumps(
+            content = json_module.dumps(
                 {
                     "permutation": [0, 1, 2, 3],
                     "offsets": [1, 1, 1, 0],
