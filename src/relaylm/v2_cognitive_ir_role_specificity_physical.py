@@ -354,6 +354,8 @@ def validate_physical_adapter_binding() -> None:
         raise SemanticRoleSpecificityPhysicalError("E4-RS1 pre-material counter contract drifted")
     if INPUT_TOKEN_REQUESTS_PER_SEMANTIC_CALL != 2:
         raise SemanticRoleSpecificityPhysicalError("E4-RS1 per-call input-token accounting drifted")
+    if len(CONFIRMATORY_CONTRASTS) != 2:
+        raise SemanticRoleSpecificityPhysicalError("E4-RS1 confirmatory contrast pair drifted")
     if CONTEXT_LIMIT != 8192 or MAX_OUTPUT_TOKENS != 256:
         raise SemanticRoleSpecificityPhysicalError("E4-RS1 context/output envelope drifted")
     if TEMPERATURE != 0.0 or REASONING != "none" or REQUEST_SEED is not None:
