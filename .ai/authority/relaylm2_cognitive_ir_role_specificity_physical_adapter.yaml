@@ -18,3 +18,8 @@ tests:
 - tests/unit/test_v2_cognitive_ir_role_specificity_physical.py
 depends_on:
 - relaylm2_cognitive_ir_role_specificity
+- relaylm2_cognitive_ir_semantic_reconstruction_physical_adapter
+- relaylm2_cognitive_ir_semantic_role_binding_physical_adapter
+- common_physical_generation
+- relaylm2_physical_execution
+- physical_execution_queue
