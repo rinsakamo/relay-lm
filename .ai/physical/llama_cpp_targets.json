@@ -25,6 +25,12 @@
         "httpx"
       ]
     },
+    "v1:external-qualification": {
+      "branch": "v1",
+      "module": "tools.v1_external_qualification_llama_cpp_gate",
+      "description": "Zero-generation exact-RC external qualification execution-freeze gate for the future #1449 scientific owner.",
+      "required_distributions": []
+    },
     "v1:continuity-only": {
       "branch": "v1",
       "module": "tools.v1_stage_r_llama_cpp_production_continuity_only_wsl",
