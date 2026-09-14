@@ -17,6 +17,15 @@
         "httpx"
       ]
     },
+    "v1:installed-llama-cpp": {
+      "branch": "v1",
+      "module": "tools.v1_installed_llama_cpp_wsl",
+      "description": "Repository-owned v1 installed-artifact llama.cpp release-path proof harness.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
+    },
     "v1:crystallization": {
       "branch": "v1",
       "module": "tools.v1_crystallization_llama_cpp_wsl",
