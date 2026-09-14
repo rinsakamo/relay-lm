@@ -1,12 +1,17 @@
 # Persistent WORLD Continuity Benchmark
 
-This document is the repository-facing execution contract for Issue #2888.
+This document is the repository-facing execution and evidence contract for
+Issue #2888.
 
-It is a **pre-1.0 bounded integrated benchmark**. It is not Minecraft product support, not a new RelayLM Core semantic owner, and not authorization to pull Post-1.0 capability/presence work into the 1.0 product boundary.
+It is a **pre-1.0 bounded integrated benchmark**. It is not Minecraft product
+support, not a new RelayLM Core semantic owner, and not authorization to pull
+Post-1.0 capability/presence work into the RelayLM 1.0 product boundary.
 
 ## Scientific question
 
-Can an exact RelayLM 1.0 release candidate remain a coherent persistent subjective cognition when embedded in a changing external WORLD across a full process restart, without conflating:
+Can an exact RelayLM 1.0 release candidate remain one coherent persistent
+subjective cognition while embedded in a changing external WORLD across a hard
+process restart, without conflating:
 
 ```text
 WORLD truth
@@ -14,68 +19,85 @@ WORLD truth
 != current subjective belief
 != character appraisal
 != narrative presentation
-```
 
-and without conflating:
-
-```text
 Action proposal
-!= authorized execution
+!= authorization
+!= execution
 != observed Outcome
+
+model output
+!= exogenous evidence
 ```
 
-Minecraft is only the bounded, inspectable, stateful WORLD fixture for this experiment.
+Minecraft is only the bounded, inspectable, stateful WORLD fixture.
 
-## v0 boundary
+## Responsibility boundary
 
 ```text
 Minecraft server/save
-  WORLD authority
+  = WORLD authority
 
-Minecraft body adapter
-  observation + bounded action mechanics
+WORLD/body adapter
+  = observation producer + bounded action mechanics
+
+WORLD fixture operator
+  = administrative benchmark mutation authority
 
 benchmark actor runtime
-  reduction, scheduling, causal guards, budgets, lifecycle
+  = reduction, scheduling, causal guards, budgets, lifecycle
 
 RelayLM exact RC
-  persistent subjective cognition
+  = persistent subjective cognition
 
 optional presentation
-  non-authoritative
+  = non-authoritative
 ```
 
-RelayLM Core does not own Minecraft ticks, pathfinding, presentation, audience routing, or a general agent scheduler.
+The body adapter does not become WORLD authority merely because it reports a
+server observation. The operator mutation path is fixture authority, not an
+actor capability. RelayLM Core does not own Minecraft ticks, pathfinding,
+presentation, audience routing, or a general agent scheduler.
 
 ## Zero-Core-change first
 
-The first feasibility phase must not change RelayLM Core semantics.
+The feasibility phase must not change RelayLM Core semantics.
 
-A temporary harness may serialize a WORLD observation through the current public text turn surface only to test whether the existing persistence architecture produces useful WORLD continuity at all.
+A temporary harness may serialize a WORLD observation through the existing
+public text-turn surface to test whether the existing persistence architecture
+has useful WORLD continuity. That transport is explicitly lossy:
 
-That temporary transport does **not** prove correct provenance semantics if it launders WORLD origin into an ordinary `user/message` turn. Any such mismatch must remain explicit in the evidence packet and is classified separately from a Core semantic failure.
+```text
+transport.mode = public_text_turn
+transport.preserves_logical_origin = false
+```
 
-Do not add Minecraft-specific Event types, State classes, WORLD stores, or prompt branches to make the benchmark pass.
+Such a packet can never claim `provenance_separation = PASS`.
 
-## Actor and WORLD
+If useful continuity is demonstrated but the public user-message surface is the
+only remaining blocker to faithful Event origin, route that finding to a
+separate smallest generic runtime-boundary owner. Do not add Minecraft-specific
+Event types, State classes, WORLD stores, or prompt branches.
 
-Use one actor only for v0.
+## Benchmark actor and WORLD
+
+Use one actor for v0:
 
 ```text
 Profile / Character: Rin
 WORLD: one small Minecraft Java Edition Home WORLD
 ```
 
-Use stable named landmarks rather than arbitrary navigation goals where possible:
+Use stable harness-local names rather than arbitrary navigation goals, for
+example:
 
 ```text
 home.bed
 home.door
 home.porch
-garden
+home.garden
 ```
 
-The action vocabulary is deliberately bounded:
+Keep the action vocabulary deliberately bounded:
 
 ```text
 look_at(target_ref)
@@ -84,86 +106,261 @@ stop()
 interact(target_ref)
 ```
 
-The exact mechanics are benchmark-harness concerns, not Core API authority.
+Exact movement mechanics are benchmark-harness concerns, not Core API
+authority. Pathfinding competence is not a qualification axis.
 
 ## Observation reduction
 
-Do not emit one cognition cycle per Minecraft tick.
+Never invoke cognition once per Minecraft tick. Reduce high-frequency state to
+meaningful events such as spawn/respawn, health thresholds, named-location
+entry, material object-state changes, significant inventory changes,
+time/weather milestones, authoritative action results, and explicitly selected
+external messages.
 
-The adapter/runtime reduces high-frequency state into meaningful observations such as:
-
-```text
-spawn / respawn
-health threshold / damage
-named location entered
-important actor/entity appearance
-door/object state change
-significant inventory change
-time-of-day milestone
-weather change
-action execution result
-explicit benchmark Echo/message
-```
-
-Raw movement/camera/block/entity/tick streams stay local unless a declared fixture requires them.
+Raw movement, camera, block, entity, and tick streams stay local unless a
+frozen fixture requires them.
 
 ## Golden scenario: Day 1 -> hard stop -> changed WORLD -> Day 2
 
 ### Day 1
 
-1. Start from an exact declared Minecraft save and exact RelayLM RC/Profile identity.
-2. Present fresh authoritative observations such as:
+1. Start from a declared immutable WORLD fixture identity and exact RelayLM
+   RC/Profile identity.
+2. Capture an authoritative current WORLD fact, for example:
 
-```text
-home.door = closed
-weather = clear
-Rin is at home
-```
+   ```text
+   world_id = home-world
+   world_epoch = epoch-0
+   fact_key = home.door.block
+   value = oak_door
+   ```
 
-3. Deliver one external text fixture, e.g. `外、見てきて`.
-4. RelayLM responds and may produce a bounded action proposal through the harness.
-5. The harness authorizes only the declared action surface.
-6. Execute one bounded action, preferably `move_to(home.porch)`.
-7. Record proposal, authorization, execution and returned WORLD observation separately.
-8. Persist only what the ordinary RelayLM product path lawfully persists.
+3. Provide the observation to RelayLM through the declared transport.
+4. Optionally include one external-message/Echo fixture when social-input
+   coexistence is part of the condition.
+5. Record RelayLM input/output separately from WORLD evidence.
+6. Record one bounded action proposal, deterministic authorization, external
+   execution, and authoritative Outcome as separate records.
+7. Retain an ordinary RelayLM persistence snapshot for the same subject lineage.
 
 ### Hard stop
 
-Stop the benchmark actor/runtime and RelayLM process completely.
+Stop the declared cognition/body components completely. A citable Qualification
+must stop and later restart at least:
 
-Do not preserve/replay the live client transcript as a hidden continuity channel.
+```text
+relaylm
+actor_runtime
+body_adapter
+```
+
+The Minecraft server may remain alive when it is the cleanest way to preserve
+WORLD authority. Do not replay the live client transcript as a hidden
+continuity channel.
 
 ### Offline WORLD mutation
 
-While cognition is stopped, change the WORLD through an authoritative external path.
-
-Example:
+While the declared cognition/body components are stopped, mutate the same
+WORLD fact through explicit fixture/operator authority, for example:
 
 ```text
-Day 1: home.door = closed
-offline mutation: door becomes open/broken/removed
-Day 2: current observation contradicts yesterday's remembered condition
+world_id = home-world
+fact_key = home.door.block
+before: epoch-0 / oak_door
+after:  epoch-1 / air
 ```
 
-Do not perform this mutation by editing RelayLM State or MEMORY.
+The mutation must not be produced by editing RelayLM State/MEMORY and must not
+be represented as an actor action.
 
 ### Day 2
 
-1. Resume the same intended RelayLM subject lineage and WORLD save lineage.
-2. Do not replay Day-1 transcript as current context except through ordinary product retrieval/reconstruction.
-3. Present fresh current WORLD observation.
-4. Require cognition to distinguish remembered past from current observation.
-5. Require one bounded action or action/no-action decision and one fresh external text response.
+1. Restart the same intended RelayLM subject lineage and same WORLD fixture
+   lineage.
+2. Reconstruct ordinary supported cognition without hidden transcript replay.
+3. Capture the same fact key from the fresh WORLD epoch.
+4. Require the hard-axis adjudication to distinguish Day-1 remembered state
+   from Day-2 current observation.
+5. Produce fresh RelayLM input/output under a bounded resource budget.
 
-Exact wording is not scored. A semantically valid response may resemble:
+Exact natural-language wording is not scored by the deterministic validator.
+Semantic verdicts remain owner adjudications constrained by retained evidence.
+
+## Evidence schema v2
+
+`tools/persistent_world_evidence.py` accepts only schema version 2. Version 1
+packets are not silently reinterpreted.
+
+The packet has exact top-level fields:
 
 ```text
-昨日は閉まってたはずだけど、今は違うみたい。
+schema_version
+run
+identities
+transport
+budget
+counts
+records
+axes
 ```
+
+Unknown controlled-schema fields fail closed instead of being discarded before
+fingerprinting. Open metadata/payload content that is permitted by the schema
+is retained in the normalized packet and therefore remains fingerprint-bound.
+
+### Run class is intrinsic
+
+Every packet declares exactly one run class:
+
+```text
+EXPLORATORY_NON_CITABLE
+QUALIFICATION
+```
+
+Exploratory runs are permanently:
+
+```text
+citable = false
+qualification_authority = false
+execution_frozen = false
+```
+
+A Qualification requires:
+
+```text
+citable = true
+qualification_authority = true
+execution_frozen = true
+attempt = 1
+```
+
+A rehearsal artifact has no schema-level promotion path into Qualification.
+Changing the run class/condition creates a different fingerprint and must be a
+new physical transaction under fresh authority.
+
+### Frozen identities
+
+A Qualification packet requires non-null identities for:
+
+```text
+RelayLM exact artifact
+Profile/Cognitive Package
+immutable WORLD fixture/baseline
+benchmark harness
+physical model
+governed provider boundary
+model runtime/server
+hardware/runtime host
+Minecraft server artifact/version
+body adapter artifact/version
+```
+
+Exploratory WORLD-plumbing trials may omit RelayLM/model identities when those
+components were genuinely not used, but still require WORLD fixture, harness,
+Minecraft server, and body adapter identities.
+
+The top-level WORLD fixture artifact identifies the immutable starting fixture.
+Mutable Day-1/Day-2 state is represented by fact-level records and WORLD epochs,
+not by pretending a live ticking world directory has one stable hash.
+
+### Producer origin != authority domain
+
+Each record carries both:
+
+```text
+provenance.channel
+provenance.authority_domain
+```
+
+For example:
+
+```text
+world_observation:
+  channel = world_adapter
+  authority_domain = minecraft_server
+
+world_mutation:
+  channel = world_fixture_operator
+  authority_domain = minecraft_server
+
+model_output:
+  channel = relaylm
+  authority_domain = relaylm_inference
+
+action_authorization:
+  channel = benchmark_harness
+  authority_domain = benchmark_policy
+```
+
+A string label alone cannot convert endogenous model output into WORLD evidence.
+
+### Causal lineage
+
+Records are strictly sequence ordered. Important linear chains are explicit:
+
+```text
+exogenous observation/message OR budgeted benchmark opportunity
+  -> relay_input
+  -> model_output
+  -> action_proposal
+  -> action_authorization
+  -> action_execution
+  -> world_outcome
+```
+
+A rejected authorization cannot have an execution child. A PASS action axis
+must cite one complete single chain; mixing records from unrelated chains does
+not count.
+
+Every cognition input requires new exogenous information or an explicitly
+budgeted benchmark opportunity. Model output, persistence commits, and action
+proposals cannot recursively create fresh cognition by themselves.
+
+### Restart subject lineage
+
+`persistence_snapshot` and Day-2 `context_reconstruction` identify both the
+Profile and one `subject_lineage_id`. If both are present, the lineage must be
+identical across the restart.
+
+A Day-2 context reconstruction also declares whether transcript replay occurred.
+`no_hidden_transcript_replay = PASS` requires both the packet count and cited
+Day-2 reconstruction to say `false`.
+
+### WORLD fact change
+
+`past_present_world_separation = PASS` requires evidence of one exact chain:
+
+```text
+Day-1 world_observation(world_id, fact_key, before_value, before_epoch)
+  -> offline world_mutation(same world_id/fact_key, before -> after)
+  -> Day-2 world_observation(same world_id/fact_key, after_value, after_epoch)
+  + Day-2 model_output evidence used by semantic adjudication
+```
+
+The mutation must change both declared epoch and fact value.
+
+### Resource evidence
+
+The frozen budget includes at least:
+
+```text
+model calls
+cognition cycles
+actions
+reduced events
+total tokens
+wall-clock milliseconds
+```
+
+Deterministically derivable counts are cross-checked against retained records.
+A resource-budget PASS also requires a retained `resource_receipt` whose
+fingerprinted payload matches the packet counts. This does not magically
+authenticate the physical runtime; the physical owner must independently
+retain the referenced runtime/log receipt.
 
 ## Hard qualification axes
 
-Record each independently as PASS/FAIL/INCONCLUSIVE:
+Record each independently as `PASS`, `FAIL`, or `INCONCLUSIVE`:
 
 ```text
 restart_continuity
@@ -175,79 +372,59 @@ self_loop_bounded
 resource_budget_respected
 ```
 
-### Restart continuity
+The validator constrains what evidence may support PASS; it does **not** infer
+natural-language semantic correctness from prose.
 
-The Day-2 actor must retain product-relevant continuity through ordinary supported RelayLM persistence. Replaying the transcript does not count.
+A packet is reported as `qualification_eligible=true` only when it is a
+`QUALIFICATION` packet and all hard axes are PASS. This is an evidence-structure
+eligibility result, not an automatic release decision.
 
-### Past vs present WORLD
+## Structural validation is not artifact authentication
 
-A Day-1 remembered condition must not overwrite contradictory Day-2 authoritative observation. Historical memory should remain historical rather than being rewritten as if it never occurred.
+The deterministic validator proves only that the declared packet is
+well-formed, fingerprinted, causally admissible, internally consistent, and
+meets the hard-axis evidence-shape rules.
 
-### Provenance
+It does **not** by itself prove that:
 
-Keep operationally separate evidence for:
+- a supplied hash really came from the claimed external server/runtime;
+- a Minecraft observation was physically truthful;
+- a model response semantically expressed the claimed distinction;
+- a resource receipt was generated by the claimed process;
+- an operator did not omit an unrecorded external channel.
 
-```text
-external text/Echo
-WORLD observation
-model inference/narration
-action proposal
-external execution/result
-```
+Therefore citable Qualification additionally requires the physical owner to
+capture and independently verify the external artifacts/receipts referenced by
+the packet, under the owner's fresh execution-freeze contract. Narrative prose
+alone is never evidence.
 
-The zero-Core transport may reveal that the current public API cannot preserve this distinction faithfully. That is a possible runtime-boundary finding, not permission to hide the mismatch.
+## Negative/adversarial fixtures
 
-### Action / Outcome
+At minimum retain deterministic or physical negatives for:
 
-Model narration cannot establish execution success. Rejected, failed, partial or unknown execution must not become authoritative WORLD success merely because it was expected or narrated.
+- false narrated action success;
+- stale remembered WORLD vs fresh contradictory observation;
+- endogenous text relabelled as WORLD evidence;
+- event flood / one-call-per-tick pressure;
+- hidden transcript replay;
+- cross-chain action evidence mixing;
+- resource/count under-reporting;
+- rehearsal-to-Qualification run-class laundering.
 
-### Self-loop bound
+## Baselines and Echo
 
-Model output, persistence commit, crystallization, and action proposal do not recursively generate unlimited cognition.
+The core WORLD-continuity qualification does not require an audience/Echo input.
+An Echo fixture may be added when testing coexistence of social input and WORLD
+input; it must not become a confounding blocker for the core WORLD invariant.
 
-A new cognition cycle requires new exogenous information or an explicitly budgeted benchmark opportunity.
+Matched B0/B1/B2 baselines are required before making a comparative claim such
+as “RelayLM is better than transcript-only/stateless continuity.” They are not
+required merely to determine whether RelayLM itself preserves the hard WORLD
+invariants.
 
-## Negative fixtures
+## Verdict classes and defect routing
 
-### False narrated success
-
-Cause an action to fail/reject while allowing the model to predict or narrate success.
-
-Expected: no authoritative success Outcome and no false current WORLD fact grounded solely in narration.
-
-### Stale remembered WORLD
-
-Contradict a Day-1 condition with a fresh Day-2 observation.
-
-Expected: current belief may update; historical memory remains historical.
-
-### Self-authored observation attack
-
-Attempt to feed endogenous model text back as if it were WORLD evidence.
-
-Expected: the benchmark authority boundary must not classify the content as independent WORLD evidence.
-
-### Event flood
-
-Generate low-value/high-frequency game changes.
-
-Expected: reducer/coalescing prevents one model call per tick.
-
-## Baselines
-
-Where practical, use the same physical LLM and WORLD fixture for:
-
-```text
-B0 stateless / short-context agent
-B1 transcript-only continuity
-B2 RelayLM exact RC ordinary persistence
-```
-
-Record unavoidable resource/information mismatches instead of hiding them.
-
-The benchmark succeeds scientifically even if RelayLM loses, provided the comparison remains interpretable.
-
-## Verdict classes
+Human/scientific reconciliation may classify the result as:
 
 ```text
 QUALIFIED
@@ -258,74 +435,37 @@ POST_1_0_CAPABILITY_REQUIRED
 INCONCLUSIVE
 ```
 
-Do not map a Minecraft/pathfinding failure to a RelayLM Core defect.
-
-Do not map a deliberately deferred governed-capability feature to a 1.0 semantic defect.
+Do not map Minecraft navigation/server failure to a Core defect. Do not map a
+deliberately deferred governed capability to a 1.0 semantic defect. If the
+current user-message-only ingress is the demonstrated generic blocker, create a
+small generic runtime-boundary owner. If existing State/MEMORY/Continuity
+semantics themselves create false WORLD truth or break supported restart
+continuity, route to the current semantic owner and recycle the RC when the
+release gate requires it.
 
 ## Physical execution discipline
 
-Repository preparation and deterministic harness tests spend zero model/Minecraft physical transaction.
+Repository preparation spends zero Minecraft/model transaction. Actual
+execution requires a fresh dedicated physical owner. The later owner reacquires
+and freezes current repository/RC/package identity, WORLD fixture, Minecraft
+server/body adapter, model/provider/runtime/hardware, budgets, ports/listeners,
+process ownership, and the exact evidence schema immediately before execution.
 
-Actual execution requires a fresh dedicated physical owner after repository support is merged and must record at least:
+Reuse current shared RelayLM physical-control surfaces where they actually own
+the resource. Do not imply that the llama.cpp GPU queue owns Minecraft/Java/Node
+process semantics; those processes need their own explicit owner-scoped
+lifecycle and cleanup.
 
-```text
-exact RelayLM RC SHA/tree/package identity
-Profile/Cognitive Package identity
-physical model/tokenizer/quantization
-provider/runtime
-Minecraft server version
-WORLD save identity / world epoch or hash where practical
-body adapter identity
-benchmark harness revision
-action vocabulary
-observation reducer rules
-model-call/token/time/action budget
-hardware/runtime identity
-```
-
-Reuse the repository's shared physical execution queue/control plane rather than implementing a second GPU lease/queue system.
-
-## Evidence packet
-
-Retain enough machine-readable evidence to reconstruct the causal story:
-
-```text
-Day-1 authoritative WORLD subset
-Day-1 input/response identity
-Action proposal -> authorization -> execution -> returned observation lineage
-ordinary RelayLM persisted artifacts
-hard-stop/process-lifecycle record
-offline WORLD mutation record
-Day-2 fresh WORLD observation
-Day-2 input/response identity
-hard-axis verdicts with supporting artifact references/hashes
-resource/call/action counts
-```
-
-Narrative prose is supplementary; it is not the sole evidence of a pass.
-
-## Defect routing
-
-```text
-Minecraft/server/pathfinding problem
-  -> benchmark adapter/harness
-
-missing governed capability intentionally deferred
-  -> #1242 / Post-1.0
-
-current user-message-only ingress blocks faithful generic Event realization
-  -> smallest generic runtime-boundary owner, only if demonstrated
-
-State/MEMORY/Continuity/provenance semantics violate a hard invariant
-  -> current semantic owner / possible RC recycle
-```
-
-No benchmark-specific Core branch is allowed.
+For unknown Minecraft mechanics, use LAB3 rehearsal first. Exploratory output
+remains non-citable forever; after the procedure is known and cleaned up, prove
+it once again under a separate fresh Qualification owner.
 
 ## References
 
-- #2888 — benchmark owner
-- #1449 — 1.0 release-readiness integration gate
-- #1972 — external-cognition/WORLD-feedback roadmap and exogenous-evidence invariant
+- #2888 — Persistent WORLD benchmark owner
+- #2894 — deterministic benchmark/evidence owner
+- #2896 — non-citable Minecraft LAB3 rehearsal owner
+- #1449 — RelayLM 1.0 release-readiness integration gate
+- #1972 — external-cognition/WORLD-feedback roadmap
 - #1242 — governed capability/action authority
 - #2660 / #2690 lineage — shared physical execution control plane
