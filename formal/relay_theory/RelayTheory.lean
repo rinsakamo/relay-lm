@@ -67,6 +67,7 @@ import RelayTheory.RootReconstruction
 import RelayTheory.SuccessorReflectionReconstruction
 import RelayTheory.RightFunctionalityReconstruction
 import RelayTheory.LeftFunctionalityBoundary
+import RelayTheory.ReachableDynamicsEmbedding
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
