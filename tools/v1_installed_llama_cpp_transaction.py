@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+from dataclasses import dataclass
 import hashlib
 import http.client
 import http.server
@@ -89,12 +90,96 @@ REQUEST_TIMEOUT_SECONDS = 600.0
 READINESS_TIMEOUT_SECONDS = 120.0
 READINESS_POLL_SECONDS = 0.5
 PASS2_OUTPUT_TOKENS = 256
-SEMANTIC_GENERATION_CEILING = 4
 MAX_RESPONSE_EXCERPT = 1024
 MAX_ERROR_TEXT = 2048
 PROXY_PATHS = frozenset({"/v1/chat/completions", "/v1/chat/completions/input_tokens"})
 PHYSICAL_EVIDENCE_DISPOSITION = "EVIDENCE_RECORDED"
 PHYSICAL_INVALID_DISPOSITION = "PHYSICAL_INVALID"
+EXECUTION_OBSERVATION_STATE = "observed_unvalidated"
+EXECUTION_VALIDATION_STATE = "validated_success"
+
+COUNTER_ENDPOINT_ROLES = ("full", "framing")
+PASS1_LOGICAL_ROLES = ("protected_floor", "selected_plan")
+PASS2_LOGICAL_ROLES = ("extraction",)
+CANONICAL_TWO_TURN_TOPOLOGY = (
+    ("buffered_pass1", PASS1_LOGICAL_ROLES),
+    ("buffered_pass2", PASS2_LOGICAL_ROLES),
+    ("streaming_pass1", PASS1_LOGICAL_ROLES),
+    ("streaming_pass2", PASS2_LOGICAL_ROLES),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class LogicalInputCountOperationSpec:
+    """One canonical full/framing pair before its upcoming generation."""
+
+    logical_operation_index: int
+    generation_index: int
+    generation_phase: str
+    budget_role: str
+    endpoint_calls: int
+
+
+def _expand_canonical_logical_operations() -> tuple[LogicalInputCountOperationSpec, ...]:
+    operations: list[LogicalInputCountOperationSpec] = []
+    logical_operation_index = 0
+    for generation_index, (generation_phase, budget_roles) in enumerate(
+        CANONICAL_TWO_TURN_TOPOLOGY,
+        start=1,
+    ):
+        for budget_role in budget_roles:
+            logical_operation_index += 1
+            operations.append(
+                LogicalInputCountOperationSpec(
+                    logical_operation_index=logical_operation_index,
+                    generation_index=generation_index,
+                    generation_phase=generation_phase,
+                    budget_role=budget_role,
+                    endpoint_calls=len(COUNTER_ENDPOINT_ROLES),
+                )
+            )
+    return tuple(operations)
+
+
+CANONICAL_LOGICAL_OPERATION_SPECS = _expand_canonical_logical_operations()
+CANONICAL_GENERATION_PHASES = tuple(
+    generation_phase for generation_phase, _ in CANONICAL_TWO_TURN_TOPOLOGY
+)
+CANONICAL_PUBLIC_EXECUTION_KINDS = tuple(
+    dict.fromkeys(phase.split("_", 1)[0] for phase in CANONICAL_GENERATION_PHASES)
+)
+CANONICAL_GENERATION_COUNTS_BY_EXECUTION = {
+    execution: sum(
+        phase.startswith(f"{execution}_") for phase in CANONICAL_GENERATION_PHASES
+    )
+    for execution in CANONICAL_PUBLIC_EXECUTION_KINDS
+}
+SEMANTIC_GENERATION_CEILING = len(CANONICAL_GENERATION_PHASES)
+EXPECTED_LOGICAL_OPERATION_COUNT = len(CANONICAL_LOGICAL_OPERATION_SPECS)
+EXPECTED_INPUT_ENDPOINT_CALL_COUNT = sum(
+    spec.endpoint_calls for spec in CANONICAL_LOGICAL_OPERATION_SPECS
+)
+
+
+def _canonical_provider_sequence() -> tuple[tuple[str, int, str | None], ...]:
+    full_role, framing_role = COUNTER_ENDPOINT_ROLES
+    sequence: list[tuple[str, int, str | None]] = []
+    for index, spec in enumerate(CANONICAL_LOGICAL_OPERATION_SPECS):
+        sequence.extend(
+            (
+                ("input_token_count", spec.generation_index, full_role),
+                ("input_token_count", spec.generation_index, framing_role),
+            )
+        )
+        next_spec = CANONICAL_LOGICAL_OPERATION_SPECS[index + 1] if index + 1 < len(
+            CANONICAL_LOGICAL_OPERATION_SPECS
+        ) else None
+        if next_spec is None or next_spec.generation_index != spec.generation_index:
+            sequence.append(("generation", spec.generation_index, None))
+    return tuple(sequence)
+
+
+CANONICAL_PROVIDER_SEQUENCE = _canonical_provider_sequence()
 MINIMUM_EVIDENCE_FILENAMES = (
     "binding.json",
     "transaction-summary.json",
@@ -158,6 +243,8 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
     proxy: _ForwardingProxy | None = None
     ledger: RequestLedger | None = None
     fixture: dict[str, Any] | None = None
+    buffered: dict[str, Any] | None = None
+    streaming: dict[str, Any] | None = None
     snapshots: dict[str, Any] = {}
     summary: dict[str, Any] = {
         "format_version": TRANSACTION_FORMAT_VERSION,
@@ -361,7 +448,10 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             relay_origin=relay_origin,
             prompt=fixture["prompt"],
         )
-        _wait_generation_batch(ledger, expected_count=2)
+        _wait_generation_batch(
+            ledger,
+            expected_count=CANONICAL_GENERATION_COUNTS_BY_EXECUTION["buffered"],
+        )
         snapshots["after_buffered"] = _snapshot_packages(fixture)
 
         summary["phase"] = "streaming_request"
@@ -369,9 +459,30 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             relay_origin=relay_origin,
             prompt=fixture["prompt"],
         )
-        _wait_generation_batch(ledger, expected_count=4)
+        _wait_generation_batch(
+            ledger,
+            expected_count=SEMANTIC_GENERATION_CEILING,
+        )
         snapshots["after_streaming"] = _snapshot_packages(fixture)
 
+        _write_json(
+            evidence_root / "buffered-execution.json",
+            _execution_evidence(
+                kind="buffered",
+                public_request=buffered,
+                ledger=ledger,
+                validation_state=EXECUTION_OBSERVATION_STATE,
+            ),
+        )
+        _write_json(
+            evidence_root / "streaming-execution.json",
+            _execution_evidence(
+                kind="streaming",
+                public_request=streaming,
+                ledger=ledger,
+                validation_state=EXECUTION_OBSERVATION_STATE,
+            ),
+        )
         _validate_successful_ledger(ledger)
         _write_json(evidence_root / "provider-request-ledger.json", ledger.provider_evidence())
         _write_json(evidence_root / "input-count-ledger.json", ledger.input_evidence())
@@ -381,6 +492,7 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
                 kind="buffered",
                 public_request=buffered,
                 ledger=ledger,
+                validation_state=EXECUTION_VALIDATION_STATE,
             ),
         )
         _write_json(
@@ -389,6 +501,7 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
                 kind="streaming",
                 public_request=streaming,
                 ledger=ledger,
+                validation_state=EXECUTION_VALIDATION_STATE,
             ),
         )
         _write_json(
@@ -462,6 +575,26 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
                 _write_json(evidence_root / "provider-request-ledger.json", ledger.provider_evidence())
             if not (evidence_root / "input-count-ledger.json").exists():
                 _write_json(evidence_root / "input-count-ledger.json", ledger.input_evidence())
+            if buffered is not None and not (evidence_root / "buffered-execution.json").exists():
+                _write_json(
+                    evidence_root / "buffered-execution.json",
+                    _execution_evidence(
+                        kind="buffered",
+                        public_request=buffered,
+                        ledger=ledger,
+                        validation_state=EXECUTION_OBSERVATION_STATE,
+                    ),
+                )
+            if streaming is not None and not (evidence_root / "streaming-execution.json").exists():
+                _write_json(
+                    evidence_root / "streaming-execution.json",
+                    _execution_evidence(
+                        kind="streaming",
+                        public_request=streaming,
+                        ledger=ledger,
+                        validation_state=EXECUTION_OBSERVATION_STATE,
+                    ),
+                )
         if fixture is not None and not (evidence_root / "state-continuity-before-after.json").exists():
             _write_json(
                 evidence_root / "state-continuity-before-after.json",
@@ -1489,36 +1622,60 @@ def _wait_generation_batch(ledger: "RequestLedger", *, expected_count: int) -> N
 
 def _validate_successful_ledger(ledger: "RequestLedger") -> None:
     calls = ledger.calls()
-    expected_phases = (
-        "buffered_pass1",
-        "buffered_pass2",
-        "streaming_pass1",
-        "streaming_pass2",
-    )
     generations = ledger.generation_entries()
     if len(generations) != SEMANTIC_GENERATION_CEILING:
         raise RequestLedgerError("installed proof did not produce exactly four ordinary generations")
-    if tuple(entry["phase"] for entry in generations) != expected_phases:
+    if tuple(entry["phase"] for entry in generations) != CANONICAL_GENERATION_PHASES:
         raise RequestLedgerError("ordinary generation phase sequence is not canonical")
     if ledger.rejections():
         raise RequestLedgerError("model-facing proxy rejected a request")
     if ledger.pending_input_operation() is not None:
         raise RequestLedgerError("input-token ledger ended with an unmatched full count")
+    operations = ledger.input_operations()
     inputs = ledger.input_entries()
-    if len(inputs) != 8 or len(ledger.input_operations()) != 4:
+    if len(inputs) != EXPECTED_INPUT_ENDPOINT_CALL_COUNT or len(operations) != EXPECTED_LOGICAL_OPERATION_COUNT:
         raise RequestLedgerError(
-            "exact counter must retain four logical operations and eight endpoint calls"
+            "exact counter must retain six logical operations and twelve endpoint calls"
         )
-    expected_sequence = []
-    for generation in generations:
-        generation_index = int(generation["generation_index"])
-        expected_sequence.extend(
-            [
-                ("input_token_count", generation_index, "full"),
-                ("input_token_count", generation_index, "framing"),
-                ("generation", generation_index, None),
-            ]
+    expected_operation_metadata = tuple(
+        (
+            spec.logical_operation_index,
+            spec.generation_index,
+            spec.generation_phase,
+            spec.budget_role,
+            spec.endpoint_calls,
         )
+        for spec in CANONICAL_LOGICAL_OPERATION_SPECS
+    )
+    observed_operation_metadata = tuple(
+        (
+            operation.get("logical_operation_index"),
+            operation.get("generation_index"),
+            operation.get("generation_phase"),
+            operation.get("budget_role"),
+            operation.get("endpoint_calls"),
+        )
+        for operation in operations
+    )
+    if observed_operation_metadata != expected_operation_metadata:
+        raise RequestLedgerError(
+            "input-token logical operation role/order is not canonical"
+        )
+    calls_by_index = {call["call_index"]: call for call in calls}
+    for operation in operations:
+        full = calls_by_index.get(operation.get("full_call_index"))
+        framing = calls_by_index.get(operation.get("framing_call_index"))
+        if (
+            full is None
+            or framing is None
+            or full.get("framing_role") != COUNTER_ENDPOINT_ROLES[0]
+            or framing.get("framing_role") != COUNTER_ENDPOINT_ROLES[1]
+            or framing.get("call_index") != full.get("call_index", 0) + 1
+        ):
+            raise RequestLedgerError(
+                "exact counter logical operation is not a complete full/framing pair"
+            )
+    expected_sequence = list(CANONICAL_PROVIDER_SEQUENCE)
     observed_sequence = [
         (call["kind"], call.get("generation_index"), call.get("framing_role"))
         for call in calls
@@ -1528,6 +1685,9 @@ def _validate_successful_ledger(ledger: "RequestLedger") -> None:
             "provider request ledger is not full-count/framing/generation ordered"
         )
     for entry in generations:
+        response = entry["response"]
+        if response.get("status") != 200 or not response.get("completed"):
+            raise RequestLedgerError("ordinary generation did not complete successfully")
         controls = entry["controls"]
         if controls.get("cache_prompt") is not False:
             raise RequestLedgerError("generation omitted cache_prompt=false")
@@ -1546,6 +1706,13 @@ def _validate_successful_ledger(ledger: "RequestLedger") -> None:
         elif response_format is not None:
             raise RequestLedgerError("Pass 1 carried structured output")
     for entry in inputs:
+        response = entry["response"]
+        if (
+            response.get("status") != 200
+            or not response.get("completed")
+            or "input_tokens" not in response
+        ):
+            raise RequestLedgerError("exact count did not complete successfully")
         controls = entry["controls"]
         if controls.get("cache_prompt") is not False:
             raise RequestLedgerError("exact count omitted cache_prompt=false")
@@ -1560,6 +1727,7 @@ def _execution_evidence(
     kind: str,
     public_request: Mapping[str, Any],
     ledger: "RequestLedger",
+    validation_state: str,
 ) -> dict[str, Any]:
     prefix = f"{kind}_"
     entries = [
@@ -1570,7 +1738,8 @@ def _execution_evidence(
     return {
         "format_version": 1,
         "execution": kind,
-        "semantic_generation_ceiling": 2,
+        "validation_state": validation_state,
+        "semantic_generation_ceiling": CANONICAL_GENERATION_COUNTS_BY_EXECUTION[kind],
         "semantic_generation_count": len(entries),
         "semantic_retry_count": 0,
         "replay_count": 0,
@@ -1694,24 +1863,47 @@ class RequestLedger:
             if self._pending_full is None:
                 raise RequestLedgerError("framing count arrived without a full count")
             operation = self._pending_full
+            operation_index = operation["logical_operation_index"] - 1
+            if not 0 <= operation_index < len(CANONICAL_LOGICAL_OPERATION_SPECS):
+                raise RequestLedgerError("input-token ledger has an invalid logical operation")
+            spec = CANONICAL_LOGICAL_OPERATION_SPECS[operation_index]
+            self._require_upcoming_generation(spec)
             self._pending_full = None
-            role = "framing"
+            role = COUNTER_ENDPOINT_ROLES[1]
         else:
             if self._pending_full is not None:
                 raise RequestLedgerError("full count arrived before prior framing count")
+            operation_index = len(self._input_operations)
+            if operation_index >= len(CANONICAL_LOGICAL_OPERATION_SPECS):
+                raise RequestLedgerError("input-token ledger has an extra logical operation")
+            spec = CANONICAL_LOGICAL_OPERATION_SPECS[operation_index]
+            self._require_upcoming_generation(spec)
+            call_index = len(self._calls) + 1
             operation = {
-                "logical_operation_index": len(self._input_operations) + 1,
-                "endpoint_calls": 2,
-                "generation_index": len(self.generation_entries()) + 1,
+                "logical_operation_index": spec.logical_operation_index,
+                "upcoming_generation_index": spec.generation_index,
+                "generation_index": spec.generation_index,
+                "generation_phase": spec.generation_phase,
+                "budget_role": spec.budget_role,
+                "endpoint_calls": spec.endpoint_calls,
+                "endpoint_roles": list(COUNTER_ENDPOINT_ROLES),
+                "full_call_index": call_index,
             }
             self._input_operations.append(operation)
             self._pending_full = operation
-            role = "full"
+            role = COUNTER_ENDPOINT_ROLES[0]
+        call_index = len(self._calls) + 1
+        if role == COUNTER_ENDPOINT_ROLES[1]:
+            operation["framing_call_index"] = call_index
         call = {
-            "call_index": len(self._calls) + 1,
+            "call_index": call_index,
             "kind": "input_token_count",
             "logical_operation_index": operation["logical_operation_index"],
             "generation_index": operation["generation_index"],
+            "upcoming_generation_index": operation["upcoming_generation_index"],
+            "generation_phase": operation["generation_phase"],
+            "budget_role": operation["budget_role"],
+            "endpoint_calls": operation["endpoint_calls"],
             "framing_role": role,
             "path": "/v1/chat/completions/input_tokens",
             "body_sha256": f"sha256:{hashlib.sha256(body).hexdigest()}",
@@ -1731,17 +1923,54 @@ class RequestLedger:
         generation_index = len(self.generation_entries()) + 1
         if generation_index > SEMANTIC_GENERATION_CEILING:
             raise RequestLedgerError("semantic generation ceiling exceeded")
-        phase = (
-            "buffered_pass1",
-            "buffered_pass2",
-            "streaming_pass1",
-            "streaming_pass2",
-        )[generation_index - 1]
+        if self._pending_full is not None:
+            raise RequestLedgerError(
+                "generation emitted before the pending full count was framed"
+            )
+        required_operation_count = sum(
+            spec.generation_index <= generation_index
+            for spec in CANONICAL_LOGICAL_OPERATION_SPECS
+        )
+        observed_operation_count = len(self._input_operations)
+        if observed_operation_count != required_operation_count:
+            if observed_operation_count < required_operation_count:
+                raise RequestLedgerError(
+                    "generation emitted before required count topology complete"
+                )
+            raise RequestLedgerError(
+                "input-token ledger has an extra logical operation before generation"
+            )
+        observed_operation_metadata = tuple(
+            (
+                operation.get("logical_operation_index"),
+                operation.get("generation_index"),
+                operation.get("generation_phase"),
+                operation.get("budget_role"),
+                operation.get("endpoint_calls"),
+            )
+            for operation in self._input_operations
+        )
+        expected_operation_metadata = tuple(
+            (
+                spec.logical_operation_index,
+                spec.generation_index,
+                spec.generation_phase,
+                spec.budget_role,
+                spec.endpoint_calls,
+            )
+            for spec in CANONICAL_LOGICAL_OPERATION_SPECS[:observed_operation_count]
+        )
+        if observed_operation_metadata != expected_operation_metadata:
+            raise RequestLedgerError(
+                "input-token logical operation role/order is not canonical"
+            )
+        phase = CANONICAL_GENERATION_PHASES[generation_index - 1]
         call = {
             "call_index": len(self._calls) + 1,
             "kind": "generation",
             "generation_index": generation_index,
             "phase": phase,
+            "generation_phase": phase,
             "path": "/v1/chat/completions",
             "body_sha256": f"sha256:{hashlib.sha256(body).hexdigest()}",
             "body_bytes": len(body),
@@ -1750,6 +1979,17 @@ class RequestLedger:
         }
         self._calls.append(call)
         return call
+
+    def _require_upcoming_generation(
+        self,
+        spec: LogicalInputCountOperationSpec,
+    ) -> None:
+        observed_generation_count = len(self.generation_entries())
+        expected_generation_count = spec.generation_index - 1
+        if observed_generation_count != expected_generation_count:
+            raise RequestLedgerError(
+                "input-token count has the wrong upcoming generation"
+            )
 
     def calls(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -1802,6 +2042,39 @@ class RequestLedger:
         }
 
     def input_evidence(self) -> dict[str, Any]:
+        operations = self.input_operations()
+        input_entries = self.input_entries()
+        calls_by_index = {entry["call_index"]: entry for entry in input_entries}
+
+        def call_evidence(call_index: int | None) -> dict[str, Any] | None:
+            if call_index is None:
+                return None
+            entry = calls_by_index.get(call_index)
+            if entry is None:
+                return None
+            return {
+                "call_index": entry["call_index"],
+                "framing_role": entry["framing_role"],
+                "body_sha256": entry["body_sha256"],
+                "body_bytes": entry["body_bytes"],
+                "controls": entry["controls"],
+                "response": entry["response"],
+            }
+
+        logical_operations = [
+            {
+                "logical_operation_index": operation["logical_operation_index"],
+                "upcoming_generation_index": operation["upcoming_generation_index"],
+                "generation_index": operation["generation_index"],
+                "generation_phase": operation["generation_phase"],
+                "budget_role": operation["budget_role"],
+                "endpoint_calls": operation["endpoint_calls"],
+                "endpoint_roles": operation["endpoint_roles"],
+                "full": call_evidence(operation.get("full_call_index")),
+                "framing": call_evidence(operation.get("framing_call_index")),
+            }
+            for operation in operations
+        ]
         return {
             "format_version": 1,
             "counter_capability": LLAMA_CPP_CHAT_COUNTER_CAPABILITY,
@@ -1814,8 +2087,29 @@ class RequestLedger:
             "counter_method": LLAMA_CPP_RENDERER_METHOD,
             "framing_method": LLAMA_CPP_FRAMING_METHOD,
             "mode": "exact",
-            "logical_count_operations": len(self.input_operations()),
-            "endpoint_calls": len(self.input_entries()),
+            "logical_count_operations": len(operations),
+            "endpoint_calls": len(input_entries),
+            "canonical_topology": [
+                {
+                    "generation_index": generation_index,
+                    "generation_phase": generation_phase,
+                    "budget_roles": list(budget_roles),
+                }
+                for generation_index, (generation_phase, budget_roles) in enumerate(
+                    CANONICAL_TWO_TURN_TOPOLOGY,
+                    start=1,
+                )
+            ],
+            "logical_operations": logical_operations,
+            "logical_operation_generation_mapping": [
+                operation["generation_index"] for operation in operations
+            ],
+            "endpoint_generation_mapping": [
+                entry["generation_index"] for entry in input_entries
+            ],
+            "logical_operation_roles": [
+                operation["budget_role"] for operation in operations
+            ],
             "endpoint_call_classification": [
                 {
                     "call_index": entry["call_index"],
@@ -1825,7 +2119,7 @@ class RequestLedger:
                     "controls": entry["controls"],
                     "response": entry["response"],
                 }
-                for entry in self.input_entries()
+                for entry in input_entries
             ],
             "full_and_framing_are_one_logical_operation": True,
             "product_quality": "not_declared_by_harness",

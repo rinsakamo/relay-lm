@@ -95,39 +95,69 @@ def _generation_response(generation_index: int) -> bytes:
     )
 
 
-def _populate_four_generations(ledger: transaction.RequestLedger) -> None:
-    for generation_index in range(1, 5):
-        full = ledger.begin(
-            path="/v1/chat/completions/input_tokens",
-            body=_input_body(framing=False),
-        )
-        ledger.complete(
-            full,
-            status=200,
-            body=_json_body({"input_tokens": 100 + generation_index}),
-            streaming=False,
-        )
-        framing = ledger.begin(
-            path="/v1/chat/completions/input_tokens",
-            body=_input_body(framing=True),
-        )
-        ledger.complete(
-            framing,
-            status=200,
-            body=_json_body({"input_tokens": 8}),
-            streaming=False,
-        )
-        generation = ledger.begin(
-            path="/v1/chat/completions",
-            body=_generation_body(generation_index),
-        )
-        response = _generation_response(generation_index)
-        ledger.complete(
-            generation,
-            status=200,
-            body=response,
-            streaming=generation_index == 3,
-        )
+def _record_input_count_pair(
+    ledger: transaction.RequestLedger,
+    *,
+    full_count: int,
+) -> None:
+    full = ledger.begin(
+        path="/v1/chat/completions/input_tokens",
+        body=_input_body(framing=False),
+    )
+    ledger.complete(
+        full,
+        status=200,
+        body=_json_body({"input_tokens": full_count}),
+        streaming=False,
+    )
+    framing = ledger.begin(
+        path="/v1/chat/completions/input_tokens",
+        body=_input_body(framing=True),
+    )
+    ledger.complete(
+        framing,
+        status=200,
+        body=_json_body({"input_tokens": 18}),
+        streaming=False,
+    )
+
+
+def _record_generation(
+    ledger: transaction.RequestLedger,
+    *,
+    generation_index: int,
+) -> None:
+    generation = ledger.begin(
+        path="/v1/chat/completions",
+        body=_generation_body(generation_index),
+    )
+    ledger.complete(
+        generation,
+        status=200,
+        body=_generation_response(generation_index),
+        streaming=generation_index == 3,
+    )
+
+
+def _populate_canonical_two_turn_topology(
+    ledger: transaction.RequestLedger,
+    *,
+    full_counts: tuple[int, ...] = (883, 883, 2927, 883, 883, 2927),
+    omit_logical_operation_index: int | None = None,
+) -> None:
+    operation_index = 0
+    for generation_index, (_, budget_roles) in enumerate(
+        transaction.CANONICAL_TWO_TURN_TOPOLOGY,
+        start=1,
+    ):
+        for _ in budget_roles:
+            operation_index += 1
+            if operation_index != omit_logical_operation_index:
+                _record_input_count_pair(
+                    ledger,
+                    full_count=full_counts[operation_index - 1],
+                )
+        _record_generation(ledger, generation_index=generation_index)
 
 
 def _runtime_identity() -> transaction.LlamaCppRuntimeIdentity:
@@ -207,18 +237,31 @@ def test_public_wrapper_is_a_dry_dispatch_boundary(monkeypatch: pytest.MonkeyPat
     assert observed == [[]]
 
 
-def test_request_ledger_proves_four_two_passes_and_exact_counter_framing() -> None:
+def test_request_ledger_proves_canonical_two_turn_topology_and_exact_counter_framing() -> None:
     ledger = transaction.RequestLedger(expected_model=MODEL)
-    _populate_four_generations(ledger)
+    _populate_canonical_two_turn_topology(ledger)
 
     transaction._validate_successful_ledger(ledger)
     evidence = ledger.input_evidence()
     provider = ledger.provider_evidence()
 
     assert len(ledger.generation_entries()) == 4
-    assert len(ledger.input_operations()) == 4
-    assert len(ledger.input_entries()) == 8
-    assert [entry["generation_index"] for entry in ledger.input_entries()] == [1, 1, 2, 2, 3, 3, 4, 4]
+    assert len(ledger.input_operations()) == 6
+    assert len(ledger.input_entries()) == 12
+    assert [entry["generation_index"] for entry in ledger.input_entries()] == [
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+    ]
     assert [entry["framing_role"] for entry in ledger.input_entries()] == [
         "full",
         "framing",
@@ -228,7 +271,102 @@ def test_request_ledger_proves_four_two_passes_and_exact_counter_framing() -> No
         "framing",
         "full",
         "framing",
+        "full",
+        "framing",
+        "full",
+        "framing",
     ]
+    assert [
+        operation["generation_index"] for operation in ledger.input_operations()
+    ] == [1, 1, 2, 3, 3, 4]
+    assert [
+        operation["generation_phase"] for operation in ledger.input_operations()
+    ] == [
+        "buffered_pass1",
+        "buffered_pass1",
+        "buffered_pass2",
+        "streaming_pass1",
+        "streaming_pass1",
+        "streaming_pass2",
+    ]
+    assert [
+        operation["budget_role"] for operation in ledger.input_operations()
+    ] == [
+        "protected_floor",
+        "selected_plan",
+        "extraction",
+        "protected_floor",
+        "selected_plan",
+        "extraction",
+    ]
+    assert all(
+        operation["endpoint_calls"] == len(transaction.COUNTER_ENDPOINT_ROLES)
+        and operation["endpoint_roles"] == ["full", "framing"]
+        and operation["framing_call_index"] == operation["full_call_index"] + 1
+        for operation in ledger.input_operations()
+    )
+    assert [
+        operation["budget_role"] for operation in evidence["logical_operations"]
+    ] == [
+        "protected_floor",
+        "selected_plan",
+        "extraction",
+        "protected_floor",
+        "selected_plan",
+        "extraction",
+    ]
+    assert [entry["phase"] for entry in ledger.generation_entries()] == [
+        "buffered_pass1",
+        "buffered_pass2",
+        "streaming_pass1",
+        "streaming_pass2",
+    ]
+    assert [entry["controls"]["stream"] for entry in ledger.generation_entries()] == [
+        False,
+        False,
+        True,
+        False,
+    ]
+    assert all(
+        entry["controls"]["cache_prompt"] is False
+        and entry["controls"]["reasoning_effort"] == "none"
+        for entry in ledger.generation_entries()
+    )
+    assert all(
+        entry["controls"]["cache_prompt"] is False
+        and entry["controls"]["reasoning_effort"] == "none"
+        for entry in ledger.input_entries()
+    )
+    assert evidence["logical_operation_generation_mapping"] == [1, 1, 2, 3, 3, 4]
+    assert evidence["endpoint_generation_mapping"] == [
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+    ]
+    assert [
+        operation["full"]["framing_role"] for operation in evidence["logical_operations"]
+    ] == ["full"] * 6
+    assert [
+        operation["framing"]["framing_role"]
+        for operation in evidence["logical_operations"]
+    ] == ["framing"] * 6
+    assert [
+        operation["full"]["response"]["input_tokens"]
+        for operation in evidence["logical_operations"]
+    ] == [883, 883, 2927, 883, 883, 2927]
+    assert [
+        operation["framing"]["response"]["input_tokens"]
+        for operation in evidence["logical_operations"]
+    ] == [18] * 6
     assert evidence["counter_evidence_identity"] == {
         "capability": LLAMA_CPP_CHAT_COUNTER_CAPABILITY,
         "implementation": LLAMA_CPP_CHAT_COUNTER_IMPLEMENTATION,
@@ -239,6 +377,127 @@ def test_request_ledger_proves_four_two_passes_and_exact_counter_framing() -> No
     assert provider["semantic_retry_count"] == 0
     assert provider["replay_count"] == 0
     assert provider["reseed_count"] == 0
+
+
+def test_former_four_generation_eight_endpoint_shape_is_rejected() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    ledger._input_operations = [
+        {
+            "logical_operation_index": index,
+            "generation_index": index,
+            "generation_phase": transaction.CANONICAL_GENERATION_PHASES[index - 1],
+            "budget_role": "selected_plan",
+            "endpoint_calls": len(transaction.COUNTER_ENDPOINT_ROLES),
+        }
+        for index in range(1, 5)
+    ]
+    ledger._calls = [
+        {
+            "call_index": call_index,
+            "kind": kind,
+            "generation_index": generation_index,
+            "phase": (
+                transaction.CANONICAL_GENERATION_PHASES[generation_index - 1]
+                if kind == "generation"
+                else None
+            ),
+            "framing_role": framing_role,
+        }
+        for generation_index in range(1, 5)
+        for call_index, (kind, framing_role) in enumerate(
+            (
+                ("input_token_count", "full"),
+                ("input_token_count", "framing"),
+                ("generation", None),
+            ),
+            start=(generation_index - 1) * 3 + 1,
+        )
+    ]
+
+    with pytest.raises(
+        transaction.RequestLedgerError,
+        match="six logical operations and twelve endpoint calls",
+    ):
+        transaction._validate_successful_ledger(ledger)
+
+
+def test_logical_role_and_pair_mutations_fail_closed() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _populate_canonical_two_turn_topology(ledger)
+
+    ledger._input_operations[1]["budget_role"] = "extraction"
+    with pytest.raises(transaction.RequestLedgerError, match="role/order"):
+        transaction._validate_successful_ledger(ledger)
+
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _populate_canonical_two_turn_topology(ledger)
+    ledger._input_operations[0]["framing_call_index"] = ledger._input_operations[1][
+        "full_call_index"
+    ]
+    with pytest.raises(transaction.RequestLedgerError, match="full/framing pair"):
+        transaction._validate_successful_ledger(ledger)
+
+
+def test_topology_validation_does_not_use_counter_values_as_an_oracle() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _populate_canonical_two_turn_topology(
+        ledger,
+        full_counts=(1, 2, 3, 4, 5, 6),
+    )
+
+    transaction._validate_successful_ledger(ledger)
+
+
+@pytest.mark.parametrize("missing_operation_index", (1, 2, 3))
+def test_missing_canonical_count_operation_fails_closed(
+    missing_operation_index: int,
+) -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+
+    with pytest.raises(transaction.RequestLedgerError):
+        _populate_canonical_two_turn_topology(
+            ledger,
+            omit_logical_operation_index=missing_operation_index,
+        )
+
+
+def test_extra_pass1_count_fails_before_generation() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_input_count_pair(ledger, full_count=883)
+
+    with pytest.raises(transaction.RequestLedgerError, match="upcoming generation"):
+        _record_input_count_pair(ledger, full_count=2927)
+
+
+def test_extra_pass2_count_fails_closed_after_canonical_completion() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _populate_canonical_two_turn_topology(ledger)
+
+    with pytest.raises(transaction.RequestLedgerError, match="extra logical operation"):
+        _record_input_count_pair(ledger, full_count=2927)
+
+
+def test_generation_before_required_count_topology_fails_closed() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _record_input_count_pair(ledger, full_count=883)
+
+    with pytest.raises(
+        transaction.RequestLedgerError,
+        match="before required count topology complete",
+    ):
+        _record_generation(ledger, generation_index=1)
+
+
+def test_count_sequence_on_wrong_upcoming_generation_fails_closed() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_generation(ledger, generation_index=1)
+    _record_input_count_pair(ledger, full_count=2927)
+
+    with pytest.raises(transaction.RequestLedgerError, match="upcoming generation"):
+        _record_input_count_pair(ledger, full_count=883)
 
 
 def test_request_ledger_enforces_wire_controls_and_ceiling() -> None:
@@ -255,17 +514,7 @@ def test_request_ledger_enforces_wire_controls_and_ceiling() -> None:
             body=_json_body({"model": "wrong", "messages": [{"role": "user", "content": "x"}]}),
         )
 
-    for generation_index in range(1, 5):
-        entry = ledger.begin(
-            path="/v1/chat/completions",
-            body=_generation_body(generation_index),
-        )
-        ledger.complete(
-            entry,
-            status=200,
-            body=_generation_response(generation_index),
-            streaming=generation_index == 3,
-        )
+    _populate_canonical_two_turn_topology(ledger)
     with pytest.raises(transaction.RequestLedgerError, match="ceiling"):
         ledger.begin(
             path="/v1/chat/completions",
@@ -275,12 +524,23 @@ def test_request_ledger_enforces_wire_controls_and_ceiling() -> None:
 
 def test_stream_response_evidence_keeps_full_response_hash() -> None:
     ledger = transaction.RequestLedger(expected_model=MODEL)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_generation(ledger, generation_index=1)
+    _record_input_count_pair(ledger, full_count=2927)
+    _record_generation(ledger, generation_index=2)
+    _record_input_count_pair(ledger, full_count=883)
+    _record_input_count_pair(ledger, full_count=883)
     body = _generation_body(3)
     entry = ledger.begin(path="/v1/chat/completions", body=body)
     response = _generation_response(3)
     ledger.complete(entry, status=200, body=response, streaming=True)
 
-    observed = ledger.generation_entries()[0]["response"]
+    observed = next(
+        entry["response"]
+        for entry in ledger.generation_entries()
+        if entry["generation_index"] == 3
+    )
     assert observed["body_sha256"] == f"sha256:{hashlib.sha256(response).hexdigest()}"
     assert observed["body_truncated_for_parser"] is False
 
@@ -587,3 +847,27 @@ def test_minimum_evidence_contract_and_review_boundary_are_explicit() -> None:
     )
     assert transaction.PHYSICAL_EVIDENCE_DISPOSITION == "EVIDENCE_RECORDED"
     assert transaction.PHYSICAL_INVALID_DISPOSITION == "PHYSICAL_INVALID"
+
+
+def test_execution_evidence_distinguishes_observation_from_success_validation() -> None:
+    ledger = transaction.RequestLedger(expected_model=MODEL)
+    _populate_canonical_two_turn_topology(ledger)
+    public_response = {"kind": "buffered", "response_first": True}
+
+    observed = transaction._execution_evidence(
+        kind="buffered",
+        public_request=public_response,
+        ledger=ledger,
+        validation_state=transaction.EXECUTION_OBSERVATION_STATE,
+    )
+    validated = transaction._execution_evidence(
+        kind="buffered",
+        public_request=public_response,
+        ledger=ledger,
+        validation_state=transaction.EXECUTION_VALIDATION_STATE,
+    )
+
+    assert observed["validation_state"] == "observed_unvalidated"
+    assert validated["validation_state"] == "validated_success"
+    assert observed["product_quality"] == "not_declared_by_harness"
+    assert validated["product_quality"] == "not_declared_by_harness"
