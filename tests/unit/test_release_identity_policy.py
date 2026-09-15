@@ -21,8 +21,9 @@ from tools.release_identity import (
 def test_current_source_version_is_in_the_frozen_rel2_grammar() -> None:
     parsed = parse_release_version(__version__)
 
-    assert parsed.kind == "dev"
-    assert expected_release_tag(parsed) is None
+    assert parsed.kind == "rc"
+    assert parsed.serial == 1
+    assert expected_release_tag(parsed) == "v1.0.0rc1"
 
 
 @pytest.mark.parametrize(
