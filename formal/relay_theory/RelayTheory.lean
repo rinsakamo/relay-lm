@@ -65,6 +65,7 @@ import RelayTheory.ReachableDynamicsSupportIdentifiability
 import RelayTheory.RelationalReachableDynamicsEquivalence
 import RelayTheory.RootReconstruction
 import RelayTheory.SuccessorReflectionReconstruction
+import RelayTheory.RightFunctionalityReconstruction
 import RelayTheory.StochasticQuotientDynamics
 import RelayTheory.MonoidalQuotientDynamics
 import RelayTheory.MonoidalQuotientNegative
