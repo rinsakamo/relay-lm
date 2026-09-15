@@ -86,6 +86,22 @@ its full request and empty-content framing endpoint calls, full counts, framing
 counts, body hashes, and counter identity. The two endpoint calls are one
 logical count operation, not duplicate scientific work.
 
+For the current no-degradation configuration (`steps=[]`), the installed
+harness requires this canonical order:
+
+```text
+buffered Pass 1: protected_floor, selected_plan -> generation 1
+buffered Pass 2: extraction -> generation 2
+streaming Pass 1: protected_floor, selected_plan -> generation 3
+streaming Pass 2: extraction -> generation 4
+```
+
+The resulting ledger has six logical operations and twelve endpoint calls. Each
+operation records its logical index, upcoming generation, generation phase,
+budget role, and sanitized full/framing call evidence. The two Pass 1 roles are
+distinct safety responsibilities and are both retained; any future physical
+request optimization belongs to the measured performance owner.
+
 The canonical current Stage-R neutral fixture and scenario machinery are copied
 into the evidence root. Source fixtures, State, MEMORY, Continuity, prompts,
 parsers, validators, and existing `v1:stage-r` and `v1:crystallization` targets
@@ -105,6 +121,12 @@ input-count-ledger.json       buffered-execution.json
 streaming-execution.json      state-continuity-before-after.json
 cleanup.json
 ```
+
+Bounded public responses are written to the buffered/streaming execution
+artifacts with `validation_state: observed_unvalidated` before strict ledger
+validation, then rewritten with `validation_state: validated_success` only on
+the successful path. A failed transaction remains `PHYSICAL_INVALID` and its
+observed artifacts are never promoted to successful evidence.
 
 Every retained file has a SHA-256 receipt in the terminal summary. The
 transaction emits `EVIDENCE_RECORDED` only when the bounded successful path and
