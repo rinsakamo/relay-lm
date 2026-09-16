@@ -30,7 +30,7 @@ X.Y.Z        final release
 
 Other PEP 440 forms are not RelayLM release identities for this product line. In particular, alpha/beta, post, local, epoch, hyphenated `-rc`, and non-canonical leading-zero spellings are rejected by the release-identity gate.
 
-Development versions are not public release identities and receive no release tag. A candidate starts at `rc1` and advances monotonically by choosing a new source version (`rc2`, `rc3`, ...); an existing candidate identity is never rewritten.
+Development versions are not public release identities and receive no release tag. A candidate starts at `rc1` and advances monotonically by choosing a new source version (`rc2`, `rc3`, ...); an existing candidate identity is never rewritten. Monotonic advancement applies when the **product/release candidate identity changes**. Movement of the repository for qualification-only tooling does not, by itself, create a new candidate identity.
 
 Transitioning from the final accepted RC to `X.Y.Z` is a new source commit because the package metadata changes. The final artifact must therefore be rebuilt and pass its own exact-candidate gate rather than being a renamed RC artifact.
 
@@ -74,6 +74,49 @@ sdist filename + SHA-256
 
 The manifest itself does not make an artifact release-ready. REL3 owns the exact candidate-artifact mechanical gate and #1449 owns the final cross-work-package release decision.
 
+## Accepted candidate validity versus qualification infrastructure
+
+An accepted candidate is an immutable **product artifact identity**, not a claim that its source commit must remain the tip of `v1` for every later release-evidence operation.
+
+After REL3 accepts a candidate, later repository work is classified into two different identity domains:
+
+```text
+product candidate identity
+  package version
+  candidate source commit
+  wheel/sdist bytes and SHA-256
+  packaged runtime/config/defaults/product semantics
+  applicable Core qualification fingerprint
+
+qualification infrastructure identity
+  harness/controller/carriage revision
+  benchmark adapter revision
+  benchmark/dataset revision
+  comparator/deployment revision
+  evidence-collection tooling revision
+  live runtime/hardware identity
+```
+
+A later **qualification-only** repository change does not invalidate the accepted candidate merely because protected `v1` advances. The external qualification must instead bind both identities exactly:
+
+1. the RelayLM participant executes the already-accepted wheel/sdist bytes identified by the REL2/REL3 release manifest;
+2. the qualification harness/controller/adapter use their own exact current revisions and are recorded independently;
+3. current repository authority checks performed by qualification tooling refer to the qualification-infrastructure checkout, not to the candidate source commit;
+4. no moving source checkout, local rebuild, or replacement artifact may impersonate the accepted candidate.
+
+Before reusing an accepted candidate after repository movement, the release/integration owner must review every intervening change and classify it as qualification-only. A change is **not** qualification-only if it changes release-governing product identity, including any of the following:
+
+- accepted wheel/sdist bytes or package version;
+- packaged RelayLM runtime code or packaged product data;
+- release runtime configuration/defaults that define the shipped product;
+- prompts, State/MEMORY/Continuity, Cognitive Budget, provider/runtime semantics, Profile/Cognitive Package semantics, or another Core-owned product behavior;
+- the applicable Core qualification fingerprint;
+- any other owner-authorized release condition that makes the accepted artifact no longer representative of the intended product.
+
+If an intervening change mixes qualification infrastructure with any release-governing product change, fail closed: the old candidate remains historical and a new candidate version must be cut and pass REL3. Do not use path names alone as proof that a change is qualification-only; review its actual release effect.
+
+This rule does not permit same-version rebuilds. Reusing an accepted candidate means executing the **same accepted bytes** under a newer, separately identified qualification infrastructure revision.
+
 ## Same-version overwrite and reissue prohibition
 
 One canonical package version identifies one immutable accepted release identity. Once a version/tag has been accepted or published:
@@ -110,6 +153,6 @@ Checksums, tag/commit provenance, and overwrite prohibition are required regardl
 
 ## REL2 completion boundary
 
-REL2 is mechanically complete when the single version source, canonical dev/RC/final grammar, tag mapping, immutable tag/version rule, commit/checksum manifest shape, and packaging-only patch-fix rule are green on fresh v1 authority.
+REL2 is mechanically complete when the single version source, canonical dev/RC/final grammar, tag mapping, immutable tag/version rule, commit/checksum manifest shape, candidate-versus-qualification identity boundary, and packaging-only patch-fix rule are green on fresh v1 authority.
 
 Creating an RC tag is not part of REL2 implementation. Tag creation occurs only after REL3 has validated the exact candidate artifact and the applicable upstream release gates permit an RC transaction.
