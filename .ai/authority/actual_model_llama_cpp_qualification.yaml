@@ -8,13 +8,15 @@ summary: >-
   handoff into the repository-owned WSL/LocalCodex wrapper, transaction-owned
   llama-server log allocation directly inside the writable artifact root,
   OpenAI-compatible reasoning_effort=none Thinking-OFF realization, exact
-  serialized-input counting parity, and a one-command transaction that owns one
-  fresh single-slot llama-server process lifetime, one per-launch log, bounded
-  600-second request waits, exactly one citable host invocation at most, an
-  explicit host-module to declared-summary result contract, deterministic
-  teardown, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID
-  classification without changing frozen Core semantics or production backend
-  routing identity.
+  serialized-input counting parity, an installed-product cache-on laboratory
+  transport that preserves product-side cache-off authority while proving an
+  exact generation-only cache_prompt false-to-true delta, and a one-command
+  transaction that owns one fresh single-slot llama-server process lifetime,
+  one per-launch log, bounded 600-second request waits, exactly one citable host
+  invocation at most, an explicit host-module to declared-summary result
+  contract, deterministic teardown, reproducibility evidence, and
+  PASS/SEMANTIC_FAIL/INFRA_INVALID classification without changing frozen Core
+  semantics or production backend routing identity.
 canonical_surfaces:
 - docs/reference/actual-model-llama-cpp-qualification.md
 - docs/reference/actual-model-llama-cpp-controller-preflight.md
@@ -28,6 +30,7 @@ implementation:
 - tools/v1_stage_r_llama_cpp_wsl.py
 - tools/v1_installed_llama_cpp_wsl.py
 - tools/v1_installed_llama_cpp_transaction.py
+- tools/v1_installed_llama_cpp_cache_on_experiment.py
 - src/relaylm/actual_model_llama_cpp_thinking.py
 - src/relaylm/actual_model_stage_r_llama_cpp.py
 - src/relaylm/actual_model_stage_r_llama_cpp_transaction.py
@@ -38,6 +41,7 @@ tests:
 - tests/unit/test_v1_llama_cpp_controller_preflight.py
 - tests/unit/test_v1_stage_r_llama_cpp_wsl.py
 - tests/unit/test_v1_installed_llama_cpp_transaction.py
+- tests/unit/test_v1_installed_llama_cpp_cache_on_experiment.py
 - tests/unit/test_actual_model_llama_cpp_thinking.py
 - tests/unit/test_actual_model_stage_r_llama_cpp.py
 - tests/unit/test_actual_model_stage_r_llama_cpp_transaction.py

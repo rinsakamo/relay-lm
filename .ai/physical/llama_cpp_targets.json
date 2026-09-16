@@ -26,6 +26,15 @@
         "httpx"
       ]
     },
+    "v1:installed-llama-cpp-cache-on-experiment": {
+      "branch": "v1",
+      "module": "tools.v1_installed_llama_cpp_cache_on_experiment",
+      "description": "Evaluation-only installed-artifact cache_prompt=true generation treatment; product remains cache-off.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
+    },
     "v1:crystallization": {
       "branch": "v1",
       "module": "tools.v1_crystallization_llama_cpp_wsl",
