@@ -2,7 +2,7 @@
 
 <!-- generated-by: relaylm-architecture-projection -->
 <!-- projection-schema-version: 1 -->
-<!-- source-commit: ec23fe7955abff36517e41afa193d6dcdb24270e -->
+<!-- source-commit: a0476cc49de23d77f38f89a6a9fe5d22c7ed8717 -->
 <!-- package-version: 1.0.0rc1 -->
 
 This document is a generated projection of RelayLM `v1` repository authority.
@@ -33,7 +33,7 @@ Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualif
 
 ### actual_model_llama_cpp_qualification
 
-Evaluation-only llama.cpp/llama-server physical qualification carriage for current RelayLM 1.0 actual-model Stage R, including a restartable pre-wrapper repo-external Python/runtime/import-closure controller gate, same-interpreter handoff into the repository-owned WSL/LocalCodex wrapper, transaction-owned llama-server log allocation directly inside the writable artifact root, OpenAI-compatible reasoning_effort=none Thinking-OFF realization, exact serialized-input counting parity, and a one-command transaction that owns one fresh single-slot llama-server process lifetime, one per-launch log, bounded 600-second request waits, exactly one citable host invocation at most, an explicit host-module to declared-summary result contract, deterministic teardown, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID classification without changing frozen Core semantics or production backend routing identity.
+Evaluation-only llama.cpp/llama-server physical qualification carriage for current RelayLM 1.0 actual-model Stage R, including a restartable pre-wrapper repo-external Python/runtime/import-closure controller gate, same-interpreter handoff into the repository-owned WSL/LocalCodex wrapper, transaction-owned llama-server log allocation directly inside the writable artifact root, OpenAI-compatible reasoning_effort=none Thinking-OFF realization, exact serialized-input counting parity, an installed-product cache-on laboratory transport that preserves product-side cache-off authority while proving an exact generation-only cache_prompt false-to-true delta, and a one-command transaction that owns one fresh single-slot llama-server process lifetime, one per-launch log, bounded 600-second request waits, exactly one citable host invocation at most, an explicit host-module to declared-summary result contract, deterministic teardown, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID classification without changing frozen Core semantics or production backend routing identity.
 
 - owning Issue: #2603
 - canonical authority: `docs/reference/actual-model-llama-cpp-controller-preflight.md`, `docs/reference/actual-model-llama-cpp-host-result-contract.md`, `docs/reference/actual-model-llama-cpp-qualification.md`, `docs/reference/actual-model-llama-cpp-transaction-log.md`, `docs/reference/installed-llama-cpp-physical-carriage.md`
