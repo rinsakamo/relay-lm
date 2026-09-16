@@ -117,6 +117,24 @@ def test_candidate_workflow_uses_current_profile_and_starter_operator_path() -> 
     assert "character:\n            directory:" not in workflow
 
 
+def test_candidate_workflow_bootstraps_and_binds_frozen_projection_input() -> None:
+    workflow = Path(".github/workflows/v1-release-candidate.yml").read_text(encoding="utf-8")
+
+    tooling = 'python -m pip install "PyYAML>=6.0.2" build'
+    assert tooling in workflow
+    assert workflow.index(tooling) < workflow.index("python -m tools.repository_authority validate")
+    assert "pip install -e" not in workflow
+
+    assert "PROJECTION_SOURCE_COMMIT" in workflow
+    assert "PROJECTION_PACKAGE_VERSION" in workflow
+    assert 'git fetch --no-tags origin "$PROJECTION_SOURCE_COMMIT"' in workflow
+    assert "':(exclude)ARCHITECTURE.md'" in workflow
+    assert 'test "$PROJECTION_PACKAGE_VERSION" = "$RELAYLM_PACKAGE_VERSION"' in workflow
+    assert 'repository_docs --commit "$PROJECTION_SOURCE_COMMIT" check' in workflow
+    assert 'repository_docs --commit "$CANDIDATE_COMMIT" check' not in workflow
+    assert "candidate/projection-source-commit.txt" in workflow
+
+
 def _metadata(version: str) -> bytes:
     return (
         "Metadata-Version: 2.4\n"

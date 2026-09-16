@@ -43,6 +43,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install release gate tooling
+        run: python -m pip install "PyYAML>=6.0.2" build
+
       - name: Resolve releasable source identity
         env:
           CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
@@ -53,14 +56,24 @@ jobs:
           echo "RELAYLM_PACKAGE_VERSION=$RELAYLM_PACKAGE_VERSION" >> "$GITHUB_ENV"
           echo "CANDIDATE_COMMIT=$CANDIDATE_COMMIT" >> "$GITHUB_ENV"
 
-      - name: Verify persistent documentation projection for the frozen candidate
+      - name: Verify persistent documentation projection for the frozen release input
         run: |
+          test "$(grep -Ec '^<!-- source-commit: [0-9a-f]{40} -->$' ARCHITECTURE.md)" -eq 1
+          test "$(grep -Ec '^<!-- package-version: .+ -->$' ARCHITECTURE.md)" -eq 1
+          PROJECTION_SOURCE_COMMIT="$(sed -n 's/^<!-- source-commit: \([0-9a-f]\{40\}\) -->$/\1/p' ARCHITECTURE.md)"
+          PROJECTION_PACKAGE_VERSION="$(sed -n 's/^<!-- package-version: \(.*\) -->$/\1/p' ARCHITECTURE.md)"
+          test -n "$PROJECTION_SOURCE_COMMIT"
+          test "$PROJECTION_SOURCE_COMMIT" != "$CANDIDATE_COMMIT"
+          test "$PROJECTION_PACKAGE_VERSION" = "$RELAYLM_PACKAGE_VERSION"
+          if ! git cat-file -e "$PROJECTION_SOURCE_COMMIT^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$PROJECTION_SOURCE_COMMIT"
+          fi
+          git cat-file -e "$PROJECTION_SOURCE_COMMIT^{commit}"
+          test -z "$(git diff --name-only "$PROJECTION_SOURCE_COMMIT" "$CANDIDATE_COMMIT" -- . ':(exclude)ARCHITECTURE.md')"
           python -m tools.repository_authority validate
           python -m tools.repository_projection validate
-          python -m tools.repository_docs --commit "$CANDIDATE_COMMIT" check
-
-      - name: Install build frontend
-        run: python -m pip install build
+          python -m tools.repository_docs --commit "$PROJECTION_SOURCE_COMMIT" check
+          echo "PROJECTION_SOURCE_COMMIT=$PROJECTION_SOURCE_COMMIT" >> "$GITHUB_ENV"
 
       - name: Build exact candidate and reproducibility comparison
         run: |
@@ -89,6 +102,7 @@ jobs:
             --commit "$CANDIDATE_COMMIT" \
             --manifest candidate/release-identity.json \
             --artifacts candidate
+          printf '%s\n' "$PROJECTION_SOURCE_COMMIT" > candidate/projection-source-commit.txt
           {
             python --version
             python -m pip --version
