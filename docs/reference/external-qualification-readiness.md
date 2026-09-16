@@ -102,12 +102,32 @@ engine: llama.cpp
 resource: llama-cpp:local-gpu
 ```
 
+The existing target above remains admission-only.  The bounded carriage target
+is separate so that adding a controller cannot silently change the meaning of
+the historical admission receipt:
+
+```text
+target: v1:external-qualification-campaign
+module: tools.v1_external_qualification_llama_cpp_campaign
+engine: llama.cpp
+resource: llama-cpp:local-gpu
+```
+
 The operator-facing admission command is:
 
 ```bash
 python -m tools.relay_physical_run \
   --target v1:external-qualification -- \
   --plan /absolute/path/to/execution-freeze.json
+```
+
+After that admission-only receipt, the bounded carriage shape can be checked
+through the same registered queue target:
+
+```bash
+python -m tools.relay_physical_run \
+  --target v1:external-qualification-campaign -- \
+  --plan /absolute/path/to/campaign-descriptor.json
 ```
 
 This target is intentionally an **admission gate, not a benchmark executor**. The common physical runner first proves the exact checkout, fresh protected-branch ancestry, persistent Python identity, module origin, and shared-resource queue ownership. The target then requires the plan to validate as `EXECUTION_FROZEN` and requires its physical carriage to be exactly:
@@ -123,11 +143,28 @@ A successful admission emits a bounded receipt containing the readiness fingerpr
 
 That receipt is not #1449 result evidence and authorizes no generation by itself. The future exact-RC scientific owner must consume fresh authority, the frozen plan, and its own bounded execution ceiling before invoking any A/C/D participant or judge. The gate deliberately does not accept an arbitrary executable or participant command.
 
+`v1:external-qualification-campaign` is the only repository-owned full-campaign
+carriage boundary.  Its JSON descriptor is declarative: it contains the exact
+execution-freeze plan, fixed llama.cpp launch inputs, dependency-complete
+zero-semantic Hindsight health identity, two or more frozen axes, and ordered
+questions.  It has no executable, shell fragment, or arbitrary child field.  The
+target's command-line mode only validates this shape and emits a zero-semantic
+receipt.  A scientific owner that elects to spend must bind the module's typed
+live-launch session, Hindsight health probe, current-authority reader, and
+explicit A/C/D participant hooks in Python.  The controller then constructs the
+`FrozenExperimentIdentity` from the fresh live attestation, opens one
+`DurableQuestionRun` per axis, resumes only with the exact frozen identity and
+question order, and invokes owned cleanup in a `finally` boundary.  The Hindsight
+health record must mark startup LLM connection verification as skipped under the
+zero-semantic policy; no Hindsight semantic operation is authorized by this
+carriage.
+
 The responsibility split remains:
 
 ```text
 shared physical runner / queue = HOW / admission
 benchmark adapters + launch plan = WHAT
+campaign controller = bounded lease-held durability and typed execution boundary
 future exact-RC benchmark owner = THIS RUN / generation spend
 ```
 
@@ -145,10 +182,16 @@ This preparation does not:
 - freeze a comparator or benchmark version before execution-time verification;
 - broaden the pre-1.0 benchmark into the full #1924 research matrix;
 - provide an arbitrary-command escape hatch through the shared physical runner;
+- change the admission-only meaning of `v1:external-qualification`;
+- invoke Hindsight retain/recall/reflect, an answer model, a benchmark question,
+  or a judge from the zero-semantic carriage validation path;
 - touch `main`, `v2`, or the user's primary dirty checkout.
 
 ## Acceptance direction
 
 Before the actual #1449 run starts, one plan must reach `EXECUTION_FROZEN` with two distinct axes, current exact benchmark/dataset/adapter identities, one preselected serious comparator, one exact #1447 RC, registered physical carriage, no-semantic-retry policy, and exact-infrastructure-resume policy.
 
-That frozen plan must then pass `v1:external-qualification` admission under fresh shared-runner authority. Passing readiness or physical admission authorizes no generation by itself.
+That frozen plan must then pass `v1:external-qualification` admission under fresh shared-runner authority and the bounded campaign descriptor must pass the
+zero-semantic carriage validator.  Passing either readiness, admission, or
+carriage validation authorizes no generation by itself; live launch/GPU/context/
+capacity attestation and typed participant binding remain execution-time gates.

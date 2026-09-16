@@ -49,6 +49,14 @@
       "description": "Zero-generation exact-RC external qualification execution-freeze gate for the future #1449 scientific owner.",
       "required_distributions": []
     },
+    "v1:external-qualification-campaign": {
+      "branch": "v1",
+      "module": "tools.v1_external_qualification_llama_cpp_campaign",
+      "description": "Bounded full-campaign external qualification carriage with typed live, durable, and A/C/D execution hooks.",
+      "required_distributions": [
+        "httpx"
+      ]
+    },
     "v1:continuity-only": {
       "branch": "v1",
       "module": "tools.v1_stage_r_llama_cpp_production_continuity_only_wsl",
