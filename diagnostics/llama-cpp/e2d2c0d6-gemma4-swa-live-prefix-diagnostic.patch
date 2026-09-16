@@ -1,0 +1,38 @@
+From: RelayLM #2947 diagnostic analysis
+Subject: [DIAGNOSTIC ONLY] server: keep live SWA prefix when full required window is resident
+
+Target: ggml-org/llama.cpp @ e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d
+
+This is intentionally narrow. It is not proposed as a production/upstream fix yet.
+It only skips checkpoint restore when:
+  * there are new prompt tokens to process,
+  * the model has SWA,
+  * the required SWA-history threshold clamps to position 0, and
+  * the live SWA cache still starts at position 0.
+
+That is the exact state observed in RelayLM #2947 g2/g3/g4. The purpose is to
+discriminate unnecessary checkpoint rollback from residual cache/batch numerical
+non-equivalence.
+
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -3330,7 +3330,17 @@ struct server_context_impl {
+                                     SLT_WRN(slot, "%s\\n", st1.str().c_str());
+                                 }
+ 
+-                                if (pos_min >= pos_min_thold) {
++                                // Diagnostic: if the prompt still has new tokens and the complete
++                                // SWA history required by the next token is already resident in the
++                                // live cache, do not roll back to an older context checkpoint.
++                                //
++                                // In #2947: n_past=865, n_swa=1024, pos_min_thold=0,
++                                // pos_min=0. The unmodified server restores [0,366] and drops
++                                // n_past to 366 even though the live SWA prefix is complete.
++                                const bool live_swa_prefix_complete =
++                                    has_new_tokens && n_swa > 0 && pos_min_thold == 0 && pos_min == 0;
++
++                                if (!live_swa_prefix_complete && pos_min >= pos_min_thold) {
+                                     // search for a context checkpoint
+                                     const auto it = std::find_if(
+                                         slot.prompt.checkpoints.rbegin(),
