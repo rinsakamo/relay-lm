@@ -17,7 +17,31 @@ A candidate run fails closed unless:
 - the package version is an REL2 `rc` or final version rather than a development version;
 - a fresh tag fetch shows the REL2 expected `v<version>` tag is not already present.
 
-Therefore the current `1.0.0.dev0` development line cannot accidentally pass as a release candidate. Promoting the package source to `1.0.0rc1` is a separate future release transaction and must not happen until the applicable #1388/#1446/#1449 upstream gates permit an actual RC.
+Development identities cannot accidentally pass as release candidates. The source line may be advanced to an authorized RC identity such as `1.0.0rc1`, but the version string alone does not establish candidate acceptance: the exact current `v1` commit must still pass every REL3 artifact and provenance gate below.
+
+## Persistent projection boundary
+
+`ARCHITECTURE.md` is generated during the bounded release transaction before the final transaction tree is merged. Its machine-readable `source-commit` therefore names the exact frozen feature-branch input **immediately before persistent projection materialization**; it does not name the later squash-merged candidate commit and is not inferred from the candidate's first parent.
+
+For a candidate commit `C` and recorded projection source `F`, the workflow fails closed unless all of the following hold:
+
+1. the committed projection contains exactly one lowercase 40-hex `source-commit` and one package-version provenance value;
+2. `F` resolves as a repository commit;
+3. the package-version provenance equals the candidate package version;
+4. the repository trees at `F` and `C` have no changed path except `ARCHITECTURE.md`;
+5. current candidate authority and package version deterministically regenerate the committed projection when `F` is supplied to `tools.repository_docs`.
+
+This is the squash-compatible release-boundary invariant:
+
+```text
+frozen transaction tree F
+  -> materialize generated ARCHITECTURE.md from F
+  -> no further non-generated tree change
+  -> squash merge as candidate C
+  -> prove F and C differ only by the generated projection
+```
+
+The workflow installs the declared PyYAML support floor before running repository authority/projection validation. It does not editable-install RelayLM from source to satisfy that tooling dependency; the wheel and sdist remain the only package artifacts used by installed-candidate smoke.
 
 ## Exact artifact authority
 
@@ -49,6 +73,7 @@ A successful run preserves one GitHub Actions artifact named with exact package 
 - the exact candidate wheel;
 - the exact candidate sdist;
 - `release-identity.json` with SHA-256 artifact provenance;
+- the exact persistent-projection source commit recorded by the candidate gate;
 - recorded build-environment versions;
 - content-free installed `doctor` evidence for Character-like and machine-like Profile paths;
 - deterministic evaluation reports;
@@ -62,7 +87,7 @@ REL3 consumes #1446 operator semantics and does not redefine them. Its installed
 
 REL3 does not select a calibration profile, pass reasoning/decoding controls, output limits, Cognitive Budget, or other #1388-owned numeric policy. When those values become required release authority, an actual candidate run must consume the then-current #1446/#1388 configuration rather than embedding release-specific values in this mechanical gate.
 
-Accordingly, implementing this workflow does **not** authorize `1.0.0rc1` or declare REL3 acceptance complete. An actual candidate run must use the then-current #1446 path and applicable #1388 defaults/profile authority before #1449 can consume the evidence for final readiness.
+Accordingly, implementing this workflow does **not** itself declare REL3 acceptance complete. An actual candidate run must use the then-current #1446 path and applicable #1388 defaults/profile authority before #1449 can consume the evidence for final readiness.
 
 ## Tag and publication boundary
 

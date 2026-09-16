@@ -2,8 +2,8 @@
 
 <!-- generated-by: relaylm-architecture-projection -->
 <!-- projection-schema-version: 1 -->
-<!-- source-commit: a2eb60784ec37593f943da9fbbb54d9f8cafdac7 -->
-<!-- package-version: 1.0.0.dev0 -->
+<!-- source-commit: ec23fe7955abff36517e41afa193d6dcdb24270e -->
+<!-- package-version: 1.0.0rc1 -->
 
 This document is a generated projection of RelayLM `v1` repository authority.
 It is materialized at a version/release boundary from the frozen input commit
@@ -36,7 +36,7 @@ Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualif
 Evaluation-only llama.cpp/llama-server physical qualification carriage for current RelayLM 1.0 actual-model Stage R, including a restartable pre-wrapper repo-external Python/runtime/import-closure controller gate, same-interpreter handoff into the repository-owned WSL/LocalCodex wrapper, transaction-owned llama-server log allocation directly inside the writable artifact root, OpenAI-compatible reasoning_effort=none Thinking-OFF realization, exact serialized-input counting parity, and a one-command transaction that owns one fresh single-slot llama-server process lifetime, one per-launch log, bounded 600-second request waits, exactly one citable host invocation at most, an explicit host-module to declared-summary result contract, deterministic teardown, reproducibility evidence, and PASS/SEMANTIC_FAIL/INFRA_INVALID classification without changing frozen Core semantics or production backend routing identity.
 
 - owning Issue: #2603
-- canonical authority: `docs/reference/actual-model-llama-cpp-controller-preflight.md`, `docs/reference/actual-model-llama-cpp-host-result-contract.md`, `docs/reference/actual-model-llama-cpp-qualification.md`, `docs/reference/actual-model-llama-cpp-transaction-log.md`
+- canonical authority: `docs/reference/actual-model-llama-cpp-controller-preflight.md`, `docs/reference/actual-model-llama-cpp-host-result-contract.md`, `docs/reference/actual-model-llama-cpp-qualification.md`, `docs/reference/actual-model-llama-cpp-transaction-log.md`, `docs/reference/installed-llama-cpp-physical-carriage.md`
 - depends on: actual_model_evaluation, cognitive_turn, provider_and_api
 - consumed by: actual_model_crystallization_llama_cpp, continuity_label_invariance_diagnostic, epistemic_formation_diagnostic, physical_execution_queue, production_continuity_only_physical, production_continuity_overlay_diagnostic, production_unresolved_no_pass1_no_accepted_continuity_physical, production_unresolved_no_pass1_physical, production_unresolved_only_physical, semantic_continuity_projection_physical, two_turn_diagnostic_carriage
 
@@ -207,15 +207,6 @@ Cognitive Package portability, Character specialization, and the filesystem pers
 - depends on: core_architecture, knowledge, state_and_validation
 - consumed by: actual_model_evaluation, context_compiler, crystallization, evaluation, memory_provenance, runtime_configuration, starter_packages
 
-### persistent_world_benchmark
-
-Deterministic repository preparation for the #2888 Persistent WORLD Continuity Benchmark. This owner validates retained benchmark evidence and causal/provenance invariants without launching Minecraft, calling a model, changing RelayLM Core semantics, or spending a physical benchmark run.
-
-- owning Issue: #2894
-- canonical authority: `docs/reference/persistent-world-benchmark.md`
-- depends on: physical_execution_queue
-- consumed by: none
-
 ### physical_execution_queue
 
 v1 carriage of the branch-neutral llama.cpp-only one-shot physical controller. LocalCodex reuses one fingerprinted persistent Python environment across v1/v2, then serializes the canonical local GPU resource and enforces a final fresh-ref and environment-identity gate.
@@ -223,7 +214,7 @@ v1 carriage of the branch-neutral llama.cpp-only one-shot physical controller. L
 - owning Issue: #2660
 - canonical authority: `.ai/physical/llama_cpp_targets.json`, `.ai/physical/python_environment_policy.json`, `docs/reference/physical-execution-queue.md`
 - depends on: actual_model_llama_cpp_qualification
-- consumed by: actual_model_crystallization_llama_cpp, external_qualification, persistent_world_benchmark, production_unresolved_no_pass1_no_accepted_continuity_physical, production_unresolved_no_pass1_physical
+- consumed by: actual_model_crystallization_llama_cpp, external_qualification, production_unresolved_no_pass1_no_accepted_continuity_physical, production_unresolved_no_pass1_physical
 
 ### production_continuity_only_diagnostic
 
@@ -464,7 +455,6 @@ graph LR
   persistence --> core_architecture
   persistence --> knowledge
   persistence --> state_and_validation
-  persistent_world_benchmark --> physical_execution_queue
   physical_execution_queue --> actual_model_llama_cpp_qualification
   production_continuity_only_diagnostic --> actual_model_evaluation
   production_continuity_only_diagnostic --> continuity_context
