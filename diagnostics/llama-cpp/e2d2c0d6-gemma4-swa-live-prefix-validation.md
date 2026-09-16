@@ -2,6 +2,16 @@
 
 Target llama.cpp revision: `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`
 
+## Handoff patch identity
+
+Current diagnostic patch SHA256:
+
+`cfb1a054ec5b89e7a271c2042ee6135a876d0f18d7f357d819224df06ac833f4`
+
+The first handoff patch was mechanically invalid because its hunk encoded C++ `\n`
+text as `\\n`. That attempt terminated `PHYSICAL_DIAGNOSTIC_UNSPENT` before
+build or inference. It is superseded by the current patch above.
+
 ## Frozen observed facts
 
 Unpatched buffered Pass2 (g2):
