@@ -152,6 +152,37 @@ Classification is evidence, not mutation authorization. A `generalizable_core_de
 
 The runner does not import RelayLM cognition, State, Continuity, MEMORY, Context, provider routing, or Stage R execution types. A serious comparator adapter can be added or replaced without adding a comparator-specific subsystem to RelayLM.
 
+### Bounded physical campaign carriage (#2951)
+
+The registered `v1:external-qualification-campaign` target is the repository-owned
+carriage for a future #1449 run.  It is deliberately separate from the
+admission-only `v1:external-qualification` target.  The campaign descriptor is
+declarative and has no executable, shell fragment, or arbitrary child field.
+
+`tools.v1_external_qualification_llama_cpp_campaign` exposes four typed
+boundaries:
+
+- `LiveLaunchSession` supplies one fresh llama.cpp runtime/GPU/context/capacity
+  attestation and one owned cleanup receipt;
+- `HindsightHealthProbe` supplies dependency-complete v0.10.0 health only, with
+  retain/recall/reflect, answer-model, benchmark-question, and judge counts all
+  zero before campaign work; its startup LLM connection verification is
+  explicitly skipped under the zero-semantic policy;
+- `CurrentAuthorityReader` rechecks the current repository authority immediately
+  before each identity freeze;
+- `ParticipantExecutors` binds the canonical A/B/C/D slots to
+  `ParticipantExecutionContext` and `ParticipantExecutionResult`, never to an
+  executable supplied by the plan.
+
+The controller calls `freeze_experiment_identity(...)` only after the live
+attestation, starts or exactly resumes one `DurableQuestionRun` per frozen axis,
+and calls the owned session cleanup in a `finally` boundary.  Completed
+questions are skipped on exact infrastructure resume; semantic retry and
+fallback are not supported.  The command-line target performs only deterministic
+zero-semantic descriptor validation, so it cannot spend a provider/model/GPU or
+Hindsight semantic call on its own.  The campaign controller does not alter
+RelayLM product semantics or the Core qualification fingerprint.
+
 ## MemConflict RelayLM adapter boundary (#2047, #2068, #2075)
 
 The shared MemConflict harness has two different provider operations: it ingests

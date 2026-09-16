@@ -85,6 +85,11 @@ Target-owned arguments may follow `--`. Every target resolves to:
 `tools.physical_execution_queue` is an internal primitive. LocalCodex should not
 construct `queue -- <arbitrary child command>` as the normal execution surface.
 
+The v1 external-qualification carriage uses the registered
+`v1:external-qualification-campaign` wrapper.  It remains a fixed module target
+under the same queue and `llama-cpp:local-gpu` lease; its descriptor is not an
+arbitrary child-command escape hatch.
+
 ## Shared resource
 
 The current single-GPU LocalCodex resource key is fixed to:
