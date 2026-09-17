@@ -15,15 +15,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from tools.external_qualification import validate_case
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_FORMAT_VERSION,
     CAMPAIGN_TARGET,
     CampaignAxis,
     CampaignCarriageError,
+    CampaignQuestion,
     CampaignDescriptor,
     HindsightLifecycleSpec,
     RelayLMExactRCSpec,
     _campaign_contract,
+    _fingerprint,
     _hindsight_operational_fingerprint,
     _hindsight_owner_deployment_id,
 )
@@ -195,6 +198,100 @@ def _rewrite_release_identity(
     wheels[0]["sha256"] = exact_rc.wheel_sha256
 
 
+def _validate_source_axis_freeze_consistency(
+    *,
+    axes: Sequence[Mapping[str, object]],
+    execution_freeze: Mapping[str, object],
+) -> None:
+    freeze = _mapping_copy(execution_freeze, label="execution freeze template")
+    release_cases = freeze.get("release_cases")
+    if not isinstance(release_cases, list):
+        raise CampaignCarriageError("execution freeze release_cases must be a list")
+
+    axis_by_id: dict[str, Mapping[str, object]] = {}
+    for source_axis in axes:
+        axis_id = source_axis.get("axis_id")
+        if not isinstance(axis_id, str) or not axis_id:
+            raise CampaignCarriageError("campaign axis template requires axis_id")
+        if axis_id in axis_by_id:
+            raise CampaignCarriageError("campaign axis templates must have unique axis_id values")
+        axis_by_id[axis_id] = source_axis
+
+    release_by_id: dict[str, Mapping[str, object]] = {}
+    for release_case in release_cases:
+        if not isinstance(release_case, Mapping):
+            raise CampaignCarriageError("execution freeze release case must be an object")
+        axis_id = release_case.get("axis_id")
+        if not isinstance(axis_id, str) or not axis_id:
+            raise CampaignCarriageError("execution freeze release case requires axis_id")
+        if axis_id in release_by_id:
+            raise CampaignCarriageError("execution freeze release cases must have unique axis_id values")
+        release_by_id[axis_id] = release_case
+
+    if set(axis_by_id) != set(release_by_id):
+        raise CampaignCarriageError(
+            "source axes and execution freeze release cases must cover the same axis ids"
+        )
+
+    for axis_id, source_axis in axis_by_id.items():
+        release_case = release_by_id[axis_id]
+        for field in ("case", "manifest", "benchmark_material"):
+            if _canonical_json(source_axis.get(field)) != _canonical_json(
+                release_case.get(field)
+            ):
+                raise CampaignCarriageError(
+                    f"source axis {axis_id!r} {field} differs from execution freeze"
+                )
+
+
+def _canonicalize_benchmark_material_template(raw: dict[str, Any]) -> None:
+    if "benchmark_material" not in raw:
+        return
+    material = raw.get("benchmark_material")
+    case = raw.get("case")
+    questions = raw.get("questions")
+    if not isinstance(material, dict):
+        raise CampaignCarriageError("campaign axis benchmark_material must be an object")
+    if not isinstance(case, Mapping):
+        raise CampaignCarriageError("campaign axis case must be an object")
+    if not isinstance(questions, list) or not questions:
+        raise CampaignCarriageError("campaign axis questions must be a non-empty list")
+
+    source_case_fingerprint = material.get("case_fingerprint")
+    if (
+        not isinstance(source_case_fingerprint, str)
+        or not source_case_fingerprint.startswith("sha256:")
+        or len(source_case_fingerprint) != 71
+    ):
+        raise CampaignCarriageError(
+            "campaign axis source benchmark material case fingerprint is invalid"
+        )
+    source_question_fingerprints = material.get("question_fingerprints")
+    if not isinstance(source_question_fingerprints, list) or not all(
+        isinstance(item, str) and item.startswith("sha256:") and len(item) == 71
+        for item in source_question_fingerprints
+    ):
+        raise CampaignCarriageError(
+            "campaign axis source benchmark material question fingerprints are invalid"
+        )
+
+    normalized_case = validate_case(case)
+    parsed_questions = [
+        CampaignQuestion.from_mapping(
+            item
+            if isinstance(item, Mapping)
+            else (_ for _ in ()).throw(
+                CampaignCarriageError("campaign axis question must be an object")
+            )
+        )
+        for item in questions
+    ]
+    material["case_fingerprint"] = _fingerprint(normalized_case)
+    material["question_fingerprints"] = [
+        question.content_fingerprint for question in parsed_questions
+    ]
+
+
 def _derive_axes(
     *,
     axes: Sequence[Mapping[str, object]],
@@ -216,6 +313,7 @@ def _derive_axes(
         identity = raw.get("identity")
         if not isinstance(manifest, dict) or not isinstance(identity, dict):
             raise CampaignCarriageError("campaign axis template is incomplete")
+        _canonicalize_benchmark_material_template(raw)
         _rewrite_release_identity(
             manifest,
             exact_rc=exact_rc,
@@ -326,6 +424,10 @@ def prepare_scientific_owner_descriptor(
         base=hindsight_lifecycle_base,
     )
     operational_fingerprint = _hindsight_operational_fingerprint(owner_id, lifecycle)
+    _validate_source_axis_freeze_consistency(
+        axes=axes,
+        execution_freeze=execution_freeze,
+    )
     prepared_axes = _derive_axes(
         axes=axes,
         exact_rc=exact_rc,
