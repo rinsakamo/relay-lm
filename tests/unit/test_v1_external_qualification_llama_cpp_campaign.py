@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
+import subprocess
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
@@ -18,12 +19,15 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignAxis,
     CampaignDescriptor,
     HindsightDeploymentSession,
+    HindsightLifecycleSpec,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
     ParticipantExecutors,
     run_campaign,
     _campaign_contract,
     _fingerprint,
+    _hindsight_operational_fingerprint,
+    _hindsight_owner_deployment_id,
 )
 
 
@@ -427,6 +431,35 @@ def _controller_parts(
     }
 
 
+def _refresh_campaign_contracts(raw: dict[str, object]) -> None:
+    axes = raw["axes"]
+    assert isinstance(axes, list)
+    for axis in axes:
+        assert isinstance(axis, dict)
+        parsed_axis = CampaignAxis.from_mapping(axis)
+        assert isinstance(parsed_axis.identity, dict)
+        parsed_axis.identity["campaign_contract"] = _campaign_contract(parsed_axis)
+
+
+def _set_comparator_deployment(raw: dict[str, object], deployment: str) -> None:
+    axes = raw["axes"]
+    assert isinstance(axes, list)
+    for axis in axes:
+        assert isinstance(axis, dict)
+        manifest = axis["manifest"]
+        assert isinstance(manifest, dict)
+        participants = manifest["participants"]
+        assert isinstance(participants, list)
+        comparator = next(
+            participant
+            for participant in participants
+            if isinstance(participant, dict) and participant.get("slot") == "serious_comparator"
+        )
+        identity = comparator["identity"]
+        assert isinstance(identity, dict)
+        identity["deployment"] = deployment
+
+
 def _strict_descriptor_mapping(
     tmp_path: Path,
     *,
@@ -526,11 +559,13 @@ def _strict_descriptor_mapping(
         "config_sha256": config_sha,
         "port": 18092,
     }
+    owner_id = "owner-2965-strict-test"
+    deployment_id = _hindsight_owner_deployment_id(owner_id)
     raw["hindsight_lifecycle"] = {
         "mode": "owned_local",
         "base_url": "http://127.0.0.1:44367",
         "health_path": "/health",
-        "deployment_id": "hindsight-strict-test",
+        "deployment_id": deployment_id,
         "dependency_fingerprint": "sha256:" + "7" * 64,
         "cleanup_path": "/cleanup",
         "start_path": "/start",
@@ -538,7 +573,7 @@ def _strict_descriptor_mapping(
         "runtime_version": "v0.10.0",
         "source_revision": "c" * 40,
         "source_tree": "f" * 40,
-        "database_profile": "strict-test-profile",
+        "database_profile": owner_id,
         "llm_model": "openai/gpt-oss-120b",
         "llm_base_url": "http://127.0.0.1:18091/v1",
         "embeddings_provider": "onnx",
@@ -555,20 +590,21 @@ def _strict_descriptor_mapping(
         },
         "port": 44367,
     }
-    raw["owner_id"] = "owner-2957-strict-test"
+    raw["owner_id"] = owner_id
     raw["spend_ledger_path"] = str(tmp_path / "scientific-spend.json")
     raw["hindsight_health"]["source_revision"] = "c" * 40
-    raw["hindsight_health"]["deployment"]["deployment_id"] = "hindsight-strict-test"
+    raw["hindsight_health"]["deployment"]["deployment_id"] = deployment_id
     raw["hindsight_health"]["deployment"]["dependency_fingerprint"] = "sha256:" + "7" * 64
     for manifest in (axis["manifest"] for axis in raw["axes"]):
         assert isinstance(manifest, dict)
         manifest["relaylm_release"]["artifacts"][0]["sha256"] = wheel_sha
     raw["relaylm_exact_rc"]["wheel_sha256"] = wheel_sha
-    for axis in raw["axes"]:
-        assert isinstance(axis, dict)
-        parsed_axis = CampaignAxis.from_mapping(axis)
-        assert isinstance(parsed_axis.identity, dict)
-        parsed_axis.identity["campaign_contract"] = _campaign_contract(parsed_axis)
+    lifecycle = HindsightLifecycleSpec.from_mapping(raw["hindsight_lifecycle"])
+    _set_comparator_deployment(
+        raw,
+        _hindsight_operational_fingerprint(owner_id, lifecycle),
+    )
+    _refresh_campaign_contracts(raw)
     return raw
 
 
@@ -804,9 +840,148 @@ def test_strict_descriptor_binds_material_rc_hindsight_and_campaign_contract(
     assert descriptor.relaylm_exact_rc is not None
     assert descriptor.hindsight_lifecycle is not None
     assert descriptor.artifact_root not in descriptor.spend_ledger_path.parents
+    assert descriptor.hindsight_lifecycle.database_profile == descriptor.owner_id
+    assert descriptor.hindsight_lifecycle.deployment_id == _hindsight_owner_deployment_id(
+        descriptor.owner_id
+    )
+    expected_operational = _hindsight_operational_fingerprint(
+        descriptor.owner_id,
+        descriptor.hindsight_lifecycle,
+    )
     assert all(axis.classification == "comparison_condition_mismatch" for axis in descriptor.axes)
     assert all(axis.benchmark_material is not None for axis in descriptor.axes)
     assert all("campaign_contract" in axis.identity for axis in descriptor.axes)
+    for axis in descriptor.axes:
+        comparator = next(
+            participant["identity"]
+            for participant in axis.manifest["participants"]
+            if participant["slot"] == "serious_comparator"
+        )
+        assert comparator["deployment"] == expected_operational
+
+
+def test_strict_descriptor_rejects_stale_previous_owner_deployment_id(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    stale_deployment = _hindsight_owner_deployment_id("owner-2961-rehearsal")
+    raw["hindsight_lifecycle"]["deployment_id"] = stale_deployment
+    raw["hindsight_health"]["deployment"]["deployment_id"] = stale_deployment
+    with pytest.raises(CampaignCarriageError, match="deployment_id.*owner_id"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_stale_previous_owner_database_profile(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["database_profile"] = "owner-2961-rehearsal"
+    with pytest.raises(CampaignCarriageError, match="database profile.*owner_id"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    stale_owner = "owner-2961-rehearsal"
+    stale_deployment = _hindsight_owner_deployment_id(stale_owner)
+    raw["hindsight_lifecycle"]["database_profile"] = stale_owner
+    raw["hindsight_lifecycle"]["deployment_id"] = stale_deployment
+    raw["hindsight_health"]["deployment"]["deployment_id"] = stale_deployment
+    with pytest.raises(CampaignCarriageError, match="owner_id"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_rehearsal_identity_carry_over_after_owner_change(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["owner_id"] = "fresh-scientific-owner"
+    with pytest.raises(CampaignCarriageError, match="owner_id"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_serious_comparator_operational_identity_drift(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    _set_comparator_deployment(raw, "sha256:" + "0" * 64)
+    with pytest.raises(CampaignCarriageError, match="serious comparator.*operational identity"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_frozen_contract_after_lifecycle_identity_changes(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["llm_model"] = "openai/changed-answer-model"
+    lifecycle = HindsightLifecycleSpec.from_mapping(raw["hindsight_lifecycle"])
+    _set_comparator_deployment(
+        raw,
+        _hindsight_operational_fingerprint(str(raw["owner_id"]), lifecycle),
+    )
+    with pytest.raises(CampaignCarriageError, match="campaign contract drifted"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.hindsight_lifecycle is not None
+    seen: dict[str, object] = {}
+
+    class _FakePopen:
+        def __init__(self, command: list[str], **_: object) -> None:
+            seen["command"] = list(command)
+            self.pid = 4242
+            self.returncode: int | None = None
+
+        def poll(self) -> int | None:
+            return self.returncode
+
+        def terminate(self) -> None:
+            self.returncode = 0
+
+        def kill(self) -> None:
+            self.returncode = 0
+
+        def wait(self, timeout: float | None = None) -> int:
+            self.returncode = 0
+            return 0
+
+    monkeypatch.setattr(subprocess, "Popen", _FakePopen)
+    lifecycle = HindsightDeploymentSession(
+        descriptor.hindsight_lifecycle,
+        descriptor.hindsight_health,
+        repo_root=tmp_path,
+        evidence_root=tmp_path / "hindsight-evidence",
+    )
+    lifecycle.start()
+    command = seen["command"]
+    assert isinstance(command, list)
+
+    def argument(name: str) -> str:
+        index = command.index(name)
+        value = command[index + 1]
+        assert isinstance(value, str)
+        return value
+
+    assert argument("--database-profile") == descriptor.owner_id
+    assert argument("--deployment-id") == _hindsight_owner_deployment_id(
+        descriptor.owner_id
+    )
+    assert argument("--dependency-fingerprint") == descriptor.hindsight_lifecycle.dependency_fingerprint
+    assert argument("--source-revision") == descriptor.hindsight_lifecycle.source_revision
+    assert argument("--source-tree") == descriptor.hindsight_lifecycle.source_tree
+    assert argument("--llm-model") == descriptor.hindsight_lifecycle.llm_model
+    assert argument("--llm-base-url") == descriptor.hindsight_lifecycle.llm_base_url
+    assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
+    assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
+    cleanup = lifecycle.cleanup()
+    assert cleanup["semantic_operation_count"] == 0
 
 
 def test_strict_descriptor_rejects_benchmark_material_replacement(
@@ -826,6 +1001,38 @@ def test_strict_descriptor_rejects_exact_rc_config_replacement(tmp_path: Path) -
     assert isinstance(exact_rc, dict)
     Path(exact_rc["config_path"]).write_text("changed\n", encoding="utf-8")
     with pytest.raises(CampaignCarriageError, match="config content drifted"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_exact_rc_wheel_replacement(tmp_path: Path) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    exact_rc = raw["relaylm_exact_rc"]
+    assert isinstance(exact_rc, dict)
+    Path(exact_rc["wheel_path"]).write_bytes(b"changed-wheel")
+    with pytest.raises(CampaignCarriageError, match="wheel content drifted"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_manifest_wheel_identity_drift(tmp_path: Path) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    for axis in raw["axes"]:
+        assert isinstance(axis, dict)
+        manifest = axis["manifest"]
+        assert isinstance(manifest, dict)
+        manifest["relaylm_release"]["artifacts"][0]["sha256"] = "9" * 64
+    _refresh_campaign_contracts(raw)
+    with pytest.raises(CampaignCarriageError, match="wheel identity"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_frozen_candidate_drift_from_exact_rc(tmp_path: Path) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    for axis in raw["axes"]:
+        assert isinstance(axis, dict)
+        identity = axis["identity"]
+        assert isinstance(identity, dict)
+        identity["candidate"] = "9" * 40
+    with pytest.raises(CampaignCarriageError, match="candidate.*RC"):
         CampaignDescriptor.from_mapping(raw)
 
 
