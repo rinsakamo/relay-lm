@@ -116,9 +116,30 @@ Expected dump directories:
 - `WR-P512/` after L0 first 512-token decode
 - `WR-R512/` after L1 suffix removal and before continuation decode
 
-### Cold server
+### Fresh warm reproducibility server
 
 Fresh server, same binary/config.
+
+Set:
+
+```text
+LLAMA_KV_PROBE_DIR=<same output root>
+LLAMA_KV_PROBE_LABEL=WR2
+```
+
+Run exactly:
+
+- L0R warm once
+
+Expected:
+
+- `WR2-P512/`
+
+This is a predeclared independent control, not a retry. It gates interpretation of W vs C.
+
+### Cold server
+
+Third fresh server, same binary/config.
 
 Set:
 
@@ -143,6 +164,7 @@ Exactly one each:
 
 - L0
 - L1
+- L0R fresh reproducibility control
 - LC
 
 No retry/replay/reseed/fallback/repair/parameter tuning after L0.
@@ -151,7 +173,7 @@ Retain responses and complete logs because the instrumented binary is a new phys
 
 ## Comparison
 
-After all three dumps exist:
+After all four dump directories exist:
 
 ```bash
 python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-digest-compare.py <output-root> > kv-prefix-comparison.json
@@ -161,12 +183,15 @@ Compare KV payload and layout metadata separately.
 
 Primary KV-state classification comes from the probe authority:
 
+- `PREFIX_DUMP_NOT_REPRODUCIBLE`
 - `PREFIX_KV_GENERATION_DIFFERS`
 - `RETAINED_PREFIX_KV_MUTATED_BY_REUSE`
 - `PREFIX_KV_IDENTICAL_THROUGH_REUSE`
 - `PROBE_NOT_EXERCISED`
 
-If KV differs, localize the earliest mismatching cache class/layer/K-or-V file.
+First require W vs W2 reproducibility. If W != W2, stop causal interpretation at `PREFIX_DUMP_NOT_REPRODUCIBLE`.
+
+If KV differs after that gate, localize the earliest mismatching cache class/layer/K-or-V file.
 
 If all KV payload is identical but instrumented L1 vs LC still differs, the next investigation must move downstream of retained KV storage while remaining FA ON.
 
