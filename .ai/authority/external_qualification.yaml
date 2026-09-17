@@ -15,6 +15,7 @@ implementation:
 - tools/longmemeval_adapter.py
 - tools/v1_external_qualification_llama_cpp_gate.py
 - tools/v1_external_qualification_llama_cpp_campaign.py
+- tools/v1_external_qualification_campaign_prepare.py
 tests:
 - tests/unit/test_external_qualification.py
 - tests/unit/test_external_qualification_durable.py
@@ -23,6 +24,7 @@ tests:
 - tests/unit/test_longmemeval_adapter.py
 - tests/unit/test_v1_external_qualification_llama_cpp_gate.py
 - tests/unit/test_v1_external_qualification_llama_cpp_campaign.py
+- tests/unit/test_v1_external_qualification_campaign_prepare.py
 depends_on:
 - release_engineering
 - physical_execution_queue
