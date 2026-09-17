@@ -276,16 +276,11 @@ def _canonicalize_benchmark_material_template(raw: dict[str, Any]) -> None:
         )
 
     normalized_case = validate_case(case)
-    parsed_questions = [
-        CampaignQuestion.from_mapping(
-            item
-            if isinstance(item, Mapping)
-            else (_ for _ in ()).throw(
-                CampaignCarriageError("campaign axis question must be an object")
-            )
-        )
-        for item in questions
-    ]
+    parsed_questions: list[CampaignQuestion] = []
+    for item in questions:
+        if not isinstance(item, Mapping):
+            raise CampaignCarriageError("campaign axis question must be an object")
+        parsed_questions.append(CampaignQuestion.from_mapping(item))
     material["case_fingerprint"] = _fingerprint(normalized_case)
     material["question_fingerprints"] = [
         question.content_fingerprint for question in parsed_questions
