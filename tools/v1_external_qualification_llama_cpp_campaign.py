@@ -66,6 +66,7 @@ CAMPAIGN_FORMAT_VERSION = 1
 _SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _FINGERPRINT_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_OWNER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _RUN_MODES = {"fresh_run", "exact_infrastructure_resume"}
 _HEALTH_KEYS = {
     "implementation",
@@ -227,6 +228,15 @@ def _require_nonempty_string(value: object, *, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise CampaignCarriageError(f"{label} must be a non-empty string")
     return value
+
+
+def _require_owner_id(value: object) -> str:
+    owner_id = _require_nonempty_string(value, label="owner_id")
+    if _OWNER_ID_RE.fullmatch(owner_id) is None:
+        raise CampaignCarriageError(
+            "owner_id must be a stable ASCII identifier using letters, digits, dot, underscore, or hyphen"
+        )
+    return owner_id
 
 
 def _require_positive_int(value: object, *, label: str) -> int:
@@ -584,6 +594,14 @@ class RelayLMExactRCSpec:
         port = _require_positive_int(raw["port"], label="RC port")
         if port > 65535:
             raise CampaignCarriageError("RC port must be <= 65535")
+        wheel_path = _require_absolute_path(raw["wheel_path"], label="wheel_path")
+        wheel_sha256 = _require_sha(
+            raw["wheel_sha256"], label="wheel_sha256", pattern=_SHA256_RE
+        )
+        if not wheel_path.is_file():
+            raise CampaignCarriageError(f"exact RC wheel is not a file: {wheel_path}")
+        if _sha256_file(wheel_path) != wheel_sha256:
+            raise CampaignCarriageError("exact RC wheel content drifted")
         config_path = _require_absolute_path(raw["config_path"], label="RC config_path")
         config_sha256 = _require_sha(
             raw["config_sha256"], label="RC config_sha256", pattern=_SHA256_RE
@@ -593,10 +611,8 @@ class RelayLMExactRCSpec:
         if _sha256_file(config_path) != config_sha256:
             raise CampaignCarriageError("exact RC config content drifted")
         return cls(
-            wheel_path=_require_absolute_path(raw["wheel_path"], label="wheel_path"),
-            wheel_sha256=_require_sha(
-                raw["wheel_sha256"], label="wheel_sha256", pattern=_SHA256_RE
-            ),
+            wheel_path=wheel_path,
+            wheel_sha256=wheel_sha256,
             version=_require_nonempty_string(raw["version"], label="RC version"),
             source_revision=_require_sha(
                 raw["source_revision"], label="RC source_revision", pattern=_SHA1_RE
@@ -761,8 +777,6 @@ class HindsightDeploymentSession:
                 except UnboundLocalError:
                     pass
                 raise CampaignCarriageError("owned Hindsight launch failed") from exc
-            # The file handle is intentionally held by the child through the
-            # duplicated descriptor; closing it here does not affect the child.
             log_handle.close()
         elif self.spec.mode == "owned_http":
             try:
@@ -802,9 +816,6 @@ class HindsightDeploymentSession:
                 raise
         self._last_health_response = {"health": dict(raw), "version": dict(version)}
         self.health_count += 1
-        # The static attestation carries source/dependency/deployment identity;
-        # the live endpoint above proves that this exact process is ready and
-        # is the process whose semantic calls will be made later.
         return self.expected.value
 
     def _attest_zero_semantic_health_once(
@@ -930,7 +941,7 @@ class HindsightDeploymentSession:
         self.cleanup_count += 1
         try:
             self.client.close()
-        except Exception as exc:  # pragma: no cover - defensive close boundary
+        except Exception as exc:
             errors.append(f"Hindsight HTTP client close failed: {exc}")
         self._cleanup_receipt = {
             "started": self.started,
@@ -1113,6 +1124,28 @@ class CampaignQuestion:
 
 def _fingerprint(value: object) -> str:
     return f"sha256:{_sha256_json(value)}"
+
+
+def _hindsight_owner_deployment_id(owner_id: str) -> str:
+    """Derive the only production Hindsight deployment id allowed for one owner."""
+
+    normalized = _require_owner_id(owner_id)
+    owner_token = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
+    return f"hindsight-v0.10.0-pg0-owner-{owner_token}"
+
+
+def _hindsight_operational_fingerprint(
+    owner_id: str,
+    lifecycle: HindsightLifecycleSpec,
+) -> str:
+    """Bind every qualification-significant Hindsight lifecycle fact to its owner."""
+
+    return _fingerprint(
+        {
+            "owner_id": _require_owner_id(owner_id),
+            "hindsight_lifecycle": lifecycle.to_mapping(),
+        }
+    )
 
 
 def _campaign_contract(axis: "CampaignAxis") -> dict[str, str]:
@@ -1371,7 +1404,7 @@ class CampaignDescriptor:
             raise CampaignCarriageError("campaign axes must cover every frozen release case exactly")
         artifact_root = _require_absolute_path(raw["artifact_root"], label="artifact_root")
         owner_id = (
-            _require_nonempty_string(raw["owner_id"], label="owner_id")
+            _require_owner_id(raw["owner_id"])
             if not legacy_descriptor
             else f"legacy:{artifact_root}"
         )
@@ -1408,6 +1441,19 @@ class CampaignDescriptor:
                 raise CampaignCarriageError(
                     "production scientific spend ledger must be outside artifact_root"
                 )
+            if hindsight_lifecycle.database_profile != owner_id:
+                raise CampaignCarriageError(
+                    "Hindsight database profile must equal scientific owner_id"
+                )
+            expected_deployment_id = _hindsight_owner_deployment_id(owner_id)
+            if hindsight_lifecycle.deployment_id != expected_deployment_id:
+                raise CampaignCarriageError(
+                    "Hindsight deployment_id must be derived from scientific owner_id"
+                )
+            operational_fingerprint = _hindsight_operational_fingerprint(
+                owner_id,
+                hindsight_lifecycle,
+            )
             health_deployment = _require_mapping(
                 _require_mapping(raw["hindsight_health"], label="hindsight_health")["deployment"],
                 label="hindsight_health.deployment",
@@ -1433,13 +1479,28 @@ class CampaignDescriptor:
                     raise CampaignCarriageError(
                         f"production axis {axis.axis_id!r} requires classification"
                     )
+                comparator = next(
+                    participant["identity"]
+                    for participant in axis.manifest["participants"]
+                    if participant["slot"] == "serious_comparator"
+                )
+                if not isinstance(comparator, Mapping) or (
+                    comparator.get("implementation") != "hindsight"
+                    or comparator.get("source_revision") != hindsight_lifecycle.source_revision
+                    or comparator.get("version") != hindsight_lifecycle.runtime_version
+                    or comparator.get("deployment") != operational_fingerprint
+                ):
+                    raise CampaignCarriageError(
+                        f"production axis {axis.axis_id!r} serious comparator identity does not match admitted Hindsight operational identity"
+                    )
                 identity = FrozenExperimentIdentity.from_mapping(axis.identity)
-                if "campaign_contract" not in identity.to_mapping():
+                identity_mapping = identity.to_mapping()
+                if "campaign_contract" not in identity_mapping:
                     raise CampaignCarriageError(
                         f"production axis {axis.axis_id!r} requires campaign_contract"
                     )
                 contract = _campaign_contract(axis)
-                if _canonical_json(identity.to_mapping()["campaign_contract"]) != _canonical_json(contract):
+                if _canonical_json(identity_mapping["campaign_contract"]) != _canonical_json(contract):
                     raise CampaignCarriageError(
                         f"production axis {axis.axis_id!r} campaign contract drifted"
                     )
@@ -1454,6 +1515,28 @@ class CampaignDescriptor:
                 ):
                     raise CampaignCarriageError(
                         f"production axis {axis.axis_id!r} RC identity does not match descriptor"
+                    )
+                if identity_mapping["candidate"] != relaylm_exact_rc.source_revision:
+                    raise CampaignCarriageError(
+                        f"production axis {axis.axis_id!r} frozen candidate does not match exact RC"
+                    )
+                artifacts = manifest_release.get("artifacts")
+                if not isinstance(artifacts, list):
+                    raise CampaignCarriageError(
+                        f"production axis {axis.axis_id!r} release artifacts are invalid"
+                    )
+                wheel_artifacts = [
+                    artifact
+                    for artifact in artifacts
+                    if isinstance(artifact, Mapping)
+                    and artifact.get("filename") == relaylm_exact_rc.wheel_path.name
+                ]
+                if (
+                    len(wheel_artifacts) != 1
+                    or wheel_artifacts[0].get("sha256") != relaylm_exact_rc.wheel_sha256
+                ):
+                    raise CampaignCarriageError(
+                        f"production axis {axis.axis_id!r} RC wheel identity does not match descriptor"
                     )
         return cls(
             execution_freeze=dict(execution_freeze),
@@ -1755,13 +1838,6 @@ def _durable_participant_aggregate(
     question_id: str,
     strict_production: bool,
 ) -> list[Mapping[str, Any]]:
-    """Rebuild one question aggregate from the fsynced participant records.
-
-    The question-completion JSONL record is only an index/aggregate commit.  A
-    resumed campaign must not trust a hand-edited or torn aggregate when the
-    participant records are the durable source of truth.
-    """
-
     participant_plans = {
         str(plan["slot"]): plan for plan in axis.manifest["participants"]
     }
@@ -2094,7 +2170,6 @@ class CampaignController:
                         break
                     question = durable.begin_question(question.question_id)
                     participant_records: list[Mapping[str, Any]] = []
-                    request_evidence: list[Mapping[str, Any]] = []
                     enabled_slots = tuple(
                         slot
                         for slot in SLOTS
@@ -2293,7 +2368,6 @@ class CampaignController:
                                 "observation": observation,
                             }
                         )
-                        request_evidence.extend(result.request_evidence)
                         counters["semantic_generation_count"] += result.semantic_generation_count
                         counters["answer_model_generation_count"] += result.answer_model_generation_count
                         counters["judge_call_count"] += result.judge_call_count
@@ -2421,8 +2495,6 @@ def run_campaign(
     hindsight_lifecycle: HindsightDeploymentSession | None = None,
     pre_call_rehearsal: bool = False,
 ) -> Mapping[str, Any]:
-    """Synchronous bridge for the queue-owned typed campaign controller."""
-
     return asyncio.run(
         CampaignController(
             descriptor,
@@ -2437,8 +2509,6 @@ def run_campaign(
 
 
 class LlamaCppLiveLaunchSession:
-    """Fixed local llama.cpp launch/session used by a future scientific owner."""
-
     _READY_TIMEOUT_SECONDS = 120.0
 
     def __init__(self, spec: LlamaCppLaunchSpec, evidence_root: Path) -> None:
@@ -2756,8 +2826,6 @@ class LlamaCppLiveLaunchSession:
 
 
 def start_llama_cpp_session(spec: LlamaCppLaunchSpec, evidence_root: Path) -> LiveLaunchSession:
-    """Fixed factory for the one allowed local llama.cpp runtime launch."""
-
     return LlamaCppLiveLaunchSession.start(spec, evidence_root)
 
 
@@ -2797,8 +2865,6 @@ def _openai_observation(
 
 
 class SameModelDirectExecutor:
-    """Fixed A boundary against the freshly attested llama.cpp server."""
-
     def __init__(self, spec: LlamaCppLaunchSpec) -> None:
         self.spec = spec
         self.client = httpx.Client(timeout=120.0, trust_env=False)
@@ -2842,8 +2908,6 @@ class SameModelDirectExecutor:
 
 
 class HindsightComparatorExecutor:
-    """Fixed C boundary tied to the lifecycle that supplied zero-semantic health."""
-
     def __init__(self, lifecycle: HindsightDeploymentSession) -> None:
         self.lifecycle = lifecycle
 
@@ -2890,8 +2954,6 @@ class HindsightComparatorExecutor:
 
 
 class ExactRelayLMExecutor:
-    """Fixed D boundary against the installed accepted RC server only."""
-
     def __init__(self, server: Any) -> None:
         self.server = server
 
@@ -2951,8 +3013,6 @@ def run_production_campaign(
     repo_root: Path,
     rehearsal: bool,
 ) -> Mapping[str, Any]:
-    """Bind the registered target to the repository-owned production boundaries."""
-
     if descriptor.relaylm_exact_rc is None or descriptor.hindsight_lifecycle is None:
         raise CampaignCarriageError(
             "production campaign requires exact RC and Hindsight lifecycle bindings"
@@ -3052,8 +3112,6 @@ def run_production_campaign(
 
 
 def validate_zero_semantic_carriage(descriptor: CampaignDescriptor) -> Mapping[str, Any]:
-    """Validate the campaign shape without probing, launching, or generating."""
-
     return {
         "format_version": CAMPAIGN_FORMAT_VERSION,
         "target": CAMPAIGN_TARGET,
