@@ -1,21 +1,27 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from collections.abc import Mapping
 from pathlib import Path
+import sys
 from typing import Any
 
 import pytest
 
 from tools.external_qualification import DurableQuestion
+from tools.external_qualification_readiness import ExternalQualificationReadinessError
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     CampaignCarriageError,
+    CampaignAxis,
     CampaignDescriptor,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
     ParticipantExecutors,
     run_campaign,
+    _campaign_contract,
+    _fingerprint,
 )
 
 
@@ -278,7 +284,7 @@ def _descriptor_mapping(tmp_path: Path, *, run_mode: str = "fresh_run") -> dict[
             "llama_cpp_root": str(tmp_path / "llama.cpp"),
             "artifact_path": str(tmp_path / "relaylm-1.0.0rc1.whl"),
             "upstream_revision": "a" * 40,
-            "expected_build_info": "build-a" + "a" * 40,
+            "expected_build_info": "b10874-" + "a" * 9,
             "expected_model_alias": "gemma-test",
             "artifact_sha256": "b" * 64,
             "runtime": live["runtime"],
@@ -342,10 +348,18 @@ class _Session:
         }
 
 
+class _CleanupFailSession(_Session):
+    def cleanup(self) -> Mapping[str, object]:
+        self.cleanup_calls += 1
+        raise RuntimeError("synthetic cleanup failure")
+
+
 def _controller_parts(
     descriptor: CampaignDescriptor,
     session: _Session,
     seen: list[ParticipantExecutionContext],
+    *,
+    scientific: bool = False,
 ) -> dict[str, Any]:
     def factory(spec: Any, evidence_root: Path) -> _Session:
         return session
@@ -354,10 +368,17 @@ def _controller_parts(
         seen.append(context)
         return ParticipantExecutionResult(
             slot=context.participant_slot,
-            observation=_observation(),
+            observation={
+                **_observation(),
+                "tokens": {
+                    **_observation()["tokens"],
+                    "model_call_count": 1 if scientific else 0,
+                },
+            },
+            semantic_generation_count=1 if scientific else 0,
         )
 
-    probe = _Probe(_health())
+    probe = _Probe(descriptor.hindsight_health.value)
     return {
         "live_launch_factory": factory,
         "hindsight_probe": probe,
@@ -371,6 +392,186 @@ def _controller_parts(
             "branch": "v1",
             "repository_head": "f" * 40,
             "repository_tree": "e" * 40,
+        },
+    }
+
+
+def _strict_descriptor_mapping(
+    tmp_path: Path,
+    *,
+    run_mode: str = "fresh_run",
+) -> dict[str, object]:
+    raw = _descriptor_mapping(tmp_path, run_mode=run_mode)
+    model_path = tmp_path / "gemma.gguf"
+    model_path.write_bytes(b"frozen-model")
+    model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    config_path = tmp_path / "relaylm-config.yaml"
+    config_path.write_text("mode: exact-rc\n", encoding="utf-8")
+    config_sha = hashlib.sha256(config_path.read_bytes()).hexdigest()
+    wheel_path = tmp_path / "relaylm-1.0.0rc1-py3-none-any.whl"
+    wheel_path.write_bytes(b"accepted-rc-wheel")
+    wheel_sha = hashlib.sha256(wheel_path.read_bytes()).hexdigest()
+    onnx_path = tmp_path / "model.onnx"
+    onnx_path.write_bytes(b"frozen-onnx")
+    tokenizer_path = tmp_path / "tokenizer"
+    tokenizer_path.mkdir(exist_ok=True)
+    (tokenizer_path / "tokenizer.json").write_text("{}\n", encoding="utf-8")
+    (tokenizer_path / "config.json").write_text("{}\n", encoding="utf-8")
+    tokenizer_entries = []
+    for child in sorted(tokenizer_path.rglob("*")):
+        if child.is_file():
+            tokenizer_entries.append(
+                {
+                    "path": child.relative_to(tokenizer_path).as_posix(),
+                    "sha256": hashlib.sha256(child.read_bytes()).hexdigest(),
+                }
+            )
+    tokenizer_tree_sha = hashlib.sha256(
+        json.dumps(tokenizer_entries, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    template_sha = "3" * 64
+    physical_model = {
+        "artifact": f"model:sha256={model_sha}",
+        "tokenizer": "tokenizer:sha256=" + "4" * 64,
+        "quantization": "Q4_K_M",
+    }
+    for axis in raw["axes"]:
+        assert isinstance(axis, dict)
+        manifest = axis["manifest"]
+        assert isinstance(manifest, dict)
+        for participant in manifest["participants"]:
+            assert isinstance(participant, dict)
+            if participant["identity"] is not None:
+                assert isinstance(participant["identity"], dict)
+                participant["identity"]["physical_model"] = dict(physical_model)
+                participant["identity"]["runtime"] = raw["llama_cpp"]["runtime"]
+                participant["identity"]["backend"] = "llama.cpp"
+                participant["identity"]["context_capacity"] = 8192
+        identity = axis["identity"]
+        assert isinstance(identity, dict)
+        identity["launch_admission"] = _strict_live_mapping(
+            raw["llama_cpp"]["capacity_evidence"],
+            model_path=model_path,
+            model_sha=model_sha,
+            template_sha=template_sha,
+        )
+        identity["capacity_evidence"] = raw["llama_cpp"]["capacity_evidence"]
+        identity["artifact"] = f"model:sha256={model_sha}"
+        identity["template"] = f"template:sha256={template_sha}"
+        identity["runtime"] = raw["llama_cpp"]["runtime"]
+        identity["backend"] = "llama.cpp"
+        identity["context_capacity"] = 8192
+
+    release_cases = raw["execution_freeze"]["release_cases"]
+    for axis, frozen in zip(raw["axes"], release_cases, strict=True):
+        assert isinstance(axis, dict) and isinstance(frozen, dict)
+        question = axis["questions"][0]
+        assert isinstance(question, dict)
+        material_path = tmp_path / f"{axis['axis_id']}-benchmark.json"
+        material_path.write_text(
+            json.dumps({"axis_id": axis["axis_id"], "case": axis["case"]}, sort_keys=True),
+            encoding="utf-8",
+        )
+        material = {
+            "path": str(material_path),
+            "sha256": hashlib.sha256(material_path.read_bytes()).hexdigest(),
+            "case_fingerprint": _fingerprint(axis["case"]),
+            "question_fingerprints": [question["content_fingerprint"]],
+        }
+        axis["classification"] = "comparison_condition_mismatch"
+        axis["benchmark_material"] = material
+        frozen["benchmark_material"] = material
+
+    raw["llama_cpp"]["artifact_path"] = str(model_path)
+    raw["llama_cpp"]["artifact_sha256"] = model_sha
+    raw["relaylm_exact_rc"] = {
+        "wheel_path": str(wheel_path),
+        "wheel_sha256": wheel_sha,
+        "version": "1.0.0rc1",
+        "source_revision": "d" * 40,
+        "source_tree": "e" * 40,
+        "distribution": "relaylm",
+        "config_path": str(config_path),
+        "config_sha256": config_sha,
+        "port": 18092,
+    }
+    raw["hindsight_lifecycle"] = {
+        "mode": "owned_local",
+        "base_url": "http://127.0.0.1:44367",
+        "health_path": "/health",
+        "deployment_id": "hindsight-strict-test",
+        "dependency_fingerprint": "sha256:" + "7" * 64,
+        "cleanup_path": "/cleanup",
+        "start_path": "/start",
+        "runtime_python": sys.executable,
+        "runtime_version": "v0.10.0",
+        "source_revision": "c" * 40,
+        "source_tree": "f" * 40,
+        "database_profile": "strict-test-profile",
+        "llm_model": "openai/gpt-oss-120b",
+        "llm_base_url": "http://127.0.0.1:18091/v1",
+        "embeddings_provider": "onnx",
+        "reranker_provider": "rrf",
+        "embeddings_onnx_model_path": str(onnx_path),
+        "embeddings_onnx_model_sha256": hashlib.sha256(onnx_path.read_bytes()).hexdigest(),
+        "embeddings_onnx_tokenizer_path": str(tokenizer_path),
+        "embeddings_onnx_tokenizer_tree_sha256": tokenizer_tree_sha,
+        "package_wheel_sha256": {
+            "hindsight-all": "1" * 64,
+            "hindsight-api-slim": "2" * 64,
+            "hindsight-client": "3" * 64,
+            "hindsight-embed": "4" * 64,
+        },
+        "port": 44367,
+    }
+    raw["owner_id"] = "owner-2957-strict-test"
+    raw["spend_ledger_path"] = str(tmp_path / "scientific-spend.json")
+    raw["hindsight_health"]["source_revision"] = "c" * 40
+    raw["hindsight_health"]["deployment"]["deployment_id"] = "hindsight-strict-test"
+    raw["hindsight_health"]["deployment"]["dependency_fingerprint"] = "sha256:" + "7" * 64
+    for manifest in (axis["manifest"] for axis in raw["axes"]):
+        assert isinstance(manifest, dict)
+        manifest["relaylm_release"]["artifacts"][0]["sha256"] = wheel_sha
+    raw["relaylm_exact_rc"]["wheel_sha256"] = wheel_sha
+    for axis in raw["axes"]:
+        assert isinstance(axis, dict)
+        parsed_axis = CampaignAxis.from_mapping(axis)
+        assert isinstance(parsed_axis.identity, dict)
+        parsed_axis.identity["campaign_contract"] = _campaign_contract(parsed_axis)
+    return raw
+
+
+def _strict_live_mapping(
+    capacity: Mapping[str, object],
+    *,
+    model_path: Path,
+    model_sha: str,
+    template_sha: str,
+) -> dict[str, object]:
+    return {
+        **_live_mapping(capacity),
+        "runtime_identity": {
+            "upstream_revision": "a" * 40,
+            "build_info": "b10874-aaaaaaaaa",
+            "model_alias": "gemma-test",
+            "model_path": str(model_path),
+            "artifact_sha256": model_sha,
+            "chat_template_sha256": template_sha,
+            "context_limit": 8192,
+            "total_slots": 1,
+            "context_shift_enabled": False,
+        },
+        "gpu_identity": {
+            "name": "synthetic-gpu",
+            "driver_version": "synthetic-driver",
+            "memory_total_mib": "12288",
+        },
+        "launch_observation": {
+            "runtime_evidence_path": "live/runtime-attestation.json",
+            "runtime_ownership_evidence_path": "live/runtime-ownership.json",
+            "pid": 1234,
+            "memory_used_mib": "100",
+            "observed_at": "launch-1",
         },
     }
 
@@ -436,6 +637,7 @@ def test_typed_controller_freezes_live_identity_and_cleans_owned_session(tmp_pat
         "serious_comparator",
         "relaylm_exact_rc",
     }
+    assert all(context.prompt == context.question.content for context in seen)
     assert receipt["counters"] == {
         "semantic_generation_count": 0,
         "benchmark_question_count": 2,
@@ -490,6 +692,27 @@ def test_participant_failure_leaves_durable_tail_for_exact_resume_and_cleans(tmp
     assert state["in_flight_questions"] == ["axis-a-question"]
 
 
+def test_cleanup_failure_does_not_replace_active_participant_failure(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_descriptor_mapping(tmp_path))
+    session = _CleanupFailSession(_live_mapping())
+
+    def fail(_context: ParticipantExecutionContext) -> ParticipantExecutionResult:
+        raise RuntimeError("synthetic participant failure")
+
+    parts = _controller_parts(descriptor, session, [])
+    parts["participant_executors"] = ParticipantExecutors(
+        same_model_direct=fail,
+        serious_comparator=fail,
+        relaylm_exact_rc=fail,
+    )
+    with pytest.raises(RuntimeError, match="synthetic participant failure") as failure:
+        run_campaign(descriptor, **parts)
+    assert session.cleanup_calls == 1
+    assert any("llama cleanup failed" in note for note in failure.value.__notes__)
+
+
 def test_exact_resume_skips_completed_questions_and_does_not_reinvoke_hooks(tmp_path: Path) -> None:
     first_descriptor = CampaignDescriptor.from_mapping(_descriptor_mapping(tmp_path))
     first_session = _Session(_live_mapping())
@@ -510,3 +733,159 @@ def test_exact_resume_skips_completed_questions_and_does_not_reinvoke_hooks(tmp_
     assert receipt["counters"]["semantic_generation_count"] == 0
     assert receipt["SCIENTIFIC_SPEND"] == "UNSPENT"
     assert resumed_session.cleanup_calls == 1
+
+
+def test_strict_descriptor_binds_material_rc_hindsight_and_campaign_contract(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.relaylm_exact_rc is not None
+    assert descriptor.hindsight_lifecycle is not None
+    assert descriptor.artifact_root not in descriptor.spend_ledger_path.parents
+    assert all(axis.classification == "comparison_condition_mismatch" for axis in descriptor.axes)
+    assert all(axis.benchmark_material is not None for axis in descriptor.axes)
+    assert all("campaign_contract" in axis.identity for axis in descriptor.axes)
+
+
+def test_strict_descriptor_rejects_benchmark_material_replacement(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    material = raw["axes"][0]["benchmark_material"]
+    assert isinstance(material, dict)
+    Path(material["path"]).write_text("changed\n", encoding="utf-8")
+    with pytest.raises(ExternalQualificationReadinessError, match="content drifted"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_descriptor_rejects_exact_rc_config_replacement(tmp_path: Path) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    exact_rc = raw["relaylm_exact_rc"]
+    assert isinstance(exact_rc, dict)
+    Path(exact_rc["config_path"]).write_text("changed\n", encoding="utf-8")
+    with pytest.raises(CampaignCarriageError, match="config content drifted"):
+        CampaignDescriptor.from_mapping(raw)
+
+
+def test_strict_pre_call_rehearsal_stays_unspent_and_invokes_no_participant(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    live = descriptor.axes[0].identity["launch_admission"]
+    session = _Session(live)
+    seen: list[ParticipantExecutionContext] = []
+    receipt = run_campaign(
+        descriptor,
+        **_controller_parts(descriptor, session, seen, scientific=True),
+        pre_call_rehearsal=True,
+    )
+    assert seen == []
+    assert receipt["status"] == "PRE_CALL_BARRIER_REACHED"
+    assert receipt["pre_call_barrier_reached"] is True
+    assert receipt["SCIENTIFIC_SPEND"] == "UNSPENT"
+    assert receipt["counters"]["semantic_generation_count"] == 0
+    assert receipt["counters"]["benchmark_question_count"] == 0
+    assert session.cleanup_calls == 1
+    ledger = json.loads(descriptor.spend_ledger_path.read_text(encoding="utf-8"))
+    assert ledger["state"] == "UNSPENT"
+
+
+def test_strict_resume_skips_participant_after_spend_consumption(tmp_path: Path) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    live = descriptor.axes[0].identity["launch_admission"]
+    first_session = _Session(live)
+    first_seen: list[ParticipantExecutionContext] = []
+    failed = False
+
+    def fail_once(context: ParticipantExecutionContext) -> ParticipantExecutionResult:
+        nonlocal failed
+        first_seen.append(context)
+        if context.participant_slot == "serious_comparator" and not failed:
+            failed = True
+            raise RuntimeError("strict synthetic C failure")
+        return ParticipantExecutionResult(
+            slot=context.participant_slot,
+            observation={
+                **_observation(),
+                "tokens": {**_observation()["tokens"], "model_call_count": 1},
+            },
+            semantic_generation_count=1,
+        )
+
+    first_parts = _controller_parts(descriptor, first_session, first_seen, scientific=True)
+    first_parts["participant_executors"] = ParticipantExecutors(
+        same_model_direct=fail_once,
+        serious_comparator=fail_once,
+        relaylm_exact_rc=fail_once,
+    )
+    with pytest.raises(RuntimeError, match="strict synthetic C failure"):
+        run_campaign(descriptor, **first_parts)
+    assert [context.participant_slot for context in first_seen] == [
+        "same_model_direct",
+        "serious_comparator",
+    ]
+    ledger = json.loads(descriptor.spend_ledger_path.read_text(encoding="utf-8"))
+    assert ledger["state"] == "CONSUMED"
+
+    resumed_raw = _strict_descriptor_mapping(tmp_path, run_mode="exact_infrastructure_resume")
+    resumed_raw["axes"][1]["run_mode"] = "fresh_run"
+    resumed = CampaignDescriptor.from_mapping(resumed_raw)
+    resumed_session = _Session(resumed.axes[0].identity["launch_admission"])
+    resumed_seen: list[ParticipantExecutionContext] = []
+    receipt = run_campaign(
+        resumed,
+        **_controller_parts(resumed, resumed_session, resumed_seen, scientific=True),
+    )
+    assert [context.participant_slot for context in resumed_seen].count(
+        "same_model_direct"
+    ) == 1
+    assert all(
+        context.question.question_id != "axis-a-question"
+        or context.participant_slot != "same_model_direct"
+        for context in resumed_seen
+    )
+    assert receipt["SCIENTIFIC_SPEND"] == "CONSUMED"
+
+
+def test_strict_resume_rejects_completed_question_aggregate_drift(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    session = _Session(descriptor.axes[0].identity["launch_admission"])
+    run_campaign(
+        descriptor,
+        **_controller_parts(
+            descriptor,
+            session,
+            [],
+            scientific=True,
+        ),
+    )
+
+    observations_path = (
+        tmp_path / "campaign-artifacts" / "axis-a" / "question-observations.jsonl"
+    )
+    records = [json.loads(line) for line in observations_path.read_text().splitlines()]
+    for record in records:
+        if record.get("event") == "completed":
+            participants = record["result"]["participants"]
+            participants[0]["observation"]["quality"]["accuracy"] = 0.25
+            break
+    observations_path.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    resumed = CampaignDescriptor.from_mapping(
+        _strict_descriptor_mapping(tmp_path, run_mode="exact_infrastructure_resume")
+    )
+    with pytest.raises(CampaignCarriageError, match="aggregate disagrees"):
+        run_campaign(
+            resumed,
+            **_controller_parts(
+                resumed,
+                _Session(resumed.axes[0].identity["launch_admission"]),
+                [],
+                scientific=True,
+            ),
+        )

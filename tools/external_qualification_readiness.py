@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from collections.abc import Mapping
 
 from tools.external_qualification import (
@@ -107,7 +108,16 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
 
     for index, item in enumerate(release_cases):
         entry = _mapping(item, f"release case {index}")
-        _keys(entry, {"axis_id", "case", "manifest"}, f"release case {index}")
+        entry_keys = {"axis_id", "case", "manifest"}
+        actual_entry_keys = set(entry)
+        if actual_entry_keys not in (
+            entry_keys,
+            entry_keys | {"benchmark_material"},
+        ):
+            raise ExternalQualificationReadinessError(
+                f"release case {index} fields must be exactly {sorted(entry_keys)} "
+                "or include benchmark_material"
+            )
         axis_id = _text(entry["axis_id"], f"release case {index} axis_id")
         if axis_id in seen_axis_ids:
             raise ExternalQualificationReadinessError(
@@ -195,13 +205,16 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
             )
 
         seen_axis_ids.add(axis_id)
-        normalized_cases.append(
-            {
-                "axis_id": axis_id,
-                "case": case,
-                "manifest": manifest,
-            }
-        )
+        normalized_case = {
+            "axis_id": axis_id,
+            "case": case,
+            "manifest": manifest,
+        }
+        if "benchmark_material" in entry:
+            normalized_case["benchmark_material"] = _benchmark_material(
+                entry["benchmark_material"], axis_id=axis_id
+            )
+        normalized_cases.append(normalized_case)
 
     if seen_axis_ids != set(planned_by_id):
         raise ExternalQualificationReadinessError(
@@ -315,6 +328,44 @@ def _physical_carriage(raw: object) -> dict[str, object]:
         "backend": _text(value["backend"], "physical backend"),
         "resource_key": _text(value["resource_key"], "physical resource_key"),
         "registered": registered,
+    }
+
+
+def _benchmark_material(raw: object, *, axis_id: str) -> dict[str, object]:
+    value = _mapping(raw, f"release case {axis_id} benchmark_material")
+    _keys(
+        value,
+        {"path", "sha256", "case_fingerprint", "question_fingerprints"},
+        f"release case {axis_id} benchmark_material",
+    )
+    path_value = _text(value["path"], "benchmark material path")
+    path = Path(path_value)
+    if not path.is_absolute() or not path.is_file():
+        raise ExternalQualificationReadinessError(
+            f"benchmark material path is not an absolute file: {path_value}"
+        )
+    expected_sha = _text(value["sha256"], "benchmark material sha256")
+    if len(expected_sha) != 64 or any(char not in "0123456789abcdef" for char in expected_sha):
+        raise ExternalQualificationReadinessError(
+            "benchmark material sha256 must be 64 lowercase hexadecimal characters"
+        )
+    observed_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    if observed_sha != expected_sha:
+        raise ExternalQualificationReadinessError("benchmark material content drifted")
+    case_fingerprint = _text(value["case_fingerprint"], "benchmark material case_fingerprint")
+    question_fingerprints = value["question_fingerprints"]
+    if not isinstance(question_fingerprints, list) or not all(
+        isinstance(item, str) and item.startswith("sha256:") and len(item) == 71
+        for item in question_fingerprints
+    ):
+        raise ExternalQualificationReadinessError(
+            "benchmark material question_fingerprints must be sha256 fingerprints"
+        )
+    return {
+        "path": str(path),
+        "sha256": expected_sha,
+        "case_fingerprint": case_fingerprint,
+        "question_fingerprints": list(question_fingerprints),
     }
 
 

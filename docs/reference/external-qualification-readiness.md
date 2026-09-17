@@ -147,17 +147,17 @@ That receipt is not #1449 result evidence and authorizes no generation by itself
 carriage boundary.  Its JSON descriptor is declarative: it contains the exact
 execution-freeze plan, fixed llama.cpp launch inputs, dependency-complete
 zero-semantic Hindsight health identity, two or more frozen axes, and ordered
-questions.  It has no executable, shell fragment, or arbitrary child field.  The
-target's command-line mode only validates this shape and emits a zero-semantic
-receipt.  A scientific owner that elects to spend must bind the module's typed
-live-launch session, Hindsight health probe, current-authority reader, and
-explicit A/C/D participant hooks in Python.  The controller then constructs the
-`FrozenExperimentIdentity` from the fresh live attestation, opens one
-`DurableQuestionRun` per axis, resumes only with the exact frozen identity and
-question order, and invokes owned cleanup in a `finally` boundary.  The Hindsight
-health record must mark startup LLM connection verification as skipped under the
-zero-semantic policy; no Hindsight semantic operation is authorized by this
-carriage.
+questions.  It has no executable, shell fragment, arbitrary module, or child
+process field. The target's command-line mode only validates this shape and
+emits a zero-semantic receipt. A scientific owner that elects to spend must
+bind the module's repository-owned typed live-launch session, exact-RC runtime,
+Hindsight lifecycle, current-authority reader, and A/C/D participant
+executors. The controller then constructs the `FrozenExperimentIdentity` from
+the fresh live attestation, opens one `DurableQuestionRun` per axis, resumes
+only with the exact frozen identity/question/material contract, and invokes
+owned cleanup in a `finally` boundary. The Hindsight health record must mark
+startup LLM connection verification as skipped under the zero-semantic policy;
+no Hindsight semantic operation is authorized by this carriage.
 
 The responsibility split remains:
 
