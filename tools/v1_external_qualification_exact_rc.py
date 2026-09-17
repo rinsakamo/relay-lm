@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import subprocess
+import sysconfig
 import time
 import venv
 from collections.abc import Mapping
@@ -31,6 +32,7 @@ class ExactRCInstallation:
     python: Path
     console: Path
     root: Path
+    dependency_overlay: Path
     wheel_path: Path
     wheel_sha256: str
     version: str
@@ -42,6 +44,7 @@ class ExactRCInstallation:
             "python": str(self.python),
             "console": str(self.console),
             "root": str(self.root),
+            "dependency_overlay": str(self.dependency_overlay),
             "wheel_path": str(self.wheel_path),
             "wheel_sha256": self.wheel_sha256,
             "version": self.version,
@@ -83,10 +86,65 @@ def _console_path(root: Path) -> Path:
     return resolved
 
 
-def _run_console_version(console: Path) -> str:
+def _prepare_dependency_overlay(runtime_root: Path) -> Path:
+    """Copy only policy-controlled dependencies into the exact-RC runtime."""
+
+    source = Path(sysconfig.get_paths()["purelib"]).resolve()
+    if not source.is_dir():
+        raise ExactRCError(f"persistent Python dependency source is unavailable: {source}")
+    runtime_root = runtime_root.resolve()
+    if runtime_root == source or runtime_root in source.parents:
+        raise ExactRCError("exact RC dependency source must be outside the runtime root")
+    destination = runtime_root / "controlled-dependencies"
+    destination.mkdir(parents=True, exist_ok=False)
+    copied_files = 0
+    for item in sorted(source.iterdir(), key=lambda path: path.name):
+        normalized = item.name.lower()
+        if (
+            normalized == "relaylm"
+            or normalized.startswith("relaylm-")
+            or normalized.startswith("relaylm_")
+            or normalized.startswith("__editable__.relaylm")
+            or item.suffix == ".pth"
+        ):
+            continue
+        target = destination / item.name
+        if item.is_dir():
+            shutil.copytree(item, target, symlinks=True, dirs_exist_ok=True)
+        else:
+            shutil.copy2(item, target)
+        copied_files += 1
+    if not copied_files:
+        raise ExactRCError("exact RC controlled dependency overlay is empty")
+    return destination.resolve()
+
+
+def _runtime_environment(*, dependency_overlay: Path | None = None) -> dict[str, str]:
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
+    env.pop("PYTHONHOME", None)
+    for name in (
+        "RELAYLM_CONFIG",
+        "RELAYLM_PROVIDER_BASE_URL",
+        "RELAYLM_PROVIDER_MODEL",
+        "RELAYLM_PROFILE_ROOT",
+        "RELAYLM_PROFILE_NAME",
+        "RELAYLM_HOST",
+        "RELAYLM_PORT",
+    ):
+        env.pop(name, None)
     env["PYTHONNOUSERSITE"] = "1"
+    if dependency_overlay is not None:
+        env["PYTHONPATH"] = str(dependency_overlay.resolve())
+    return env
+
+
+def _run_console_version(
+    console: Path,
+    *,
+    dependency_overlay: Path | None = None,
+) -> str:
+    env = _runtime_environment(dependency_overlay=dependency_overlay)
     completed = subprocess.run(
         [str(console), "--version"],
         cwd=Path("/"),
@@ -173,9 +231,8 @@ def install_exact_rc(
             runtime_root
         )
         python = _python_path(runtime_root)
-        env = dict(os.environ)
-        env.pop("PYTHONPATH", None)
-        env["PYTHONNOUSERSITE"] = "1"
+        dependency_overlay = _prepare_dependency_overlay(runtime_root)
+        env = _runtime_environment(dependency_overlay=dependency_overlay)
         completed = subprocess.run(
             [
                 str(python),
@@ -210,7 +267,10 @@ def install_exact_rc(
                 "only the repository-owned relaylm distribution is supported"
             )
         console = _console_path(runtime_root)
-        console_version = _run_console_version(console)
+        console_version = _run_console_version(
+            console,
+            dependency_overlay=dependency_overlay,
+        )
         if console_version != expected_version:
             raise ExactRCError(
                 "installed RC console version drifted: "
@@ -220,6 +280,7 @@ def install_exact_rc(
             python=python,
             console=console,
             root=runtime_root,
+            dependency_overlay=dependency_overlay,
             wheel_path=wheel_path,
             wheel_sha256=wheel_sha256,
             version=version,
@@ -289,9 +350,9 @@ class ExactRCServerSession:
             raise ExactRCError("exact RC console entrypoint escaped the runtime root")
         if not console.is_file():
             raise ExactRCError(f"exact RC console entrypoint is missing: {console}")
-        env = dict(os.environ)
-        env.pop("PYTHONPATH", None)
-        env["PYTHONNOUSERSITE"] = "1"
+        env = _runtime_environment(
+            dependency_overlay=self.installation.dependency_overlay,
+        )
         try:
             log_handle = self.log_path.open("xb")
         except OSError as exc:
