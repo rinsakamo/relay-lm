@@ -84,7 +84,7 @@ For each dump point:
 
 With Flash Attention enabled on this target, the V cache is expected to be non-transposed. The instrumentation must fail closed if the physical layout does not match the dump implementation's assumptions.
 
-## Three observation points
+## Four observation points
 
 ### W512
 
@@ -110,6 +110,18 @@ Suggested dump tag:
 
 `WR-R512`
 
+### W2-512 — fresh reproducibility control
+
+A second fresh server, using the same instrumented binary and exact runtime as W512.
+
+Run the same warm request once. Capture the first 512-token prefix exactly as W512, under tag:
+
+`WR2-P512`
+
+This is not a retry. It is a predeclared independent fresh-run reproducibility control.
+
+Interpret W512 vs C512 only if W512 == W2-512 at the KV-payload level.
+
 ### C512
 
 Fresh cold server, during LC.
@@ -126,9 +138,10 @@ Use exactly:
 
 1. L0 warm, cache_prompt=true
 2. L1 target, cache_prompt=true, effective reuse=512
-3. LC target on fresh server, cache_prompt=false
+3. L0R warm on a second fresh server, cache_prompt=true — reproducibility control
+4. LC target on a third fresh server, cache_prompt=false
 
-Each once.
+Each once. L0R is a distinct predeclared control, not a retry.
 
 Retain the API response and logs again because the instrumented binary is a distinct physical artifact. Do not assume the previous L1/LC numerical result automatically transfers to the instrumented binary.
 
@@ -144,6 +157,7 @@ against a root containing:
 
 - `WR-P512/`
 - `WR-R512/`
+- `WR2-P512/`
 - `C-P512/`
 
 The comparator hashes all per-layer K/V binary dumps independently.
@@ -154,9 +168,17 @@ Layout metadata hashes are reported separately and must not be conflated with KV
 
 Exactly one KV-state classification:
 
+### PREFIX_DUMP_NOT_REPRODUCIBLE
+
+W512 != W2-512 in one or more per-layer K/V byte streams.
+
+Interpretation:
+
+The identical fresh warm-prefix observation is not byte-reproducible across independent server lifetimes. Do not attribute W512 vs C512 to cache/request-shape causality. Preserve the mismatch localization and investigate backend/run-to-run determinism while keeping Flash Attention ON.
+
 ### PREFIX_KV_GENERATION_DIFFERS
 
-W512 != C512 in one or more per-layer K/V byte streams.
+W512 == W2-512, but W512 != C512 in one or more per-layer K/V byte streams.
 
 Interpretation:
 
@@ -164,7 +186,7 @@ The same logical prefix positions 0..511 are already encoded differently when co
 
 ### RETAINED_PREFIX_KV_MUTATED_BY_REUSE
 
-W512 == C512, but R512 != W512.
+W512 == W2-512 == C512, but R512 != W512.
 
 Interpretation:
 
@@ -172,7 +194,7 @@ The prefix is generated reproducibly, but cache-reuse/truncation mutates retaine
 
 ### PREFIX_KV_IDENTICAL_THROUGH_REUSE
 
-W512 == R512 == C512 for all dumped per-layer K/V bytes.
+W512 == W2-512 == R512 == C512 for all dumped per-layer K/V bytes.
 
 Interpretation:
 
