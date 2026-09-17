@@ -54,6 +54,8 @@ def main():
             errors.append("server binary SHA256 differs between plain and probe")
         if evidence["plain"]["model_sha256"] != evidence["probe"]["model_sha256"]:
             errors.append("model SHA256 differs between plain and probe")
+        if evidence["plain"]["argv_sha256"] != evidence["probe"]["argv_sha256"]:
+            errors.append("server argv differs between plain and probe")
 
         probe_root = args.probe / "probe-root"
         if probe_root.exists() and any(probe_root.iterdir()):
