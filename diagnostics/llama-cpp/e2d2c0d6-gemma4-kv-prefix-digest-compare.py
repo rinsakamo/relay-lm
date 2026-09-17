@@ -22,7 +22,7 @@ def collect(root: Path):
         rel = p.relative_to(root).as_posix()
         if p.suffix == ".bin":
             bins[rel] = sha256(p)
-        elif p.name.endswith(".cells.tsv") or p.name == "manifest.tsv":
+        elif p.name.endswith(".cells.tsv") or p.name.endswith(".manifest.tsv"):
             meta[rel] = sha256(p)
     return bins, meta
 
