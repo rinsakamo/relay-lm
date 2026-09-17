@@ -17,6 +17,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from tools.external_qualification import ExternalQualificationError, validate_case
 from tools.repository_authority import load_declarations, qualification_fingerprint
 from tools.v1_external_qualification_campaign_prepare import (
     prepare_scientific_owner_descriptor,
@@ -25,7 +26,13 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     CampaignCarriageError,
     CampaignDescriptor,
+    CampaignQuestion,
     _hindsight_owner_deployment_id,
+)
+
+
+_PRESERVED_2964_SOURCE_SHA256 = (
+    "2d18932c0e94962a27d4d9431a06bb9a10a14e8e1ff9c7f0f67cad8dbb81df64"
 )
 
 
@@ -60,6 +67,142 @@ def _write_json(path: Path, value: Mapping[str, object]) -> None:
         json.dumps(dict(value), sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _apply_preserved_2964_case_compatibility(
+    raw: dict[str, Any],
+    *,
+    source_sha256: str,
+) -> dict[str, object]:
+    """Canonicalize only the known #2964 adapter-case reference split.
+
+    Generic fresh-owner preparation remains strict.  This compatibility is
+    available only for the exact preserved #2964 descriptor bytes and only
+    when the duplicated frozen case identities agree in every validated field
+    except the opaque adapter_case_ref.
+    """
+
+    if source_sha256 != _PRESERVED_2964_SOURCE_SHA256:
+        return {"status": "NOT_APPLICABLE", "axes": []}
+
+    axes = raw.get("axes")
+    freeze = raw.get("execution_freeze")
+    if not isinstance(axes, list) or not isinstance(freeze, dict):
+        raise CampaignProofError("preserved #2964 source is missing axes/execution_freeze")
+    release_cases = freeze.get("release_cases")
+    if not isinstance(release_cases, list):
+        raise CampaignProofError("preserved #2964 execution_freeze release_cases must be a list")
+
+    axis_by_id: dict[str, dict[str, Any]] = {}
+    for axis in axes:
+        if not isinstance(axis, dict):
+            raise CampaignProofError("preserved #2964 axis must be an object")
+        axis_id = axis.get("axis_id")
+        if not isinstance(axis_id, str) or not axis_id:
+            raise CampaignProofError("preserved #2964 axis requires axis_id")
+        if axis_id in axis_by_id:
+            raise CampaignProofError("preserved #2964 axes contain duplicate axis_id")
+        axis_by_id[axis_id] = axis
+
+    release_by_id: dict[str, dict[str, Any]] = {}
+    for release_case in release_cases:
+        if not isinstance(release_case, dict):
+            raise CampaignProofError("preserved #2964 release case must be an object")
+        axis_id = release_case.get("axis_id")
+        if not isinstance(axis_id, str) or not axis_id:
+            raise CampaignProofError("preserved #2964 release case requires axis_id")
+        if axis_id in release_by_id:
+            raise CampaignProofError(
+                "preserved #2964 release cases contain duplicate axis_id"
+            )
+        release_by_id[axis_id] = release_case
+
+    if set(axis_by_id) != set(release_by_id):
+        raise CampaignProofError(
+            "preserved #2964 axes/release cases do not cover the same axis ids"
+        )
+
+    applied: list[dict[str, str]] = []
+    for axis_id, axis in axis_by_id.items():
+        release_case = release_by_id[axis_id]
+
+        for field in ("manifest", "benchmark_material"):
+            if _canonical_json(axis.get(field)) != _canonical_json(
+                release_case.get(field)
+            ):
+                raise CampaignProofError(
+                    f"preserved #2964 axis {axis_id!r} {field} differs from execution freeze"
+                )
+
+        axis_case = axis.get("case")
+        frozen_case = release_case.get("case")
+        if not isinstance(axis_case, Mapping) or not isinstance(frozen_case, Mapping):
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} cases must be objects"
+            )
+        if _canonical_json(axis_case) == _canonical_json(frozen_case):
+            continue
+
+        try:
+            normalized_axis = validate_case(axis_case)
+            normalized_frozen = validate_case(frozen_case)
+        except ExternalQualificationError as exc:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} case is invalid: {exc}"
+            ) from exc
+
+        substantive_fields = ("case_id", "axis", "benchmark", "dataset")
+        differing = [
+            field
+            for field in substantive_fields
+            if _canonical_json(normalized_axis[field])
+            != _canonical_json(normalized_frozen[field])
+        ]
+        if differing:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} substantive case fields differ "
+                f"from execution freeze: {', '.join(differing)}"
+            )
+        if (
+            normalized_axis["adapter_case_ref"]
+            == normalized_frozen["adapter_case_ref"]
+        ):
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} case mismatch is not "
+                "an adapter_case_ref-only difference"
+            )
+
+        questions = axis.get("questions")
+        if not isinstance(questions, list) or not questions:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} questions must be a non-empty list"
+            )
+        for question in questions:
+            if not isinstance(question, Mapping):
+                raise CampaignProofError(
+                    f"preserved #2964 axis {axis_id!r} question must be an object"
+                )
+            CampaignQuestion.from_mapping(question)
+
+        axis["case"] = copy.deepcopy(dict(frozen_case))
+        applied.append(
+            {
+                "axis_id": axis_id,
+                "source_adapter_case_ref": str(normalized_axis["adapter_case_ref"]),
+                "execution_freeze_adapter_case_ref": str(
+                    normalized_frozen["adapter_case_ref"]
+                ),
+            }
+        )
+
+    return {
+        "status": "APPLIED" if applied else "NOT_NEEDED",
+        "axes": applied,
+    }
 
 
 def _find_comparator_identity(axis: Mapping[str, object]) -> Mapping[str, object]:
@@ -102,6 +245,10 @@ def prepare_static_proof(
     if _sha256_file(source_path) != source_sha256:
         raise CampaignProofError("preserved source descriptor SHA256 mismatch")
     raw = _read_json_object(source_path, label="preserved source descriptor")
+    preserved_case_compatibility = _apply_preserved_2964_case_compatibility(
+        raw,
+        source_sha256=source_sha256,
+    )
 
     execution_freeze = raw.get("execution_freeze")
     if not isinstance(execution_freeze, Mapping):
@@ -258,6 +405,7 @@ def prepare_static_proof(
         "source_descriptor_sha256": source_sha256,
         "source_comparator_implementation": source_comparator_implementation,
         "prepared_comparator_implementation": "hindsight",
+        "preserved_case_compatibility": preserved_case_compatibility,
         "accepted_rc_sha256": expected_rc_sha256,
         "core_fingerprint": core_fingerprint,
         "stale_lifecycle_substitution": "REJECTED",
