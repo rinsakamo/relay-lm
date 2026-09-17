@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -178,6 +179,8 @@ def test_prepare_rejects_source_axis_release_case_mismatch(tmp_path: Path) -> No
     release = _release_case(stale, axis_id)
     release_case = release["case"]
     assert isinstance(release_case, dict)
+    release_case = copy.deepcopy(release_case)
+    release["case"] = release_case
     release_case["adapter_case_ref"] = str(release_case["adapter_case_ref"]) + "-mismatch"
 
     with pytest.raises(
@@ -203,6 +206,8 @@ def test_prepare_rejects_source_axis_release_material_mismatch(tmp_path: Path) -
     release = _release_case(stale, axis_id)
     release_material = release["benchmark_material"]
     assert isinstance(release_material, dict)
+    release_material = copy.deepcopy(release_material)
+    release["benchmark_material"] = release_material
     release_material["case_fingerprint"] = "sha256:" + "1" * 64
 
     with pytest.raises(
