@@ -194,8 +194,10 @@ def _durable_identity() -> FrozenExperimentIdentity:
         "retry_policy": "no semantic retry",
         "authority": {
             "status": "CURRENT_AUTHORITY_CONFIRMED",
+            "branch": "v1",
             "source": "synthetic-live-authority",
             "repository_head": "a" * 40,
+            "repository_tree": "b" * 40,
         },
         "launch_admission": {
             "backend": "synthetic-backend",

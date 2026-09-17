@@ -13,6 +13,7 @@ from tools.external_qualification import (
     ExternalQualificationError,
     FrozenExperimentIdentity,
     LiveLaunchAdmissionAttestation,
+    ScientificSpendLedger,
     freeze_experiment_identity,
 )
 
@@ -42,8 +43,10 @@ def identity() -> FrozenExperimentIdentity:
             "retry_policy": "no semantic retry",
             "authority": {
                 "status": "CURRENT_AUTHORITY_CONFIRMED",
+                "branch": "v1",
                 "source": "host-api",
                 "repository_head": "b" * 40,
+                "repository_tree": "c" * 40,
             },
             "launch_admission": {
                 "backend": "synthetic-backend",
@@ -140,6 +143,95 @@ def test_freeze_identity_rejects_missing_effective_gpu_reservation() -> None:
         freeze_experiment_identity(
             identity=changed,
             live_attestation=live_attestation(),
+        )
+
+
+def _extended_live_attestation() -> dict[str, object]:
+    return {
+        **live_attestation().to_mapping(),
+        "capacity_evidence": {
+            "kind": "synthetic-live-capacity",
+            "gpu_identity": {
+                "name": "synthetic-gpu",
+                "driver_version": "synthetic-driver",
+                "memory_total_mib": "12288",
+                "memory_used_mib": "100",
+            },
+            "context": 3072,
+            "slots": 1,
+        },
+        "runtime_identity": {
+            "upstream_revision": "a" * 40,
+            "build_info": "b10874-aaaaaaaaa",
+            "model_alias": "synthetic-model",
+            "model_path": "/immutable/model.gguf",
+            "artifact_sha256": "5" * 64,
+            "chat_template_sha256": "6" * 64,
+            "context_limit": 3072,
+            "total_slots": 1,
+            "context_shift_enabled": False,
+        },
+        "gpu_identity": {
+            "name": "synthetic-gpu",
+            "driver_version": "synthetic-driver",
+            "memory_total_mib": "12288",
+        },
+        "launch_observation": {
+            "runtime_evidence_path": "/tmp/live-0001/runtime.json",
+            "runtime_ownership_evidence_path": "/tmp/live-0001/owner.json",
+            "pid": 1234,
+            "memory_used_mib": "100",
+            "observed_at": "t1",
+        },
+    }
+
+
+def _extended_identity() -> dict[str, object]:
+    raw = identity().to_mapping()
+    live = _extended_live_attestation()
+    raw["capacity_evidence"] = live["capacity_evidence"]
+    raw["launch_admission"] = live
+    raw["artifact"] = "artifact:sha256:" + "5" * 64
+    raw["template"] = "template:sha256:" + "6" * 64
+    raw["backend"] = live["backend"]
+    raw["runtime"] = live["runtime"]
+    raw["context_capacity"] = live["admitted_context"]
+    return raw
+
+
+def test_extended_live_identity_excludes_volatile_launch_observations() -> None:
+    frozen = freeze_experiment_identity(
+        identity=_extended_identity(),
+        live_attestation=_extended_live_attestation(),
+    )
+    launch = frozen.to_mapping()["launch_admission"]
+    assert "launch_observation" not in launch
+    assert "launch_evidence_reference" not in launch
+    assert "runtime_ownership_evidence_reference" not in launch
+    assert launch["capacity_evidence"]["gpu_identity"] == {
+        "name": "synthetic-gpu",
+        "driver_version": "synthetic-driver",
+        "memory_total_mib": "12288",
+    }
+
+    changed = _extended_live_attestation()
+    changed["launch_observation"]["runtime_evidence_path"] = "/tmp/live-0002/runtime.json"
+    changed["launch_observation"]["runtime_ownership_evidence_path"] = "/tmp/live-0002/owner.json"
+    changed["launch_observation"]["pid"] = 5678
+    changed["launch_observation"]["memory_used_mib"] = "900"
+    changed["launch_observation"]["observed_at"] = "t2"
+    changed["capacity_evidence"]["gpu_identity"]["memory_used_mib"] = "900"
+    resumed = freeze_experiment_identity(
+        identity=_extended_identity(),
+        live_attestation=changed,
+    )
+    assert resumed.fingerprint == frozen.fingerprint
+
+    changed["gpu_identity"]["driver_version"] = "different-driver"
+    with pytest.raises(ExternalQualificationError, match="gpu_identity"):
+        freeze_experiment_identity(
+            identity=_extended_identity(),
+            live_attestation=changed,
         )
 
 
@@ -353,3 +445,223 @@ def test_semantic_retry_is_not_a_resume_mode(tmp_path: Path) -> None:
             questions=questions(),
             run_mode="semantic_retry",
         )
+
+
+def _participant_result(slot: str, *, calls: int = 0) -> dict[str, object]:
+    return {
+        "slot": slot,
+        "observation": {
+            "quality": {},
+            "tokens": {
+                "model_input_tokens": 0,
+                "model_output_tokens": 0,
+                "model_call_count": calls,
+            },
+            "latency": {
+                "ttft_ms": 0.0,
+                "query_latency_ms": 0.0,
+                "end_to_end_ms": 0.0,
+            },
+            "resources": {
+                "peak_gpu_memory_bytes": 0,
+                "peak_cpu_memory_bytes": 0,
+                "persistent_storage_bytes": 0,
+                "notes": [],
+            },
+            "known_limitations": [],
+            "failure": None,
+        },
+        "semantic_generation_count": 0,
+        "answer_model_generation_count": 0,
+        "judge_call_count": 0,
+    }
+
+
+def _commit_participant(
+    run: DurableQuestionRun,
+    slot: str,
+    *,
+    enabled_slots: tuple[str, ...] = (
+        "same_model_direct",
+        "serious_comparator",
+        "relaylm_exact_rc",
+    ),
+) -> None:
+    run.commit_participant(
+        question_id="persona-0-q0",
+        slot=slot,
+        participant_identity={"slot": slot, "identity": f"identity-{slot}"},
+        result=_participant_result(slot),
+        request_evidence=({"slot": slot, "durable": True},),
+        enabled_slots=enabled_slots,
+    )
+
+
+def test_scientific_spend_ledger_is_atomic_and_fresh_reuse_is_rejected(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "scientific-spend.json"
+    ledger = ScientificSpendLedger.open(
+        path=path,
+        owner_id="owner-2957",
+        campaign_fingerprint="sha256:" + "a" * 64,
+        mode="fresh_run",
+    )
+    ledger.record_pre_call_barrier(payload={"SCIENTIFIC_SPEND": "UNSPENT"})
+    assert ledger.state == "UNSPENT"
+    assert json.loads(path.read_text())["state"] == "UNSPENT"
+    ledger.consume_before_first_scientific_call()
+    assert json.loads(path.read_text())["state"] == "CONSUMED"
+    with pytest.raises(ExactResumeError, match="fresh scientific campaign"):
+        ScientificSpendLedger.open(
+            path=path,
+            owner_id="owner-2957",
+            campaign_fingerprint="sha256:" + "a" * 64,
+            mode="fresh_run",
+        )
+    resumed = ScientificSpendLedger.open(
+        path=path,
+        owner_id="owner-2957",
+        campaign_fingerprint="sha256:" + "a" * 64,
+        mode="exact_infrastructure_resume",
+    )
+    assert resumed.state == "CONSUMED"
+
+
+def test_participant_resume_after_a_then_c_failure_skips_a(tmp_path: Path) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    run.begin_question("persona-0-q0")
+    _commit_participant(run, "same_model_direct")
+    resumed = DurableQuestionRun.resume(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    assert resumed.completed_participant_slots("persona-0-q0") == (
+        "same_model_direct",
+    )
+    _commit_participant(resumed, "serious_comparator")
+    _commit_participant(resumed, "relaylm_exact_rc")
+    resumed.commit_question(
+        question_id="persona-0-q0",
+        result={"participants": resumed.rebuild_participant_results("persona-0-q0")},
+    )
+    assert resumed.next_question().question_id == "persona-0-q1"
+
+
+def test_participant_resume_after_a_and_c_then_d_failure_skips_both(
+    tmp_path: Path,
+) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    run.begin_question("persona-0-q0")
+    _commit_participant(run, "same_model_direct")
+    _commit_participant(run, "serious_comparator")
+    resumed = DurableQuestionRun.resume(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    assert resumed.completed_participant_slots("persona-0-q0") == (
+        "same_model_direct",
+        "serious_comparator",
+    )
+    _commit_participant(resumed, "relaylm_exact_rc")
+    assert resumed.completed_participant_slots("persona-0-q0") == (
+        "same_model_direct",
+        "serious_comparator",
+        "relaylm_exact_rc",
+    )
+
+
+def test_process_stop_after_participant_fsync_before_question_commit_resumes_exactly(
+    tmp_path: Path,
+) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    run.begin_question("persona-0-q0")
+    _commit_participant(run, "same_model_direct")
+    resumed = DurableQuestionRun.resume(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    assert resumed.next_question().question_id == "persona-0-q0"
+    assert resumed.participant_record(
+        question_id="persona-0-q0", slot="same_model_direct"
+    ) is not None
+    _commit_participant(resumed, "serious_comparator")
+    _commit_participant(resumed, "relaylm_exact_rc")
+    resumed.commit_question(
+        question_id="persona-0-q0",
+        result={"participants": resumed.rebuild_participant_results("persona-0-q0")},
+    )
+    assert resumed.next_question().question_id == "persona-0-q1"
+
+
+def test_completed_question_resume_rejects_duplicate_participant_completion(
+    tmp_path: Path,
+) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    run.begin_question("persona-0-q0")
+    for slot in ("same_model_direct", "serious_comparator", "relaylm_exact_rc"):
+        _commit_participant(run, slot)
+    run.commit_question(
+        question_id="persona-0-q0",
+        result={"participants": run.rebuild_participant_results("persona-0-q0")},
+    )
+    resumed = DurableQuestionRun.resume(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    assert resumed.completed_participant_slots("persona-0-q0") == (
+        "same_model_direct",
+        "serious_comparator",
+        "relaylm_exact_rc",
+    )
+    line = (tmp_path / "participant-observations.jsonl").read_text().splitlines()[0]
+    with (tmp_path / "participant-observations.jsonl").open("a") as handle:
+        handle.write(line + "\n")
+    with pytest.raises(ExactResumeError, match="duplicate or conflicting"):
+        DurableQuestionRun.resume(
+            artifact_root=tmp_path,
+            identity=identity(),
+            questions=questions(),
+        )
+
+
+def test_torn_participant_tail_does_not_claim_completion(tmp_path: Path) -> None:
+    run = DurableQuestionRun.start(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    run.begin_question("persona-0-q0")
+    _commit_participant(run, "same_model_direct")
+    observations = tmp_path / "participant-observations.jsonl"
+    with observations.open("ab") as handle:
+        handle.write(b'{"event":"torn-tail"')
+    resumed = DurableQuestionRun.resume(
+        artifact_root=tmp_path,
+        identity=identity(),
+        questions=questions(),
+    )
+    assert resumed.partial_tail_detected is True
+    assert resumed.completed_participant_slots("persona-0-q0") == (
+        "same_model_direct",
+    )

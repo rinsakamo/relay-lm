@@ -183,6 +183,74 @@ zero-semantic descriptor validation, so it cannot spend a provider/model/GPU or
 Hindsight semantic call on its own.  The campaign controller does not alter
 RelayLM product semantics or the Core qualification fingerprint.
 
+### Pre-spend execution closure (#2957)
+
+The campaign descriptor now has one repository-owned production binding. It
+accepts only typed, fixed inputs for the current authority, benchmark material,
+the accepted RC1 wheel/configuration, the llama.cpp launch, and one exact
+Hindsight lifecycle. It has no executable, import path, shell fragment,
+`--command`, or arbitrary child-process escape. The public target remains the
+only entry: `tools.relay_physical_run` owns the shared lease and invokes the
+registered campaign module.
+
+Production setup is ordered as follows, with no participant call in the
+rehearsal path:
+
+```text
+fresh exact authority
+  -> owned Hindsight start + health/version identity
+  -> one owned llama.cpp launch + /props/slots/GPU attestation
+  -> exact RC1 wheel hash/install/import-origin proof
+  -> benchmark material and prompt/fingerprint proof
+  -> FrozenExperimentIdentity + durable question stores
+  -> fsync pre-call barrier (SCIENTIFIC_SPEND=UNSPENT)
+  -> stop for zero-semantic rehearsal
+```
+
+The exact-RC boundary installs the accepted wheel bytes into a checkout-
+external isolated runtime with `--no-deps --no-index`; it verifies the wheel
+hash before and after installation, package version, and `relaylm` import
+origin. The D participant is therefore never an import of qualification
+checkout code and never a source rebuild. Qualification-only carriage changes
+remain outside the accepted RC1 product identity under REL2.
+
+The campaign-level `ScientificSpendLedger` is outside the per-axis question
+stores. It is atomically replaced and file/directory-fsynced from `UNSPENT` to
+`CONSUMED` immediately before the first A/B/C/D call. A process crash after
+that transition rejects a fresh campaign under the same owner; only an exact
+identity/authority resume may continue. Each participant result is appended
+and fsynced in A/B/C/D order before the next slot. Resume verifies the
+participant identity, counters, observation, and question aggregate, skips
+completed slots/questions, and rejects duplicates, conflicts, or torn
+non-final records.
+
+The extended live attestation separates immutable runtime identity from
+per-launch observations. The frozen identity binds upstream revision,
+canonical `/props` build info, model alias/path, model and chat-template
+hashes, context, slots, context-shift state, and stable GPU name/driver/total
+memory. PID, launch evidence paths, timestamps, and current used memory remain
+attempt evidence and do not change the exact-resume fingerprint. The llama.cpp
+CLI parser structurally matches `build 10874, commit e2d2c0d6a` against
+`b10874-e2d2c0d6a` from `/props`; stdout and stderr are both accepted.
+
+Owned Hindsight is the same v0.10.0 deployment whose dependency-complete
+health passed. Its source/tree, package hashes, embedding/reranking identity,
+ONNX material, database profile, answer-model condition, start/health/semantic
+endpoint, and cleanup are bound together. Health-only evidence does not
+authorize a different comparator process or a silent restart. Cleanup runs for
+llama.cpp, Hindsight, the exact-RC runtime, and the shared lease on every
+failure path; an active participant exception remains primary if cleanup also
+fails.
+
+Successful citable execution ends in the existing `run_case`/`stable_run_id`/
+`write_citable_evidence` model and unchanged repository classification
+vocabulary. It includes the frozen case/manifest, A/B/C/D results, benchmark
+metrics, counters/calls/tokens, latency/resources, limitations, authority,
+runtime observations, campaign identity, and frozen experiment fingerprint.
+The #2957 rehearsal is explicitly non-citable and must report zero semantic,
+model, benchmark-question, answer-model, and judge calls with
+`SCIENTIFIC_SPEND=UNSPENT`.
+
 ## MemConflict RelayLM adapter boundary (#2047, #2068, #2075)
 
 The shared MemConflict harness has two different provider operations: it ingests
@@ -269,9 +337,29 @@ backend/runtime/context/capacity fields, against the final
 
 Historical runtime literals cannot authorize a freeze. The live attestation is
 transaction-scoped and must be freshly supplied by the launch/admission owner;
-its evidence references are retained in the frozen identity for exact resume.
+its evidence references and launch observation are retained as attempt evidence,
+while immutable runtime/GPU facts are retained in the frozen identity for exact
+resume. PID, launch directory, timestamp, and used-memory changes therefore do
+not change the exact-resume identity.
 `DurableQuestionRun.start(...)` rejects an identity that was parsed directly
 from a mapping without this live-attested construction step.
+
+The extended identity binds upstream revision, canonical `/props` build info,
+model alias/path, model and chat-template SHA-256, context, slots,
+context-shift state, and stable GPU name/driver/total memory. The llama.cpp CLI
+probe parses build number and commit structurally from combined stdout/stderr
+and compares them to the canonical `/props` value; it does not substring-match
+formatted CLI output.
+
+For citable campaign execution, `ScientificSpendLedger` transitions from
+`UNSPENT` to `CONSUMED` with atomic file/directory fsync immediately before the
+first participant call. Participant result records are fsynced in canonical
+A/B/C/D order and exact infrastructure resume verifies identity, observation,
+counter accounting, and the completed-question aggregate before skipping it.
+The descriptor also binds exact benchmark material and prompt content
+fingerprints, exact accepted RC1 wheel/configuration, and one owned/attested
+Hindsight v0.10.0 deployment. A zero-semantic rehearsal reaches the barrier
+without crossing spend and never invokes a participant.
 
 The deterministic acceptance for this boundary is in
 `tests/unit/test_memconflict_adapter.py` and
@@ -303,7 +391,9 @@ Each question is recorded as `in_flight` before model-facing work and as `comple
 only after its request evidence and result have been durably flushed. A process exit
 therefore preserves the in-flight tail and any partial final JSONL record without
 claiming semantic completion. Aggregates are rebuilt from completed question records,
-not treated as the source of truth.
+not treated as the sole source of truth: for the production campaign, the
+fsynced participant records are checked against each completed question
+aggregate before evidence is rebuilt.
 
 `exact_infrastructure_resume` is admitted only when the full frozen identity,
 authority status, ordered question IDs, content fingerprints, and session IDs match

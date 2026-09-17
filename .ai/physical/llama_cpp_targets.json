@@ -52,7 +52,7 @@
     "v1:external-qualification-campaign": {
       "branch": "v1",
       "module": "tools.v1_external_qualification_llama_cpp_campaign",
-      "description": "Bounded full-campaign external qualification carriage with typed live, durable, and A/C/D execution hooks.",
+      "description": "Repository-owned typed external-qualification production path and zero-semantic pre-call rehearsal; no plan-supplied executable or semantic retry.",
       "required_distributions": [
         "httpx"
       ]

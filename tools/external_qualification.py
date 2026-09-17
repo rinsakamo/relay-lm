@@ -36,6 +36,8 @@ CLASSIFICATIONS = {
 }
 
 DURABLE_RUN_FORMAT_VERSION = 1
+PARTICIPANT_RECORD_FORMAT_VERSION = 1
+SCIENTIFIC_SPEND_FORMAT_VERSION = 1
 LIVE_LAUNCH_ADMISSION_FIELDS = (
     "backend",
     "runtime",
@@ -45,6 +47,23 @@ LIVE_LAUNCH_ADMISSION_FIELDS = (
     "capacity_evidence",
     "launch_evidence_reference",
     "runtime_ownership_evidence_reference",
+)
+LIVE_LAUNCH_ADMISSION_EXTENDED_FIELDS = LIVE_LAUNCH_ADMISSION_FIELDS + (
+    "runtime_identity",
+    "gpu_identity",
+    "launch_observation",
+)
+LIVE_LAUNCH_STABLE_FIELDS = (
+    "backend",
+    "runtime",
+    "model_runner",
+    "effective_gpu_reservation",
+    "admitted_context",
+    "capacity_evidence",
+)
+LIVE_LAUNCH_FROZEN_EXTENDED_FIELDS = LIVE_LAUNCH_STABLE_FIELDS + (
+    "runtime_identity",
+    "gpu_identity",
 )
 FROZEN_EXPERIMENT_IDENTITY_FIELDS = (
     "repository",
@@ -79,6 +98,146 @@ class ExternalQualificationError(ValueError):
 
 class ExactResumeError(ExternalQualificationError):
     """A durable run cannot be resumed under the supplied frozen identity."""
+
+
+class ScientificSpendLedger:
+    """Fail-closed, fsync-backed campaign-level scientific-spend state.
+
+    The ledger is deliberately outside the question store.  A process can
+    die after the transition and before a participant returns; a later fresh
+    owner therefore still observes ``CONSUMED`` and cannot start a new
+    scientific campaign.  Exact infrastructure resume may reopen the same
+    consumed ledger because it carries the same owner and campaign identity.
+    """
+
+    _KEYS = {
+        "format_version",
+        "owner_id",
+        "campaign_fingerprint",
+        "state",
+        "transition",
+        "updated_at",
+    }
+
+    def __init__(
+        self,
+        *,
+        path: Path,
+        owner_id: str,
+        campaign_fingerprint: str,
+        state: str,
+    ) -> None:
+        self.path = path
+        self.owner_id = owner_id
+        self.campaign_fingerprint = campaign_fingerprint
+        self._state = state
+
+    @classmethod
+    def open(
+        cls,
+        *,
+        path: str | Path,
+        owner_id: str,
+        campaign_fingerprint: str,
+        mode: str,
+    ) -> "ScientificSpendLedger":
+        ledger_path = Path(path)
+        owner_id = _text(owner_id, "scientific spend owner_id")
+        campaign_fingerprint = _text(
+            campaign_fingerprint,
+            "scientific spend campaign_fingerprint",
+        )
+        if mode not in {"fresh_run", "exact_infrastructure_resume"}:
+            raise ExternalQualificationError(
+                "scientific spend ledger requires fresh_run or exact_infrastructure_resume"
+            )
+        if not ledger_path.exists():
+            ledger = cls(
+                path=ledger_path,
+                owner_id=owner_id,
+                campaign_fingerprint=campaign_fingerprint,
+                state="UNSPENT",
+            )
+            ledger._persist(transition="INITIALIZED")
+            return ledger
+        raw = _load_json_object(ledger_path, "scientific spend ledger")
+        cls._validate(raw)
+        if raw["owner_id"] != owner_id:
+            raise ExactResumeError("scientific spend owner_id does not match")
+        if raw["campaign_fingerprint"] != campaign_fingerprint:
+            raise ExactResumeError("scientific spend campaign fingerprint does not match")
+        state = raw["state"]
+        if mode == "fresh_run" and state != "UNSPENT":
+            raise ExactResumeError(
+                "a fresh scientific campaign is forbidden after the owner was consumed"
+            )
+        return cls(
+            path=ledger_path,
+            owner_id=owner_id,
+            campaign_fingerprint=campaign_fingerprint,
+            state=state,
+        )
+
+    @classmethod
+    def _validate(cls, raw: Mapping[str, object]) -> None:
+        _keys(raw, cls._KEYS, "scientific spend ledger")
+        if raw["format_version"] != SCIENTIFIC_SPEND_FORMAT_VERSION:
+            raise ExactResumeError("unsupported scientific spend ledger format_version")
+        if raw["state"] not in {"UNSPENT", "CONSUMED"}:
+            raise ExactResumeError("scientific spend ledger state is invalid")
+        _text(raw["owner_id"], "scientific spend owner_id")
+        _text(raw["campaign_fingerprint"], "scientific spend campaign_fingerprint")
+        _text(raw["transition"], "scientific spend transition")
+        if isinstance(raw["updated_at"], bool) or not isinstance(raw["updated_at"], int):
+            raise ExactResumeError("scientific spend ledger timestamp is invalid")
+
+    @property
+    def state(self) -> str:
+        return self._state
+
+    def record_pre_call_barrier(self, *, payload: Mapping[str, object]) -> None:
+        """Persist the zero-semantic barrier receipt while remaining UNSPENT."""
+
+        if self._state == "CONSUMED":
+            return
+        if self._state != "UNSPENT":
+            raise ExactResumeError("pre-call barrier cannot move a consumed owner backward")
+        normalized = _json_copy(dict(payload), "scientific pre-call barrier")
+        _write_json_atomically(
+            self.path.with_name(self.path.name + ".barrier"),
+            {
+                "format_version": SCIENTIFIC_SPEND_FORMAT_VERSION,
+                "owner_id": self.owner_id,
+                "campaign_fingerprint": self.campaign_fingerprint,
+                "state": "UNSPENT",
+                "transition": "PRE_CALL_BARRIER_REACHED",
+                "updated_at": time_now(),
+                "payload": normalized,
+            },
+        )
+
+    def consume_before_first_scientific_call(self) -> None:
+        """Atomically transition UNSPENT to CONSUMED immediately before A/B/C/D."""
+
+        if self._state == "CONSUMED":
+            return
+        if self._state != "UNSPENT":
+            raise ExactResumeError("scientific spend ledger is not in a consumable state")
+        self._state = "CONSUMED"
+        self._persist(transition="CONSUMED_BEFORE_FIRST_SCIENTIFIC_PARTICIPANT_CALL")
+
+    def _persist(self, *, transition: str) -> None:
+        _write_json_atomically(
+            self.path,
+            {
+                "format_version": SCIENTIFIC_SPEND_FORMAT_VERSION,
+                "owner_id": self.owner_id,
+                "campaign_fingerprint": self.campaign_fingerprint,
+                "state": self._state,
+                "transition": transition,
+                "updated_at": time_now(),
+            },
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +281,10 @@ class FrozenExperimentIdentity:
     def from_mapping(cls, raw: Mapping[str, object]) -> "FrozenExperimentIdentity":
         if not isinstance(raw, Mapping):
             raise ExternalQualificationError("frozen experiment identity must be an object")
-        _keys(set(raw), set(FROZEN_EXPERIMENT_IDENTITY_FIELDS), "frozen experiment identity")
+        expected_keys = set(FROZEN_EXPERIMENT_IDENTITY_FIELDS)
+        extended_keys = expected_keys | {"campaign_contract"}
+        if set(raw) != expected_keys and set(raw) != extended_keys:
+            _keys(set(raw), expected_keys, "frozen experiment identity")
         normalized = _json_copy(dict(raw), "frozen experiment identity")
         for name in FROZEN_EXPERIMENT_IDENTITY_FIELDS:
             if normalized[name] is None:
@@ -137,14 +299,51 @@ class FrozenExperimentIdentity:
             raise ExternalQualificationError(
                 "frozen experiment identity context_capacity must be a positive integer"
             )
-        normalized["launch_admission"] = _normalize_live_launch_admission(
-            _mapping(normalized["launch_admission"], "frozen identity launch_admission")
+        normalized["capacity_evidence"] = _stable_capacity(
+            normalized["capacity_evidence"]
         )
+        launch_admission = _normalize_live_launch_admission(
+            _mapping(normalized["launch_admission"], "frozen identity launch_admission"),
+            allow_stable_extended=True,
+        )
+        if "runtime_identity" in launch_admission:
+            # Extended launch attestations carry per-launch evidence paths,
+            # PID, timestamps, and current GPU usage.  Those observations are
+            # retained on LiveLaunchAdmissionAttestation and in campaign
+            # evidence, but are not part of the immutable identity used for
+            # exact infrastructure resume.
+            launch_admission = {
+                **{
+                    name: _stable_capacity(launch_admission[name])
+                    if name == "capacity_evidence"
+                    else launch_admission[name]
+                    for name in LIVE_LAUNCH_STABLE_FIELDS
+                },
+                "runtime_identity": launch_admission["runtime_identity"],
+                "gpu_identity": launch_admission["gpu_identity"],
+            }
+        normalized["launch_admission"] = launch_admission
         authority = normalized["authority"]
         if not isinstance(authority, Mapping) or authority.get("status") != "CURRENT_AUTHORITY_CONFIRMED":
             raise ExternalQualificationError(
                 "frozen experiment identity requires CURRENT_AUTHORITY_CONFIRMED authority"
             )
+        for name, validator in (
+            ("branch", _text),
+            ("repository_head", _commit),
+            ("repository_tree", _commit),
+        ):
+            if name not in authority:
+                raise ExternalQualificationError(
+                    "frozen experiment identity authority requires exact "
+                    "status, branch, repository_head, and repository_tree"
+                )
+            validator(authority[name], f"authority {name}")
+        if "campaign_contract" in normalized:
+            if not isinstance(normalized["campaign_contract"], Mapping):
+                raise ExternalQualificationError(
+                    "frozen experiment identity campaign_contract must be an object"
+                )
         encoded = _canonical_json(normalized).encode("utf-8")
         return cls(
             payload=normalized,
@@ -175,11 +374,19 @@ class DurableQuestion:
     question_id: str
     content_fingerprint: str
     session_id: str = "default"
+    content: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         for name in ("question_id", "content_fingerprint", "session_id"):
             if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
                 raise ExternalQualificationError(f"question {name} must be non-empty")
+        if self.content is not None:
+            encoded = _canonical_json(self.content).encode("utf-8")
+            expected = f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+            if expected != self.content_fingerprint:
+                raise ExternalQualificationError(
+                    "question content does not match content_fingerprint"
+                )
 
     @classmethod
     def from_content(
@@ -194,15 +401,19 @@ class DurableQuestion:
             question_id=question_id,
             content_fingerprint=f"sha256:{hashlib.sha256(encoded).hexdigest()}",
             session_id=session_id,
+            content=_json_value_copy(content, "question content"),
         )
 
     def to_mapping(self, *, order: int) -> dict[str, object]:
-        return {
+        result: dict[str, object] = {
             "order": order,
             "question_id": self.question_id,
             "content_fingerprint": self.content_fingerprint,
             "session_id": self.session_id,
         }
+        if self.content is not None:
+            result["content"] = _json_value_copy(self.content, "question content")
+        return result
 
 
 class DurableQuestionRun:
@@ -249,6 +460,7 @@ class DurableQuestionRun:
         }
         self._completed: dict[str, dict[str, object]] = {}
         self._in_flight: dict[str, int] = {}
+        self._participant_completed: dict[tuple[str, str], dict[str, object]] = {}
         self._partial_tail_detected = partial_tail_detected
         self._status = "RUNNING"
 
@@ -340,6 +552,7 @@ class DurableQuestionRun:
             run_mode="exact_infrastructure_resume",
         )
         run._load_observations()
+        run._load_participant_observations()
         run._load_request_evidence()
         run._validate_or_rebuild_checkpoint()
         run._status = "RUNNING"
@@ -396,8 +609,10 @@ class DurableQuestionRun:
             raise ExternalQualificationError(
                 "durable questions must execute in the frozen execution order"
             )
-        if question_id in self._in_flight and self.run_mode == "fresh_run":
-            raise ExternalQualificationError("question is already in flight")
+        if question_id in self._in_flight:
+            if self.run_mode == "fresh_run":
+                raise ExternalQualificationError("question is already in flight")
+            return question
         attempt = self._in_flight.get(question_id, 0) + 1
         self._append_observation(
             {
@@ -415,6 +630,97 @@ class DurableQuestionRun:
         self._in_flight[question_id] = attempt
         self._write_state()
         return question
+
+    def completed_participant_slots(self, question_id: str) -> tuple[str, ...]:
+        """Return durably completed participant slots in canonical A/B/C/D order."""
+
+        if question_id not in self._question_by_id:
+            raise ExternalQualificationError(f"unknown durable question: {question_id}")
+        return tuple(
+            slot
+            for slot in SLOTS
+            if (question_id, slot) in self._participant_completed
+        )
+
+    def participant_record(
+        self,
+        *,
+        question_id: str,
+        slot: str,
+    ) -> dict[str, object] | None:
+        if slot not in SLOTS:
+            raise ExternalQualificationError(f"unknown participant slot: {slot}")
+        record = self._participant_completed.get((question_id, slot))
+        return None if record is None else _json_copy(record, "participant record")
+
+    def commit_participant(
+        self,
+        *,
+        question_id: str,
+        slot: str,
+        participant_identity: Mapping[str, object],
+        result: Mapping[str, object],
+        request_evidence: Sequence[Mapping[str, object]] = (),
+        enabled_slots: Sequence[str] | None = None,
+    ) -> None:
+        """Persist one validated participant result before the next slot runs."""
+
+        question = self._require_in_flight(question_id)
+        if slot not in SLOTS:
+            raise ExternalQualificationError(f"unknown participant slot: {slot}")
+        key = (question_id, slot)
+        if key in self._participant_completed:
+            raise ExactResumeError(
+                "duplicate participant completion record is not resumable"
+            )
+        ordered_slots = tuple(SLOTS if enabled_slots is None else enabled_slots)
+        if any(slot_name not in SLOTS for slot_name in ordered_slots):
+            raise ExternalQualificationError("enabled participant slots are invalid")
+        if slot not in ordered_slots:
+            raise ExternalQualificationError(
+                f"participant slot {slot!r} is not enabled in the frozen manifest"
+            )
+        expected_slot = next(
+            (
+                candidate
+                for candidate in ordered_slots
+                if (question_id, candidate) not in self._participant_completed
+            ),
+            None,
+        )
+        if slot != expected_slot:
+            raise ExternalQualificationError(
+                f"participant slots must commit in canonical A/B/C/D order; expected {expected_slot}"
+            )
+        identity = _json_copy(dict(participant_identity), "participant identity")
+        normalized_result = _json_copy(dict(result), "participant result")
+        evidence = [
+            _json_copy(dict(item), "participant request evidence")
+            for item in request_evidence
+        ]
+        record = {
+            "format_version": PARTICIPANT_RECORD_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity_fingerprint": self.identity.fingerprint,
+            "event": "participant_completed",
+            "order": self._order_by_id[question_id],
+            "question_id": question.question_id,
+            "content_fingerprint": question.content_fingerprint,
+            "session_id": question.session_id,
+            "attempt": self._in_flight[question_id],
+            "slot": slot,
+            "participant_identity": identity,
+            "participant_identity_fingerprint": _sha256_mapping(identity),
+            "result": normalized_result,
+            "request_evidence": evidence,
+        }
+        # The append itself flushes and fsyncs before the next participant can
+        # be invoked.  The in-memory index is updated only after that succeeds.
+        self._append_line(self.root / "participant-observations.jsonl", record)
+        self._participant_completed[key] = record
+        for item in evidence:
+            self.append_request_evidence(question_id=question_id, evidence=item)
+        self._write_state()
 
     def append_request_evidence(
         self,
@@ -519,6 +825,18 @@ class DurableQuestionRun:
             if question.question_id in self._completed
         ]
 
+    def rebuild_participant_results(self, question_id: str) -> list[dict[str, object]]:
+        """Return durable participant records for one question in A/B/C/D order."""
+
+        if question_id not in self._question_by_id:
+            raise ExternalQualificationError(f"unknown durable question: {question_id}")
+        result: list[dict[str, object]] = []
+        for slot in SLOTS:
+            record = self._participant_completed.get((question_id, slot))
+            if record is not None:
+                result.append(_json_copy(record, "participant record"))
+        return result
+
     def rebuild_aggregate(self) -> dict[str, object]:
         sessions: dict[str, list[dict[str, object]]] = {}
         for result in self.rebuild_completed_results():
@@ -598,6 +916,16 @@ class DurableQuestionRun:
             "control_plane": "detached_durable",
             "question_count": len(self.questions),
             "completed_question_count": len(self._completed),
+            "completed_participant_count": len(self._participant_completed),
+            "completed_participants": [
+                {
+                    "question_id": question.question_id,
+                    "slot": slot,
+                }
+                for question in self.questions
+                for slot in SLOTS
+                if (question.question_id, slot) in self._participant_completed
+            ],
             "in_flight_questions": [
                 question.question_id
                 for question in self.questions
@@ -613,6 +941,54 @@ class DurableQuestionRun:
 
     def _append_observation(self, record: Mapping[str, object]) -> None:
         self._append_line(self.root / "question-observations.jsonl", record)
+
+    def _load_participant_observations(self) -> None:
+        for record in self._read_jsonl(self.root / "participant-observations.jsonl"):
+            if record.get("format_version") != PARTICIPANT_RECORD_FORMAT_VERSION:
+                raise ExactResumeError("participant evidence format_version is invalid")
+            question_id = self._validate_record_identity(record, "participant evidence")
+            if record.get("event") != "participant_completed":
+                raise ExactResumeError("participant evidence event is invalid")
+            slot = record.get("slot")
+            if not isinstance(slot, str) or slot not in SLOTS:
+                raise ExactResumeError("participant evidence slot is invalid")
+            attempt = record.get("attempt")
+            if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt <= 0:
+                raise ExactResumeError("participant evidence attempt is invalid")
+            expected_attempt = self._in_flight.get(question_id)
+            if expected_attempt is None and question_id in self._completed:
+                completed_record = self._completed[question_id]
+                completed_attempt = completed_record.get("attempt")
+                if isinstance(completed_attempt, int) and not isinstance(
+                    completed_attempt, bool
+                ):
+                    expected_attempt = completed_attempt
+            if expected_attempt is None:
+                raise ExactResumeError(
+                    "participant evidence exists for a question with no durable attempt"
+                )
+            if attempt != expected_attempt:
+                raise ExactResumeError(
+                    "participant evidence attempt does not match the durable question attempt"
+                )
+            participant_identity = record.get("participant_identity")
+            result = record.get("result")
+            evidence = record.get("request_evidence")
+            if not isinstance(participant_identity, Mapping) or not isinstance(result, Mapping):
+                raise ExactResumeError("participant evidence payload is invalid")
+            if not isinstance(evidence, list) or not all(
+                isinstance(item, Mapping) for item in evidence
+            ):
+                raise ExactResumeError("participant request evidence is invalid")
+            expected_identity_fingerprint = _sha256_mapping(participant_identity)
+            if record.get("participant_identity_fingerprint") != expected_identity_fingerprint:
+                raise ExactResumeError("participant identity fingerprint is invalid")
+            key = (question_id, slot)
+            if key in self._participant_completed:
+                raise ExactResumeError(
+                    "duplicate or conflicting participant completion records are not resumable"
+                )
+            self._participant_completed[key] = dict(record)
 
     def _append_line(self, path: Path, record: Mapping[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -835,7 +1211,6 @@ def freeze_experiment_identity(
         ("backend", "backend"),
         ("runtime", "runtime"),
         ("context_capacity", "admitted_context"),
-        ("capacity_evidence", "capacity_evidence"),
     ):
         if _canonical_json(frozen.payload[identity_name]) != _canonical_json(
             live_payload[live_name]
@@ -845,18 +1220,44 @@ def freeze_experiment_identity(
                 "live launch/admission attestation"
             )
 
+    if _canonical_json(_stable_capacity(frozen.payload["capacity_evidence"])) != _canonical_json(
+        _stable_capacity(live_payload["capacity_evidence"])
+    ):
+        raise ExternalQualificationError(
+            "frozen experiment identity capacity_evidence does not match "
+            "live launch/admission attestation"
+        )
+
     represented_launch = _mapping(
         frozen.payload["launch_admission"],
         "frozen identity launch_admission",
     )
-    for name in LIVE_LAUNCH_ADMISSION_FIELDS:
-        if _canonical_json(represented_launch[name]) != _canonical_json(
-            live_payload[name]
-        ):
+    extended_live = "runtime_identity" in live_payload
+    names = LIVE_LAUNCH_STABLE_FIELDS if extended_live else LIVE_LAUNCH_ADMISSION_FIELDS
+    for name in names:
+        left = represented_launch[name]
+        right = live_payload[name]
+        if name == "capacity_evidence":
+            left = _stable_capacity(left)
+            right = _stable_capacity(right)
+        if _canonical_json(left) != _canonical_json(right):
             raise ExternalQualificationError(
                 f"frozen experiment identity launch_admission.{name} does not "
                 "match live launch/admission attestation"
             )
+    if extended_live:
+        for name in ("runtime_identity", "gpu_identity"):
+            if name not in represented_launch:
+                raise ExternalQualificationError(
+                    f"frozen experiment identity launch_admission.{name} is missing"
+                )
+            if _canonical_json(represented_launch[name]) != _canonical_json(
+                live_payload[name]
+            ):
+                raise ExternalQualificationError(
+                    f"frozen experiment identity launch_admission.{name} does not "
+                    "match live launch/admission attestation"
+                )
     return FrozenExperimentIdentity(
         payload=frozen.payload,
         fingerprint=frozen.fingerprint,
@@ -982,16 +1383,46 @@ async def execute_relaylm_question(
 
 def _normalize_live_launch_admission(
     raw: Mapping[str, object],
+    *,
+    allow_stable_extended: bool = False,
 ) -> dict[str, object]:
     if not isinstance(raw, Mapping):
         raise ExternalQualificationError(
             "live launch/admission attestation must be an object"
         )
-    _keys(
-        raw,
-        set(LIVE_LAUNCH_ADMISSION_FIELDS),
-        "live launch/admission attestation",
-    )
+    keys = set(raw)
+    if allow_stable_extended and keys == set(LIVE_LAUNCH_FROZEN_EXTENDED_FIELDS):
+        # A FrozenExperimentIdentity stores only immutable extended runtime
+        # facts. Reuse the live-attestation grammar with fixed placeholders,
+        # then discard the per-launch fields below.
+        normalized_live = _normalize_live_launch_admission(
+            {
+                **dict(raw),
+                "launch_evidence_reference": "stable-identity",
+                "runtime_ownership_evidence_reference": "stable-identity",
+                "launch_observation": {
+                    "runtime_evidence_path": "stable-identity",
+                    "runtime_ownership_evidence_path": "stable-identity",
+                    "pid": 1,
+                    "memory_used_mib": "stable-identity",
+                    "observed_at": "stable-identity",
+                },
+            }
+        )
+        return {
+            **{
+                name: _stable_capacity(normalized_live[name])
+                if name == "capacity_evidence"
+                else normalized_live[name]
+                for name in LIVE_LAUNCH_STABLE_FIELDS
+            },
+            "runtime_identity": normalized_live["runtime_identity"],
+            "gpu_identity": normalized_live["gpu_identity"],
+        }
+    legacy = keys == set(LIVE_LAUNCH_ADMISSION_FIELDS)
+    extended = keys == set(LIVE_LAUNCH_ADMISSION_EXTENDED_FIELDS)
+    if not legacy and not extended:
+        _keys(raw, set(LIVE_LAUNCH_ADMISSION_FIELDS), "live launch/admission attestation")
     reservation = raw["effective_gpu_reservation"]
     if (
         isinstance(reservation, bool)
@@ -1020,7 +1451,7 @@ def _normalize_live_launch_admission(
         raise ExternalQualificationError(
             "live capacity_evidence must not be null"
         )
-    return {
+    normalized: dict[str, object] = {
         "backend": _text(raw["backend"], "live backend"),
         "runtime": _text(raw["runtime"], "live runtime"),
         "model_runner": _text(raw["model_runner"], "live model_runner"),
@@ -1036,6 +1467,101 @@ def _normalize_live_launch_admission(
             "live runtime_ownership_evidence_reference",
         ),
     }
+    if extended:
+        runtime_identity = _mapping(raw["runtime_identity"], "live runtime_identity")
+        required_runtime = {
+            "upstream_revision",
+            "build_info",
+            "model_alias",
+            "model_path",
+            "artifact_sha256",
+            "chat_template_sha256",
+            "context_limit",
+            "total_slots",
+            "context_shift_enabled",
+        }
+        if set(runtime_identity) != required_runtime:
+            _keys(runtime_identity, required_runtime, "live runtime_identity")
+        normalized_runtime = _json_copy(dict(runtime_identity), "live runtime_identity")
+        _commit(normalized_runtime["upstream_revision"], "live runtime upstream_revision")
+        _sha256(normalized_runtime["artifact_sha256"], "live runtime artifact_sha256")
+        _sha256(
+            normalized_runtime["chat_template_sha256"],
+            "live runtime chat_template_sha256",
+        )
+        for name in ("build_info", "model_alias", "model_path"):
+            _text(normalized_runtime[name], f"live runtime {name}")
+        for name in ("context_limit", "total_slots"):
+            if (
+                isinstance(normalized_runtime[name], bool)
+                or not isinstance(normalized_runtime[name], int)
+                or normalized_runtime[name] <= 0
+            ):
+                raise ExternalQualificationError(
+                    f"live runtime {name} must be a positive integer"
+                )
+        if not isinstance(normalized_runtime["context_shift_enabled"], bool):
+            raise ExternalQualificationError(
+                "live runtime context_shift_enabled must be boolean"
+            )
+
+        gpu_identity = _mapping(raw["gpu_identity"], "live gpu_identity")
+        _keys(
+            gpu_identity,
+            {"name", "driver_version", "memory_total_mib"},
+            "live gpu_identity",
+        )
+        normalized_gpu = {
+            name: _text(gpu_identity[name], f"live gpu_identity {name}")
+            for name in ("name", "driver_version", "memory_total_mib")
+        }
+
+        observation = _mapping(raw["launch_observation"], "live launch_observation")
+        _keys(
+            observation,
+            {
+                "runtime_evidence_path",
+                "runtime_ownership_evidence_path",
+                "pid",
+                "memory_used_mib",
+                "observed_at",
+            },
+            "live launch_observation",
+        )
+        if (
+            isinstance(observation["pid"], bool)
+            or not isinstance(observation["pid"], int)
+            or observation["pid"] <= 0
+        ):
+            raise ExternalQualificationError("live launch_observation pid is invalid")
+        _text(observation["runtime_evidence_path"], "live runtime evidence path")
+        _text(
+            observation["runtime_ownership_evidence_path"],
+            "live ownership evidence path",
+        )
+        _text(observation["memory_used_mib"], "live memory_used_mib")
+        _text(observation["observed_at"], "live observed_at")
+        normalized["runtime_identity"] = normalized_runtime
+        normalized["gpu_identity"] = normalized_gpu
+        normalized["launch_observation"] = _json_copy(
+            dict(observation), "live launch_observation"
+        )
+    return normalized
+
+
+def _stable_capacity(value: object) -> object:
+    """Remove volatile GPU usage while retaining stable capacity facts."""
+
+    copied = _json_value_copy(value, "capacity evidence")
+    if isinstance(copied, dict):
+        gpu = copied.get("gpu_identity")
+        if isinstance(gpu, dict):
+            gpu.pop("memory_used_mib", None)
+            gpu.pop("used_memory_mib", None)
+            copied["gpu_identity"] = gpu
+        copied.pop("memory_used_mib", None)
+        copied.pop("used_memory_mib", None)
+    return copied
 
 
 def _normalize_questions(
@@ -1070,6 +1596,10 @@ def _stable_durable_run_id(
         }
     ).encode("utf-8")
     return f"durable-question-run-{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _sha256_mapping(value: Mapping[str, object]) -> str:
+    return f"sha256:{hashlib.sha256(_canonical_json(dict(value)).encode('utf-8')).hexdigest()}"
 
 
 def _canonical_json(value: object) -> str:
@@ -1174,6 +1704,7 @@ def validate_release_identity(raw: Mapping[str, object]) -> dict[str, object]:
     if f"relaylm-{version}.tar.gz" not in names or len(wheels) != 1:
         raise ExternalQualificationError("release artifacts must be version-matching wheel and sdist")
     return {
+        "schema_version": 1,
         "package": "relaylm",
         "version": version,
         "release_kind": parsed.kind,
@@ -1291,6 +1822,45 @@ def validate_observation(raw: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def validate_participant_accounting(
+    *,
+    observation: Mapping[str, object],
+    semantic_generation_count: int,
+    answer_model_generation_count: int,
+    judge_call_count: int,
+    allow_zero_model_operation: bool = False,
+) -> dict[str, object]:
+    """Reject impossible counter combinations at the participant boundary."""
+
+    normalized = validate_observation(observation)
+    counters = {
+        "semantic_generation_count": semantic_generation_count,
+        "answer_model_generation_count": answer_model_generation_count,
+        "judge_call_count": judge_call_count,
+    }
+    for name, value in counters.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ExternalQualificationError(f"{name} must be a non-negative integer")
+    tokens = normalized["tokens"]
+    assert isinstance(tokens, dict)
+    model_call_count = tokens["model_call_count"]
+    assert isinstance(model_call_count, int)
+    required_calls = sum(counters.values())
+    if model_call_count < required_calls:
+        raise ExternalQualificationError(
+            "participant counters contradict observation.tokens.model_call_count"
+        )
+    if (
+        normalized["failure"] is None
+        and model_call_count == 0
+        and not allow_zero_model_operation
+    ):
+        raise ExternalQualificationError(
+            "successful scientific participant observation cannot have zero model calls"
+        )
+    return normalized
+
+
 Executor = Callable[[Mapping[str, object], Mapping[str, object]], Mapping[str, object]]
 
 
@@ -1338,7 +1908,10 @@ def stable_run_id(*, manifest: Mapping[str, object], case: Mapping[str, object])
 
 def write_evidence(*, evidence: Mapping[str, object], artifact_root: str | Path) -> Path:
     evidence = dict(evidence)
-    _keys(evidence, {"format_version", "run_id", "manifest", "case", "classification", "results"}, "evidence")
+    base_keys = {"format_version", "run_id", "manifest", "case", "classification", "results"}
+    allowed_keys = base_keys | {"campaign"}
+    if set(evidence) != base_keys and set(evidence) != allowed_keys:
+        _keys(evidence, base_keys, "evidence")
     if evidence["format_version"] != FORMAT_VERSION:
         raise ExternalQualificationError("unsupported evidence format_version")
     manifest = _validated_manifest(_mapping(evidence["manifest"], "evidence manifest"))
@@ -1350,7 +1923,7 @@ def write_evidence(*, evidence: Mapping[str, object], artifact_root: str | Path)
     if classification not in CLASSIFICATIONS:
         raise ExternalQualificationError("unsupported result classification")
     results = _evidence_results(evidence["results"])
-    evidence = {
+    normalized_evidence: dict[str, object] = {
         "format_version": FORMAT_VERSION,
         "run_id": expected,
         "manifest": manifest,
@@ -1358,6 +1931,11 @@ def write_evidence(*, evidence: Mapping[str, object], artifact_root: str | Path)
         "classification": classification,
         "results": results,
     }
+    if "campaign" in evidence:
+        normalized_evidence["campaign"] = _campaign_evidence(
+            _mapping(evidence["campaign"], "campaign evidence")
+        )
+    evidence = normalized_evidence
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{expected}.json"
@@ -1382,6 +1960,146 @@ def write_evidence(*, evidence: Mapping[str, object], artifact_root: str | Path)
         except OSError:
             pass
     return path
+
+
+def write_citable_evidence(
+    *,
+    evidence: Mapping[str, object],
+    artifact_root: str | Path,
+    campaign: Mapping[str, object],
+) -> Path:
+    """Persist canonical external evidence with controller-owned campaign linkage."""
+
+    payload = dict(evidence)
+    payload["campaign"] = dict(campaign)
+    return write_evidence(evidence=payload, artifact_root=artifact_root)
+
+
+def _campaign_evidence(raw: Mapping[str, object]) -> dict[str, object]:
+    expected = {
+        "campaign_fingerprint",
+        "frozen_experiment_fingerprint",
+        "qualification_authority",
+        "hindsight_health_fingerprint",
+        "live_runtime_identity",
+        "live_launch_observation",
+        "live_runtime_evidence_reference",
+        "live_runtime_ownership_evidence_reference",
+        "question_results",
+        "counters",
+    }
+    _keys(raw, expected, "campaign evidence")
+    for name in (
+        "campaign_fingerprint",
+        "frozen_experiment_fingerprint",
+        "hindsight_health_fingerprint",
+    ):
+        value = _text(raw[name], f"campaign evidence {name}")
+        if not value.startswith("sha256:"):
+            raise ExternalQualificationError(
+                f"campaign evidence {name} must be a content fingerprint"
+            )
+    authority = _mapping(raw["qualification_authority"], "campaign qualification authority")
+    if authority.get("status") != "CURRENT_AUTHORITY_CONFIRMED":
+        raise ExternalQualificationError("campaign evidence authority is not current")
+    for name in ("branch", "repository_head", "repository_tree"):
+        if name not in authority:
+            raise ExternalQualificationError(
+                "campaign evidence authority requires exact branch/head/tree"
+            )
+    _commit(authority["repository_head"], "campaign repository_head")
+    _commit(authority["repository_tree"], "campaign repository_tree")
+    _text(authority["branch"], "campaign authority branch")
+    runtime = _mapping(raw["live_runtime_identity"], "campaign live runtime identity")
+    for name in (
+        "upstream_revision",
+        "build_info",
+        "model_alias",
+        "model_path",
+        "artifact_sha256",
+        "chat_template_sha256",
+        "context_limit",
+        "total_slots",
+        "context_shift_enabled",
+    ):
+        if name not in runtime:
+            raise ExternalQualificationError(
+                f"campaign live runtime identity is missing {name}"
+            )
+    _commit(runtime["upstream_revision"], "campaign runtime upstream_revision")
+    _sha256(runtime["artifact_sha256"], "campaign runtime artifact_sha256")
+    _sha256(runtime["chat_template_sha256"], "campaign runtime chat_template_sha256")
+    observation = _mapping(
+        raw["live_launch_observation"], "campaign live launch observation"
+    )
+    _keys(
+        observation,
+        {
+            "runtime_evidence_path",
+            "runtime_ownership_evidence_path",
+            "pid",
+            "memory_used_mib",
+            "observed_at",
+        },
+        "campaign live launch observation",
+    )
+    if (
+        isinstance(observation["pid"], bool)
+        or not isinstance(observation["pid"], int)
+        or observation["pid"] <= 0
+    ):
+        raise ExternalQualificationError("campaign live launch observation pid is invalid")
+    for name in (
+        "runtime_evidence_path",
+        "runtime_ownership_evidence_path",
+        "memory_used_mib",
+        "observed_at",
+        "live_runtime_evidence_reference",
+        "live_runtime_ownership_evidence_reference",
+    ):
+        _text(
+            observation[name]
+            if name in observation
+            else raw[name],
+            f"campaign {name}",
+        )
+    question_results = raw["question_results"]
+    if not isinstance(question_results, list):
+        raise ExternalQualificationError("campaign question_results must be a list")
+    counters = _mapping(raw["counters"], "campaign counters")
+    for name in (
+        "semantic_generation_count",
+        "benchmark_question_count",
+        "answer_model_generation_count",
+        "judge_call_count",
+    ):
+        value = counters.get(name)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ExternalQualificationError(f"campaign counter {name} is invalid")
+    return {
+        "campaign_fingerprint": _text(raw["campaign_fingerprint"], "campaign_fingerprint"),
+        "frozen_experiment_fingerprint": _text(
+            raw["frozen_experiment_fingerprint"], "frozen_experiment_fingerprint"
+        ),
+        "qualification_authority": _json_copy(dict(authority), "campaign authority"),
+        "hindsight_health_fingerprint": _text(
+            raw["hindsight_health_fingerprint"], "hindsight_health_fingerprint"
+        ),
+        "live_runtime_identity": _json_copy(dict(runtime), "campaign runtime identity"),
+        "live_launch_observation": _json_copy(
+            dict(observation), "campaign live launch observation"
+        ),
+        "live_runtime_evidence_reference": _text(
+            raw["live_runtime_evidence_reference"],
+            "campaign live_runtime_evidence_reference",
+        ),
+        "live_runtime_ownership_evidence_reference": _text(
+            raw["live_runtime_ownership_evidence_reference"],
+            "campaign live_runtime_ownership_evidence_reference",
+        ),
+        "question_results": _json_value_copy(question_results, "campaign question_results"),
+        "counters": _json_copy(dict(counters), "campaign counters"),
+    }
 
 
 def _evidence_results(raw: object) -> list[dict[str, object]]:
@@ -1446,7 +2164,11 @@ def _participant_identity(raw: object) -> dict[str, object]:
     decoding = _string_mapping(raw["decoding"], "decoding")
     reasoning = _string_mapping(raw["reasoning"], "reasoning")
     return {
-        **{name: _text(raw[name], name) for name in ("implementation", "source_revision", "version", "deployment", "license")},
+        "implementation": _text(raw["implementation"], "implementation"),
+        "source_revision": _commit(raw["source_revision"], "source_revision"),
+        "version": _text(raw["version"], "version"),
+        "deployment": _text(raw["deployment"], "deployment"),
+        "license": _text(raw["license"], "license"),
         "physical_model": {name: _text(physical[name], f"physical_model {name}") for name in ("artifact", "tokenizer", "quantization")},
         **{name: _text(raw[name], name) for name in ("provider", "backend", "runtime")},
         "context_capacity": capacity,
