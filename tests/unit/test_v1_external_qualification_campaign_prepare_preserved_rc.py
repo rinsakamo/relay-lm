@@ -38,6 +38,40 @@ def _set_preserved_exact_rc_spelling(raw: dict[str, object], value: str) -> None
         _exact_rc_identity(axis)["implementation"] = value
 
 
+def _release_case(raw: dict[str, object], axis_id: str) -> dict[str, object]:
+    freeze = raw["execution_freeze"]
+    assert isinstance(freeze, dict)
+    release_cases = freeze["release_cases"]
+    assert isinstance(release_cases, list)
+    release = next(
+        item
+        for item in release_cases
+        if isinstance(item, dict) and item.get("axis_id") == axis_id
+    )
+    assert isinstance(release, dict)
+    return release
+
+
+def _set_matched_stale_case_fingerprint(
+    raw: dict[str, object],
+    *,
+    fingerprint: str,
+) -> None:
+    axes = raw["axes"]
+    assert isinstance(axes, list)
+    for axis in axes:
+        assert isinstance(axis, dict)
+        axis_id = axis["axis_id"]
+        assert isinstance(axis_id, str)
+        material = axis["benchmark_material"]
+        assert isinstance(material, dict)
+        material["case_fingerprint"] = fingerprint
+        release = _release_case(raw, axis_id)
+        release_material = release["benchmark_material"]
+        assert isinstance(release_material, dict)
+        release_material["case_fingerprint"] = fingerprint
+
+
 def test_prepare_accepts_preserved_exact_rc_spelling_and_canonicalizes(
     tmp_path: Path,
 ) -> None:
@@ -101,6 +135,88 @@ def test_prepare_rejects_unknown_exact_rc_template_implementation(
         )
 
 
+def test_prepare_rederives_matched_stale_benchmark_material_case_fingerprint(
+    tmp_path: Path,
+) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    stale_fingerprint = "sha256:" + "0" * 64
+    _set_matched_stale_case_fingerprint(
+        stale,
+        fingerprint=stale_fingerprint,
+    )
+
+    prepared = _prepare(
+        tmp_path,
+        owner_id="owner-2965-rederive-benchmark-material",
+        stale=stale,
+        lifecycle=lifecycle_base,
+    )
+    raw = prepared.to_mapping()
+    CampaignDescriptor.from_mapping(raw)
+
+    axes = raw["axes"]
+    assert isinstance(axes, list)
+    for axis in axes:
+        assert isinstance(axis, dict)
+        axis_id = axis["axis_id"]
+        assert isinstance(axis_id, str)
+        material = axis["benchmark_material"]
+        assert isinstance(material, dict)
+        assert material["case_fingerprint"] != stale_fingerprint
+        release = _release_case(raw, axis_id)
+        assert release["benchmark_material"] == material
+
+
+def test_prepare_rejects_source_axis_release_case_mismatch(tmp_path: Path) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    axes = stale["axes"]
+    assert isinstance(axes, list)
+    first_axis = axes[0]
+    assert isinstance(first_axis, dict)
+    axis_id = first_axis["axis_id"]
+    assert isinstance(axis_id, str)
+    release = _release_case(stale, axis_id)
+    release_case = release["case"]
+    assert isinstance(release_case, dict)
+    release_case["adapter_case_ref"] = str(release_case["adapter_case_ref"]) + "-mismatch"
+
+    with pytest.raises(
+        CampaignCarriageError,
+        match="case differs from execution freeze",
+    ):
+        _prepare(
+            tmp_path,
+            owner_id="owner-2965-reject-case-mismatch",
+            stale=stale,
+            lifecycle=lifecycle_base,
+        )
+
+
+def test_prepare_rejects_source_axis_release_material_mismatch(tmp_path: Path) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    axes = stale["axes"]
+    assert isinstance(axes, list)
+    first_axis = axes[0]
+    assert isinstance(first_axis, dict)
+    axis_id = first_axis["axis_id"]
+    assert isinstance(axis_id, str)
+    release = _release_case(stale, axis_id)
+    release_material = release["benchmark_material"]
+    assert isinstance(release_material, dict)
+    release_material["case_fingerprint"] = "sha256:" + "1" * 64
+
+    with pytest.raises(
+        CampaignCarriageError,
+        match="benchmark_material differs from execution freeze",
+    ):
+        _prepare(
+            tmp_path,
+            owner_id="owner-2965-reject-material-mismatch",
+            stale=stale,
+            lifecycle=lifecycle_base,
+        )
+
+
 def test_static_proof_accepts_preserved_hindsight_and_exact_rc_spellings(
     tmp_path: Path,
 ) -> None:
@@ -129,6 +245,11 @@ def test_static_proof_accepts_preserved_hindsight_and_exact_rc_spellings(
         assert isinstance(serious_identity, dict)
         serious_identity["implementation"] = "Hindsight"
         _exact_rc_identity(axis)["implementation"] = "relaylm_exact_rc"
+
+    _set_matched_stale_case_fingerprint(
+        raw,
+        fingerprint="sha256:" + "2" * 64,
+    )
 
     source = tmp_path / "preserved-source.json"
     source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
