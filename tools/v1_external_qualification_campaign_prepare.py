@@ -29,6 +29,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
 )
 
 _HINDSIGHT_TEMPLATE_IMPLEMENTATIONS = frozenset({"hindsight", "Hindsight"})
+_RELAYLM_TEMPLATE_IMPLEMENTATIONS = frozenset({"relaylm", "relaylm_exact_rc"})
 
 
 def _json_copy(value: object, *, label: str) -> Any:
@@ -62,6 +63,17 @@ def _canonicalize_hindsight_template_identity(
     if implementation not in _HINDSIGHT_TEMPLATE_IMPLEMENTATIONS:
         raise CampaignCarriageError(f"{label} must be Hindsight")
     identity["implementation"] = "hindsight"
+
+
+def _canonicalize_relaylm_template_identity(
+    identity: dict[str, Any],
+    *,
+    label: str,
+) -> None:
+    implementation = identity.get("implementation")
+    if implementation not in _RELAYLM_TEMPLATE_IMPLEMENTATIONS:
+        raise CampaignCarriageError(f"{label} must be RelayLM")
+    identity["implementation"] = "relaylm"
 
 
 def _require_owner_root(owner_id: str, owner_root: str | Path) -> Path:
@@ -152,8 +164,12 @@ def _rewrite_release_identity(
             identity["deployment"] = operational_fingerprint
         elif slot == "relaylm_exact_rc":
             rc_count += 1
-            if not isinstance(identity, dict) or identity.get("implementation") != "relaylm":
+            if not isinstance(identity, dict):
                 raise CampaignCarriageError("relaylm_exact_rc participant must be RelayLM")
+            _canonicalize_relaylm_template_identity(
+                identity,
+                label="relaylm_exact_rc participant",
+            )
             identity["source_revision"] = exact_rc.source_revision
             identity["version"] = exact_rc.version
     if comparator_count != 1 or rc_count != 1:
