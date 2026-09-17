@@ -53,6 +53,7 @@ def _installation(tmp_path: Path) -> tuple[ExactRCInstallation, Path, str]:
             python=python,
             console=console,
             root=root,
+            dependency_overlay=root / "controlled-dependencies",
             wheel_path=wheel,
             wheel_sha256=hashlib.sha256(wheel.read_bytes()).hexdigest(),
             version="1.0.0rc1",
@@ -113,6 +114,30 @@ def test_console_version_uses_installed_script(monkeypatch: pytest.MonkeyPatch, 
     assert seen == [[str(console), "--version"]]
 
 
+def test_dependency_overlay_excludes_relaylm_and_pth(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "persistent-site-packages"
+    source.mkdir()
+    (source / "httpx").mkdir()
+    (source / "relaylm").mkdir()
+    (source / "relaylm-1.0.0.dist-info").mkdir()
+    (source / "dependency.py").write_text("value = 1\n", encoding="utf-8")
+    (source / "override.pth").write_text("/untrusted/path\n", encoding="utf-8")
+    monkeypatch.setattr(exact_rc.sysconfig, "get_paths", lambda: {"purelib": str(source)})
+
+    runtime_root = tmp_path / "runtime"
+    runtime_root.mkdir()
+    overlay = exact_rc._prepare_dependency_overlay(runtime_root)
+
+    assert (overlay / "httpx").is_dir()
+    assert (overlay / "dependency.py").is_file()
+    assert not (overlay / "relaylm").exists()
+    assert not (overlay / "relaylm-1.0.0.dist-info").exists()
+    assert not (overlay / "override.pth").exists()
+
+
 def test_server_launch_uses_installed_console_not_module(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -122,8 +147,11 @@ def test_server_launch_uses_installed_console_not_module(
     process = _Process()
 
     def fake_popen(command: list[str], **kwargs: object) -> _Process:
-        del kwargs
         seen.append(command)
+        environment = kwargs["env"]
+        assert isinstance(environment, dict)
+        assert environment["PYTHONPATH"] == str(installation.dependency_overlay)
+        assert environment["PYTHONNOUSERSITE"] == "1"
         return process
 
     monkeypatch.setattr(exact_rc.subprocess, "Popen", fake_popen)
