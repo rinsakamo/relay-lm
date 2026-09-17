@@ -29,14 +29,14 @@ def collect(root: Path):
 
 def compare(a, b):
     keys = sorted(set(a) | set(b))
-    missing_a = [k for k in keys if k not in a]
-    missing_b = [k for k in keys if k not in b]
-    diff = [k for k in keys if k in a and k in b and a[k] != b[k]]
+    missing_left = [k for k in keys if k not in a]
+    missing_right = [k for k in keys if k not in b]
+    different = [k for k in keys if k in a and k in b and a[k] != b[k]]
     return {
-        "equal": not missing_a and not missing_b and not diff,
-        "missing_left": missing_a,
-        "missing_right": missing_b,
-        "different": diff,
+        "equal": not missing_left and not missing_right and not different,
+        "missing_left": missing_left,
+        "missing_right": missing_right,
+        "different": different,
     }
 
 
@@ -45,12 +45,16 @@ def main():
     ap.add_argument("root", type=Path)
     ap.add_argument("--w", default="WR-P512")
     ap.add_argument("--r", default="WR-R512")
+    ap.add_argument("--w2", default="WR2-P512")
     ap.add_argument("--c", default="C-P512")
     args = ap.parse_args()
 
-    roots = {name: args.root / tag for name, tag in {
-        "W": args.w, "R": args.r, "C": args.c
-    }.items()}
+    roots = {
+        "W": args.root / args.w,
+        "R": args.root / args.r,
+        "W2": args.root / args.w2,
+        "C": args.root / args.c,
+    }
 
     for name, root in roots.items():
         if not root.is_dir():
@@ -59,16 +63,24 @@ def main():
     data = {}
     for name, root in roots.items():
         bins, meta = collect(root)
-        data[name] = {"root": str(root), "kv_sha256": bins, "meta_sha256": meta}
+        data[name] = {
+            "root": str(root),
+            "kv_sha256": bins,
+            "meta_sha256": meta,
+        }
 
+    ww2 = compare(data["W"]["kv_sha256"], data["W2"]["kv_sha256"])
     wc = compare(data["W"]["kv_sha256"], data["C"]["kv_sha256"])
     wr = compare(data["W"]["kv_sha256"], data["R"]["kv_sha256"])
     rc = compare(data["R"]["kv_sha256"], data["C"]["kv_sha256"])
 
+    layout_ww2 = compare(data["W"]["meta_sha256"], data["W2"]["meta_sha256"])
     layout_wc = compare(data["W"]["meta_sha256"], data["C"]["meta_sha256"])
     layout_wr = compare(data["W"]["meta_sha256"], data["R"]["meta_sha256"])
 
-    if not wc["equal"]:
+    if not ww2["equal"]:
+        classification = "PREFIX_DUMP_NOT_REPRODUCIBLE"
+    elif not wc["equal"]:
         classification = "PREFIX_KV_GENERATION_DIFFERS"
     elif not wr["equal"]:
         classification = "RETAINED_PREFIX_KV_MUTATED_BY_REUSE"
@@ -78,11 +90,13 @@ def main():
     out = {
         "classification": classification,
         "kv": {
+            "W_vs_W2": ww2,
             "W_vs_C": wc,
             "W_vs_R": wr,
             "R_vs_C": rc,
         },
         "layout_metadata": {
+            "W_vs_W2": layout_ww2,
             "W_vs_C": layout_wc,
             "W_vs_R": layout_wr,
         },
