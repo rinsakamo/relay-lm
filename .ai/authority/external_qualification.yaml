@@ -26,6 +26,7 @@ tests:
 - tests/unit/test_v1_external_qualification_llama_cpp_gate.py
 - tests/unit/test_v1_external_qualification_llama_cpp_campaign.py
 - tests/unit/test_v1_external_qualification_campaign_prepare.py
+- tests/unit/test_v1_external_qualification_campaign_prepare_preserved_rc.py
 - tests/unit/test_v1_external_qualification_campaign_proof.py
 depends_on:
 - release_engineering
