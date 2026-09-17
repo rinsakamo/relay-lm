@@ -7,13 +7,17 @@ from pathlib import Path
 
 import pytest
 
+import tools.v1_external_qualification_campaign_proof as campaign_proof
 from test_v1_external_qualification_llama_cpp_campaign import _strict_descriptor_mapping
 from tools.v1_external_qualification_campaign_proof import (
     CampaignProofError,
     prepare_static_proof,
     verify_zero_semantic_rehearsal,
 )
-from tools.v1_external_qualification_llama_cpp_campaign import CampaignDescriptor
+from tools.v1_external_qualification_llama_cpp_campaign import (
+    CampaignCarriageError,
+    CampaignDescriptor,
+)
 
 
 def _write_source(tmp_path: Path, *, implementation: str = "Hindsight") -> tuple[Path, str]:
@@ -45,6 +49,48 @@ def _write_source(tmp_path: Path, *, implementation: str = "Hindsight") -> tuple
     path = tmp_path / "preserved-source.json"
     path.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
     return path, hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _write_source_with_axis_case_mismatch(
+    tmp_path: Path,
+    *,
+    substantive: bool = False,
+) -> tuple[Path, str]:
+    source, _ = _write_source(tmp_path)
+    raw = json.loads(source.read_text(encoding="utf-8"))
+
+    axes = raw["axes"]
+    freeze = raw["execution_freeze"]
+    assert isinstance(axes, list)
+    assert isinstance(freeze, dict)
+    release_cases = freeze["release_cases"]
+    assert isinstance(release_cases, list)
+
+    axis = axes[0]
+    assert isinstance(axis, dict)
+    axis_id = axis["axis_id"]
+    assert isinstance(axis_id, str)
+    release = next(
+        item
+        for item in release_cases
+        if isinstance(item, dict) and item.get("axis_id") == axis_id
+    )
+    assert isinstance(release, dict)
+    frozen_case = release["case"]
+    assert isinstance(frozen_case, dict)
+    release["case"] = copy.deepcopy(frozen_case)
+
+    axis_case = axis["case"]
+    assert isinstance(axis_case, dict)
+    if substantive:
+        benchmark = axis_case["benchmark"]
+        assert isinstance(benchmark, dict)
+        benchmark["revision"] = "e" * 40
+    else:
+        axis_case["adapter_case_ref"] = str(axis_case["adapter_case_ref"]) + "-historical"
+
+    source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
+    return source, hashlib.sha256(source.read_bytes()).hexdigest()
 
 
 def _prepare(tmp_path: Path) -> tuple[dict[str, object], Path, Path, str]:
@@ -87,6 +133,110 @@ def test_prepare_static_proof_canonicalizes_historical_hindsight(tmp_path: Path)
 
     admitted = CampaignDescriptor.from_mapping(plan)
     assert admitted.fingerprint == receipt["campaign_fingerprint"]
+
+
+def test_prepare_static_proof_canonicalizes_exact_preserved_adapter_case_ref_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
+    monkeypatch.setattr(
+        campaign_proof,
+        "_PRESERVED_2964_SOURCE_SHA256",
+        source_sha,
+    )
+    owner_id = "owner-proof-case-compat"
+    plan_path = tmp_path / "fresh-case-compat-plan.json"
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
+    )
+
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
+    compatibility = receipt["preserved_case_compatibility"]
+    assert isinstance(compatibility, dict)
+    assert compatibility["status"] == "APPLIED"
+    axes = compatibility["axes"]
+    assert isinstance(axes, list)
+    assert len(axes) == 1
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    prepared_axes = plan["axes"]
+    freeze = plan["execution_freeze"]
+    assert isinstance(prepared_axes, list)
+    assert isinstance(freeze, dict)
+    release_cases = freeze["release_cases"]
+    assert isinstance(release_cases, list)
+    prepared_axis = prepared_axes[0]
+    assert isinstance(prepared_axis, dict)
+    prepared_release = next(
+        item
+        for item in release_cases
+        if isinstance(item, dict)
+        and item.get("axis_id") == prepared_axis["axis_id"]
+    )
+    assert prepared_axis["case"] == prepared_release["case"]
+    CampaignDescriptor.from_mapping(plan)
+
+
+def test_prepare_static_proof_rejects_exact_preserved_substantive_case_difference(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, source_sha = _write_source_with_axis_case_mismatch(
+        tmp_path,
+        substantive=True,
+    )
+    monkeypatch.setattr(
+        campaign_proof,
+        "_PRESERVED_2964_SOURCE_SHA256",
+        source_sha,
+    )
+    owner_id = "owner-proof-case-substantive-reject"
+
+    with pytest.raises(
+        CampaignProofError,
+        match="substantive case fields differ.*benchmark",
+    ):
+        prepare_static_proof(
+            repo_root=tmp_path,
+            source_path=source,
+            source_sha256=source_sha,
+            plan_path=tmp_path / "should-not-exist-substantive.json",
+            owner_root=tmp_path / owner_id,
+            owner_id=owner_id,
+            repository_head="a" * 40,
+            repository_tree="b" * 40,
+        )
+
+
+def test_prepare_static_proof_rejects_nonwhitelisted_adapter_case_ref_difference(
+    tmp_path: Path,
+) -> None:
+    source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
+    owner_id = "owner-proof-case-nonwhitelist-reject"
+
+    with pytest.raises(
+        CampaignCarriageError,
+        match="source axis 'memconflict' case differs from execution freeze",
+    ):
+        prepare_static_proof(
+            repo_root=tmp_path,
+            source_path=source,
+            source_sha256=source_sha,
+            plan_path=tmp_path / "should-not-exist-nonwhitelist.json",
+            owner_root=tmp_path / owner_id,
+            owner_id=owner_id,
+            repository_head="a" * 40,
+            repository_tree="b" * 40,
+        )
 
 
 def test_prepare_static_proof_rejects_unknown_hindsight_spelling(tmp_path: Path) -> None:
