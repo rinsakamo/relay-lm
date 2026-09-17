@@ -236,7 +236,10 @@ CLI parser structurally matches `build 10874, commit e2d2c0d6a` against
 Owned Hindsight is the same v0.10.0 deployment whose dependency-complete
 health passed. Its source/tree, package hashes, embedding/reranking identity,
 ONNX material, database profile, answer-model condition, start/health/semantic
-endpoint, and cleanup are bound together. Health-only evidence does not
+endpoint, and cleanup are bound together. The owned health probe waits within
+the fixed startup deadline for transient process readiness (without issuing a
+semantic request), while deployment/version/identity drift fails closed.
+Health-only evidence does not
 authorize a different comparator process or a silent restart. Cleanup runs for
 llama.cpp, Hindsight, the exact-RC runtime, and the shared lease on every
 failure path; an active participant exception remains primary if cleanup also
