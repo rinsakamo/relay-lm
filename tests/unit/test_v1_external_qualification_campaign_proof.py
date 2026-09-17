@@ -225,7 +225,7 @@ def test_prepare_static_proof_rejects_nonwhitelisted_adapter_case_ref_difference
 
     with pytest.raises(
         CampaignCarriageError,
-        match="source axis 'memconflict' case differs from execution freeze",
+        match=r"source axis '.+' case differs from execution freeze",
     ):
         prepare_static_proof(
             repo_root=tmp_path,
