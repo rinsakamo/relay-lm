@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 import sys
 from typing import Any
@@ -16,6 +17,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignAxis,
     CampaignDescriptor,
+    HindsightDeploymentSession,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
     ParticipantExecutors,
@@ -352,6 +354,35 @@ class _CleanupFailSession(_Session):
     def cleanup(self) -> Mapping[str, object]:
         self.cleanup_calls += 1
         raise RuntimeError("synthetic cleanup failure")
+
+
+class _LifecycleResponse:
+    def __init__(self, status_code: int, payload: Mapping[str, object]) -> None:
+        self.status_code = status_code
+        self._payload = dict(payload)
+
+    def json(self) -> Mapping[str, object]:
+        return dict(self._payload)
+
+
+class _LifecycleClient:
+    def __init__(self, health_responses: list[_LifecycleResponse]) -> None:
+        self.health_responses = health_responses
+        self.get_paths: list[str] = []
+        self.post_paths: list[str] = []
+
+    def post(self, url: str, **_: object) -> _LifecycleResponse:
+        self.post_paths.append(url)
+        return _LifecycleResponse(204, {})
+
+    def get(self, url: str) -> _LifecycleResponse:
+        self.get_paths.append(url)
+        if url.endswith("/health"):
+            return self.health_responses.pop(0)
+        return _LifecycleResponse(200, {"api_version": "0.10.0"})
+
+    def close(self) -> None:
+        return None
 
 
 def _controller_parts(
@@ -711,6 +742,37 @@ def test_cleanup_failure_does_not_replace_active_participant_failure(
         run_campaign(descriptor, **parts)
     assert session.cleanup_calls == 1
     assert any("llama cleanup failed" in note for note in failure.value.__notes__)
+
+
+def test_hindsight_health_waits_for_owned_startup_without_semantic_calls(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.hindsight_lifecycle is not None
+    lifecycle = HindsightDeploymentSession(
+        replace(descriptor.hindsight_lifecycle, mode="owned_http"),
+        descriptor.hindsight_health,
+    )
+    client = _LifecycleClient(
+        [
+            _LifecycleResponse(503, {"status": "starting"}),
+            _LifecycleResponse(200, {"status": "healthy"}),
+        ]
+    )
+    lifecycle.client = client  # type: ignore[assignment]
+
+    lifecycle.start()
+    observed = lifecycle.attest_zero_semantic_health()
+
+    assert observed == descriptor.hindsight_health.value
+    assert client.post_paths == ["http://127.0.0.1:44367/start"]
+    assert client.get_paths == [
+        "http://127.0.0.1:44367/health",
+        "http://127.0.0.1:44367/health",
+        "http://127.0.0.1:44367/version",
+    ]
+    assert lifecycle.health_count == 1
+    assert lifecycle.semantic_operation_count == 0
 
 
 def test_exact_resume_skips_completed_questions_and_does_not_reinvoke_hooks(tmp_path: Path) -> None:

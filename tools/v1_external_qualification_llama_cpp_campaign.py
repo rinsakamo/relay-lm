@@ -169,6 +169,10 @@ class CampaignCarriageError(ExternalQualificationError):
     """Raised when the bounded campaign contract cannot be admitted."""
 
 
+class _HindsightReadinessPending(Exception):
+    """The owned Hindsight process is still becoming ready."""
+
+
 def _canonical_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -648,6 +652,9 @@ class HindsightDeploymentSession:
     failure paths.
     """
 
+    _HEALTH_READY_TIMEOUT_SECONDS = 180.0
+    _HEALTH_POLL_SECONDS = 0.25
+
     def __init__(
         self,
         spec: HindsightLifecycleSpec,
@@ -778,29 +785,57 @@ class HindsightDeploymentSession:
     def attest_zero_semantic_health(self) -> Mapping[str, Any]:
         if not self.started:
             raise CampaignCarriageError("Hindsight health was requested before start")
+        deadline = time.monotonic() + self._HEALTH_READY_TIMEOUT_SECONDS
+        while True:
+            try:
+                raw, version = self._attest_zero_semantic_health_once()
+                break
+            except _HindsightReadinessPending as exc:
+                if time.monotonic() >= deadline:
+                    detail = f": {exc}" if str(exc) else ""
+                    raise CampaignCarriageError(
+                        f"Hindsight health did not become ready within "
+                        f"{self._HEALTH_READY_TIMEOUT_SECONDS:.0f}s{detail}"
+                    ) from exc
+                time.sleep(self._HEALTH_POLL_SECONDS)
+            except CampaignCarriageError:
+                raise
+        self._last_health_response = {"health": dict(raw), "version": dict(version)}
+        self.health_count += 1
+        # The static attestation carries source/dependency/deployment identity;
+        # the live endpoint above proves that this exact process is ready and
+        # is the process whose semantic calls will be made later.
+        return self.expected.value
+
+    def _attest_zero_semantic_health_once(
+        self,
+    ) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+        """Probe readiness once; only startup-transient states are retryable."""
+
         if self.process is not None and self.process.poll() is not None:
             raise CampaignCarriageError("owned Hindsight exited before health")
         try:
             response = self.client.get(self._url(self.spec.health_path))
         except httpx.HTTPError as exc:
-            raise CampaignCarriageError("Hindsight health request failed") from exc
+            raise _HindsightReadinessPending("Hindsight health request failed") from exc
         if response.status_code != 200:
-            raise CampaignCarriageError(
+            raise _HindsightReadinessPending(
                 f"Hindsight health returned HTTP {response.status_code}"
             )
         try:
             raw = _require_mapping(response.json(), label="Hindsight health response")
         except (ValueError, TypeError) as exc:
-            raise CampaignCarriageError("Hindsight health response was not JSON") from exc
-        status = raw.get("status")
-        if status != "healthy":
-            raise CampaignCarriageError("Hindsight readiness response is not healthy")
+            raise _HindsightReadinessPending(
+                "Hindsight health response was not JSON"
+            ) from exc
+        if raw.get("status") != "healthy":
+            raise _HindsightReadinessPending("Hindsight readiness response is not healthy")
         try:
             version_response = self.client.get(self._url("/version"))
         except httpx.HTTPError as exc:
-            raise CampaignCarriageError("Hindsight version request failed") from exc
+            raise _HindsightReadinessPending("Hindsight version request failed") from exc
         if version_response.status_code != 200:
-            raise CampaignCarriageError(
+            raise _HindsightReadinessPending(
                 f"Hindsight version returned HTTP {version_response.status_code}"
             )
         try:
@@ -808,19 +843,25 @@ class HindsightDeploymentSession:
                 version_response.json(), label="Hindsight version response"
             )
         except (ValueError, TypeError) as exc:
-            raise CampaignCarriageError("Hindsight version response was not JSON") from exc
+            raise _HindsightReadinessPending(
+                "Hindsight version response was not JSON"
+            ) from exc
         if version.get("api_version") != self.spec.runtime_version.lstrip("v"):
             raise CampaignCarriageError("Hindsight API version drifted from the frozen plan")
         if self.spec.mode == "owned_local":
             if self._runtime_identity_path is None or not self._runtime_identity_path.is_file():
-                raise CampaignCarriageError("owned Hindsight runtime identity was not emitted")
+                raise _HindsightReadinessPending(
+                    "owned Hindsight runtime identity is not emitted yet"
+                )
             try:
                 runtime_identity = _require_mapping(
                     json.loads(self._runtime_identity_path.read_text(encoding="utf-8")),
                     label="Hindsight runtime identity",
                 )
             except (OSError, UnicodeError, json.JSONDecodeError, TypeError) as exc:
-                raise CampaignCarriageError("owned Hindsight runtime identity is invalid") from exc
+                raise CampaignCarriageError(
+                    "owned Hindsight runtime identity is invalid"
+                ) from exc
             if runtime_identity.get("version") != self.spec.runtime_version.lstrip("v"):
                 raise CampaignCarriageError("owned Hindsight runtime version drifted")
             for name, expected in (
@@ -835,9 +876,7 @@ class HindsightDeploymentSession:
                 ("reranker_provider", self.spec.reranker_provider),
             ):
                 if runtime_identity.get(name) != expected:
-                    raise CampaignCarriageError(
-                        f"owned Hindsight runtime {name} drifted"
-                    )
+                    raise CampaignCarriageError(f"owned Hindsight runtime {name} drifted")
             if runtime_identity.get("database_profile") != self.spec.database_profile:
                 raise CampaignCarriageError("owned Hindsight database profile drifted")
             if runtime_identity.get("embeddings_onnx_model_path") != str(
@@ -859,18 +898,8 @@ class HindsightDeploymentSession:
             if runtime_identity.get("package_wheel_sha256") != dict(
                 self.spec.package_wheel_sha256
             ):
-                raise CampaignCarriageError(
-                    "owned Hindsight package wheel identity drifted"
-                )
-        self._last_health_response = {
-            "health": dict(raw),
-            "version": dict(version),
-        }
-        self.health_count += 1
-        # The static attestation carries source/dependency/deployment identity;
-        # the live endpoint above proves that this exact process is ready and
-        # is the process whose semantic calls will be made later.
-        return self.expected.value
+                raise CampaignCarriageError("owned Hindsight package wheel identity drifted")
+        return raw, version
 
     def cleanup(self) -> Mapping[str, Any]:
         if self._cleanup_receipt is not None:
