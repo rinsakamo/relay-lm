@@ -28,6 +28,8 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     _hindsight_owner_deployment_id,
 )
 
+_HINDSIGHT_TEMPLATE_IMPLEMENTATIONS = frozenset({"hindsight", "Hindsight"})
+
 
 def _json_copy(value: object, *, label: str) -> Any:
     try:
@@ -49,6 +51,17 @@ def _canonical_json(value: object) -> str:
 
 def _descriptor_sha256(value: Mapping[str, object]) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _canonicalize_hindsight_template_identity(
+    identity: dict[str, Any],
+    *,
+    label: str,
+) -> None:
+    implementation = identity.get("implementation")
+    if implementation not in _HINDSIGHT_TEMPLATE_IMPLEMENTATIONS:
+        raise CampaignCarriageError(f"{label} must be Hindsight")
+    identity["implementation"] = "hindsight"
 
 
 def _require_owner_root(owner_id: str, owner_root: str | Path) -> Path:
@@ -128,8 +141,12 @@ def _rewrite_release_identity(
         identity = participant.get("identity")
         if slot == "serious_comparator":
             comparator_count += 1
-            if not isinstance(identity, dict) or identity.get("implementation") != "hindsight":
+            if not isinstance(identity, dict):
                 raise CampaignCarriageError("serious comparator must be Hindsight")
+            _canonicalize_hindsight_template_identity(
+                identity,
+                label="serious comparator",
+            )
             identity["source_revision"] = lifecycle.source_revision
             identity["version"] = lifecycle.runtime_version
             identity["deployment"] = operational_fingerprint
@@ -210,8 +227,12 @@ def _derive_execution_freeze(
 ) -> dict[str, Any]:
     freeze = _mapping_copy(execution_freeze, label="execution freeze template")
     comparator = freeze.get("comparator")
-    if not isinstance(comparator, dict) or comparator.get("implementation") != "hindsight":
+    if not isinstance(comparator, dict):
         raise CampaignCarriageError("execution freeze comparator must be Hindsight")
+    _canonicalize_hindsight_template_identity(
+        comparator,
+        label="execution freeze comparator",
+    )
     comparator["source_revision"] = lifecycle.source_revision
     comparator["version"] = lifecycle.runtime_version
 
