@@ -10,9 +10,11 @@ Startup recovery authority remains:
 
 `diagnostics/llama-cpp/e2d2c0d6-gemma4-cache-boundary-swa-startup-recovery.md`
 
-## Prior preflight result
+## Preflight history
 
-The Arm M non-generative startup preflight reached health readiness successfully:
+Two Arm M non-generative startup attempts reached health readiness successfully without any measured generation.
+
+Common observations:
 
 - `llama-server --version`: exit 0
 - `/health`: HTTP 200
@@ -23,9 +25,9 @@ The Arm M non-generative startup preflight reached health readiness successfully
 - semantic inference started: false
 - matrix state remains `PHYSICAL_PROBE_UNSPENT`
 
-The helper nevertheless returned `FLASH_ATTN_EVIDENCE_MISSING` because startup logs did not contain the INFO-level context configuration lines needed by its evidence gate.
+The second attempt explicitly passed `--log-verbosity 3`, but the helper still returned `FLASH_ATTN_EVIDENCE_MISSING`: the expected context INFO lines for `n_ctx`, `n_batch`, `n_ubatch`, and `flash_attn` were not captured.
 
-Do not interpret that classification as evidence that Flash Attention was disabled.
+Do not interpret either classification as evidence that Flash Attention was disabled.
 
 ## Exact-source observations at llama.cpp e2d2c0d6
 
@@ -38,12 +40,12 @@ cparams.auto_fa    = params.flash_attn_type == LLAMA_FLASH_ATTN_TYPE_AUTO;
 
 Therefore `--flash-attn on` maps to an enabled, non-auto context state.
 
-The same exact context constructor emits the following values at INFO level:
+The same exact context constructor emits the following values with `LLAMA_LOG_INFO`:
 
 ```cpp
+LLAMA_LOG_INFO("%s: n_ctx                 = %u\n",   __func__, cparams.n_ctx);
 LLAMA_LOG_INFO("%s: n_batch               = %u\n",   __func__, cparams.n_batch);
 LLAMA_LOG_INFO("%s: n_ubatch              = %u\n",   __func__, cparams.n_ubatch);
-LLAMA_LOG_INFO("%s: causal_attn           = %d\n",   __func__, cparams.causal_attn);
 LLAMA_LOG_INFO("%s: flash_attn            = %s\n",   __func__, llama_flash_attn_type_name(params.flash_attn_type));
 ```
 
@@ -61,7 +63,9 @@ with:
 - `4 = trace`
 - `5 = debug`
 
-The missing lines in the prior preflight are therefore an observability/log-threshold issue unless contrary evidence appears.
+The observed exact-build behavior shows that level 3 did not surface the expected `LLAMA_LOG_INFO` context lines. Independent upstream llama.cpp reporting has also documented cases where verbosity 3 suppresses INFO-labelled entries that appear at verbosity 4. This external report is corroborating context only; the exact-build observation above is the authority for this probe.
+
+Therefore the next bounded observability setting is `--log-verbosity 4`.
 
 ## Gemma 4 Flash Attention graph path
 
@@ -91,7 +95,7 @@ This is distinct from direct observation of a CUDA kernel launch. Actual backend
 
 ## Revised non-generative preflight
 
-Do not alter the existing helper. Pass INFO verbosity through its existing extra-arguments mechanism.
+Do not alter the existing helper. Pass trace verbosity through its existing extra-arguments mechanism.
 
 Arm M invocation:
 
@@ -101,14 +105,16 @@ bash diagnostics/llama-cpp/e2d2c0d6-gemma4-cache-boundary-swa-startup-preflight.
   "$MAX_REUSE_LLAMA_SERVER" \
   "$MODEL_GGUF" \
   18101 \
-  --log-verbosity 3
+  --log-verbosity 4
 ```
 
 If port 18101 is occupied before launch, selecting another free loopback port is still mechanical.
 
 Do not pass `--swa-full` for M.
 
-`--log-verbosity 3` is an observability-only change. It does not change model bytes, fixture bytes, cache reuse geometry, attention mode, sampling, batch size, ubatch size, SWA mode, or semantic request content. Record it explicitly in argv and use the same log verbosity for all measured server lifetimes if the matrix later proceeds.
+`--log-verbosity 4` is an observability-only change. It does not change model bytes, fixture bytes, cache reuse geometry, attention mode, sampling, batch size, ubatch size, SWA mode, or semantic request content. Record it explicitly in argv and use the same log verbosity for every measured server lifetime if the matrix proceeds.
+
+Do not escalate to verbosity 5 in the same attempt if level 4 fails. Retain evidence and stop `PHYSICAL_PROBE_UNSPENT`.
 
 ## Required evidence for `READY_NON_GENERATIVE`
 
@@ -125,23 +131,31 @@ Also retain evidence that the intended GPU backend/device loaded and that the pr
 
 Do not require a CUDA Flash Attention kernel-launch trace before M0. That would require computation and would collapse the distinction between non-generative readiness and measured inference.
 
-If the exact INFO-level lines above are present, classify the startup preflight:
+If the exact configuration lines above are present, classify startup:
 
 `READY_NON_GENERATIVE`
 
-and stop. Do not send M0 in the same task unless separately authorized.
+The matrix task may then launch a fresh measured M server with the same physical configuration, including `--log-verbosity 4`, and send M0. M0 remains the first measured one-token generation and the exact point where the probe becomes SPENT.
 
-If health is ready but `flash_attn = enabled` is still absent at `--log-verbosity 3`, retain complete logs and remain `PHYSICAL_PROBE_UNSPENT`; do not increase verbosity or change parameters in the same attempt.
+If health is ready but `flash_attn = enabled` is still absent at `--log-verbosity 4`, retain complete logs and remain `PHYSICAL_PROBE_UNSPENT`; do not alter verbosity or inference parameters in that attempt.
+
+## Frozen fixture metadata correction
+
+The retained corpus read-back is `113853` bytes, not `113854`. Its SHA256 remains:
+
+`4ffd2967dc487d6c4fd4de94e66a017fdf452399105c08093ebbcf0ecfc13936`
+
+The frozen warm/target token-array hashes and geometry are unchanged. This is a metadata correction only and is not fixture replacement.
 
 ## Accounting
 
-This recovery remains pre-inference mechanical work:
+This recovery remains pre-inference mechanical work until M0:
 
 - measured generation count = 0
 - semantic inference started = false
 - retry/replay/reseed/fallback/repair = 0
 - fixture replacement = 0
-- parameter tuning = 0 (`--log-verbosity 3` is observability, not an inference parameter)
+- parameter tuning = 0 (`--log-verbosity 4` is observability, not an inference parameter)
 - protected v1 mutation = 0
 - production mutation = 0
 - RC1 action = 0
