@@ -8,7 +8,7 @@ The historical #2947 request bodies are no longer recoverable from retained evid
 
 Therefore this probe deliberately stops trying to reproduce the historical semantic fixture. It tests the lower-level mechanism with a new, self-contained token-array fixture that is created once, hashed, frozen, and then reused byte-for-byte across all conditions.
 
-The questions are:
+Questions:
 
 1. Does maximum-LCP reuse remain numerically different from a cold prefill after the unnecessary checkpoint rollback is suppressed?
 2. Does limiting reuse to a complete physical `n_ubatch` boundary remove that difference?
@@ -16,7 +16,7 @@ The questions are:
 
 ## Physical identity
 
-Use the same physical identity as the successful rollback diagnostic:
+Use the same model/runtime family as the successful rollback diagnostic:
 
 - llama.cpp: `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`
 - model: Gemma 4 12B IT Q4_K_M
@@ -25,13 +25,32 @@ Use the same physical identity as the successful rollback diagnostic:
 - slots: 1
 - `-ngl 999`
 - `--no-context-shift`
+- `--flash-attn on`
 - `n_batch = 2048`
 - `n_ubatch = 512`
 - greedy / temperature zero
 - one generated token for every measured request
 - top probabilities/logprobs enabled, target top-N = 20 (minimum 5 if exact build limits it)
 
+`--flash-attn on` is part of the frozen physical identity for every arm and every paired cold control. Do not use `auto` or `off` inside this probe. Before any measured generation, retain startup evidence showing that the server accepted the option and that Flash Attention is actually enabled for the loaded model/backend. If the exact build rejects the option, cannot enable Flash Attention, or exits before readiness, stop `PHYSICAL_PROBE_UNSPENT`.
+
 Use fresh temporary llama.cpp checkouts/builds. Never touch the primary dirty checkout.
+
+## Startup-only readiness gate
+
+Server startup, model load, health checking, and failure diagnosis before the first measured one-token generation are mechanical and do not consume the semantic probe budget.
+
+For every server lifetime, before sending any measured prompt:
+
+1. retain the complete command line;
+2. redirect and retain complete stdout/stderr from process start;
+3. retain the process exit code if it exits;
+4. confirm the expected TCP port is free before launch and owned by the new server after launch;
+5. wait only for a bounded readiness condition; health polling itself is not inference;
+6. confirm model load, CUDA/backend initialization, `n_batch=2048`, `n_ubatch=512`, context=8192, slots=1, context shift disabled, and Flash Attention enabled from server evidence;
+7. do not send fixture, completion, token-generation, warmup-generation, or semantic requests as a readiness test.
+
+If readiness fails before any measured generation, retain the startup log and classify `PHYSICAL_PROBE_UNSPENT`. A new separately-started attempt after diagnosing a purely mechanical startup failure is permitted because no measured inference occurred; it is not a semantic retry/replay. The terminal record must preserve every pre-inference startup attempt and its reason. Do not alter fixture bytes, model bytes, source revision, patches, inference parameters, or matrix design while doing mechanical startup diagnosis.
 
 ## Diagnostic patches
 
@@ -43,7 +62,7 @@ SHA256:
 
 `cfb1a054ec5b89e7a271c2042ee6135a876d0f18d7f357d819224df06ac833f4`
 
-This only suppresses the already-demonstrated unnecessary live-SWA checkpoint rollback. It leaves maximum LCP reuse intact.
+This suppresses only the already-demonstrated unnecessary live-SWA checkpoint rollback. It leaves maximum LCP reuse intact.
 
 ### Aligned-reuse patch
 
@@ -53,31 +72,30 @@ SHA256:
 
 `cef233d776686ea36f03174b0c1d729545e2356f7009d613df726bcaf16a856a`
 
-This contains the same rollback suppression plus the diagnostic cap:
+This contains the same rollback suppression plus:
 
 `aligned_reuse = floor(LCP / n_ubatch) * n_ubatch`
 
-Do not stack these patches. Each arm uses a clean exact checkout with exactly one patch.
+Do not stack the two patches. Each arm uses a clean exact checkout with exactly one patch.
 
 ## Synthetic frozen token fixture
 
 Do not use RelayLM, a chat template, historical payload reconstruction, or a current compiler.
 
-The exact e2d2 server accepts numeric token arrays directly as `prompt` input. Build the fixture mechanically before any measured inference:
+Build the fixture mechanically before measured inference:
 
-1. Start an exact unpatched tokenizer-capable server or use the exact model tokenizer without generation.
-2. Tokenize a deterministic, recorded plain-text corpus long enough to yield at least 5200 ordinary token IDs. The source text bytes and SHA256 must be retained.
-3. Let the resulting deterministic token list be `T`.
-4. Define shared prefix `P = T[0:865]`.
-5. Define warm suffix `WA = T[865:883]`, so `warm = P + WA` has exactly 883 tokens.
-6. Find the first index `j >= 1024` for which `T[j] != WA[0]` and enough tokens remain for 2062 tokens.
-7. Define `target = P + T[j:j+2062]`, so target has exactly 2927 tokens.
-8. Assert mechanically that `LCP(warm, target) == 865`.
-9. Persist `warm-token-ids.json` and `target-token-ids.json` and their SHA256 values before measured inference.
+1. Tokenize a deterministic recorded plain-text corpus with the exact model tokenizer, without generation. Retain the source bytes and SHA256.
+2. Let the resulting deterministic token list be `T`, with at least 5200 ordinary token IDs.
+3. `P = T[0:865]`.
+4. `WA = T[865:883]`; `warm = P + WA`, exactly 883 tokens.
+5. Find the first `j >= 1024` such that `T[j] != WA[0]` and at least 2062 tokens remain.
+6. `target = P + T[j:j+2062]`, exactly 2927 tokens.
+7. Assert `LCP(warm, target) == 865`.
+8. Persist `warm-token-ids.json` and `target-token-ids.json` plus SHA256 before measured inference.
 
-The numeric arrays themselves are the fixture authority after this point. No subsequent tokenization is allowed for measured requests.
+The numeric arrays are the fixture authority after this point. No subsequent tokenization is allowed for measured requests.
 
-This fixture intentionally preserves the historical geometry only:
+Required geometry:
 
 - warm length = 883
 - target length = 2927
@@ -85,11 +103,11 @@ This fixture intentionally preserves the historical geometry only:
 - `n_swa = 1024`
 - `n_ubatch = 512`
 
-It does not claim semantic equivalence to #2947.
+This does not claim semantic equivalence to #2947.
 
 ## Matrix and paired controls
 
-Use three independent arms. Each arm gets its own fresh warm-target server and its own fresh cold-control server so patch/configuration differences cannot contaminate the control.
+Each arm uses its own fresh warm-target server and its own fresh cold-control server. All six measured server lifetimes use `--flash-attn on`.
 
 ### Arm M — compact SWA, maximum reuse
 
@@ -97,24 +115,26 @@ Binary/config:
 
 - exact e2d2
 - maximum-reuse patch only
-- default compact SWA cache; no `--swa-full`
+- default compact SWA cache
+- no `--swa-full`
+- `--flash-attn on`
 
-Warm-target server:
+Warm-target:
 
 - M0: `warm`, `cache_prompt=true`, one token
 - M1: `target`, `cache_prompt=true`, one token + top probabilities
 
-Hard path prediction for M1:
+M1 hard path:
 
 - LCP = 865
 - no rollback to 366
 - `cache_n/n_past = 865`
 - prompt eval = 2062
 
-Fresh cold-control server with identical binary/config:
+Fresh paired cold server, identical binary/config:
 
-- MC: `target`, `cache_prompt=false`, one token + top probabilities
-- `cache_n/n_past = 0`
+- MC: `target`, `cache_prompt=false`
+- reuse = 0
 - prompt eval = 2927
 
 ### Arm A — compact SWA, 512-aligned reuse
@@ -123,24 +143,26 @@ Binary/config:
 
 - exact e2d2
 - aligned-reuse patch only
-- default compact SWA cache; no `--swa-full`
+- default compact SWA cache
+- no `--swa-full`
+- `--flash-attn on`
 
-Warm-target server:
+Warm-target:
 
 - A0: `warm`, `cache_prompt=true`, one token
 - A1: `target`, `cache_prompt=true`, one token + top probabilities
 
-Hard path prediction for A1:
+A1 hard path:
 
 - raw LCP = 865
 - no rollback to 366
 - effective `cache_n/n_past = 512`
 - prompt eval = 2415
 
-Fresh cold-control server with identical binary/config:
+Fresh paired cold server, identical binary/config:
 
-- AC: `target`, `cache_prompt=false`, one token + top probabilities
-- `cache_n/n_past = 0`
+- AC: `target`, `cache_prompt=false`
+- reuse = 0
 - prompt eval = 2927
 
 ### Arm F — full-size SWA cache, maximum reuse
@@ -149,28 +171,29 @@ Binary/config:
 
 - exact e2d2
 - maximum-reuse patch only
-- add `--swa-full`
+- `--swa-full`
+- `--flash-attn on`
 
-Warm-target server:
+Warm-target:
 
 - F0: `warm`, `cache_prompt=true`, one token
 - F1: `target`, `cache_prompt=true`, one token + top probabilities
 
-Required before interpretation:
+F1 hard path:
 
 - raw LCP = 865
 - no rollback to 366
-- maximum reuse remains 865
+- maximum reuse = 865
 - `cache_n/n_past = 865`
 - prompt eval = 2062
 
-Fresh cold-control server with identical binary/config including `--swa-full`:
+Fresh paired cold server, identical config including `--swa-full` and `--flash-attn on`:
 
-- FC: `target`, `cache_prompt=false`, one token + top probabilities
-- `cache_n/n_past = 0`
+- FC: `target`, `cache_prompt=false`
+- reuse = 0
 - prompt eval = 2927
 
-If the F arm does not exercise maximum reuse 865, classify the arm as not exercised rather than repairing it.
+If an arm does not exercise its hard path after inference begins, retain it as `PROBE_NOT_EXERCISED`; do not repair or rerun that arm.
 
 ## Measurements
 
@@ -188,64 +211,59 @@ For M1/MC, A1/AC, and F1/FC retain:
 - checkpoint search/restore events
 - complete raw response
 - complete llama-server log
+- explicit Flash Attention startup evidence
 
-Also retain source revision, patch SHA, patched binary SHA, model SHA, command line, GPU identity, fixture source bytes/hash, token-array files/hashes, and exact request counters.
+Also retain source revision, patch SHA, binary SHA, model SHA, command line, GPU identity, fixture source bytes/hash, token-array hashes, and exact request counters.
 
-Do not impose an arbitrary numerical tolerance. Report exact API-visible equality separately from measured deltas.
+Do not impose an arbitrary numerical tolerance. Report API-visible exact equality separately from measured deltas.
 
 ## Interpretation
 
 Evaluate each arm only against its paired cold control:
 
-- `M_equal = reported first-token/top-N result of M1 equals MC`
-- `A_equal = reported first-token/top-N result of A1 equals AC`
-- `F_equal = reported first-token/top-N result of F1 equals FC`
+- `M_equal = M1 == MC` at API-reported first-token/top-N values
+- `A_equal = A1 == AC`
+- `F_equal = F1 == FC`
 
-Also report whether first-token ID matches even when reported logprobs differ.
+Also report first-token-ID equality separately from logprob equality.
 
-Primary factual patterns:
+Primary patterns:
 
 ### `ALIGNMENT_EXPLAINS_RESIDUAL_DRIFT`
 
 `M_equal = false` and `A_equal = true`.
 
-This strongly supports partial-physical-ubatch provenance as the residual cache/cold difference for this fixture.
-
 ### `SWA_FULL_EXPLAINS_RESIDUAL_DRIFT`
 
-`M_equal = false` and `F_equal = true`, while `A_equal = false`.
-
-This supports compact SWA cache/state machinery as the stronger explanation for this fixture.
+`M_equal = false`, `F_equal = true`, `A_equal = false`.
 
 ### `BOTH_ALIGNMENT_AND_SWA_FULL_RESTORE_IDENTITY`
 
-`M_equal = false`, `A_equal = true`, and `F_equal = true`.
-
-Both interventions independently remove the reported residual difference; do not infer which mechanism is uniquely causal without another discriminator.
+`M_equal = false`, `A_equal = true`, `F_equal = true`.
 
 ### `NEITHER_INTERVENTION_RESTORES_IDENTITY`
 
-`M_equal = false`, `A_equal = false`, and `F_equal = false`.
-
-The residual difference is not explained by either tested mechanism alone.
+`M_equal = false`, `A_equal = false`, `F_equal = false`.
 
 ### `SYNTHETIC_FIXTURE_SHOWS_NO_BASELINE_DRIFT`
 
 `M_equal = true`.
 
-The synthetic fixture does not reproduce the residual phenomenon and cannot discriminate the mechanisms, regardless of A/F results.
-
 ### `PROBE_NOT_EXERCISED`
 
-Inference began, but one or more hard path predictions failed for the affected arm.
+Inference began but a required hard path prediction failed.
 
 ### `PHYSICAL_PROBE_UNSPENT`
 
-Any required source/patch/model/build/fixture identity fails before the first measured inference request.
+Any required source/patch/model/build/fixture/startup/Flash-Attention identity fails before the first measured inference request.
+
+## Mechanism note
+
+This probe does not assume that Online Softmax is the unique cause of cache/cold drift. Flash Attention commonly uses tiled/online normalization machinery, but the tested mechanism is broader: different physical batch/tile/reduction/kernel provenance may produce small floating-point differences in cached hidden/KV states. `n_ubatch` alignment tests whether restoring the same physical prefill boundary removes the API-visible residual under a fixed Flash Attention path. A later `--flash-attn off` discriminator is only justified if this matrix exercises baseline drift and leaves ambiguity; do not add it to this spend.
 
 ## Accounting
 
-Fixture text construction, tokenization, hashing, patch apply checks, compilation, and model-load/preflight are mechanical and do not consume the semantic probe budget.
+Fixture construction, tokenization, hashing, patch checks, compilation, model load, server startup, readiness polling, and startup-failure diagnosis are mechanical and do not consume the semantic probe budget.
 
 The first measured one-token generation begins the probe. After that:
 
@@ -257,7 +275,7 @@ The first measured one-token generation begins the probe. After that:
 - no replacement fixture
 - no parameter tuning
 
-A failure after the first measured generation is retained as an exercised/partial probe, not converted back to UNSPENT.
+A failure after first measured generation is exercised/partial, not `UNSPENT`.
 
 ## Boundaries
 
@@ -270,4 +288,4 @@ A failure after the first measured generation is retained as an exercised/partia
 - upstream submission = 0
 - primary dirty checkout mutation = 0
 
-This is a mechanism probe, not a production qualification or a claim that `--swa-full` or ubatch-aligned reuse is generally safe.
+This is a mechanism probe, not a production qualification or a claim that `--swa-full`, ubatch-aligned reuse, or Flash Attention configuration is generally safe.
