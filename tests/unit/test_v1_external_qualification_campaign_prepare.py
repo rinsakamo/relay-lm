@@ -148,6 +148,94 @@ def test_prepare_rewrites_comparator_freeze_contract_and_authority(tmp_path: Pat
         assert release["benchmark_material"] == axis["benchmark_material"]
 
 
+def test_prepare_accepts_preserved_hindsight_spelling_and_canonicalizes(
+    tmp_path: Path,
+) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    axes = stale["axes"]
+    assert isinstance(axes, list)
+    for axis in axes:
+        assert isinstance(axis, dict)
+        manifest = axis["manifest"]
+        assert isinstance(manifest, dict)
+        participants = manifest["participants"]
+        assert isinstance(participants, list)
+        comparator = next(
+            item
+            for item in participants
+            if isinstance(item, dict) and item.get("slot") == "serious_comparator"
+        )
+        identity = comparator["identity"]
+        assert isinstance(identity, dict)
+        identity["implementation"] = "Hindsight"
+
+    execution_freeze = stale["execution_freeze"]
+    assert isinstance(execution_freeze, dict)
+    freeze_comparator = execution_freeze["comparator"]
+    assert isinstance(freeze_comparator, dict)
+    freeze_comparator["implementation"] = "Hindsight"
+
+    prepared = _prepare(
+        tmp_path,
+        owner_id="owner-2965-preserved-source-spelling",
+        stale=stale,
+        lifecycle=lifecycle_base,
+    )
+    raw = prepared.to_mapping()
+    CampaignDescriptor.from_mapping(raw)
+
+    prepared_axes = raw["axes"]
+    assert isinstance(prepared_axes, list)
+    for axis in prepared_axes:
+        assert isinstance(axis, dict)
+        manifest = axis["manifest"]
+        assert isinstance(manifest, dict)
+        participants = manifest["participants"]
+        assert isinstance(participants, list)
+        comparator = next(
+            item
+            for item in participants
+            if isinstance(item, dict) and item.get("slot") == "serious_comparator"
+        )
+        identity = comparator["identity"]
+        assert isinstance(identity, dict)
+        assert identity["implementation"] == "hindsight"
+
+    prepared_freeze = raw["execution_freeze"]
+    assert isinstance(prepared_freeze, dict)
+    prepared_comparator = prepared_freeze["comparator"]
+    assert isinstance(prepared_comparator, dict)
+    assert prepared_comparator["implementation"] == "hindsight"
+
+
+def test_prepare_rejects_unknown_hindsight_template_spelling(tmp_path: Path) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    axes = stale["axes"]
+    assert isinstance(axes, list)
+    first_axis = axes[0]
+    assert isinstance(first_axis, dict)
+    manifest = first_axis["manifest"]
+    assert isinstance(manifest, dict)
+    participants = manifest["participants"]
+    assert isinstance(participants, list)
+    comparator = next(
+        item
+        for item in participants
+        if isinstance(item, dict) and item.get("slot") == "serious_comparator"
+    )
+    identity = comparator["identity"]
+    assert isinstance(identity, dict)
+    identity["implementation"] = "HINDSIGHT"
+
+    with pytest.raises(CampaignCarriageError, match="serious comparator must be Hindsight"):
+        _prepare(
+            tmp_path,
+            owner_id="owner-2965-reject-unknown-spelling",
+            stale=stale,
+            lifecycle=lifecycle_base,
+        )
+
+
 def test_prepare_forbids_owner_local_lifecycle_carry_over(tmp_path: Path) -> None:
     stale, lifecycle_base = _inputs(tmp_path)
     stale_lifecycle = stale["hindsight_lifecycle"]
