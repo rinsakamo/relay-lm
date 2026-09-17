@@ -32,7 +32,7 @@ Do not rebuild or replace these artifacts merely because startup failed.
 Fixture:
 
 - corpus SHA256: `4ffd2967dc487d6c4fd4de94e66a017fdf452399105c08093ebbcf0ecfc13936`
-- corpus bytes: `113854`
+- corpus bytes: `113853`
 - tokenized corpus length: `28800`
 - warm length: `883`
 - target length: `2927`
@@ -40,6 +40,8 @@ Fixture:
 - target suffix source index `j`: `1024`
 - warm token IDs SHA256: `c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2`
 - target token IDs SHA256: `549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e`
+
+The corpus byte count was corrected from `113854` to `113853` after read-back of the retained file. The corpus SHA256 and both frozen token-array SHA256 values were unchanged; this is a metadata correction only, not fixture replacement.
 
 Physical target:
 
