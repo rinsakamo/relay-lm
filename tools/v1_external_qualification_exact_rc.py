@@ -13,11 +13,11 @@ import json
 import os
 import shutil
 import subprocess
+import time
+import venv
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-import time
-import venv
 
 import httpx
 
@@ -29,6 +29,7 @@ class ExactRCError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class ExactRCInstallation:
     python: Path
+    console: Path
     root: Path
     wheel_path: Path
     wheel_sha256: str
@@ -39,6 +40,7 @@ class ExactRCInstallation:
     def to_mapping(self) -> dict[str, object]:
         return {
             "python": str(self.python),
+            "console": str(self.console),
             "root": str(self.root),
             "wheel_path": str(self.wheel_path),
             "wheel_sha256": self.wheel_sha256,
@@ -63,6 +65,46 @@ def _python_path(root: Path) -> Path:
     if not path.is_file():
         raise ExactRCError(f"isolated RC Python is missing: {path}")
     return path
+
+
+def _console_path(root: Path) -> Path:
+    candidates = (
+        root / "bin" / "relaylm",
+        root / "Scripts" / "relaylm.exe",
+        root / "Scripts" / "relaylm",
+    )
+    path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if path is None:
+        raise ExactRCError("isolated RC relaylm console entrypoint is missing")
+    resolved = path.resolve()
+    resolved_root = root.resolve()
+    if resolved_root != resolved and resolved_root not in resolved.parents:
+        raise ExactRCError("isolated RC console entrypoint escaped the runtime root")
+    return resolved
+
+
+def _run_console_version(console: Path) -> str:
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
+    env["PYTHONNOUSERSITE"] = "1"
+    completed = subprocess.run(
+        [str(console), "--version"],
+        cwd=Path("/"),
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise ExactRCError(
+            "exact RC console --version failed: "
+            + (completed.stderr.strip() or completed.stdout.strip())
+        )
+    line = completed.stdout.strip()
+    prefix = "relaylm "
+    if not line.startswith(prefix) or not line[len(prefix) :].strip():
+        raise ExactRCError("exact RC console --version output was not recognized")
+    return line[len(prefix) :].strip()
 
 
 def _run_identity_probe(python: Path, *, checkout_root: Path) -> tuple[str, str]:
@@ -167,8 +209,16 @@ def install_exact_rc(
             raise ExactRCError(
                 "only the repository-owned relaylm distribution is supported"
             )
+        console = _console_path(runtime_root)
+        console_version = _run_console_version(console)
+        if console_version != expected_version:
+            raise ExactRCError(
+                "installed RC console version drifted: "
+                f"expected {expected_version}, observed {console_version}"
+            )
         return ExactRCInstallation(
             python=python,
+            console=console,
             root=runtime_root,
             wheel_path=wheel_path,
             wheel_sha256=wheel_sha256,
@@ -222,6 +272,9 @@ class ExactRCServerSession:
         self.process: subprocess.Popen[bytes] | None = None
         self.start_count = 0
         self.client = httpx.Client(timeout=20.0, trust_env=False)
+        self.log_path = self.config_path.with_name(
+            f"{self.config_path.name}.server-{self.port}-{os.getpid()}.log"
+        )
 
     def start(self) -> None:
         if not self.config_path.is_file():
@@ -230,33 +283,54 @@ class ExactRCServerSession:
             raise ExactRCError("exact RC config content drifted during setup")
         if self.process is not None:
             raise ExactRCError("exact RC server was started twice")
+        console = self.installation.console.resolve()
+        runtime_root = self.installation.root.resolve()
+        if runtime_root != console and runtime_root not in console.parents:
+            raise ExactRCError("exact RC console entrypoint escaped the runtime root")
+        if not console.is_file():
+            raise ExactRCError(f"exact RC console entrypoint is missing: {console}")
         env = dict(os.environ)
         env.pop("PYTHONPATH", None)
         env["PYTHONNOUSERSITE"] = "1"
-        self.process = subprocess.Popen(
-            [
-                str(self.installation.python),
-                "-m",
-                "relaylm.cli",
-                "serve",
-                "--config",
-                str(self.config_path),
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(self.port),
-            ],
-            cwd=Path("/"),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            log_handle = self.log_path.open("xb")
+        except OSError as exc:
+            raise ExactRCError(
+                f"cannot create exact RC server log: {self.log_path}"
+            ) from exc
+        try:
+            self.process = subprocess.Popen(
+                [
+                    str(console),
+                    "serve",
+                    "--config",
+                    str(self.config_path),
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(self.port),
+                ],
+                cwd=Path("/"),
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+            )
+        except OSError as exc:
+            raise ExactRCError(
+                f"exact RC server launch failed; log={self.log_path}"
+            ) from exc
+        finally:
+            log_handle.close()
         self.start_count += 1
         deadline = time.monotonic() + 60.0
         while time.monotonic() < deadline:
-            if self.process.poll() is not None:
-                raise ExactRCError("exact RC server exited before health")
+            return_code = self.process.poll()
+            if return_code is not None:
+                raise ExactRCError(
+                    "exact RC server exited before health: "
+                    f"exit_code={return_code} log={self.log_path}"
+                )
             try:
                 response = self.client.get(f"http://127.0.0.1:{self.port}/health")
                 if response.status_code == 200:
@@ -264,7 +338,9 @@ class ExactRCServerSession:
             except httpx.HTTPError:
                 pass
             time.sleep(0.25)
-        raise ExactRCError("exact RC server health did not become ready")
+        raise ExactRCError(
+            f"exact RC server health did not become ready; log={self.log_path}"
+        )
 
     def query(self, prompt: str) -> Mapping[str, object]:
         if self.process is None or self.process.poll() is not None:
@@ -310,5 +386,7 @@ class ExactRCServerSession:
         return {
             "start_count": self.start_count,
             "terminated": self.process is None or self.process.poll() is not None,
+            "exit_code": None if self.process is None else self.process.poll(),
+            "log_path": str(self.log_path),
             "errors": errors,
         }
