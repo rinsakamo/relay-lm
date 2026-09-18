@@ -640,7 +640,11 @@ def main():
         submitted_requests.append("LC")
         lc = send_request(cold, "LC", args.lc_request, 0, 2927)
         dump_geometry["C-P512"] = require_dump(kv_root, "C-P512")
-        write_json(args.out_root / "kv-dump-geometry.json", dump_geometry)
+        geometry_consistency = require_consistent_dump_geometry(dump_geometry)
+        write_json(args.out_root / "kv-dump-geometry.json", {
+            "observations": dump_geometry,
+            "consistency": geometry_consistency,
+        })
         cold.stop()
 
         api = api_compare(l1, lc)
