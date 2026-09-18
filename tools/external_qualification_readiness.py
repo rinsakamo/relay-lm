@@ -110,13 +110,16 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
         entry = _mapping(item, f"release case {index}")
         entry_keys = {"axis_id", "case", "manifest"}
         actual_entry_keys = set(entry)
-        if actual_entry_keys not in (
-            entry_keys,
-            entry_keys | {"benchmark_material"},
-        ):
+        allowed_entry_keys = {
+            frozenset(entry_keys),
+            frozenset(entry_keys | {"benchmark_material"}),
+            frozenset(entry_keys | {"history_material"}),
+            frozenset(entry_keys | {"benchmark_material", "history_material"}),
+        }
+        if frozenset(actual_entry_keys) not in allowed_entry_keys:
             raise ExternalQualificationReadinessError(
                 f"release case {index} fields must be exactly {sorted(entry_keys)} "
-                "or include benchmark_material"
+                "or include benchmark_material and/or history_material"
             )
         axis_id = _text(entry["axis_id"], f"release case {index} axis_id")
         if axis_id in seen_axis_ids:
@@ -213,6 +216,10 @@ def validate_launch_readiness(raw: Mapping[str, object]) -> dict[str, object]:
         if "benchmark_material" in entry:
             normalized_case["benchmark_material"] = _benchmark_material(
                 entry["benchmark_material"], axis_id=axis_id
+            )
+        if "history_material" in entry:
+            normalized_case["history_material"] = _history_material(
+                entry["history_material"], axis_id=axis_id
             )
         normalized_cases.append(normalized_case)
 
@@ -367,6 +374,32 @@ def _benchmark_material(raw: object, *, axis_id: str) -> dict[str, object]:
         "case_fingerprint": case_fingerprint,
         "question_fingerprints": list(question_fingerprints),
     }
+
+
+def _history_material(raw: object, *, axis_id: str) -> dict[str, str]:
+    value = _mapping(raw, f"release case {axis_id} history_material")
+    _keys(
+        value,
+        {"path", "sha256"},
+        f"release case {axis_id} history_material",
+    )
+    path_value = _text(value["path"], "history material path")
+    path = Path(path_value)
+    if not path.is_absolute() or not path.is_file():
+        raise ExternalQualificationReadinessError(
+            f"history material path is not an absolute file: {path_value}"
+        )
+    expected_sha = _text(value["sha256"], "history material sha256")
+    if len(expected_sha) != 64 or any(
+        char not in "0123456789abcdef" for char in expected_sha
+    ):
+        raise ExternalQualificationReadinessError(
+            "history material sha256 must be 64 lowercase hexadecimal characters"
+        )
+    observed_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    if observed_sha != expected_sha:
+        raise ExternalQualificationReadinessError("history material content drifted")
+    return {"path": str(path), "sha256": expected_sha}
 
 
 def _participant_identity(

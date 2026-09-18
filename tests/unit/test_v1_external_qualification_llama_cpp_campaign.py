@@ -11,13 +11,24 @@ from typing import Any
 
 import pytest
 
-from tools.external_qualification import DurableQuestion
+from tools.external_qualification import (
+    DurableQuestion,
+    DurableQuestionRun,
+    ExactResumeError,
+    freeze_experiment_identity,
+)
 from tools.external_qualification_readiness import ExternalQualificationReadinessError
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     CampaignCarriageError,
     CampaignAxis,
     CampaignDescriptor,
+    CommonAnswerModelExecutor,
+    CommonAnswerModelResult,
+    COMMON_ANSWER_SYSTEM_PROMPT,
+    HindsightComparatorExecutor,
+    HindsightHistoryPlan,
+    HindsightSemanticRequestError,
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
     ParticipantExecutionContext,
@@ -26,6 +37,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     run_campaign,
     _campaign_contract,
     _fingerprint,
+    _hindsight_axis_bank_id,
     _hindsight_operational_fingerprint,
     _hindsight_owner_deployment_id,
 )
@@ -389,6 +401,206 @@ class _LifecycleClient:
         return None
 
 
+class _SemanticResponse:
+    def __init__(
+        self,
+        status_code: int,
+        payload: Mapping[str, object],
+        *,
+        headers: Mapping[str, str] | None = None,
+        text: str | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self.headers = dict(headers or {})
+        self._payload = dict(payload)
+        self.text = text if text is not None else json.dumps(self._payload)
+
+    def json(self) -> Mapping[str, object]:
+        return dict(self._payload)
+
+
+class _SemanticClient:
+    def __init__(self, responses: list[_SemanticResponse]) -> None:
+        self.responses = responses
+        self.calls: list[tuple[str, Mapping[str, object]]] = []
+
+    def post(self, url: str, *, json: Mapping[str, object]) -> _SemanticResponse:
+        self.calls.append((url, dict(json)))
+        return self.responses.pop(0)
+
+    def close(self) -> None:
+        return None
+
+
+class _AnswerClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, Mapping[str, object]]] = []
+
+    def post(self, url: str, *, json: Mapping[str, object]) -> _SemanticResponse:
+        self.calls.append((url, dict(json)))
+        return _SemanticResponse(
+            200,
+            {
+                "choices": [{"message": {"content": "cannot confirm"}}],
+                "usage": {"prompt_tokens": 12, "completion_tokens": 3},
+            },
+        )
+
+    def close(self) -> None:
+        return None
+
+
+class _ComparatorLifecycle:
+    def __init__(self, profile: str) -> None:
+        self.spec = type("Spec", (), {"database_profile": profile})()
+        self.retain_calls: list[tuple[str, tuple[Mapping[str, object], ...]]] = []
+        self.recall_calls: list[tuple[str, str]] = []
+        self.reflect_calls: list[tuple[str, str, Mapping[str, object]]] = []
+        self.wait_calls: list[tuple[str, set[str]]] = []
+
+    def retain(
+        self,
+        *,
+        bank_id: str,
+        items: tuple[Mapping[str, object], ...],
+    ) -> Mapping[str, object]:
+        self.retain_calls.append((bank_id, tuple(dict(item) for item in items)))
+        return {"retained": len(items)}
+
+    def recall(
+        self,
+        prompt: str,
+        *,
+        bank_id: str,
+        query_timestamp: str | None = None,
+    ) -> Mapping[str, object]:
+        self.recall_calls.append((bank_id, prompt))
+        return {"results": []}
+
+    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
+        return set()
+
+    def wait_for_consolidation(
+        self,
+        *,
+        bank_id: str,
+        pre_existing_pending_ids: set[str],
+    ) -> Mapping[str, object]:
+        self.wait_calls.append((bank_id, set(pre_existing_pending_ids)))
+        return {"poll_count": 1, "elapsed_ms": 0.0, "outstanding_count": 0}
+
+    def reflect(
+        self,
+        prompt: str,
+        *,
+        context: Mapping[str, object],
+        bank_id: str,
+    ) -> Mapping[str, object]:
+        self.reflect_calls.append((bank_id, prompt, dict(context)))
+        return {"text": "synthetic reflection"}
+
+
+class _PreloadJournal:
+    """Small in-memory double for the ordinary routing test."""
+
+    def __init__(self) -> None:
+        self.completed: set[str] = set()
+        self.started: set[str] = set()
+        self.requests: dict[str, Mapping[str, object]] = {}
+
+    def _key(
+        self,
+        *,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> str:
+        return json.dumps(
+            [bank_id, session_id, exchange_index],
+            sort_keys=True,
+        )
+
+    def hindsight_history_preload_completed(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> bool:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key in self.started:
+            raise ExactResumeError("synthetic preload ambiguity")
+        return key in self.completed
+
+    def begin_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> bool:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key in self.completed:
+            return False
+        if key in self.started:
+            raise ExactResumeError("synthetic preload ambiguity")
+        self.started.add(key)
+        self.requests[key] = dict(request)
+        return True
+
+    def complete_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> None:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key not in self.started:
+            raise ExactResumeError("synthetic preload completion without start")
+        assert self.requests[key] == dict(request)
+        self.started.remove(key)
+        self.completed.add(key)
+
+    def hindsight_history_preload_counts(self) -> dict[str, int]:
+        return {"completed": len(self.completed), "in_flight": len(self.started)}
+
+class _CommonAnswerModel:
+    def __init__(self) -> None:
+        self.calls: list[list[Mapping[str, object]]] = []
+
+    def answer(
+        self,
+        context: ParticipantExecutionContext,
+        retrieved_memories: list[Mapping[str, object]],
+    ) -> CommonAnswerModelResult:
+        self.calls.append(list(retrieved_memories))
+        return CommonAnswerModelResult(
+            observation=_observation(),
+            request_evidence={
+                "boundary": "common_answer_model",
+                "response_shape": ["choices", "usage"],
+            },
+        )
+
+
 def _controller_parts(
     descriptor: CampaignDescriptor,
     session: _Session,
@@ -542,9 +754,47 @@ def _strict_descriptor_mapping(
             "case_fingerprint": _fingerprint(axis["case"]),
             "question_fingerprints": [question["content_fingerprint"]],
         }
+        history_path = tmp_path / f"{axis['axis_id']}-history.json"
+        history_session_id = f"{axis['axis_id']}-history-session-0"
+        history_path.write_text(
+            json.dumps(
+                {
+                    "format_version": 1,
+                    "sessions": [
+                        {
+                            "session_id": history_session_id,
+                            "order": 0,
+                            "items": [
+                                {
+                                    "role": "user",
+                                    "content": f"synthetic history for {axis['axis_id']}",
+                                    "timestamp": None,
+                                },
+                                {
+                                    "role": "assistant",
+                                    "content": f"synthetic answer history for {axis['axis_id']}",
+                                    "timestamp": None,
+                                },
+                            ],
+                        }
+                    ],
+                    "question_history": {
+                        question["question_id"]: [history_session_id],
+                    },
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        history_material = {
+            "path": str(history_path),
+            "sha256": hashlib.sha256(history_path.read_bytes()).hexdigest(),
+        }
         axis["classification"] = "comparison_condition_mismatch"
         axis["benchmark_material"] = material
+        axis["history_material"] = history_material
         frozen["benchmark_material"] = material
+        frozen["history_material"] = history_material
 
     raw["llama_cpp"]["artifact_path"] = str(model_path)
     raw["llama_cpp"]["artifact_sha256"] = model_sha
@@ -815,6 +1065,623 @@ def test_hindsight_health_waits_for_owned_startup_without_semantic_calls(
     assert lifecycle.semantic_operation_count == 0
 
 
+def test_hindsight_v010_semantic_routes_and_failure_evidence_are_typed(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.hindsight_lifecycle is not None
+    lifecycle = HindsightDeploymentSession(
+        descriptor.hindsight_lifecycle,
+        descriptor.hindsight_health,
+    )
+    client = _SemanticClient(
+        [
+            _SemanticResponse(200, {"retained": 2}),
+            _SemanticResponse(200, {"results": []}),
+            _SemanticResponse(200, {"text": "synthetic reflection"}),
+        ]
+    )
+    lifecycle.client = client  # type: ignore[assignment]
+    lifecycle.started = True
+
+    lifecycle.retain(
+        bank_id="synthetic-bank",
+        items=(
+            {
+                "content": "synthetic history",
+                "context": "user",
+                "timestamp": None,
+                "document_id": "synthetic-document",
+            },
+        ),
+    )
+    lifecycle.recall("synthetic question", bank_id="synthetic-bank")
+    lifecycle.reflect(
+        "synthetic question",
+        context={"results": []},
+        bank_id="synthetic-bank",
+    )
+
+    assert [url.removeprefix("http://127.0.0.1:44367") for url, _ in client.calls] == [
+        "/v1/default/banks/synthetic-bank/memories",
+        "/v1/default/banks/synthetic-bank/memories/recall",
+        "/v1/default/banks/synthetic-bank/reflect",
+    ]
+    assert client.calls[0][1]["async"] is False
+    assert client.calls[1][1] == {
+        "query": "synthetic question",
+        "types": ["observation"],
+        "prefer_observations": True,
+        "max_tokens": 4096,
+        "budget": "mid",
+    }
+    assert client.calls[2][1] == {
+        "query": "synthetic question",
+        "context": '{"results":[]}',
+        "budget": "low",
+    }
+    assert all("/memories/reflect" not in url for url, _ in client.calls)
+    assert lifecycle.semantic_operation_count == 3
+
+    error_client = _SemanticClient(
+        [
+            _SemanticResponse(
+                405,
+                {"detail": "Method Not Allowed"},
+                headers={"allow": "GET"},
+                text='{"detail":"Method Not Allowed"}',
+            )
+        ]
+    )
+    lifecycle.client = error_client  # type: ignore[assignment]
+    with pytest.raises(HindsightSemanticRequestError) as captured:
+        lifecycle._semantic_post(
+            operation="reflect",
+            path="/v1/default/banks/synthetic-bank/memories/reflect",
+            payload={"query": "synthetic question"},
+        )
+    assert captured.value.to_mapping() == {
+        "operation": "reflect",
+        "method": "POST",
+        "path": "/v1/default/banks/synthetic-bank/memories/reflect",
+        "status": 405,
+        "allow": "GET",
+        "body": '{"detail":"Method Not Allowed"}',
+    }
+
+
+def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "synthetic-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "synthetic first user",
+                                "timestamp": None,
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "synthetic first assistant",
+                                "timestamp": None,
+                            },
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "synthetic second user",
+                                "timestamp": None,
+                            }
+                        ],
+                    },
+                ],
+                "question_history": {
+                    "question-0": ["session-0"],
+                    "question-1": ["session-0", "session-1"],
+                },
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    lifecycle = _ComparatorLifecycle("repair-profile-a")
+    journal = _PreloadJournal()
+    answer_model = _CommonAnswerModel()
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        answer_model,  # type: ignore[arg-type]
+    )
+
+    def context(question_id: str, prompt: str) -> ParticipantExecutionContext:
+        return ParticipantExecutionContext(
+            axis_id="axis-a",
+            case={"benchmark": {"id": "memconflict"}},
+            manifest={},
+            question=DurableQuestion.from_content(
+                question_id,
+                prompt,
+                session_id=question_id,
+            ),
+            prompt=prompt,
+            participant_slot="serious_comparator",
+            participant_identity={},
+            frozen_identity=None,  # type: ignore[arg-type]
+            live_attestation=None,  # type: ignore[arg-type]
+            history=plan,
+            durable_run=journal,  # type: ignore[arg-type]
+        )
+
+    first = executor(context("question-0", "synthetic question 0"))
+    second = executor(context("question-1", "synthetic question 1"))
+    repeated = executor(context("question-1", "synthetic question 1"))
+
+    first_request = lifecycle.retain_calls[0][1][0]
+    assert json.loads(str(first_request["content"])) == [
+        {
+            "role": "user",
+            "content": "User: synthetic first user",
+            "timestamp": None,
+        },
+        {
+            "role": "assistant",
+            "content": "Assistant: synthetic first assistant",
+            "timestamp": None,
+        },
+    ]
+    assert first_request["document_id"] == (
+        f"{_hindsight_axis_bank_id('repair-profile-a', 'axis-a')}_doc_session-0"
+    )
+    assert first_request["update_mode"] == "append"
+    assert lifecycle.retain_calls[1][1][0]["document_id"] == (
+        f"{_hindsight_axis_bank_id('repair-profile-a', 'axis-a')}_doc_session-1"
+    )
+    assert first.request_evidence[0]["operations"] == [
+        "retain",
+        "consolidation_wait",
+        "recall",
+    ]
+    assert second.request_evidence[0]["operations"] == [
+        "retain",
+        "consolidation_wait",
+        "recall",
+    ]
+    assert repeated.request_evidence[0]["operations"] == ["recall"]
+    assert first.request_evidence[0]["recall_request"] == {
+        "budget": "mid",
+        "max_tokens": 4096,
+        "types": ["observation"],
+        "prefer_observations": True,
+        "query_timestamp": None,
+    }
+    assert len(lifecycle.retain_calls) == 2
+    assert len(lifecycle.recall_calls) == 3
+    assert len(lifecycle.reflect_calls) == 0
+    assert len(answer_model.calls) == 3
+    assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") == lifecycle.retain_calls[0][0]
+    assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") != _hindsight_axis_bank_id(
+        "repair-profile-b", "axis-a"
+    )
+
+
+def test_hindsight_memconflict_exchange_append_metadata_matches_frozen_arm_c(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "memconflict-metadata-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-metadata",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "first turn",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "second turn",
+                                "timestamp": "2025-01-02T03:04:06+00:00",
+                            },
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-metadata"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    session = HindsightHistoryPlan.from_path(history_path).sessions[0]
+
+    request = session.to_retain_requests(
+        bank_id="synthetic-bank",
+        context_label="MemConflict",
+    )[0]
+
+    metadata = request["metadata"]
+    assert isinstance(metadata, Mapping)
+    assert set(metadata) == {
+        "retained_at",
+        "message_count",
+        "turn_index",
+        "session_date",
+    }
+    assert metadata["message_count"] == "2"
+    assert metadata["turn_index"] == "0"
+    assert metadata["session_date"] == "2025-01-02T03:04:05+00:00"
+    assert isinstance(metadata["retained_at"], str)
+    assert str(metadata["retained_at"]).endswith("+00:00")
+
+
+def test_hindsight_longmemeval_does_not_inherit_memconflict_retain_metadata(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "longmemeval-metadata-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-long",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "historical update",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            }
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-long"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    session = HindsightHistoryPlan.from_path(history_path).sessions[0]
+
+    request = session.to_retain_requests(
+        bank_id="synthetic-bank",
+        context_label="LongMemEval",
+    )[0]
+
+    assert "metadata" not in request
+
+def test_hindsight_preload_identity_does_not_retry_when_only_retained_at_changes(
+    tmp_path: Path,
+) -> None:
+    live = _live_mapping()
+    identity = freeze_experiment_identity(
+        identity=_frozen_identity("memconflict", live),
+        live_attestation=live,
+    )
+    question = DurableQuestion.from_content(
+        "question-0",
+        "synthetic question",
+        session_id="question-0",
+    )
+    durable = DurableQuestionRun.start(
+        artifact_root=tmp_path / "durable-preload",
+        identity=identity,
+        questions=(question,),
+    )
+    durable.begin_question(question.question_id)
+    base_request = {
+        "content": '[{"role":"user","content":"User: hello","timestamp":null}]',
+        "context": "MemConflict dialogue session session-0",
+        "timestamp": None,
+        "document_id": "synthetic-bank_doc_session-0",
+        "update_mode": "append",
+        "metadata": {
+            "retained_at": "2026-09-19T00:00:00+00:00",
+            "message_count": "1",
+            "turn_index": "0",
+            "session_date": "None",
+        },
+    }
+    assert durable.begin_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=base_request,
+    )
+    durable.complete_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=base_request,
+    )
+
+    changed_clock_request = json.loads(json.dumps(base_request))
+    changed_clock_request["metadata"]["retained_at"] = "2026-09-19T00:10:00+00:00"
+    assert not durable.begin_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=changed_clock_request,
+    )
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "durable-preload" / "hindsight-history-preloads.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [record["event"] for record in records] == ["started", "completed"]
+    assert records[0]["request"] == base_request
+    assert records[1]["request"] == base_request
+
+
+def test_hindsight_consolidation_wait_is_scoped_per_history_session(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "multi-session-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {"role": "user", "content": "first", "timestamp": None},
+                            {"role": "assistant", "content": "reply", "timestamp": None},
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {"role": "user", "content": "second", "timestamp": None},
+                            {"role": "assistant", "content": "reply 2", "timestamp": None},
+                        ],
+                    },
+                ],
+                "question_history": {"question-0": ["session-0", "session-1"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    lifecycle = _ComparatorLifecycle("repair-profile-waits")
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        _CommonAnswerModel(),  # type: ignore[arg-type]
+    )
+    context = ParticipantExecutionContext(
+        axis_id="axis-waits",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=DurableQuestion.from_content(
+            "question-0",
+            "synthetic question",
+            session_id="question-0",
+        ),
+        prompt="synthetic question",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=None,  # type: ignore[arg-type]
+        live_attestation=None,  # type: ignore[arg-type]
+        history=plan,
+        durable_run=_PreloadJournal(),  # type: ignore[arg-type]
+    )
+
+    executor(context)
+
+    assert len(lifecycle.retain_calls) == 2
+    assert len(lifecycle.wait_calls) == 2
+
+
+
+def test_common_answer_boundary_uses_frozen_prompt_and_one_generation() -> None:
+    spec = type(
+        "Spec",
+        (),
+        {"port": 8199, "expected_model_alias": "frozen-answer-model"},
+    )()
+    answer_model = CommonAnswerModelExecutor(spec)  # type: ignore[arg-type]
+    client = _AnswerClient()
+    answer_model.client = client  # type: ignore[assignment]
+    context = ParticipantExecutionContext(
+        axis_id="axis-a",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=DurableQuestion.from_content(
+            "question-0",
+            "What changed?",
+            session_id="session-0",
+        ),
+        prompt="What changed?",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=None,  # type: ignore[arg-type]
+        live_attestation=None,  # type: ignore[arg-type]
+    )
+
+    result = answer_model.answer(
+        context,
+        [{"memory": "the value changed", "created_at": "2025-01-02T12:00:00+00:00"}],
+    )
+    payload = client.calls[0][1]
+    assert payload["model"] == "frozen-answer-model"
+    assert payload["temperature"] == 0
+    assert "top_p" not in payload
+    assert payload["stream"] is False
+    assert payload["messages"][0] == {
+        "role": "system",
+        "content": COMMON_ANSWER_SYSTEM_PROMPT,
+    }
+    assert payload["messages"][1] == {
+        "role": "user",
+        "content": (
+            "Retrieved Memory Context:\nRetrieved memories:\n"
+            "1. [2025-01-02T12:00:00+00:00] the value changed\n\n"
+            "Question:\nWhat changed?\n\nAnswer:"
+        ),
+    }
+    assert result.observation["tokens"]["model_call_count"] == 1
+    assert result.request_evidence["boundary"] == "common_answer_model"
+
+
+def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "synthetic-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "history before crash",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "assistant history before crash",
+                                "timestamp": "2025-01-02T03:04:06+00:00",
+                            },
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-0"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    live = _live_mapping()
+    identity = freeze_experiment_identity(
+        identity=_frozen_identity("memconflict", live),
+        live_attestation=live,
+    )
+    question = DurableQuestion.from_content(
+        "question-0",
+        "synthetic question",
+        session_id="question-0",
+    )
+    run_root = tmp_path / "durable-run"
+    durable = DurableQuestionRun.start(
+        artifact_root=run_root,
+        identity=identity,
+        questions=(question,),
+    )
+    durable.begin_question(question.question_id)
+
+    class _CrashAfterRetain(_ComparatorLifecycle):
+        def wait_for_consolidation(
+            self,
+            *,
+            bank_id: str,
+            pre_existing_pending_ids: set[str],
+        ) -> Mapping[str, object]:
+            raise RuntimeError("synthetic process stop after external retain")
+
+    lifecycle = _CrashAfterRetain("repair-profile-crash")
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        _CommonAnswerModel(),  # type: ignore[arg-type]
+    )
+    context = ParticipantExecutionContext(
+        axis_id="axis-crash",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=question,
+        prompt="synthetic question",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=identity,
+        live_attestation=None,  # type: ignore[arg-type]
+        history=plan,
+        durable_run=durable,
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic process stop"):
+        executor(context)
+    durable.mark_process_exited()
+    assert len(lifecycle.retain_calls) == 1
+
+    with pytest.raises(
+        ExactResumeError,
+        match="Hindsight retain acknowledgement is ambiguous",
+    ):
+        DurableQuestionRun.resume(
+            artifact_root=run_root,
+            identity=identity,
+            questions=(question,),
+        )
+
+    # The exact-resume attempt fails before a comparator is callable, so no
+    # second provider retain can be issued.
+    assert len(lifecycle.retain_calls) == 1
+
+
+def test_hindsight_history_rejects_reference_or_gold_fields(tmp_path: Path) -> None:
+    path = tmp_path / "history-with-reference.json"
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [],
+                "question_history": {},
+                "reference_answer": "must not enter Hindsight",
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(CampaignCarriageError, match="keys must be exact"):
+        HindsightHistoryPlan.from_path(path)
+
+
+def test_strict_resume_rejects_old_descriptor_without_hindsight_history_boundary(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path, run_mode="exact_infrastructure_resume")
+    axes = raw["axes"]
+    release_cases = raw["execution_freeze"]["release_cases"]
+    assert isinstance(axes, list)
+    assert isinstance(release_cases, list)
+    for axis, release_case in zip(axes, release_cases, strict=True):
+        assert isinstance(axis, dict)
+        assert isinstance(release_case, dict)
+        axis.pop("history_material")
+        release_case.pop("history_material")
+    with pytest.raises(CampaignCarriageError, match="campaign axis keys must be exact"):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_exact_resume_skips_completed_questions_and_does_not_reinvoke_hooks(tmp_path: Path) -> None:
     first_descriptor = CampaignDescriptor.from_mapping(_descriptor_mapping(tmp_path))
     first_session = _Session(_live_mapping())
@@ -854,6 +1721,8 @@ def test_strict_descriptor_binds_material_rc_hindsight_and_campaign_contract(
     )
     assert all(axis.classification == "comparison_condition_mismatch" for axis in descriptor.axes)
     assert all(axis.benchmark_material is not None for axis in descriptor.axes)
+    assert all(axis.history_material is not None for axis in descriptor.axes)
+    assert all(axis.history_plan is not None for axis in descriptor.axes)
     assert all("campaign_contract" in axis.identity for axis in descriptor.axes)
     for axis in descriptor.axes:
         comparator = next(

@@ -27,6 +27,7 @@ import sys
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
@@ -67,7 +68,33 @@ _SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _FINGERPRINT_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _OWNER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_BANK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _RUN_MODES = {"fresh_run", "exact_infrastructure_resume"}
+
+# These values are copied from the frozen Hermes/MemConflict common harness,
+# not inferred from Hindsight defaults.  The C adapter owns retrieval only;
+# answer generation below uses this one provider-neutral boundary for every
+# governed axis (including the bounded LongMemEval knowledge-update axis).
+HINDSIGHT_RETAIN_GRANULARITY = "exchange_append"
+HINDSIGHT_RECALL_BUDGET = "mid"
+HINDSIGHT_RECALL_MAX_TOKENS = 4096
+HINDSIGHT_RECALL_TYPES = ("observation",)
+HINDSIGHT_PREFER_OBSERVATIONS = True
+HINDSIGHT_WAIT_CONSOLIDATION = True
+HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS = 450.0
+HINDSIGHT_CONSOLIDATION_POLL_SECONDS = 0.25
+COMMON_ANSWER_SYSTEM_PROMPT = (
+    "You answer memory-evaluation questions using only the retrieved memory context.\n\n"
+    "Rules:\n"
+    "1. Use only the retrieved memories.\n"
+    "2. Do not invent facts that are not supported by the retrieved memories.\n"
+    "3. If the memories are insufficient, say that you cannot confirm.\n"
+    "4. If the memories contain inconsistent statements, briefly mention the inconsistency first and then give the best-supported answer.\n"
+    "5. Keep the answer concise, natural, and directly responsive to the question."
+)
+_COMMON_ANSWER_USER_PREFIX = "Retrieved Memory Context:\n"
+_COMMON_ANSWER_USER_QUESTION = "\n\nQuestion:\n"
+_COMMON_ANSWER_USER_SUFFIX = "\n\nAnswer:"
 _HEALTH_KEYS = {
     "implementation",
     "source_revision",
@@ -156,8 +183,9 @@ _PRODUCTION_DESCRIPTOR_KEYS = _DESCRIPTOR_KEYS | {
 }
 _AXIS_KEYS = {"axis_id", "case", "manifest", "identity", "questions", "run_mode"}
 _PRODUCTION_AXIS_KEYS = _AXIS_KEYS | {"classification"}
-_PRODUCTION_AXIS_KEYS = _PRODUCTION_AXIS_KEYS | {"benchmark_material"}
+_PRODUCTION_AXIS_KEYS = _PRODUCTION_AXIS_KEYS | {"benchmark_material", "history_material"}
 _MATERIAL_KEYS = {"path", "sha256", "case_fingerprint", "question_fingerprints"}
+_HISTORY_MATERIAL_KEYS = {"path", "sha256"}
 _QUESTION_KEYS = {"question_id", "prompt", "content_fingerprint", "session_id"}
 _CLEANUP_KEYS = {
     "all_owned_processes_terminated",
@@ -168,6 +196,42 @@ _CLEANUP_KEYS = {
 
 class CampaignCarriageError(ExternalQualificationError):
     """Raised when the bounded campaign contract cannot be admitted."""
+
+
+class HindsightSemanticRequestError(CampaignCarriageError):
+    """A bounded semantic Hindsight HTTP failure with route evidence."""
+
+    def __init__(
+        self,
+        *,
+        operation: str,
+        method: str,
+        path: str,
+        status_code: int,
+        allow: str | None,
+        body: str,
+    ) -> None:
+        self.operation = operation
+        self.method = method
+        self.path = path
+        self.status_code = status_code
+        self.allow = allow
+        self.body = body[:1024]
+        allow_text = "" if allow is None else f" allow={allow!r}"
+        super().__init__(
+            f"Hindsight {operation} request failed: {method} {path} "
+            f"HTTP {status_code}{allow_text} body={self.body!r}"
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "operation": self.operation,
+            "method": self.method,
+            "path": self.path,
+            "status": self.status_code,
+            "allow": self.allow,
+            "body": self.body,
+        }
 
 
 class _HindsightReadinessPending(Exception):
@@ -310,6 +374,377 @@ def _require_material(value: object, *, label: str) -> dict[str, Any]:
         "case_fingerprint": case_fingerprint,
         "question_fingerprints": list(question_fingerprints),
     }
+
+
+@dataclass(frozen=True, slots=True)
+class HindsightHistorySession:
+    """One ordered model-facing session with no benchmark reference fields."""
+
+    session_id: str
+    order: int
+    items: tuple[Mapping[str, str | None], ...]
+
+    def exchanges(self) -> tuple[tuple[Mapping[str, str | None], ...], ...]:
+        """Pair adjacent user/assistant turns exactly as the frozen adapter."""
+
+        pairs: list[tuple[Mapping[str, str | None], ...]] = []
+        index = 0
+        while index < len(self.items):
+            current = self.items[index]
+            following = self.items[index + 1] if index + 1 < len(self.items) else None
+            if (
+                following is not None
+                and current["role"] == "user"
+                and following["role"] == "assistant"
+            ):
+                pairs.append((current, following))
+                index += 2
+            else:
+                pairs.append((current,))
+                index += 1
+        return tuple(pairs)
+
+    def to_retain_items(self) -> tuple[dict[str, object], ...]:
+        """Return the pre-contract representation for diagnostic callers.
+
+        Production C uses :meth:`to_retain_requests`, which is the frozen
+        exchange-append shape.  Keeping this narrow helper avoids changing the
+        typed history-material surface for read-only diagnostics.
+        """
+
+        document_id = f"relaylm-history-{self.order:08d}"
+        return tuple(
+            {
+                "content": item["content"],
+                "context": item["role"],
+                "timestamp": item["timestamp"],
+                "document_id": document_id,
+            }
+            for item in self.items
+        )
+
+    def to_retain_request(
+        self,
+        *,
+        bank_id: str,
+        context_label: str,
+        exchange_index: int,
+    ) -> dict[str, object]:
+        """Materialize one exchange-append retain immediately before first use.
+
+        MemConflict mirrors the frozen Hermes Arm-C metadata exactly. The
+        retained_at value is wall-clock and is materialized only after durable
+        state says the logical exchange is new. LongMemEval shares the typed
+        history/append boundary but does not inherit MemConflict-only metadata.
+        """
+
+        exchanges = self.exchanges()
+        if (
+            isinstance(exchange_index, bool)
+            or not isinstance(exchange_index, int)
+            or exchange_index < 0
+            or exchange_index >= len(exchanges)
+        ):
+            raise CampaignCarriageError(
+                "Hindsight history exchange_index is outside the session"
+            )
+        session_base = _parse_history_timestamp(
+            next(
+                (
+                    item["timestamp"]
+                    for item in self.items
+                    if isinstance(item.get("timestamp"), str)
+                    and item["timestamp"].strip()
+                ),
+                None,
+            )
+        )
+        exchange = exchanges[exchange_index]
+        logical_timestamp = (
+            session_base + timedelta(minutes=exchange_index)
+            if session_base is not None
+            else None
+        )
+        timestamp = (
+            logical_timestamp.isoformat() if logical_timestamp is not None else None
+        )
+        turn_payload = [
+            {
+                "role": item["role"],
+                "content": (
+                    ("User: " if item["role"] == "user" else "Assistant: ")
+                    + str(item["content"])
+                ),
+                "timestamp": timestamp,
+            }
+            for item in exchange
+        ]
+        request: dict[str, object] = {
+            "content": json.dumps(
+                turn_payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            "context": f"{context_label} dialogue session {self.session_id}",
+            "timestamp": timestamp,
+            "document_id": f"{bank_id}_doc_{self.session_id}",
+            "update_mode": "append",
+        }
+        if context_label == "MemConflict":
+            session_date_iso = (
+                session_base.isoformat() if session_base is not None else None
+            )
+            request["metadata"] = {
+                "retained_at": datetime.now(timezone.utc).isoformat(),
+                "message_count": str(len(exchange)),
+                "turn_index": str(exchange_index),
+                "session_date": str(session_date_iso),
+            }
+        elif context_label == "LongMemEval":
+            pass
+        else:
+            raise CampaignCarriageError(
+                "Hindsight retain contract is bounded to MemConflict or LongMemEval"
+            )
+        return request
+
+    def to_retain_requests(
+        self,
+        *,
+        bank_id: str,
+        context_label: str,
+    ) -> tuple[dict[str, object], ...]:
+        """Diagnostic wrapper over first-use request materialization."""
+
+        return tuple(
+            self.to_retain_request(
+                bank_id=bank_id,
+                context_label=context_label,
+                exchange_index=exchange_index,
+            )
+            for exchange_index, _exchange in enumerate(self.exchanges())
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class HindsightHistoryPlan:
+    """Validated model-facing history and question-time session prefixes."""
+
+    sessions: tuple[HindsightHistorySession, ...]
+    question_history: Mapping[str, tuple[str, ...]]
+
+    @classmethod
+    def from_path(cls, path: Path) -> "HindsightHistoryPlan":
+        try:
+            raw_value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise CampaignCarriageError(
+                f"cannot read Hindsight history material {path}: {exc}"
+            ) from exc
+        raw = _require_mapping(raw_value, label="Hindsight history material")
+        _require_exact_keys(
+            raw,
+            {"format_version", "sessions", "question_history"},
+            label="Hindsight history material",
+        )
+        if raw["format_version"] != 1:
+            raise CampaignCarriageError(
+                "Hindsight history material format_version must be 1"
+            )
+        sessions_raw = raw["sessions"]
+        if not isinstance(sessions_raw, list) or not sessions_raw:
+            raise CampaignCarriageError(
+                "Hindsight history material sessions must be a non-empty list"
+            )
+        sessions: list[HindsightHistorySession] = []
+        seen_ids: set[str] = set()
+        for expected_order, session_value in enumerate(sessions_raw):
+            session = _require_mapping(
+                session_value,
+                label=f"Hindsight history session {expected_order}",
+            )
+            _require_exact_keys(
+                session,
+                {"session_id", "order", "items"},
+                label=f"Hindsight history session {expected_order}",
+            )
+            session_id = _require_nonempty_string(
+                session["session_id"],
+                label=f"Hindsight history session {expected_order}.session_id",
+            )
+            if session_id in seen_ids:
+                raise CampaignCarriageError(
+                    f"Hindsight history session id is duplicated: {session_id!r}"
+                )
+            seen_ids.add(session_id)
+            order = session["order"]
+            if isinstance(order, bool) or not isinstance(order, int) or order != expected_order:
+                raise CampaignCarriageError(
+                    "Hindsight history session order must be contiguous and ordered"
+                )
+            items_raw = session["items"]
+            if not isinstance(items_raw, list) or not items_raw:
+                raise CampaignCarriageError(
+                    f"Hindsight history session {session_id!r} items must be non-empty"
+                )
+            items: list[Mapping[str, str | None]] = []
+            for item_index, item_value in enumerate(items_raw):
+                item = _require_mapping(
+                    item_value,
+                    label=f"Hindsight history {session_id} item {item_index}",
+                )
+                _require_exact_keys(
+                    item,
+                    {"role", "content", "timestamp"},
+                    label=f"Hindsight history {session_id} item {item_index}",
+                )
+                role = _require_nonempty_string(
+                    item["role"],
+                    label=f"Hindsight history {session_id} item {item_index}.role",
+                )
+                if role not in {"user", "assistant"}:
+                    raise CampaignCarriageError(
+                        "Hindsight history item role must be user or assistant"
+                    )
+                content = _require_nonempty_string(
+                    item["content"],
+                    label=f"Hindsight history {session_id} item {item_index}.content",
+                )
+                timestamp = item["timestamp"]
+                if timestamp is not None and (
+                    not isinstance(timestamp, str) or not timestamp.strip()
+                ):
+                    raise CampaignCarriageError(
+                        "Hindsight history item timestamp must be null or a non-empty string"
+                    )
+                items.append(
+                    {
+                        "role": role,
+                        "content": content,
+                        "timestamp": timestamp,
+                    }
+                )
+            sessions.append(
+                HindsightHistorySession(
+                    session_id=session_id,
+                    order=order,
+                    items=tuple(items),
+                )
+            )
+
+        question_history_raw = _require_mapping(
+            raw["question_history"], label="Hindsight history question_history"
+        )
+        question_history: dict[str, tuple[str, ...]] = {}
+        ordered_session_ids = tuple(session.session_id for session in sessions)
+        for question_id, session_ids_value in question_history_raw.items():
+            question_key = _require_nonempty_string(
+                question_id,
+                label="Hindsight history question id",
+            )
+            if not isinstance(session_ids_value, list) or not all(
+                isinstance(item, str) and item in seen_ids for item in session_ids_value
+            ):
+                raise CampaignCarriageError(
+                    f"Hindsight history question {question_key!r} has invalid session ids"
+                )
+            session_ids = tuple(session_ids_value)
+            if len(session_ids) != len(set(session_ids)):
+                raise CampaignCarriageError(
+                    f"Hindsight history question {question_key!r} repeats a session"
+                )
+            if session_ids != ordered_session_ids[: len(session_ids)]:
+                raise CampaignCarriageError(
+                    f"Hindsight history question {question_key!r} is not an ordered prefix"
+                )
+            question_history[question_key] = session_ids
+        if not question_history:
+            raise CampaignCarriageError(
+                "Hindsight history question_history must not be empty"
+            )
+        return cls(sessions=tuple(sessions), question_history=question_history)
+
+    def validate_questions(self, question_ids: Sequence[str]) -> None:
+        expected = set(question_ids)
+        actual = set(self.question_history)
+        if actual != expected:
+            raise CampaignCarriageError(
+                "Hindsight history question ids must exactly match campaign questions"
+            )
+
+    def sessions_for_question(self, question_id: str) -> tuple[HindsightHistorySession, ...]:
+        try:
+            session_ids = self.question_history[question_id]
+        except KeyError as exc:
+            raise CampaignCarriageError(
+                f"Hindsight history has no entry for question {question_id!r}"
+            ) from exc
+        by_id = {session.session_id: session for session in self.sessions}
+        return tuple(by_id[session_id] for session_id in session_ids)
+
+    def query_timestamp_for_question(
+        self,
+        question_id: str,
+        *,
+        question_timestamp: str | None = None,
+    ) -> str | None:
+        """Return the frozen logical-noon recall anchor.
+
+        LongMemEval supplies an explicit question date; when that field is
+        present the adapter-owned date wins.  MemConflict has no separate
+        question date in the carried material, so its last retained session
+        date is the deterministic anchor.  Missing/unparseable dates remain
+        ``None`` and preserve Hindsight's documented wall-clock fallback.
+        """
+
+        sessions = self.sessions_for_question(question_id)
+        candidate = question_timestamp
+        if candidate is None and sessions:
+            candidate = next(
+                (
+                    item["timestamp"]
+                    for item in reversed(sessions[-1].items)
+                    if isinstance(item.get("timestamp"), str)
+                    and item["timestamp"].strip()
+                ),
+                None,
+            )
+        parsed = _parse_history_timestamp(candidate)
+        return parsed.replace(hour=12, minute=0, second=0, microsecond=0).isoformat() if parsed else None
+
+
+def _parse_history_timestamp(value: str | None) -> datetime | None:
+    if value is None or not value.strip():
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            parsed = datetime.combine(
+                datetime.fromisoformat(normalized).date(),
+                datetime.min.time(),
+            )
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        return parsed
+    return parsed.astimezone(timezone.utc)
+
+
+def _require_history_material(value: object, *, label: str) -> dict[str, str]:
+    raw = _require_mapping(value, label=label)
+    _require_exact_keys(raw, _HISTORY_MATERIAL_KEYS, label=label)
+    path = _require_absolute_path(raw["path"], label=f"{label}.path")
+    if not path.is_file():
+        raise CampaignCarriageError(f"{label}.path is not a file: {path}")
+    expected_sha = _require_sha(raw["sha256"], label=f"{label}.sha256", pattern=_SHA256_RE)
+    if _sha256_file(path) != expected_sha:
+        raise CampaignCarriageError(f"{label}.path content drifted")
+    HindsightHistoryPlan.from_path(path)
+    return {"path": str(path), "sha256": expected_sha}
 
 
 def _sha256_file(path: Path) -> str:
@@ -689,6 +1124,7 @@ class HindsightDeploymentSession:
         self.start_count = 0
         self.health_count = 0
         self.semantic_operation_count = 0
+        self.consolidation_wait_count = 0
         self.cleanup_count = 0
         self._last_health_response: Mapping[str, Any] | None = None
         self._runtime_identity_path: Path | None = None
@@ -962,7 +1398,13 @@ class HindsightDeploymentSession:
         }
         return self._cleanup_receipt
 
-    def _semantic_post(self, path: str, payload: Mapping[str, object]) -> Mapping[str, Any]:
+    def _semantic_post(
+        self,
+        *,
+        operation: str,
+        path: str,
+        payload: Mapping[str, object],
+    ) -> Mapping[str, Any]:
         if not self.started:
             raise CampaignCarriageError("Hindsight semantic execution was requested before start")
         try:
@@ -970,8 +1412,18 @@ class HindsightDeploymentSession:
         except httpx.HTTPError as exc:
             raise CampaignCarriageError("Hindsight semantic request failed") from exc
         if response.status_code != 200:
-            raise CampaignCarriageError(
-                f"Hindsight semantic request returned HTTP {response.status_code}"
+            headers = getattr(response, "headers", {})
+            allow = headers.get("allow") if hasattr(headers, "get") else None
+            body = getattr(response, "text", "")
+            if not isinstance(body, str):
+                body = str(body)
+            raise HindsightSemanticRequestError(
+                operation=operation,
+                method="POST",
+                path=path,
+                status_code=response.status_code,
+                allow=allow,
+                body=body,
             )
         try:
             value = _require_mapping(response.json(), label="Hindsight semantic response")
@@ -980,16 +1432,174 @@ class HindsightDeploymentSession:
         self.semantic_operation_count += 1
         return value
 
-    def recall(self, prompt: str) -> Mapping[str, Any]:
+    def _semantic_get(self, *, operation: str, path: str) -> Mapping[str, Any]:
+        if not self.started:
+            raise CampaignCarriageError("Hindsight semantic execution was requested before start")
+        try:
+            response = self.client.get(self._url(path))
+        except httpx.HTTPError as exc:
+            raise CampaignCarriageError("Hindsight semantic request failed") from exc
+        if response.status_code != 200:
+            headers = getattr(response, "headers", {})
+            allow = headers.get("allow") if hasattr(headers, "get") else None
+            body = getattr(response, "text", "")
+            if not isinstance(body, str):
+                body = str(body)
+            raise HindsightSemanticRequestError(
+                operation=operation,
+                method="GET",
+                path=path,
+                status_code=response.status_code,
+                allow=allow,
+                body=body,
+            )
+        try:
+            value = _require_mapping(response.json(), label="Hindsight semantic response")
+        except (ValueError, TypeError) as exc:
+            raise CampaignCarriageError("Hindsight semantic response was not JSON") from exc
+        return value
+
+    def retain(
+        self,
+        *,
+        bank_id: str,
+        items: Sequence[Mapping[str, object]],
+    ) -> Mapping[str, Any]:
+        if _BANK_ID_RE.fullmatch(bank_id) is None:
+            raise CampaignCarriageError("Hindsight bank id is invalid")
         return self._semantic_post(
-            "/v1/default/banks/default/memories/recall",
-            {"query": prompt, "max_tokens": 4096, "budget": "mid"},
+            operation="retain",
+            path=f"/v1/default/banks/{bank_id}/memories",
+            payload={"items": [dict(item) for item in items], "async": False},
         )
 
-    def reflect(self, prompt: str, *, context: Mapping[str, Any]) -> Mapping[str, Any]:
+    def recall(
+        self,
+        prompt: str,
+        *,
+        bank_id: str,
+        query_timestamp: str | None = None,
+    ) -> Mapping[str, Any]:
+        if _BANK_ID_RE.fullmatch(bank_id) is None:
+            raise CampaignCarriageError("Hindsight bank id is invalid")
+        payload: dict[str, object] = {
+            "query": prompt,
+            "types": list(HINDSIGHT_RECALL_TYPES),
+            "prefer_observations": HINDSIGHT_PREFER_OBSERVATIONS,
+            "max_tokens": HINDSIGHT_RECALL_MAX_TOKENS,
+            "budget": HINDSIGHT_RECALL_BUDGET,
+        }
+        if query_timestamp is not None:
+            payload["query_timestamp"] = query_timestamp
         return self._semantic_post(
-            "/v1/default/banks/default/memories/reflect",
-            {"query": prompt, "context": dict(context), "budget": "low"},
+            operation="recall",
+            path=f"/v1/default/banks/{bank_id}/memories/recall",
+            payload=payload,
+        )
+
+    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
+        """Snapshot pending/processing consolidation ids before new retain."""
+
+        if _BANK_ID_RE.fullmatch(bank_id) is None:
+            raise CampaignCarriageError("Hindsight bank id is invalid")
+        payload = self._semantic_get(
+            operation="consolidation_snapshot",
+            path=(
+                f"/v1/default/banks/{bank_id}/operations"
+                "?type=consolidation&limit=100&exclude_parents=true"
+            ),
+        )
+        operations = payload.get("operations")
+        if operations is None:
+            return set()
+        if not isinstance(operations, list) or not all(
+            isinstance(item, Mapping) for item in operations
+        ):
+            raise CampaignCarriageError("Hindsight consolidation operations response is invalid")
+        return {
+            str(item["id"])
+            for item in operations
+            if isinstance(item.get("id"), str)
+            and item.get("status") in {"pending", "processing"}
+        }
+
+    def wait_for_consolidation(
+        self,
+        *,
+        bank_id: str,
+        pre_existing_pending_ids: set[str],
+    ) -> Mapping[str, object]:
+        """Wait until new consolidation work is terminal and visible."""
+
+        started = time.monotonic()
+        deadline = started + HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS
+        poll_count = 0
+        self.consolidation_wait_count += 1
+        while True:
+            poll_count += 1
+            payload = self._semantic_get(
+                operation="consolidation_wait",
+                path=(
+                    f"/v1/default/banks/{bank_id}/operations"
+                    "?type=consolidation&limit=100&exclude_parents=true"
+                ),
+            )
+            operations = payload.get("operations")
+            if not isinstance(operations, list) or not all(
+                isinstance(item, Mapping) for item in operations
+            ):
+                raise CampaignCarriageError(
+                    "Hindsight consolidation operations response is invalid"
+                )
+            new_operations = [
+                item
+                for item in operations
+                if item.get("id") not in pre_existing_pending_ids
+            ]
+            active = [
+                item
+                for item in new_operations
+                if item.get("status") in {"pending", "processing"}
+            ]
+            failed = [
+                item
+                for item in new_operations
+                if item.get("status") in {"failed", "cancelled"}
+            ]
+            if failed:
+                raise CampaignCarriageError(
+                    "Hindsight consolidation failed or was cancelled for retained history"
+                )
+            if not active:
+                return {
+                    "poll_count": poll_count,
+                    "elapsed_ms": (time.monotonic() - started) * 1000.0,
+                    "pre_existing_pending_count": len(pre_existing_pending_ids),
+                    "outstanding_count": 0,
+                }
+            if time.monotonic() >= deadline:
+                raise CampaignCarriageError(
+                    "Hindsight consolidation drain timed out before recall visibility"
+                )
+            time.sleep(HINDSIGHT_CONSOLIDATION_POLL_SECONDS)
+
+    def reflect(
+        self,
+        prompt: str,
+        *,
+        context: Mapping[str, Any],
+        bank_id: str,
+    ) -> Mapping[str, Any]:
+        if _BANK_ID_RE.fullmatch(bank_id) is None:
+            raise CampaignCarriageError("Hindsight bank id is invalid")
+        return self._semantic_post(
+            operation="reflect",
+            path=f"/v1/default/banks/{bank_id}/reflect",
+            payload={
+                "query": prompt,
+                "context": _canonical_json(context),
+                "budget": "low",
+            },
         )
 
 
@@ -1134,6 +1744,18 @@ def _hindsight_owner_deployment_id(owner_id: str) -> str:
     return f"hindsight-v0.10.0-pg0-owner-{owner_token}"
 
 
+def _hindsight_axis_bank_id(database_profile: str, axis_id: str) -> str:
+    """Derive an opaque bank isolated by owner profile and campaign axis."""
+
+    profile = _require_nonempty_string(database_profile, label="Hindsight database profile")
+    axis = _require_nonempty_string(axis_id, label="Hindsight axis id")
+    token = hashlib.sha256(f"{profile}\0{axis}".encode("utf-8")).hexdigest()[:24]
+    bank_id = f"relaylm-{token}"
+    if _BANK_ID_RE.fullmatch(bank_id) is None:
+        raise CampaignCarriageError("derived Hindsight bank id is invalid")
+    return bank_id
+
+
 def _hindsight_operational_fingerprint(
     owner_id: str,
     lifecycle: HindsightLifecycleSpec,
@@ -1160,6 +1782,7 @@ def _campaign_contract(axis: "CampaignAxis") -> dict[str, str]:
         "case_fingerprint": _fingerprint(axis.case),
         "manifest_fingerprint": _fingerprint(axis.manifest),
         "benchmark_material_fingerprint": _fingerprint(axis.benchmark_material),
+        "history_material_fingerprint": _fingerprint(axis.history_material),
         "comparator_fingerprint": _fingerprint(comparator),
         "question_list_fingerprint": _fingerprint(
             [
@@ -1254,12 +1877,15 @@ class CampaignAxis:
     run_mode: Literal["fresh_run", "exact_infrastructure_resume"]
     classification: str | None = None
     benchmark_material: Mapping[str, Any] | None = None
+    history_material: Mapping[str, str] | None = None
+    history_plan: HindsightHistoryPlan | None = None
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> CampaignAxis:
         if set(raw) == _AXIS_KEYS:
             classification = None
             benchmark_material = None
+            history_material = None
         elif set(raw) == _PRODUCTION_AXIS_KEYS:
             classification = _require_nonempty_string(
                 raw["classification"], label="classification"
@@ -1270,6 +1896,10 @@ class CampaignAxis:
                 )
             benchmark_material = _require_material(
                 raw["benchmark_material"], label=f"axis {raw.get('axis_id', 'unknown')} material"
+            )
+            history_material = _require_history_material(
+                raw["history_material"],
+                label=f"axis {raw.get('axis_id', 'unknown')} history material",
             )
         else:
             _require_exact_keys(raw, _PRODUCTION_AXIS_KEYS, label="campaign axis")
@@ -1295,6 +1925,13 @@ class CampaignAxis:
         ids = [question.question_id for question in questions]
         if len(ids) != len(set(ids)):
             raise CampaignCarriageError(f"axis {axis_id!r} contains duplicate question ids")
+        history_plan = (
+            None
+            if history_material is None
+            else HindsightHistoryPlan.from_path(Path(history_material["path"]))
+        )
+        if history_plan is not None:
+            history_plan.validate_questions(ids)
         run_mode = raw["run_mode"]
         if run_mode not in _RUN_MODES:
             raise CampaignCarriageError(
@@ -1321,6 +1958,8 @@ class CampaignAxis:
             cast(Any, run_mode),
             classification,
             benchmark_material,
+            history_material,
+            history_plan,
         )
 
 
@@ -1399,6 +2038,13 @@ class CampaignDescriptor:
             ):
                 raise CampaignCarriageError(
                     f"axis {axis.axis_id!r} benchmark material drifted from execution freeze"
+                )
+            if axis.history_material is not None and (
+                _canonical_json(axis.history_material)
+                != _canonical_json(frozen_case.get("history_material"))
+            ):
+                raise CampaignCarriageError(
+                    f"axis {axis.axis_id!r} history material drifted from execution freeze"
                 )
         if set(frozen_case_by_id) != set(axis_ids):
             raise CampaignCarriageError("campaign axes must cover every frozen release case exactly")
@@ -1605,6 +2251,7 @@ class CampaignDescriptor:
                         ],
                         "classification": axis.classification,
                         "benchmark_material": axis.benchmark_material,
+                        "history_material": axis.history_material,
                     }
                     for axis in self.axes
                 ],
@@ -1625,6 +2272,8 @@ class ParticipantExecutionContext:
     participant_identity: Mapping[str, Any]
     frozen_identity: FrozenExperimentIdentity
     live_attestation: LiveLaunchAdmissionAttestation
+    history: HindsightHistoryPlan | None = None
+    durable_run: DurableQuestionRun | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -2272,6 +2921,8 @@ class CampaignController:
                             ),
                             frozen_identity=frozen_identity,
                             live_attestation=live_attestation,
+                            history=axis.history_plan,
+                            durable_run=durable,
                         )
                         if strict_production and not barrier_reached:
                             ledger.record_pre_call_barrier(
@@ -2885,6 +3536,226 @@ def _openai_observation(
     }
 
 
+def _hindsight_retrieved_memories(
+    recalled: Mapping[str, Any],
+) -> list[dict[str, object]]:
+    """Map v0.10 RecallResponse into the frozen common-harness shape."""
+
+    results = recalled.get("results")
+    if not isinstance(results, list) or not all(
+        isinstance(item, Mapping) for item in results
+    ):
+        raise CampaignCarriageError("Hindsight recall response results are invalid")
+    mapped: list[dict[str, object]] = []
+    for result in results:
+        memory = result.get("text", result.get("memory", ""))
+        if not isinstance(memory, str):
+            raise CampaignCarriageError("Hindsight recall result text is invalid")
+        created_at = next(
+            (
+                result.get(name)
+                for name in (
+                    "occurred_start",
+                    "mentioned_at",
+                    "occurred_end",
+                )
+                if isinstance(result.get(name), str) and result.get(name)
+            ),
+            "Unknown Time",
+        )
+        scores = result.get("scores")
+        final_score = scores.get("final") if isinstance(scores, Mapping) else None
+        mapped.append(
+            {
+                "memory": memory,
+                "created_at": created_at,
+                "score": final_score,
+                "id": result.get("id"),
+                "type": result.get("type"),
+            }
+        )
+    return mapped
+
+
+def _build_common_retrieved_context(
+    retrieved_memories: Sequence[Mapping[str, object]],
+) -> str:
+    lines = ["Retrieved memories:"]
+    if not retrieved_memories:
+        lines.append("No relevant memories found.")
+    else:
+        for index, item in enumerate(retrieved_memories, start=1):
+            lines.append(
+                f"{index}. [{item.get('created_at', 'Unknown Time')}] {item.get('memory', '')}"
+            )
+    return "\n".join(lines)
+
+
+def _build_common_answer_user_prompt(
+    retrieved_memories: Sequence[Mapping[str, object]],
+    question: str,
+) -> str:
+    context = _build_common_retrieved_context(retrieved_memories)
+    return (
+        f"{_COMMON_ANSWER_USER_PREFIX}{context}"
+        f"{_COMMON_ANSWER_USER_QUESTION}{question}"
+        f"{_COMMON_ANSWER_USER_SUFFIX}"
+    )
+
+
+def _hindsight_context_label(context: ParticipantExecutionContext) -> str:
+    benchmark = context.case.get("benchmark")
+    if isinstance(benchmark, Mapping):
+        benchmark_id = benchmark.get("id")
+    else:
+        benchmark_id = benchmark
+    if isinstance(benchmark_id, str):
+        normalized = benchmark_id.lower()
+        if "longmemeval" in normalized:
+            return "LongMemEval"
+        if "memconflict" in normalized:
+            return "MemConflict"
+    raise CampaignCarriageError(
+        "Hindsight comparator is bounded to MemConflict or LongMemEval"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CommonAnswerModelResult:
+    observation: Mapping[str, Any]
+    request_evidence: Mapping[str, Any]
+
+
+class CommonAnswerModelExecutor:
+    """The single provider-neutral answer-generation boundary for C."""
+
+    def __init__(self, spec: LlamaCppLaunchSpec) -> None:
+        self.spec = spec
+        self.client = httpx.Client(timeout=120.0, trust_env=False)
+
+    def answer(
+        self,
+        context: ParticipantExecutionContext,
+        retrieved_memories: Sequence[Mapping[str, object]],
+    ) -> CommonAnswerModelResult:
+        decoding = context.participant_identity.get("decoding")
+        reasoning = context.participant_identity.get("reasoning")
+        if not isinstance(decoding, Mapping) or not isinstance(reasoning, Mapping):
+            raise CampaignCarriageError("common answer model condition identity is invalid")
+        if not decoding or not reasoning:
+            raise CampaignCarriageError("common answer model condition identity is empty")
+
+        def numeric_value(name: str, value: object) -> int | float:
+            if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+                raise CampaignCarriageError(
+                    f"common answer model decoding.{name} is not numeric"
+                )
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError) as exc:
+                raise CampaignCarriageError(
+                    f"common answer model decoding.{name} is not numeric"
+                ) from exc
+            if not math.isfinite(parsed):
+                raise CampaignCarriageError(
+                    f"common answer model decoding.{name} is not finite"
+                )
+            return int(parsed) if parsed.is_integer() else parsed
+
+        # The frozen common harness passes its answer decoding from the run
+        # environment.  The campaign identity is the only allowed carriage of
+        # that condition; absent fields are intentionally omitted rather than
+        # replaced with a provider default or a guessed value.
+        request_decoding: dict[str, int | float] = {}
+        for name in (
+            "temperature",
+            "top_p",
+            "max_tokens",
+            "presence_penalty",
+            "frequency_penalty",
+            "seed",
+        ):
+            if name in decoding:
+                request_decoding[name] = numeric_value(name, decoding[name])
+
+        effort = str(reasoning.get("effort", "")).strip().lower()
+        mode = str(reasoning.get("mode", "")).strip().lower()
+        if effort in {"", "none", "off", "false", "0"} and mode in {
+            "",
+            "none",
+            "off",
+            "false",
+            "0",
+        }:
+            reasoning_extra: dict[str, object] | None = None
+        elif effort:
+            # Match benchmark/llm_reasoning.py: both spellings are sent so
+            # the frozen OpenAI-compatible sidecar can consume its declared
+            # reasoning contract without changing the common prompt.
+            reasoning_extra = {
+                "reasoning": {"effort": reasoning["effort"]},
+                "reasoning_effort": reasoning["effort"],
+            }
+        else:
+            raise CampaignCarriageError(
+                "common answer model reasoning condition is not supported by the frozen boundary"
+            )
+        user_prompt = _build_common_answer_user_prompt(
+            retrieved_memories,
+            context.prompt,
+        )
+        started = time.monotonic()
+        request_payload: dict[str, object] = {
+            "model": self.spec.expected_model_alias,
+            "messages": [
+                {"role": "system", "content": COMMON_ANSWER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            **request_decoding,
+        }
+        if reasoning_extra is not None:
+            request_payload["extra_body"] = reasoning_extra
+        try:
+            response = self.client.post(
+                f"http://127.0.0.1:{self.spec.port}/v1/chat/completions",
+                json=request_payload,
+            )
+            if response.status_code != 200:
+                raise CampaignCarriageError(
+                    f"common answer model returned HTTP {response.status_code}"
+                )
+            payload = _require_mapping(
+                response.json(), label="common answer model response"
+            )
+        except (httpx.HTTPError, ValueError, TypeError) as exc:
+            raise CampaignCarriageError("common answer model request failed") from exc
+        return CommonAnswerModelResult(
+            observation=_openai_observation(
+                payload=payload,
+                elapsed_ms=(time.monotonic() - started) * 1000.0,
+                note="frozen common answer-model llama.cpp boundary",
+            ),
+            request_evidence={
+                "boundary": "common_answer_model",
+                "endpoint": "/v1/chat/completions",
+                "model": self.spec.expected_model_alias,
+                "decoding": dict(decoding),
+                "reasoning": dict(reasoning),
+                "prompt_condition": {
+                    "system_prompt_sha256": _fingerprint(COMMON_ANSWER_SYSTEM_PROMPT),
+                    "user_prompt_sha256": _fingerprint(user_prompt),
+                    "retrieved_context_sha256": _fingerprint(
+                        _build_common_retrieved_context(retrieved_memories)
+                    ),
+                    "format": "frozen-hermes-common-answer-v1",
+                },
+                "retrieved_memory_count": len(retrieved_memories),
+                "response_shape": sorted(payload),
+            },
+        )
+
+
 class SameModelDirectExecutor:
     def __init__(self, spec: LlamaCppLaunchSpec) -> None:
         self.spec = spec
@@ -2929,46 +3800,147 @@ class SameModelDirectExecutor:
 
 
 class HindsightComparatorExecutor:
-    def __init__(self, lifecycle: HindsightDeploymentSession) -> None:
+    def __init__(
+        self,
+        lifecycle: HindsightDeploymentSession,
+        answer_model: CommonAnswerModelExecutor,
+    ) -> None:
         self.lifecycle = lifecycle
+        self.answer_model = answer_model
 
     def __call__(self, context: ParticipantExecutionContext) -> ParticipantExecutionResult:
-        started = time.monotonic()
-        recalled = self.lifecycle.recall(context.prompt)
-        reflected = self.lifecycle.reflect(context.prompt, context=recalled)
-        observation = {
-            "quality": {},
-            "tokens": {
-                "model_input_tokens": None,
-                "model_output_tokens": None,
-                "model_call_count": 1,
-            },
-            "latency": {
-                "ttft_ms": None,
-                "query_latency_ms": (time.monotonic() - started) * 1000.0,
-                "end_to_end_ms": (time.monotonic() - started) * 1000.0,
-            },
-            "resources": {
-                "peak_gpu_memory_bytes": None,
-                "peak_cpu_memory_bytes": None,
-                "persistent_storage_bytes": None,
-                "notes": ["Hindsight fixed recall then reflect boundary"],
-            },
-            "known_limitations": ["benchmark-native scoring is owner-supplied"],
-            "failure": None,
-        }
+        if context.history is None:
+            raise CampaignCarriageError(
+                "Hindsight comparator requires benchmark-faithful history material"
+            )
+        bank_id = _hindsight_axis_bank_id(
+            self.lifecycle.spec.database_profile,
+            context.axis_id,
+        )
+        sessions = context.history.sessions_for_question(context.question.question_id)
+        if context.durable_run is None:
+            raise CampaignCarriageError(
+                "Hindsight comparator requires a repository-owned durable preload journal"
+            )
+        context_label = _hindsight_context_label(context)
+        retained_exchange_count = sum(len(session.exchanges()) for session in sessions)
+        newly_retained_exchange_count = 0
+        consolidation_waits: list[dict[str, object]] = []
+
+        for session in sessions:
+            pending_exchange_indices = [
+                exchange_index
+                for exchange_index, _exchange in enumerate(session.exchanges())
+                if not context.durable_run.hindsight_history_preload_completed(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                )
+            ]
+            if not pending_exchange_indices:
+                continue
+
+            # Frozen Arm-C snapshots and drains consolidation per history session.
+            pre_existing_pending_ids = self.lifecycle.consolidation_pending_ids(
+                bank_id=bank_id
+            )
+            session_pending: list[tuple[int, Mapping[str, object]]] = []
+            for exchange_index in pending_exchange_indices:
+                request = session.to_retain_request(
+                    bank_id=bank_id,
+                    context_label=context_label,
+                    exchange_index=exchange_index,
+                )
+                if not context.durable_run.begin_hindsight_history_preload(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                    request=request,
+                ):
+                    continue
+                self.lifecycle.retain(bank_id=bank_id, items=(request,))
+                session_pending.append((exchange_index, request))
+                newly_retained_exchange_count += 1
+
+            if not session_pending:
+                continue
+            wait_result = self.lifecycle.wait_for_consolidation(
+                bank_id=bank_id,
+                pre_existing_pending_ids=pre_existing_pending_ids,
+            )
+            consolidation_waits.append(
+                {
+                    "session_id": session.session_id,
+                    **dict(wait_result),
+                }
+            )
+            for exchange_index, request in session_pending:
+                context.durable_run.complete_hindsight_history_preload(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                    request=request,
+                )
+        question_timestamp = context.case.get("question_date")
+        if not isinstance(question_timestamp, str):
+            question_timestamp = None
+        query_timestamp = context.history.query_timestamp_for_question(
+            context.question.question_id,
+            question_timestamp=question_timestamp,
+        )
+        recalled = self.lifecycle.recall(
+            context.prompt,
+            bank_id=bank_id,
+            query_timestamp=query_timestamp,
+        )
+        retrieved_memories = _hindsight_retrieved_memories(recalled)
+        answer = self.answer_model.answer(context, retrieved_memories)
+        preload_counts = context.durable_run.hindsight_history_preload_counts()
         return ParticipantExecutionResult(
             slot=context.participant_slot,
-            observation=observation,
+            observation=answer.observation,
             request_evidence=(
                 {
-                    "boundary": "hindsight",
-                    "operations": ["recall", "reflect"],
+                    "boundary": "hindsight_retrieval",
+                    "operations": [
+                        "retain",
+                        "consolidation_wait",
+                        "recall",
+                    ]
+                    if newly_retained_exchange_count
+                    else ["recall"],
+                    "bank_id": bank_id,
+                    "retain_granularity": HINDSIGHT_RETAIN_GRANULARITY,
+                    "document_update_mode": "append",
+                    "recall_fact_types": list(HINDSIGHT_RECALL_TYPES),
+                    "prefer_observations": HINDSIGHT_PREFER_OBSERVATIONS,
+                    "wait_consolidation": HINDSIGHT_WAIT_CONSOLIDATION,
+                    "consolidation_wait_timeout_seconds": HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS,
+                    "retained_exchange_count": retained_exchange_count,
+                    "newly_retained_exchange_count": newly_retained_exchange_count,
+                    "retain_metadata_contract": (
+                        "memconflict_frozen_arm_c"
+                        if context_label == "MemConflict"
+                        else "longmemeval_no_extra_metadata"
+                    ),
+                    "history_preload_durability": preload_counts,
+                    "recall_request": {
+                        "budget": HINDSIGHT_RECALL_BUDGET,
+                        "max_tokens": HINDSIGHT_RECALL_MAX_TOKENS,
+                        "types": list(HINDSIGHT_RECALL_TYPES),
+                        "prefer_observations": HINDSIGHT_PREFER_OBSERVATIONS,
+                        "query_timestamp": query_timestamp,
+                    },
                     "response_shape": {
                         "recall": sorted(recalled),
-                        "reflect": sorted(reflected),
                     },
+                    "retrieved_memory_count": len(retrieved_memories),
+                    "consolidation_waits": consolidation_waits,
                 },
+                dict(answer.request_evidence),
             ),
             answer_model_generation_count=1,
         )
@@ -3055,6 +4027,7 @@ def run_production_campaign(
     rc_cleanup: Mapping[str, object] | None = None
     installation_cleanup: Mapping[str, object] | None = None
     direct = SameModelDirectExecutor(descriptor.llama_cpp)
+    answer_model = CommonAnswerModelExecutor(descriptor.llama_cpp)
     lifecycle = HindsightDeploymentSession(
         descriptor.hindsight_lifecycle,
         descriptor.hindsight_health,
@@ -3092,7 +4065,7 @@ def run_production_campaign(
             except ExactRCError as exc:
                 raise CampaignCarriageError(str(exc)) from exc
             exact_executor = ExactRelayLMExecutor(rc_server)
-        comparator = HindsightComparatorExecutor(lifecycle)
+        comparator = HindsightComparatorExecutor(lifecycle, answer_model)
         result = run_campaign(
             descriptor,
             live_launch_factory=start_llama_cpp_session,
@@ -3116,6 +4089,7 @@ def run_production_campaign(
         if rc_server is not None:
             rc_cleanup = rc_server.cleanup()
         direct.client.close()
+        answer_model.client.close()
         if installation is not None:
             installation_cleanup = cleanup_exact_rc(installation)
             if result_value is not None:

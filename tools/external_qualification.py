@@ -461,6 +461,17 @@ class DurableQuestionRun:
         self._completed: dict[str, dict[str, object]] = {}
         self._in_flight: dict[str, int] = {}
         self._participant_completed: dict[tuple[str, str], dict[str, object]] = {}
+        # A Hindsight retain is an external side effect.  These two indexes are
+        # deliberately journal-backed rather than process-local: a process can
+        # die after retain has become effective and before the participant
+        # result is committed.  An unresolved started record is therefore an
+        # ambiguity barrier, never a retry invitation.
+        self._hindsight_history_preload_completed: dict[
+            str, dict[str, object]
+        ] = {}
+        self._hindsight_history_preload_in_flight: dict[
+            str, dict[str, object]
+        ] = {}
         self._partial_tail_detected = partial_tail_detected
         self._status = "RUNNING"
 
@@ -553,6 +564,7 @@ class DurableQuestionRun:
         )
         run._load_observations()
         run._load_participant_observations()
+        run._load_hindsight_history_preloads()
         run._load_request_evidence()
         run._validate_or_rebuild_checkpoint()
         run._status = "RUNNING"
@@ -652,6 +664,202 @@ class DurableQuestionRun:
             raise ExternalQualificationError(f"unknown participant slot: {slot}")
         record = self._participant_completed.get((question_id, slot))
         return None if record is None else _json_copy(record, "participant record")
+
+    @staticmethod
+    def _hindsight_history_preload_key(
+        *,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> str:
+        if not isinstance(bank_id, str) or not bank_id.strip():
+            raise ExternalQualificationError("Hindsight preload bank_id must be non-empty")
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ExternalQualificationError(
+                "Hindsight preload session_id must be non-empty"
+            )
+        if (
+            isinstance(exchange_index, bool)
+            or not isinstance(exchange_index, int)
+            or exchange_index < 0
+        ):
+            raise ExternalQualificationError(
+                "Hindsight preload exchange_index must be a non-negative integer"
+            )
+        return _sha256_mapping(
+            {
+                "bank_id": bank_id,
+                "session_id": session_id,
+                "exchange_index": exchange_index,
+            }
+        )
+
+    @staticmethod
+    def _hindsight_history_preload_request_identity(
+        request: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Return stable request identity, excluding only wall-clock retained_at."""
+
+        normalized = _json_copy(dict(request), "Hindsight preload request")
+        metadata = normalized.get("metadata")
+        if metadata is not None:
+            if not isinstance(metadata, Mapping):
+                raise ExternalQualificationError(
+                    "Hindsight preload request metadata must be an object"
+                )
+            stable_metadata = dict(metadata)
+            stable_metadata.pop("retained_at", None)
+            if stable_metadata:
+                normalized["metadata"] = stable_metadata
+            else:
+                normalized.pop("metadata", None)
+        return normalized
+
+    def hindsight_history_preload_completed(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> bool:
+        """Check durable preload identity before materializing volatile fields."""
+
+        self._require_in_flight(question_id)
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if preload_key in self._hindsight_history_preload_in_flight:
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement is ambiguous; exact resume is fail-closed"
+            )
+        return preload_key in self._hindsight_history_preload_completed
+
+    def begin_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> bool:
+        """Journal the exact materialized Hindsight retain before external execution.
+
+        The durable preload key is the logical exchange identity, not the
+        materialized request bytes. MemConflict frozen Arm-C includes a
+        wall-clock metadata.retained_at value, so later questions recognize an
+        already-completed exchange before generating another timestamp. The
+        exact first-use request is fsynced before the external retain.
+        """
+
+        question = self._require_in_flight(question_id)
+        normalized_request = _json_copy(dict(request), "Hindsight preload request")
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        completed = self._hindsight_history_preload_completed.get(preload_key)
+        if completed is not None:
+            completed_request = completed.get("request")
+            if not isinstance(completed_request, Mapping):
+                raise ExactResumeError(
+                    "completed Hindsight history preload request is invalid"
+                )
+            if _canonical_json(
+                self._hindsight_history_preload_request_identity(completed_request)
+            ) != _canonical_json(
+                self._hindsight_history_preload_request_identity(normalized_request)
+            ):
+                raise ExactResumeError(
+                    "Hindsight history preload request drifted after durable completion"
+                )
+            return False
+        if preload_key in self._hindsight_history_preload_in_flight:
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement is ambiguous; exact resume is fail-closed"
+            )
+        record = {
+            "format_version": DURABLE_RUN_FORMAT_VERSION,
+            "run_id": self.run_id,
+            "identity_fingerprint": self.identity.fingerprint,
+            "event": "started",
+            "order": self._order_by_id[question_id],
+            "question_id": question.question_id,
+            "content_fingerprint": question.content_fingerprint,
+            "session_id": question.session_id,
+            "attempt": self._in_flight[question_id],
+            "preload_key": preload_key,
+            "bank_id": bank_id,
+            "history_session_id": session_id,
+            "exchange_index": exchange_index,
+            "request": normalized_request,
+        }
+        self._append_line(self.root / "hindsight-history-preloads.jsonl", record)
+        self._hindsight_history_preload_in_flight[preload_key] = record
+        self._write_state()
+        return True
+
+    def complete_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> None:
+        """Durably acknowledge the exact materialized Hindsight retain."""
+
+        question = self._require_in_flight(question_id)
+        normalized_request = _json_copy(dict(request), "Hindsight preload request")
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        completed_record = self._hindsight_history_preload_completed.get(preload_key)
+        if completed_record is not None:
+            completed_request = completed_record.get("request")
+            if not isinstance(completed_request, Mapping) or _canonical_json(
+                dict(completed_request)
+            ) != _canonical_json(normalized_request):
+                raise ExactResumeError(
+                    "completed Hindsight history preload request does not match"
+                )
+            return
+        started = self._hindsight_history_preload_in_flight.get(preload_key)
+        if started is None:
+            raise ExactResumeError(
+                "Hindsight history preload completion has no durable start record"
+            )
+        started_request = started.get("request")
+        if not isinstance(started_request, Mapping) or _canonical_json(
+            dict(started_request)
+        ) != _canonical_json(normalized_request):
+            raise ExactResumeError(
+                "Hindsight history preload completion request does not match its durable start"
+            )
+        completed = dict(started)
+        completed["event"] = "completed"
+        completed["question_id"] = question.question_id
+        completed["content_fingerprint"] = question.content_fingerprint
+        completed["session_id"] = question.session_id
+        completed["attempt"] = self._in_flight[question_id]
+        self._append_line(self.root / "hindsight-history-preloads.jsonl", completed)
+        self._hindsight_history_preload_completed[preload_key] = completed
+        del self._hindsight_history_preload_in_flight[preload_key]
+        self._write_state()
+    def hindsight_history_preload_counts(self) -> dict[str, int]:
+        """Return journal counts for citable crash-boundary evidence."""
+
+        return {
+            "completed": len(self._hindsight_history_preload_completed),
+            "in_flight": len(self._hindsight_history_preload_in_flight),
+        }
 
     def commit_participant(
         self,
@@ -917,6 +1125,12 @@ class DurableQuestionRun:
             "question_count": len(self.questions),
             "completed_question_count": len(self._completed),
             "completed_participant_count": len(self._participant_completed),
+            "hindsight_history_preload_completed_count": len(
+                self._hindsight_history_preload_completed
+            ),
+            "hindsight_history_preload_in_flight_count": len(
+                self._hindsight_history_preload_in_flight
+            ),
             "completed_participants": [
                 {
                     "question_id": question.question_id,
@@ -989,6 +1203,70 @@ class DurableQuestionRun:
                     "duplicate or conflicting participant completion records are not resumable"
                 )
             self._participant_completed[key] = dict(record)
+
+    def _load_hindsight_history_preloads(self) -> None:
+        """Replay the preload journal and reject every unresolved start.
+
+        The rejection happens during ``resume`` before any participant hook is
+        called.  This is the required fail-closed behavior for the interval
+        between external Hindsight effectiveness and local acknowledgement.
+        """
+
+        for record in self._read_jsonl(self.root / "hindsight-history-preloads.jsonl"):
+            question_id = self._validate_record_identity(
+                record, "Hindsight history preload"
+            )
+            event = record.get("event")
+            if event not in {"started", "completed"}:
+                raise ExactResumeError("Hindsight history preload event is invalid")
+            preload_key = record.get("preload_key")
+            if not isinstance(preload_key, str) or not preload_key:
+                raise ExactResumeError("Hindsight history preload key is invalid")
+            bank_id = record.get("bank_id")
+            history_session_id = record.get("history_session_id")
+            exchange_index = record.get("exchange_index")
+            request = record.get("request")
+            if (
+                not isinstance(bank_id, str)
+                or not isinstance(history_session_id, str)
+                or isinstance(exchange_index, bool)
+                or not isinstance(exchange_index, int)
+                or exchange_index < 0
+                or not isinstance(request, Mapping)
+            ):
+                raise ExactResumeError("Hindsight history preload payload is invalid")
+            expected_key = self._hindsight_history_preload_key(
+                bank_id=bank_id,
+                session_id=history_session_id,
+                exchange_index=exchange_index,
+            )
+            if preload_key != expected_key:
+                raise ExactResumeError("Hindsight history preload key does not match payload")
+            if event == "started":
+                if preload_key in self._hindsight_history_preload_completed:
+                    raise ExactResumeError(
+                        "Hindsight history preload was started after completion"
+                    )
+                if preload_key in self._hindsight_history_preload_in_flight:
+                    raise ExactResumeError(
+                        "duplicate Hindsight history preload start is not resumable"
+                    )
+                self._hindsight_history_preload_in_flight[preload_key] = dict(record)
+            else:
+                if preload_key not in self._hindsight_history_preload_in_flight:
+                    raise ExactResumeError(
+                        "Hindsight history preload completion has no start record"
+                    )
+                self._hindsight_history_preload_completed[preload_key] = dict(record)
+                del self._hindsight_history_preload_in_flight[preload_key]
+            # Keep the local variable visibly tied to the durable identity
+            # validation above; no semantic action is permitted here.
+            if question_id not in self._question_by_id:
+                raise ExactResumeError("Hindsight history preload question is unknown")
+        if self._hindsight_history_preload_in_flight:
+            raise ExactResumeError(
+                "exact resume is fail-closed because Hindsight retain acknowledgement is ambiguous"
+            )
 
     def _append_line(self, path: Path, record: Mapping[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
