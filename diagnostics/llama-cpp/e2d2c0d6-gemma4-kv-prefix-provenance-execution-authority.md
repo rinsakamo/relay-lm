@@ -188,6 +188,9 @@ Primary KV-state classification comes from the probe authority:
 - `RETAINED_PREFIX_KV_MUTATED_BY_REUSE`
 - `PREFIX_KV_IDENTICAL_THROUGH_REUSE`
 - `PROBE_NOT_EXERCISED`
+- `PROBE_EXERCISED_INCOMPLETE`
+
+Use `PROBE_NOT_EXERCISED` only before L0 submission. If L0 has been submitted and the complete four-point comparison cannot be produced, terminalize as `PROBE_EXERCISED_INCOMPLETE`; the attempt is consumed and must not be rerun automatically.
 
 First require W vs W2 reproducibility. If W != W2, stop causal interpretation at `PREFIX_DUMP_NOT_REPRODUCIBLE`.
 
