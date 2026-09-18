@@ -137,6 +137,38 @@ def main():
         )
         return 9
 
+    contract_selftest = here / "e2d2c0d6-gemma4-kv-runner-contract-selftest.py"
+    contract = subprocess.run(
+        [sys.executable, str(contract_selftest)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (args.preflight_root / "kv-runner-contract-selftest.json").write_bytes(contract.stdout)
+    (args.preflight_root / "kv-runner-contract-selftest.stderr.txt").write_bytes(contract.stderr)
+    if contract.returncode != 0:
+        write_terminal(
+            args.preflight_root,
+            stage="kv_runner_contract_selftest",
+            reason="KV_RUNNER_CONTRACT_SELFTEST_FAIL",
+        )
+        return 10
+    try:
+        contract_obj = json.loads(contract.stdout)
+    except Exception as exc:
+        write_terminal(
+            args.preflight_root,
+            stage="kv_runner_contract_selftest",
+            reason=f"invalid contract self-test JSON: {exc}",
+        )
+        return 10
+    if contract_obj.get("status") != "KV_RUNNER_CONTRACT_SELFTEST_PASS":
+        write_terminal(
+            args.preflight_root,
+            stage="kv_runner_contract_selftest",
+            reason=f"unexpected contract self-test status: {contract_obj.get('status')}",
+        )
+        return 10
+
     # Cooperate with the repository's canonical shared local-GPU flock without
     # creating or mutating any #2965 campaign queue/receipt/spend artifact.
     LOCK_ROOT.mkdir(parents=True, exist_ok=True)
