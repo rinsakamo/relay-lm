@@ -506,6 +506,7 @@ class _PreloadJournal:
     def __init__(self) -> None:
         self.completed: set[str] = set()
         self.started: set[str] = set()
+        self.requests: dict[str, Mapping[str, object]] = {}
 
     def _key(
         self,
@@ -513,12 +514,28 @@ class _PreloadJournal:
         bank_id: str,
         session_id: str,
         exchange_index: int,
-        request: Mapping[str, object],
     ) -> str:
         return json.dumps(
-            [bank_id, session_id, exchange_index, dict(request)],
+            [bank_id, session_id, exchange_index],
             sort_keys=True,
         )
+
+    def hindsight_history_preload_completed(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> bool:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key in self.started:
+            raise ExactResumeError("synthetic preload ambiguity")
+        return key in self.completed
 
     def begin_hindsight_history_preload(
         self,
@@ -533,13 +550,13 @@ class _PreloadJournal:
             bank_id=bank_id,
             session_id=session_id,
             exchange_index=exchange_index,
-            request=request,
         )
         if key in self.completed:
             return False
         if key in self.started:
             raise ExactResumeError("synthetic preload ambiguity")
         self.started.add(key)
+        self.requests[key] = dict(request)
         return True
 
     def complete_hindsight_history_preload(
@@ -555,16 +572,15 @@ class _PreloadJournal:
             bank_id=bank_id,
             session_id=session_id,
             exchange_index=exchange_index,
-            request=request,
         )
         if key not in self.started:
             raise ExactResumeError("synthetic preload completion without start")
+        assert self.requests[key] == dict(request)
         self.started.remove(key)
         self.completed.add(key)
 
     def hindsight_history_preload_counts(self) -> dict[str, int]:
         return {"completed": len(self.completed), "in_flight": len(self.started)}
-
 
 class _CommonAnswerModel:
     def __init__(self) -> None:
@@ -1192,7 +1208,7 @@ def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
     def context(question_id: str, prompt: str) -> ParticipantExecutionContext:
         return ParticipantExecutionContext(
             axis_id="axis-a",
-            case={},
+            case={"benchmark": {"id": "memconflict"}},
             manifest={},
             question=DurableQuestion.from_content(
                 question_id,
@@ -1312,6 +1328,41 @@ def test_hindsight_memconflict_exchange_append_metadata_matches_frozen_arm_c(
     assert isinstance(metadata["retained_at"], str)
     assert str(metadata["retained_at"]).endswith("+00:00")
 
+
+def test_hindsight_longmemeval_does_not_inherit_memconflict_retain_metadata(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "longmemeval-metadata-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-long",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "historical update",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            }
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-long"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    session = HindsightHistoryPlan.from_path(history_path).sessions[0]
+
+    request = session.to_retain_requests(
+        bank_id="synthetic-bank",
+        context_label="LongMemEval",
+    )[0]
+
+    assert "metadata" not in request
 
 def test_hindsight_preload_identity_does_not_retry_when_only_retained_at_changes(
     tmp_path: Path,

@@ -423,21 +423,31 @@ class HindsightHistorySession:
             for item in self.items
         )
 
-    def to_retain_requests(
+    def to_retain_request(
         self,
         *,
         bank_id: str,
         context_label: str,
-    ) -> tuple[dict[str, object], ...]:
-        """Build the frozen Hindsight Arm-C exchange-append requests.
+        exchange_index: int,
+    ) -> dict[str, object]:
+        """Materialize one exchange-append retain immediately before first use.
 
-        Each completed user/assistant exchange is one synchronous retain call.
-        The document id is stable for the session and ``update_mode=append``
-        sends only the new exchange.  The content is the JSON-array string
-        used by the pinned Hermes Hindsight plugin, including role prefixes and
-        the logical per-exchange timestamp.
+        MemConflict mirrors the frozen Hermes Arm-C metadata exactly. The
+        retained_at value is wall-clock and is materialized only after durable
+        state says the logical exchange is new. LongMemEval shares the typed
+        history/append boundary but does not inherit MemConflict-only metadata.
         """
 
+        exchanges = self.exchanges()
+        if (
+            isinstance(exchange_index, bool)
+            or not isinstance(exchange_index, int)
+            or exchange_index < 0
+            or exchange_index >= len(exchanges)
+        ):
+            raise CampaignCarriageError(
+                "Hindsight history exchange_index is outside the session"
+            )
         session_base = _parse_history_timestamp(
             next(
                 (
@@ -449,42 +459,71 @@ class HindsightHistorySession:
                 None,
             )
         )
-        document_id = f"{bank_id}_doc_{self.session_id}"
-        requests: list[dict[str, object]] = []
-        for exchange_index, exchange in enumerate(self.exchanges()):
-            logical_timestamp = (
-                session_base + timedelta(minutes=exchange_index)
-                if session_base is not None
-                else None
+        exchange = exchanges[exchange_index]
+        logical_timestamp = (
+            session_base + timedelta(minutes=exchange_index)
+            if session_base is not None
+            else None
+        )
+        timestamp = (
+            logical_timestamp.isoformat() if logical_timestamp is not None else None
+        )
+        turn_payload = [
+            {
+                "role": item["role"],
+                "content": (
+                    ("User: " if item["role"] == "user" else "Assistant: ")
+                    + str(item["content"])
+                ),
+                "timestamp": timestamp,
+            }
+            for item in exchange
+        ]
+        request: dict[str, object] = {
+            "content": json.dumps(
+                turn_payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            "context": f"{context_label} dialogue session {self.session_id}",
+            "timestamp": timestamp,
+            "document_id": f"{bank_id}_doc_{self.session_id}",
+            "update_mode": "append",
+        }
+        if context_label == "MemConflict":
+            session_date_iso = (
+                session_base.isoformat() if session_base is not None else None
             )
-            timestamp = (
-                logical_timestamp.isoformat() if logical_timestamp is not None else None
+            request["metadata"] = {
+                "retained_at": datetime.now(timezone.utc).isoformat(),
+                "message_count": str(len(exchange)),
+                "turn_index": str(exchange_index),
+                "session_date": str(session_date_iso),
+            }
+        elif context_label == "LongMemEval":
+            pass
+        else:
+            raise CampaignCarriageError(
+                "Hindsight retain contract is bounded to MemConflict or LongMemEval"
             )
-            turn_payload = [
-                {
-                    "role": item["role"],
-                    "content": (
-                        ("User: " if item["role"] == "user" else "Assistant: ")
-                        + str(item["content"])
-                    ),
-                    "timestamp": timestamp,
-                }
-                for item in exchange
-            ]
-            requests.append(
-                {
-                    "content": json.dumps(
-                        turn_payload,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ),
-                    "context": f"{context_label} dialogue session {self.session_id}",
-                    "timestamp": timestamp,
-                    "document_id": document_id,
-                    "update_mode": "append",
-                }
+        return request
+
+    def to_retain_requests(
+        self,
+        *,
+        bank_id: str,
+        context_label: str,
+    ) -> tuple[dict[str, object], ...]:
+        """Diagnostic wrapper over first-use request materialization."""
+
+        return tuple(
+            self.to_retain_request(
+                bank_id=bank_id,
+                context_label=context_label,
+                exchange_index=exchange_index,
             )
-        return tuple(requests)
+            for exchange_index, _exchange in enumerate(self.exchanges())
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -3576,7 +3615,9 @@ def _hindsight_context_label(context: ParticipantExecutionContext) -> str:
             return "LongMemEval"
         if "memconflict" in normalized:
             return "MemConflict"
-    return "Hindsight"
+    raise CampaignCarriageError(
+        "Hindsight comparator is bounded to MemConflict or LongMemEval"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -3782,46 +3823,67 @@ class HindsightComparatorExecutor:
                 "Hindsight comparator requires a repository-owned durable preload journal"
             )
         context_label = _hindsight_context_label(context)
-        preload_requests: list[tuple[str, int, Mapping[str, object]]] = []
+        retained_exchange_count = sum(len(session.exchanges()) for session in sessions)
+        newly_retained_exchange_count = 0
+        consolidation_waits: list[dict[str, object]] = []
+
         for session in sessions:
-            requests = session.to_retain_requests(
-                bank_id=bank_id,
-                context_label=context_label,
-            )
-            for exchange_index, request in enumerate(requests):
-                preload_requests.append((session.session_id, exchange_index, request))
+            pending_exchange_indices = [
+                exchange_index
+                for exchange_index, _exchange in enumerate(session.exchanges())
+                if not context.durable_run.hindsight_history_preload_completed(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                )
+            ]
+            if not pending_exchange_indices:
+                continue
 
-        pending_requests: list[tuple[str, int, Mapping[str, object]]] = []
-        for session_id, exchange_index, request in preload_requests:
-            if context.durable_run.begin_hindsight_history_preload(
-                question_id=context.question.question_id,
-                bank_id=bank_id,
-                session_id=session_id,
-                exchange_index=exchange_index,
-                request=request,
-            ):
-                pending_requests.append((session_id, exchange_index, request))
-
-        consolidation_wait: Mapping[str, object] | None = None
-        if pending_requests:
+            # Frozen Arm-C snapshots and drains consolidation per history session.
             pre_existing_pending_ids = self.lifecycle.consolidation_pending_ids(
                 bank_id=bank_id
             )
-            for _session_id, _exchange_index, request in pending_requests:
+            session_pending: list[tuple[int, Mapping[str, object]]] = []
+            for exchange_index in pending_exchange_indices:
+                request = session.to_retain_request(
+                    bank_id=bank_id,
+                    context_label=context_label,
+                    exchange_index=exchange_index,
+                )
+                if not context.durable_run.begin_hindsight_history_preload(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                    request=request,
+                ):
+                    continue
                 self.lifecycle.retain(bank_id=bank_id, items=(request,))
-            consolidation_wait = self.lifecycle.wait_for_consolidation(
+                session_pending.append((exchange_index, request))
+                newly_retained_exchange_count += 1
+
+            if not session_pending:
+                continue
+            wait_result = self.lifecycle.wait_for_consolidation(
                 bank_id=bank_id,
                 pre_existing_pending_ids=pre_existing_pending_ids,
             )
-            for session_id, exchange_index, request in pending_requests:
+            consolidation_waits.append(
+                {
+                    "session_id": session.session_id,
+                    **dict(wait_result),
+                }
+            )
+            for exchange_index, request in session_pending:
                 context.durable_run.complete_hindsight_history_preload(
                     question_id=context.question.question_id,
                     bank_id=bank_id,
-                    session_id=session_id,
+                    session_id=session.session_id,
                     exchange_index=exchange_index,
                     request=request,
                 )
-
         question_timestamp = context.case.get("question_date")
         if not isinstance(question_timestamp, str):
             question_timestamp = None
@@ -3848,7 +3910,7 @@ class HindsightComparatorExecutor:
                         "consolidation_wait",
                         "recall",
                     ]
-                    if pending_requests
+                    if newly_retained_exchange_count
                     else ["recall"],
                     "bank_id": bank_id,
                     "retain_granularity": HINDSIGHT_RETAIN_GRANULARITY,
@@ -3857,8 +3919,13 @@ class HindsightComparatorExecutor:
                     "prefer_observations": HINDSIGHT_PREFER_OBSERVATIONS,
                     "wait_consolidation": HINDSIGHT_WAIT_CONSOLIDATION,
                     "consolidation_wait_timeout_seconds": HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS,
-                    "retained_exchange_count": len(preload_requests),
-                    "newly_retained_exchange_count": len(pending_requests),
+                    "retained_exchange_count": retained_exchange_count,
+                    "newly_retained_exchange_count": newly_retained_exchange_count,
+                    "retain_metadata_contract": (
+                        "memconflict_frozen_arm_c"
+                        if context_label == "MemConflict"
+                        else "longmemeval_no_extra_metadata"
+                    ),
                     "history_preload_durability": preload_counts,
                     "recall_request": {
                         "budget": HINDSIGHT_RECALL_BUDGET,
@@ -3871,7 +3938,7 @@ class HindsightComparatorExecutor:
                         "recall": sorted(recalled),
                     },
                     "retrieved_memory_count": len(retrieved_memories),
-                    "consolidation_wait": consolidation_wait,
+                    "consolidation_waits": consolidation_waits,
                 },
                 dict(answer.request_evidence),
             ),

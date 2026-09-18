@@ -239,6 +239,27 @@ ONNX material, database profile, answer-model condition, start/health/semantic
 endpoint, and cleanup are bound together. The owned health probe waits within
 the fixed startup deadline for transient process readiness (without issuing a
 semantic request), while deployment/version/identity drift fails closed.
+The serious-comparator C boundary is retrieval-only Hindsight followed by the
+shared/common answer model; Hindsight `reflect` is not an answer-generation
+path. For the frozen MemConflict Arm-C condition, each ordered history session
+is retained as stable-document `exchange_append` deltas. Every first-use
+exchange carries the frozen harness metadata fields `retained_at`,
+`message_count`, `turn_index`, and `session_date`; Hindsight v0.10.0 includes
+that metadata in fact extraction, so it is semantic input rather than
+provenance-only decoration. The exact materialized retain request is fsynced in
+the repository-owned preload journal before the external sync retain. A
+completed logical exchange is recognized before a later question materializes
+another wall-clock `retained_at`; an unresolved started record remains an
+exact-resume ambiguity barrier.
+
+Consolidation visibility is scoped per newly retained history session: snapshot
+the bank’s pre-existing consolidation work, retain that session’s exchanges,
+wait for the new work to become terminal/visible, durably acknowledge those
+exact requests, then advance to the next session. Recall is observation-only
+with the frozen budget/max-token/preference/query-time condition before the
+common answer-model call. The bounded LongMemEval knowledge-update axis uses
+the same ordered timestamped append/retrieval boundary but does not inherit
+MemConflict-specific retain metadata without a separate upstream contract.
 Health-only evidence does not
 authorize a different comparator process or a silent restart. Cleanup runs for
 llama.cpp, Hindsight, the exact-RC runtime, and the shared lease on every

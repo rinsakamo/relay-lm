@@ -665,6 +665,78 @@ class DurableQuestionRun:
         record = self._participant_completed.get((question_id, slot))
         return None if record is None else _json_copy(record, "participant record")
 
+    @staticmethod
+    def _hindsight_history_preload_key(
+        *,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> str:
+        if not isinstance(bank_id, str) or not bank_id.strip():
+            raise ExternalQualificationError("Hindsight preload bank_id must be non-empty")
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ExternalQualificationError(
+                "Hindsight preload session_id must be non-empty"
+            )
+        if (
+            isinstance(exchange_index, bool)
+            or not isinstance(exchange_index, int)
+            or exchange_index < 0
+        ):
+            raise ExternalQualificationError(
+                "Hindsight preload exchange_index must be a non-negative integer"
+            )
+        return _sha256_mapping(
+            {
+                "bank_id": bank_id,
+                "session_id": session_id,
+                "exchange_index": exchange_index,
+            }
+        )
+
+    @staticmethod
+    def _hindsight_history_preload_request_identity(
+        request: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Return stable request identity, excluding only wall-clock retained_at."""
+
+        normalized = _json_copy(dict(request), "Hindsight preload request")
+        metadata = normalized.get("metadata")
+        if metadata is not None:
+            if not isinstance(metadata, Mapping):
+                raise ExternalQualificationError(
+                    "Hindsight preload request metadata must be an object"
+                )
+            stable_metadata = dict(metadata)
+            stable_metadata.pop("retained_at", None)
+            if stable_metadata:
+                normalized["metadata"] = stable_metadata
+            else:
+                normalized.pop("metadata", None)
+        return normalized
+
+    def hindsight_history_preload_completed(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+    ) -> bool:
+        """Check durable preload identity before materializing volatile fields."""
+
+        self._require_in_flight(question_id)
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if preload_key in self._hindsight_history_preload_in_flight:
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement is ambiguous; exact resume is fail-closed"
+            )
+        return preload_key in self._hindsight_history_preload_completed
+
     def begin_hindsight_history_preload(
         self,
         *,
@@ -674,37 +746,37 @@ class DurableQuestionRun:
         exchange_index: int,
         request: Mapping[str, object],
     ) -> bool:
-        """Journal a Hindsight retain before issuing its external request.
+        """Journal the exact materialized Hindsight retain before external execution.
 
-        ``True`` means the caller owns a new external retain and may issue it.
-        ``False`` means the exact request was durably acknowledged earlier and
-        must be skipped.  A started-but-uncompleted record is intentionally
-        rejected: sync Hindsight retain ignores ``operation_id``, so the
-        repository cannot safely distinguish "never reached Hindsight" from
-        "externally effective before process death".
+        The durable preload key is the logical exchange identity, not the
+        materialized request bytes. MemConflict frozen Arm-C includes a
+        wall-clock metadata.retained_at value, so later questions recognize an
+        already-completed exchange before generating another timestamp. The
+        exact first-use request is fsynced before the external retain.
         """
 
         question = self._require_in_flight(question_id)
-        if not isinstance(bank_id, str) or not bank_id.strip():
-            raise ExternalQualificationError("Hindsight preload bank_id must be non-empty")
-        if not isinstance(session_id, str) or not session_id.strip():
-            raise ExternalQualificationError(
-                "Hindsight preload session_id must be non-empty"
-            )
-        if isinstance(exchange_index, bool) or not isinstance(exchange_index, int) or exchange_index < 0:
-            raise ExternalQualificationError(
-                "Hindsight preload exchange_index must be a non-negative integer"
-            )
         normalized_request = _json_copy(dict(request), "Hindsight preload request")
-        preload_key = _sha256_mapping(
-            {
-                "bank_id": bank_id,
-                "session_id": session_id,
-                "exchange_index": exchange_index,
-                "request": normalized_request,
-            }
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
         )
-        if preload_key in self._hindsight_history_preload_completed:
+        completed = self._hindsight_history_preload_completed.get(preload_key)
+        if completed is not None:
+            completed_request = completed.get("request")
+            if not isinstance(completed_request, Mapping):
+                raise ExactResumeError(
+                    "completed Hindsight history preload request is invalid"
+                )
+            if _canonical_json(
+                self._hindsight_history_preload_request_identity(completed_request)
+            ) != _canonical_json(
+                self._hindsight_history_preload_request_identity(normalized_request)
+            ):
+                raise ExactResumeError(
+                    "Hindsight history preload request drifted after durable completion"
+                )
             return False
         if preload_key in self._hindsight_history_preload_in_flight:
             raise ExactResumeError(
@@ -740,24 +812,36 @@ class DurableQuestionRun:
         exchange_index: int,
         request: Mapping[str, object],
     ) -> None:
-        """Durably acknowledge a completed external Hindsight retain."""
+        """Durably acknowledge the exact materialized Hindsight retain."""
 
         question = self._require_in_flight(question_id)
         normalized_request = _json_copy(dict(request), "Hindsight preload request")
-        preload_key = _sha256_mapping(
-            {
-                "bank_id": bank_id,
-                "session_id": session_id,
-                "exchange_index": exchange_index,
-                "request": normalized_request,
-            }
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
         )
-        if preload_key in self._hindsight_history_preload_completed:
+        completed_record = self._hindsight_history_preload_completed.get(preload_key)
+        if completed_record is not None:
+            completed_request = completed_record.get("request")
+            if not isinstance(completed_request, Mapping) or _canonical_json(
+                dict(completed_request)
+            ) != _canonical_json(normalized_request):
+                raise ExactResumeError(
+                    "completed Hindsight history preload request does not match"
+                )
             return
         started = self._hindsight_history_preload_in_flight.get(preload_key)
         if started is None:
             raise ExactResumeError(
                 "Hindsight history preload completion has no durable start record"
+            )
+        started_request = started.get("request")
+        if not isinstance(started_request, Mapping) or _canonical_json(
+            dict(started_request)
+        ) != _canonical_json(normalized_request):
+            raise ExactResumeError(
+                "Hindsight history preload completion request does not match its durable start"
             )
         completed = dict(started)
         completed["event"] = "completed"
@@ -769,7 +853,6 @@ class DurableQuestionRun:
         self._hindsight_history_preload_completed[preload_key] = completed
         del self._hindsight_history_preload_in_flight[preload_key]
         self._write_state()
-
     def hindsight_history_preload_counts(self) -> dict[str, int]:
         """Return journal counts for citable crash-boundary evidence."""
 
@@ -1152,13 +1235,10 @@ class DurableQuestionRun:
                 or not isinstance(request, Mapping)
             ):
                 raise ExactResumeError("Hindsight history preload payload is invalid")
-            expected_key = _sha256_mapping(
-                {
-                    "bank_id": bank_id,
-                    "session_id": history_session_id,
-                    "exchange_index": exchange_index,
-                    "request": dict(request),
-                }
+            expected_key = self._hindsight_history_preload_key(
+                bank_id=bank_id,
+                session_id=history_session_id,
+                exchange_index=exchange_index,
             )
             if preload_key != expected_key:
                 raise ExactResumeError("Hindsight history preload key does not match payload")
