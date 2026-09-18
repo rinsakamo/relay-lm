@@ -61,16 +61,25 @@ def main():
         if probe_root.exists() and any(probe_root.iterdir()):
             errors.append("unexpected probe dump/output exists during non-generative recovery")
 
+    startup_failures = {
+        "SERVER_EXITED_BEFORE_READINESS",
+        "STARTUP_READINESS_TIMEOUT",
+    }
+
     if errors:
         primary = "STARTUP_RECOVERY_INCONCLUSIVE"
     else:
         p = evidence["plain"]["classification"]
         q = evidence["probe"]["classification"]
 
-        if p != "READY_NON_GENERATIVE":
+        if p in startup_failures:
             primary = "INSTRUMENTED_BINARY_STARTUP_FAILED"
-        elif q != "READY_NON_GENERATIVE":
+        elif p != "READY_NON_GENERATIVE":
+            primary = "STARTUP_RECOVERY_INCONCLUSIVE"
+        elif q in startup_failures:
             primary = "PROBE_ENV_STARTUP_FAILED"
+        elif q != "READY_NON_GENERATIVE":
+            primary = "STARTUP_RECOVERY_INCONCLUSIVE"
         else:
             primary = "STARTUP_RECOVERED"
 
