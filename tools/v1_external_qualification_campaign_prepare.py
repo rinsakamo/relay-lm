@@ -2,8 +2,10 @@
 
 This module is qualification-only.  It deliberately does not accept a prior
 campaign descriptor as input.  Owner-local roots and Hindsight operational
-identity are derived from a fresh owner root/id, while the existing campaign
-parser remains the final admission authority.
+identity are derived from a fresh owner root/id.  Campaign axes are the
+canonical launch-intent inputs; duplicated execution-freeze release cases are
+derived from those axes.  The existing campaign parser remains the final
+admission authority.
 """
 
 from __future__ import annotations
@@ -198,52 +200,6 @@ def _rewrite_release_identity(
     wheels[0]["sha256"] = exact_rc.wheel_sha256
 
 
-def _validate_source_axis_freeze_consistency(
-    *,
-    axes: Sequence[Mapping[str, object]],
-    execution_freeze: Mapping[str, object],
-) -> None:
-    freeze = _mapping_copy(execution_freeze, label="execution freeze template")
-    release_cases = freeze.get("release_cases")
-    if not isinstance(release_cases, list):
-        raise CampaignCarriageError("execution freeze release_cases must be a list")
-
-    axis_by_id: dict[str, Mapping[str, object]] = {}
-    for source_axis in axes:
-        axis_id = source_axis.get("axis_id")
-        if not isinstance(axis_id, str) or not axis_id:
-            raise CampaignCarriageError("campaign axis template requires axis_id")
-        if axis_id in axis_by_id:
-            raise CampaignCarriageError("campaign axis templates must have unique axis_id values")
-        axis_by_id[axis_id] = source_axis
-
-    release_by_id: dict[str, Mapping[str, object]] = {}
-    for release_case in release_cases:
-        if not isinstance(release_case, Mapping):
-            raise CampaignCarriageError("execution freeze release case must be an object")
-        axis_id = release_case.get("axis_id")
-        if not isinstance(axis_id, str) or not axis_id:
-            raise CampaignCarriageError("execution freeze release case requires axis_id")
-        if axis_id in release_by_id:
-            raise CampaignCarriageError("execution freeze release cases must have unique axis_id values")
-        release_by_id[axis_id] = release_case
-
-    if set(axis_by_id) != set(release_by_id):
-        raise CampaignCarriageError(
-            "source axes and execution freeze release cases must cover the same axis ids"
-        )
-
-    for axis_id, source_axis in axis_by_id.items():
-        release_case = release_by_id[axis_id]
-        for field in ("case", "manifest", "benchmark_material"):
-            if _canonical_json(source_axis.get(field)) != _canonical_json(
-                release_case.get(field)
-            ):
-                raise CampaignCarriageError(
-                    f"source axis {axis_id!r} {field} differs from execution freeze"
-                )
-
-
 def _canonicalize_benchmark_material_template(raw: dict[str, Any]) -> None:
     if "benchmark_material" not in raw:
         return
@@ -334,6 +290,14 @@ def _derive_execution_freeze(
     axes: Sequence[Mapping[str, object]],
     lifecycle: HindsightLifecycleSpec,
 ) -> dict[str, Any]:
+    """Derive release-case duplicates from canonical prepared axes.
+
+    The execution-freeze template contributes launch intent that is not already
+    owned by an axis: planned-axis declarations, comparator family, registered
+    physical carriage, and retry/resume policy.  Its historical release_cases
+    are not independent authority and are replaced wholesale.
+    """
+
     freeze = _mapping_copy(execution_freeze, label="execution freeze template")
     comparator = freeze.get("comparator")
     if not isinstance(comparator, dict):
@@ -345,35 +309,31 @@ def _derive_execution_freeze(
     comparator["source_revision"] = lifecycle.source_revision
     comparator["version"] = lifecycle.runtime_version
 
-    release_cases = freeze.get("release_cases")
-    if not isinstance(release_cases, list):
+    if not isinstance(freeze.get("release_cases"), list):
         raise CampaignCarriageError("execution freeze release_cases must be a list")
-    axis_by_id = {
-        str(axis.get("axis_id")): axis
-        for axis in axes
-        if isinstance(axis, Mapping) and axis.get("axis_id") is not None
-    }
-    if len(axis_by_id) != len(axes):
-        raise CampaignCarriageError("prepared axes must have unique axis_id values")
+
+    release_cases: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for release_case in release_cases:
-        if not isinstance(release_case, dict):
-            raise CampaignCarriageError("execution freeze release case must be an object")
-        axis_id = str(release_case.get("axis_id"))
-        axis = axis_by_id.get(axis_id)
-        if axis is None or axis_id in seen:
-            raise CampaignCarriageError("execution freeze release cases do not match prepared axes")
+    for axis in axes:
+        if not isinstance(axis, Mapping):
+            raise CampaignCarriageError("prepared axis must be an object")
+        axis_id = axis.get("axis_id")
+        if not isinstance(axis_id, str) or not axis_id or axis_id in seen:
+            raise CampaignCarriageError("prepared axes must have unique axis_id values")
         seen.add(axis_id)
-        release_case["case"] = _json_copy(axis["case"], label="prepared axis case")
-        release_case["manifest"] = _json_copy(
-            axis["manifest"], label="prepared axis manifest"
-        )
+        release_case: dict[str, Any] = {
+            "axis_id": axis_id,
+            "case": _json_copy(axis["case"], label="prepared axis case"),
+            "manifest": _json_copy(axis["manifest"], label="prepared axis manifest"),
+        }
         if "benchmark_material" in axis:
             release_case["benchmark_material"] = _json_copy(
-                axis["benchmark_material"], label="prepared benchmark material"
+                axis["benchmark_material"],
+                label="prepared benchmark material",
             )
-    if seen != set(axis_by_id):
-        raise CampaignCarriageError("execution freeze must cover every prepared axis")
+        release_cases.append(release_case)
+
+    freeze["release_cases"] = release_cases
     return freeze
 
 
@@ -407,7 +367,8 @@ def prepare_scientific_owner_descriptor(
     ``database_profile``.  Those values, owner-local roots, expected health,
     comparator deployment identity, frozen campaign contracts, and authority
     are all derived here before the existing production parser admits the
-    result.
+    result.  Historical execution-freeze release-case copies are deliberately
+    ignored and re-derived from the validated prepared axes.
     """
 
     root = _require_owner_root(owner_id, owner_root)
@@ -419,10 +380,6 @@ def prepare_scientific_owner_descriptor(
         base=hindsight_lifecycle_base,
     )
     operational_fingerprint = _hindsight_operational_fingerprint(owner_id, lifecycle)
-    _validate_source_axis_freeze_consistency(
-        axes=axes,
-        execution_freeze=execution_freeze,
-    )
     prepared_axes = _derive_axes(
         axes=axes,
         exact_rc=exact_rc,
