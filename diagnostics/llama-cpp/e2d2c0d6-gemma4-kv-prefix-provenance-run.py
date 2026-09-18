@@ -253,6 +253,40 @@ def _startup_evidence_match(text: str, pattern: str):
     }
 
 
+def _startup_evidence_from_text(text: str):
+    lines = text.splitlines()
+    starts = [
+        i for i, line in enumerate(lines)
+        if re.search(
+            r"\bllama_context\s*:\s*constructing\s+llama_context\b",
+            line,
+            flags=re.IGNORECASE,
+        )
+    ]
+
+    if starts:
+        start = starts[-1]
+        block_lines = lines[start:]
+        selected_context_index = len(starts) - 1
+    else:
+        block_lines = []
+        selected_context_index = None
+
+    block = "\n".join(block_lines)
+    checks = {
+        name: _startup_evidence_match(block, pattern)
+        for name, pattern in STARTUP_EVIDENCE_PATTERNS.items()
+    }
+    return {
+        "context_block_count": len(starts),
+        "selected_context_index": selected_context_index,
+        "selected_context_start_line": (
+            lines[starts[-1]].strip() if starts else None
+        ),
+        "checks": checks,
+    }
+
+
 def require_startup_evidence(server: Server):
     # Flush userspace buffers before reading retained startup logs.
     if server.stdout:
@@ -266,12 +300,15 @@ def require_startup_evidence(server: Server):
         except OSError:
             pass
 
-    checks = {
-        name: _startup_evidence_match(text, pattern)
-        for name, pattern in STARTUP_EVIDENCE_PATTERNS.items()
-    }
-    write_json(server.out / "startup-evidence.json", checks)
-    missing = [name for name, result in checks.items() if not result["ok"]]
+    evidence = _startup_evidence_from_text(text)
+    write_json(server.out / "startup-evidence.json", evidence)
+    missing = [
+        name
+        for name, result in evidence["checks"].items()
+        if not result["ok"]
+    ]
+    if evidence["context_block_count"] == 0:
+        missing.insert(0, "llama_context_block")
     if missing:
         raise RuntimeError(
             f"{server.label}: required startup evidence missing: {','.join(missing)}"
