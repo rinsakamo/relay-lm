@@ -10,7 +10,7 @@ Diagnostic-only execution handoff.
 - ruleset 20931403: active on v1
 - #2961: CLOSED / completed zero-semantic proof
 - #2964: OPEN historical scientific owner, explicitly not to be rebound/reused/executed
-- #2965: OPEN qualification-only repair owner; latest continuation at authoring is v10.1 and scientific `--execute` remains unauthorized
+- #2965: zero-semantic physical proof completed; that owner/descriptor remains unauthorized for scientific execution
 - #1449 / #1447: remain open; no scientific campaign authorization is carried by this diagnostic
 
 Current repository authority at execution time wins over this snapshot.
@@ -31,6 +31,36 @@ Regardless of whether #2965 is prequeue, queued, rehearsing, reconciled, or othe
 The scientific campaign spend boundary remains independent and unconsumed by this diagnostic.
 
 This diagnostic does perform llama.cpp model inference for mechanism analysis. Those calls are diagnostic evidence and are not scientific campaign participant/judge/benchmark execution.
+
+## Latest pre-L0 success-path binding stop
+
+A later pre-execution audit of the one-shot wrapper ended:
+
+`PROBE_NOT_EXERCISED`
+
+before GPU flock acquisition and before L0 because the measured runner's success-path terminal referenced `geometry_consistency` without first binding the return value of `require_consistent_dump_geometry(dump_geometry)`.
+
+Observed in that stopped attempt:
+
+- startup-evidence parser self-test: `STARTUP_EVIDENCE_PARSER_SELFTEST_PASS`
+- runner-contract self-test: `KV_RUNNER_CONTRACT_SELFTEST_PASS`
+- artifact locator: `ARTIFACT_LOCATOR_PASS`
+- request admission: `REQUEST_ADMISSION_PASS`
+- binary/model identities: matched frozen authority
+- resource guard: not acquired
+- L0/L1/L0R/LC submitted: 0
+- measured startup/KV/API evidence: not generated
+- retry/replay/repair/FA-OFF: 0
+
+The measured success path now binds:
+
+```python
+geometry_consistency = require_consistent_dump_geometry(dump_geometry)
+```
+
+before persisting `kv-dump-geometry.json` and before terminal construction.
+
+The pre-GPU runner-contract self-test now also parses the measured runner AST and requires exactly one such binding before any success-terminal reference to `geometry_consistency`. This repair changes no runtime/model/request/KV semantics and does not consume the measured probe.
 
 ## Latest pre-L0 parser stop
 
