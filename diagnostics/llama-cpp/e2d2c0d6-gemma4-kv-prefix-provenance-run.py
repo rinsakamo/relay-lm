@@ -321,6 +321,7 @@ def require_dump(kv_root: Path, name: str):
         raise RuntimeError(f"required KV dump missing: {name}")
 
     expected_bins = set()
+    geometry = {}
     for cache_name in ("base", "swa"):
         cells_path = p / f"{cache_name}.cells.tsv"
         manifest_path = p / f"{cache_name}.manifest.tsv"
@@ -334,16 +335,35 @@ def require_dump(kv_root: Path, name: str):
             )
         if cells_lines[0] != "cache\tstream\thead\tkv_size\tv_trans\tposition\tcell":
             raise RuntimeError(f"{name}: unexpected {cache_name}.cells.tsv header")
+
         positions = []
+        kv_sizes = set()
+        streams = set()
+        v_trans_values = set()
         for line in cells_lines[1:]:
             fields = line.split("\t")
             if len(fields) != 7 or fields[0] != cache_name:
                 raise RuntimeError(f"{name}: invalid {cache_name}.cells.tsv row")
-            if fields[4] != "0":
-                raise RuntimeError(f"{name}: {cache_name} V cache unexpectedly transposed")
+            streams.add(int(fields[1]))
+            kv_sizes.add(int(fields[3]))
+            v_trans_values.add(int(fields[4]))
             positions.append(int(fields[5]))
+
+        if len(streams) != 1:
+            raise RuntimeError(f"{name}: {cache_name} spans multiple streams: {sorted(streams)}")
+        if len(kv_sizes) != 1:
+            raise RuntimeError(f"{name}: {cache_name} has inconsistent kv_size values: {sorted(kv_sizes)}")
+        if v_trans_values != {0}:
+            raise RuntimeError(f"{name}: {cache_name} V cache unexpectedly transposed")
         if positions != list(range(512)):
             raise RuntimeError(f"{name}: {cache_name} logical positions are not exactly 0..511")
+
+        geometry[cache_name] = {
+            "stream": next(iter(streams)),
+            "kv_size": next(iter(kv_sizes)),
+            "v_trans": 0,
+            "logical_rows": 512,
+        }
 
         manifest_lines = manifest_path.read_text(encoding="utf-8").splitlines()
         if not manifest_lines or manifest_lines[0] != "cache\tlayer\tkind\ttype\trow_bytes\trows":
@@ -394,6 +414,17 @@ def require_dump(kv_root: Path, name: str):
                 f"{name}: {cache_name} layers missing K/V pair: {incomplete_layers}"
             )
 
+        geometry[cache_name]["layer_count"] = len(layer_kinds)
+
+    base_size = geometry["base"]["kv_size"]
+    swa_size = geometry["swa"]["kv_size"]
+    if base_size != 8192:
+        raise RuntimeError(f"{name}: base kv_size={base_size}, expected 8192")
+    if not (0 < swa_size < base_size):
+        raise RuntimeError(
+            f"{name}: compact SWA not proven: swa kv_size={swa_size}, base kv_size={base_size}"
+        )
+
     actual_bins = {x.name for x in p.glob("*.bin") if x.is_file()}
     if actual_bins != expected_bins:
         raise RuntimeError(
@@ -402,6 +433,7 @@ def require_dump(kv_root: Path, name: str):
             f"unexpected={sorted(actual_bins - expected_bins)}"
         )
 
+    return geometry
 
 def localize_kv(comparison: dict):
     primary = comparison.get("classification")
@@ -528,6 +560,7 @@ def main():
 
     measured_l0 = False
     submitted_requests = []
+    dump_geometry = {}
     servers = []
     try:
         wr = Server(
@@ -541,11 +574,11 @@ def main():
         measured_l0 = True
         submitted_requests.append("L0")
         l0 = send_request(wr, "L0", args.l0_request, 0, 883)
-        require_dump(kv_root, "WR-P512")
+        dump_geometry["WR-P512"] = require_dump(kv_root, "WR-P512")
 
         submitted_requests.append("L1")
         l1 = send_request(wr, "L1", args.l1_request, 512, 2415)
-        require_dump(kv_root, "WR-R512")
+        dump_geometry["WR-R512"] = require_dump(kv_root, "WR-R512")
         wr.stop()
 
         wr2 = Server(
@@ -557,7 +590,7 @@ def main():
         require_startup_evidence(wr2)
         submitted_requests.append("L0R")
         l0r = send_request(wr2, "L0R", args.l0_request, 0, 883)
-        require_dump(kv_root, "WR2-P512")
+        dump_geometry["WR2-P512"] = require_dump(kv_root, "WR2-P512")
         wr2.stop()
 
         cold = Server(
@@ -569,7 +602,8 @@ def main():
         require_startup_evidence(cold)
         submitted_requests.append("LC")
         lc = send_request(cold, "LC", args.lc_request, 0, 2927)
-        require_dump(kv_root, "C-P512")
+        dump_geometry["C-P512"] = require_dump(kv_root, "C-P512")
+        write_json(args.out_root / "kv-dump-geometry.json", dump_geometry)
         cold.stop()
 
         api = api_compare(l1, lc)
@@ -607,6 +641,7 @@ def main():
             "api_L1_vs_LC": api,
             "kv_comparison_file": str(cmp_path),
             "kv_localization": kv_localization,
+            "kv_dump_geometry": dump_geometry,
             "scientific_campaign_interaction": 0,
             "flash_attention_off_arms": 0,
         }
