@@ -5,6 +5,7 @@ import http.client
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import socket
 import subprocess
@@ -236,6 +237,14 @@ def api_compare(l1: dict, lc: dict):
     }
 
 
+def _startup_evidence_match(text: str, pattern: str):
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+    return {
+        "ok": match is not None,
+        "matched_line": match.group(0).strip() if match is not None else None,
+    }
+
+
 def require_startup_evidence(server: Server):
     # Flush userspace buffers before reading retained startup logs.
     if server.stdout:
@@ -250,16 +259,21 @@ def require_startup_evidence(server: Server):
             pass
 
     checks = {
-        "flash_attn_enabled": (
-            "flash_attn = enabled" in text
-            or "flash_attn=enabled" in text
-            or "flash attention = enabled" in text.lower()
+        "flash_attn_enabled": _startup_evidence_match(
+            text,
+            r"^.*\bflash_attn\s*=\s*enabled\b.*$",
         ),
-        "n_batch_512": ("n_batch = 512" in text or "n_batch=512" in text),
-        "n_ubatch_512": ("n_ubatch = 512" in text or "n_ubatch=512" in text),
+        "n_batch_512": _startup_evidence_match(
+            text,
+            r"^.*\bn_batch\s*=\s*512\b.*$",
+        ),
+        "n_ubatch_512": _startup_evidence_match(
+            text,
+            r"^.*\bn_ubatch\s*=\s*512\b.*$",
+        ),
     }
     write_json(server.out / "startup-evidence.json", checks)
-    missing = [name for name, ok in checks.items() if not ok]
+    missing = [name for name, result in checks.items() if not result["ok"]]
     if missing:
         raise RuntimeError(
             f"{server.label}: required startup evidence missing: {','.join(missing)}"
