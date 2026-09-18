@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import time
@@ -48,15 +49,29 @@ def process_executable_names():
     return names
 
 
+def listener_busy(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.25)
+        return sock.connect_ex((host, port)) == 0
+
+
 def require_external_quiescence(preflight_root: Path):
     observations = []
     for index in range(2):
         names = process_executable_names()
         busy = sorted(BUSY_NAMES.intersection(names))
-        observations.append({"observation": index + 1, "busy_processes": busy})
-        if busy:
+        default_listener_busy = listener_busy("127.0.0.1", 1234)
+        observations.append({
+            "observation": index + 1,
+            "busy_processes": busy,
+            "listener_127_0_0_1_1234": default_listener_busy,
+        })
+        reasons = list(busy)
+        if default_listener_busy:
+            reasons.append("listener:127.0.0.1:1234")
+        if reasons:
             write_json(preflight_root / "external-quiescence.json", observations)
-            raise RuntimeError(f"external llama.cpp runtime busy: {','.join(busy)}")
+            raise RuntimeError(f"external local-GPU runtime busy: {','.join(reasons)}")
         if index == 0:
             time.sleep(5)
     write_json(preflight_root / "external-quiescence.json", observations)
@@ -103,8 +118,9 @@ def main():
     write_json(args.preflight_root / "shared-resource-guard.json", {
         "resource_key": RESOURCE_KEY,
         "lock_path": str(lock_path),
-        "lease": "ACQUIRED_DIAGNOSTIC_FLOCK",
+        "guard_state": "ACQUIRED_CANONICAL_DIAGNOSTIC_FLOCK",
         "campaign_queue_receipt_created": False,
+        "campaign_queue_or_spend_artifact_touched": False,
     })
 
     try:
@@ -218,6 +234,9 @@ def main():
     finally:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
         lock_file.close()
+        guard = json.loads((args.preflight_root / "shared-resource-guard.json").read_text(encoding="utf-8"))
+        guard["guard_state"] = "RELEASED_CANONICAL_DIAGNOSTIC_FLOCK"
+        write_json(args.preflight_root / "shared-resource-guard.json", guard)
 
     raise SystemExit(rc)
 
