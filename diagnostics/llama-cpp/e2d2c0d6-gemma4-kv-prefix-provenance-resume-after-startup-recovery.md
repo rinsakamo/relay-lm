@@ -168,7 +168,11 @@ The runner-contract self-test imports the measured runner and exercises, without
 - missing metadata rejection;
 - logical-position drift rejection;
 - missing K/V pair rejection;
-- cross-dump missing-payload localization/counting.
+- cross-dump missing-payload localization/counting;
+- valid compact-SWA geometry;
+- full-size SWA rejection;
+- wrong base KV-size rejection;
+- cross-observation geometry-drift rejection.
 
 A runner-contract self-test failure also stops before GPU flock acquisition and before L0.
 
@@ -333,7 +337,16 @@ The runner validates response timings directly:
 
 It also requires one predicted token for every measured request.
 
-Each required dump is validated before proceeding/comparison from its cells and manifest metadata: 512 logical rows, positions exactly 0..511, non-transposed V layout, complete K/V layer pairs, exact payload byte sizes, and exact manifest-to-payload file-set equality. A partial dump after L0 terminalizes as `PROBE_EXERCISED_INCOMPLETE`; it is not a KV mismatch classification.
+Each required dump is validated before proceeding/comparison from its cells and manifest metadata: 512 logical rows, positions exactly 0..511, non-transposed V layout, complete K/V layer pairs, exact payload byte sizes, and exact manifest-to-payload file-set equality.
+
+The same metadata also proves compact-SWA runtime geometry at every observation point:
+
+- base KV size must be exactly 8192 cells;
+- SWA KV size must be positive and strictly smaller than the base KV size;
+- therefore a full-size SWA cache is rejected;
+- base/SWA KV sizes, logical row count, V layout, and participating layer counts must be identical across `WR-P512`, `WR-R512`, `WR2-P512`, and `C-P512`.
+
+A partial/inconsistent dump or runtime-geometry drift after L0 terminalizes as `PROBE_EXERCISED_INCOMPLETE`; it is not a KV mismatch classification.
 
 After and only after all four required dump directories exist, it runs:
 
@@ -388,6 +401,7 @@ Measured output root:
 - exact measured request bytes and SHA256
 - raw and pretty responses
 - `api-L1-vs-LC.json`
+- `kv-dump-geometry.json`
 - `kv-prefix-comparison.json`
 - `kv-localization.json`
 - `terminal.json`
