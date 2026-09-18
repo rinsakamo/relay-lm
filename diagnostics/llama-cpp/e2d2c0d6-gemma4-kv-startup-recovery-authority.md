@@ -52,6 +52,22 @@ The runner requires distinct loopback ports and a fresh output root, executes ex
 
 The classifier requires identical server/model SHA256 and identical canonical server arguments across arms, while intentionally allowing different loopback ports and different probe-environment state. It also rejects any unexpected probe dump/output.
 
+## Required terminal evidence
+
+A valid recovery record must contain:
+
+- `plain/classification.txt`
+- `probe/classification.txt`
+- identical server binary SHA256 across arms
+- identical model SHA256 across arms
+- identical canonical server-argument SHA256 across arms
+- `plain.runner-exit-code.txt`
+- `probe.runner-exit-code.txt`
+- no generated KV dump content under `probe/probe-root/`
+- `startup-recovery-terminal.json`
+
+If any required terminal evidence is missing, classify `STARTUP_RECOVERY_INCONCLUSIVE`.
+
 ## Classification
 
 Exactly one:
