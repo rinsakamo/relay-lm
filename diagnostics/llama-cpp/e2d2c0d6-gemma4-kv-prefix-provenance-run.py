@@ -435,6 +435,43 @@ def require_dump(kv_root: Path, name: str):
 
     return geometry
 
+def require_consistent_dump_geometry(dump_geometry: dict):
+    required = ("WR-P512", "WR-R512", "WR2-P512", "C-P512")
+    missing = [name for name in required if name not in dump_geometry]
+    if missing:
+        raise RuntimeError(f"missing dump geometry records: {missing}")
+
+    signature_fields = ("kv_size", "v_trans", "logical_rows", "layer_count")
+    baseline_name = required[0]
+    baseline = {
+        cache_name: {
+            field: dump_geometry[baseline_name][cache_name][field]
+            for field in signature_fields
+        }
+        for cache_name in ("base", "swa")
+    }
+
+    for name in required[1:]:
+        current = {
+            cache_name: {
+                field: dump_geometry[name][cache_name][field]
+                for field in signature_fields
+            }
+            for cache_name in ("base", "swa")
+        }
+        if current != baseline:
+            raise RuntimeError(
+                f"KV dump geometry differs across observation points: "
+                f"{baseline_name}={baseline} {name}={current}"
+            )
+
+    return {
+        "baseline": baseline_name,
+        "signature": baseline,
+        "observations": list(required),
+    }
+
+
 def localize_kv(comparison: dict):
     primary = comparison.get("classification")
     pair_for_class = {
@@ -642,6 +679,7 @@ def main():
             "kv_comparison_file": str(cmp_path),
             "kv_localization": kv_localization,
             "kv_dump_geometry": dump_geometry,
+            "kv_dump_geometry_consistency": geometry_consistency,
             "scientific_campaign_interaction": 0,
             "flash_attention_off_arms": 0,
         }
