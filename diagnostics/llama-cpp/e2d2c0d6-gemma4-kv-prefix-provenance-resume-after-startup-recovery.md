@@ -248,7 +248,7 @@ Required:
   - `WR-P512/`
   - `WR-R512/`
 
-If the reuse path prediction fails, classify `PROBE_NOT_EXERCISED`; do not repair or retry.
+If the reuse path prediction fails after L0 has been submitted, classify `PROBE_EXERCISED_INCOMPLETE`; preserve evidence and do not repair, retry, replay, or start a replacement attempt automatically.
 
 ### Server B — fresh reproducibility control
 
