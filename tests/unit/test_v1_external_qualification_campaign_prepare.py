@@ -146,6 +146,7 @@ def test_prepare_rewrites_comparator_freeze_contract_and_authority(tmp_path: Pat
         assert release["manifest"] == axis["manifest"]
         assert release["case"] == axis["case"]
         assert release["benchmark_material"] == axis["benchmark_material"]
+        assert release["history_material"] == axis["history_material"]
 
 
 def test_prepare_accepts_preserved_hindsight_spelling_and_canonicalizes(

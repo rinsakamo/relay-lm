@@ -18,6 +18,9 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignAxis,
     CampaignDescriptor,
+    HindsightComparatorExecutor,
+    HindsightHistoryPlan,
+    HindsightSemanticRequestError,
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
     ParticipantExecutionContext,
@@ -26,6 +29,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     run_campaign,
     _campaign_contract,
     _fingerprint,
+    _hindsight_axis_bank_id,
     _hindsight_operational_fingerprint,
     _hindsight_owner_deployment_id,
 )
@@ -389,6 +393,68 @@ class _LifecycleClient:
         return None
 
 
+class _SemanticResponse:
+    def __init__(
+        self,
+        status_code: int,
+        payload: Mapping[str, object],
+        *,
+        headers: Mapping[str, str] | None = None,
+        text: str | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self.headers = dict(headers or {})
+        self._payload = dict(payload)
+        self.text = text if text is not None else json.dumps(self._payload)
+
+    def json(self) -> Mapping[str, object]:
+        return dict(self._payload)
+
+
+class _SemanticClient:
+    def __init__(self, responses: list[_SemanticResponse]) -> None:
+        self.responses = responses
+        self.calls: list[tuple[str, Mapping[str, object]]] = []
+
+    def post(self, url: str, *, json: Mapping[str, object]) -> _SemanticResponse:
+        self.calls.append((url, dict(json)))
+        return self.responses.pop(0)
+
+    def close(self) -> None:
+        return None
+
+
+class _ComparatorLifecycle:
+    def __init__(self, profile: str) -> None:
+        self.spec = type("Spec", (), {"database_profile": profile})()
+        self.retain_calls: list[tuple[str, tuple[Mapping[str, object], ...]]] = []
+        self.recall_calls: list[tuple[str, str]] = []
+        self.reflect_calls: list[tuple[str, str, Mapping[str, object]]] = []
+
+    def retain(
+        self,
+        *,
+        bank_id: str,
+        items: tuple[Mapping[str, object], ...],
+    ) -> Mapping[str, object]:
+        self.retain_calls.append((bank_id, tuple(dict(item) for item in items)))
+        return {"retained": len(items)}
+
+    def recall(self, prompt: str, *, bank_id: str) -> Mapping[str, object]:
+        self.recall_calls.append((bank_id, prompt))
+        return {"results": []}
+
+    def reflect(
+        self,
+        prompt: str,
+        *,
+        context: Mapping[str, object],
+        bank_id: str,
+    ) -> Mapping[str, object]:
+        self.reflect_calls.append((bank_id, prompt, dict(context)))
+        return {"text": "synthetic reflection"}
+
+
 def _controller_parts(
     descriptor: CampaignDescriptor,
     session: _Session,
@@ -542,9 +608,47 @@ def _strict_descriptor_mapping(
             "case_fingerprint": _fingerprint(axis["case"]),
             "question_fingerprints": [question["content_fingerprint"]],
         }
+        history_path = tmp_path / f"{axis['axis_id']}-history.json"
+        history_session_id = f"{axis['axis_id']}-history-session-0"
+        history_path.write_text(
+            json.dumps(
+                {
+                    "format_version": 1,
+                    "sessions": [
+                        {
+                            "session_id": history_session_id,
+                            "order": 0,
+                            "items": [
+                                {
+                                    "role": "user",
+                                    "content": f"synthetic history for {axis['axis_id']}",
+                                    "timestamp": None,
+                                },
+                                {
+                                    "role": "assistant",
+                                    "content": f"synthetic answer history for {axis['axis_id']}",
+                                    "timestamp": None,
+                                },
+                            ],
+                        }
+                    ],
+                    "question_history": {
+                        question["question_id"]: [history_session_id],
+                    },
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        history_material = {
+            "path": str(history_path),
+            "sha256": hashlib.sha256(history_path.read_bytes()).hexdigest(),
+        }
         axis["classification"] = "comparison_condition_mismatch"
         axis["benchmark_material"] = material
+        axis["history_material"] = history_material
         frozen["benchmark_material"] = material
+        frozen["history_material"] = history_material
 
     raw["llama_cpp"]["artifact_path"] = str(model_path)
     raw["llama_cpp"]["artifact_sha256"] = model_sha
@@ -815,6 +919,219 @@ def test_hindsight_health_waits_for_owned_startup_without_semantic_calls(
     assert lifecycle.semantic_operation_count == 0
 
 
+def test_hindsight_v010_semantic_routes_and_failure_evidence_are_typed(
+    tmp_path: Path,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.hindsight_lifecycle is not None
+    lifecycle = HindsightDeploymentSession(
+        descriptor.hindsight_lifecycle,
+        descriptor.hindsight_health,
+    )
+    client = _SemanticClient(
+        [
+            _SemanticResponse(200, {"retained": 2}),
+            _SemanticResponse(200, {"results": []}),
+            _SemanticResponse(200, {"text": "synthetic reflection"}),
+        ]
+    )
+    lifecycle.client = client  # type: ignore[assignment]
+    lifecycle.started = True
+
+    lifecycle.retain(
+        bank_id="synthetic-bank",
+        items=(
+            {
+                "content": "synthetic history",
+                "context": "user",
+                "timestamp": None,
+                "document_id": "synthetic-document",
+            },
+        ),
+    )
+    lifecycle.recall("synthetic question", bank_id="synthetic-bank")
+    lifecycle.reflect(
+        "synthetic question",
+        context={"results": []},
+        bank_id="synthetic-bank",
+    )
+
+    assert [url.removeprefix("http://127.0.0.1:44367") for url, _ in client.calls] == [
+        "/v1/default/banks/synthetic-bank/memories",
+        "/v1/default/banks/synthetic-bank/memories/recall",
+        "/v1/default/banks/synthetic-bank/reflect",
+    ]
+    assert client.calls[0][1]["async"] is False
+    assert client.calls[1][1] == {
+        "query": "synthetic question",
+        "max_tokens": 4096,
+        "budget": "mid",
+    }
+    assert client.calls[2][1] == {
+        "query": "synthetic question",
+        "context": '{"results":[]}',
+        "budget": "low",
+    }
+    assert all("/memories/reflect" not in url for url, _ in client.calls)
+    assert lifecycle.semantic_operation_count == 3
+
+    error_client = _SemanticClient(
+        [
+            _SemanticResponse(
+                405,
+                {"detail": "Method Not Allowed"},
+                headers={"allow": "GET"},
+                text='{"detail":"Method Not Allowed"}',
+            )
+        ]
+    )
+    lifecycle.client = error_client  # type: ignore[assignment]
+    with pytest.raises(HindsightSemanticRequestError) as captured:
+        lifecycle._semantic_post(
+            operation="reflect",
+            path="/v1/default/banks/synthetic-bank/memories/reflect",
+            payload={"query": "synthetic question"},
+        )
+    assert captured.value.to_mapping() == {
+        "operation": "reflect",
+        "method": "POST",
+        "path": "/v1/default/banks/synthetic-bank/memories/reflect",
+        "status": 405,
+        "allow": "GET",
+        "body": '{"detail":"Method Not Allowed"}',
+    }
+
+
+def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "synthetic-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "synthetic first user",
+                                "timestamp": None,
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "synthetic first assistant",
+                                "timestamp": None,
+                            },
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "synthetic second user",
+                                "timestamp": None,
+                            }
+                        ],
+                    },
+                ],
+                "question_history": {
+                    "question-0": ["session-0"],
+                    "question-1": ["session-0", "session-1"],
+                },
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    lifecycle = _ComparatorLifecycle("repair-profile-a")
+    executor = HindsightComparatorExecutor(lifecycle)  # type: ignore[arg-type]
+
+    def context(question_id: str, prompt: str) -> ParticipantExecutionContext:
+        return ParticipantExecutionContext(
+            axis_id="axis-a",
+            case={},
+            manifest={},
+            question=DurableQuestion.from_content(
+                question_id,
+                prompt,
+                session_id=question_id,
+            ),
+            prompt=prompt,
+            participant_slot="serious_comparator",
+            participant_identity={},
+            frozen_identity=None,  # type: ignore[arg-type]
+            live_attestation=None,  # type: ignore[arg-type]
+            history=plan,
+        )
+
+    first = executor(context("question-0", "synthetic question 0"))
+    second = executor(context("question-1", "synthetic question 1"))
+    repeated = executor(context("question-1", "synthetic question 1"))
+
+    assert [item["content"] for item in lifecycle.retain_calls[0][1]] == [
+        "synthetic first user",
+        "synthetic first assistant",
+    ]
+    assert [item["content"] for item in lifecycle.retain_calls[1][1]] == [
+        "synthetic second user",
+    ]
+    assert [item["document_id"] for item in lifecycle.retain_calls[0][1]] == [
+        "relaylm-history-00000000",
+        "relaylm-history-00000000",
+    ]
+    assert lifecycle.retain_calls[1][1][0]["document_id"] == "relaylm-history-00000001"
+    assert first.request_evidence[0]["operations"] == ["retain", "recall", "reflect"]
+    assert second.request_evidence[0]["operations"] == ["retain", "recall", "reflect"]
+    assert repeated.request_evidence[0]["operations"] == ["recall", "reflect"]
+    assert len(lifecycle.retain_calls) == 2
+    assert len(lifecycle.recall_calls) == 3
+    assert len(lifecycle.reflect_calls) == 3
+    assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") == lifecycle.retain_calls[0][0]
+    assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") != _hindsight_axis_bank_id(
+        "repair-profile-b", "axis-a"
+    )
+
+
+def test_hindsight_history_rejects_reference_or_gold_fields(tmp_path: Path) -> None:
+    path = tmp_path / "history-with-reference.json"
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [],
+                "question_history": {},
+                "reference_answer": "must not enter Hindsight",
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(CampaignCarriageError, match="keys must be exact"):
+        HindsightHistoryPlan.from_path(path)
+
+
+def test_strict_resume_rejects_old_descriptor_without_hindsight_history_boundary(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path, run_mode="exact_infrastructure_resume")
+    axes = raw["axes"]
+    release_cases = raw["execution_freeze"]["release_cases"]
+    assert isinstance(axes, list)
+    assert isinstance(release_cases, list)
+    for axis, release_case in zip(axes, release_cases, strict=True):
+        assert isinstance(axis, dict)
+        assert isinstance(release_case, dict)
+        axis.pop("history_material")
+        release_case.pop("history_material")
+    with pytest.raises(CampaignCarriageError, match="campaign axis keys must be exact"):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_exact_resume_skips_completed_questions_and_does_not_reinvoke_hooks(tmp_path: Path) -> None:
     first_descriptor = CampaignDescriptor.from_mapping(_descriptor_mapping(tmp_path))
     first_session = _Session(_live_mapping())
@@ -854,6 +1171,8 @@ def test_strict_descriptor_binds_material_rc_hindsight_and_campaign_contract(
     )
     assert all(axis.classification == "comparison_condition_mismatch" for axis in descriptor.axes)
     assert all(axis.benchmark_material is not None for axis in descriptor.axes)
+    assert all(axis.history_material is not None for axis in descriptor.axes)
+    assert all(axis.history_plan is not None for axis in descriptor.axes)
     assert all("campaign_contract" in axis.identity for axis in descriptor.axes)
     for axis in descriptor.axes:
         comparator = next(

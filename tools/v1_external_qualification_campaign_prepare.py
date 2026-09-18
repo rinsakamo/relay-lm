@@ -331,6 +331,11 @@ def _derive_execution_freeze(
                 axis["benchmark_material"],
                 label="prepared benchmark material",
             )
+        if "history_material" in axis:
+            release_case["history_material"] = _json_copy(
+                axis["history_material"],
+                label="prepared Hindsight history material",
+            )
         release_cases.append(release_case)
 
     freeze["release_cases"] = release_cases
