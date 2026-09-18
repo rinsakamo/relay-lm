@@ -161,7 +161,16 @@ python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-provenance-resume-run.py
 
 Use known prior diagnostic evidence roots; do not search the entire filesystem when narrower evidence roots are available.
 
-The wrapper records the locator argv/output, selected exact artifacts, measured-runner argv, and measured-runner exit. It transitions into measured execution only after `ARTIFACT_LOCATOR_PASS`.
+Before artifact discovery, the wrapper cooperates with the repository's canonical shared local-GPU resource by acquiring the same POSIX/WSL flock for resource key `llama-cpp:local-gpu` at the canonical lock root. This is a diagnostic resource guard only:
+
+- it creates no #2965 campaign queue receipt;
+- it reads or mutates no #2965 owner/plan/spend artifact;
+- it fails before L0 if the canonical flock is already held;
+- after acquisition it requires two idle observations, five seconds apart, with no `llama-server`, `llama-cli`, or `llama-run` process and no listener on `127.0.0.1:1234`;
+- the flock is held through the measured child and released on every wrapper exit path;
+- `shared-resource-guard.json` records acquisition/release without claiming a #2965 campaign lease.
+
+The wrapper records the locator argv/output, selected exact artifacts, measured-runner argv, and measured-runner exit. It transitions into measured execution only after the resource guard and `ARTIFACT_LOCATOR_PASS`.
 
 The underlying measured invocation is:
 
@@ -286,6 +295,8 @@ Also report instrumented L1 vs LC API first-token/top-N comparison, but do not l
 Required terminal artifacts include:
 
 Preflight root:
+- `shared-resource-guard.json`
+- `external-quiescence.json`
 - `artifact-locator.json`
 - `artifact-locator.argv.json`
 - `artifact-locator.stdout.txt`
@@ -328,7 +339,8 @@ A failure before measured L0 may classify `PROBE_NOT_EXERCISED` without consumin
 
 - protected v1 mutation = 0
 - #2965 campaign rehearsal/execute = 0
-- #2965 queue/lease/spend interaction = 0
+- #2965 campaign queue/receipt/lease/spend interaction = 0
+- canonical diagnostic GPU flock guard = exactly one acquisition attempt; not a campaign lease
 - #2964 mutation/reuse = 0
 - production/cache-policy mutation = 0
 - RC1 action = 0
