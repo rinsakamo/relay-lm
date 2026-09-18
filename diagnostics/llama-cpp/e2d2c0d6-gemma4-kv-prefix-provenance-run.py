@@ -284,9 +284,88 @@ def require_dump(kv_root: Path, name: str):
     p = kv_root / name
     if not p.is_dir():
         raise RuntimeError(f"required KV dump missing: {name}")
-    bins = list(p.glob("*.bin"))
-    if not bins:
-        raise RuntimeError(f"required KV dump has no binary payload: {name}")
+
+    expected_bins = set()
+    for cache_name in ("base", "swa"):
+        cells_path = p / f"{cache_name}.cells.tsv"
+        manifest_path = p / f"{cache_name}.manifest.tsv"
+        if not cells_path.is_file() or not manifest_path.is_file():
+            raise RuntimeError(f"{name}: missing {cache_name} cells/manifest metadata")
+
+        cells_lines = cells_path.read_text(encoding="utf-8").splitlines()
+        if len(cells_lines) != 513:
+            raise RuntimeError(
+                f"{name}: {cache_name}.cells.tsv data rows={max(0, len(cells_lines)-1)}, expected 512"
+            )
+        if cells_lines[0] != "cache\tstream\thead\tkv_size\tv_trans\tposition\tcell":
+            raise RuntimeError(f"{name}: unexpected {cache_name}.cells.tsv header")
+        positions = []
+        for line in cells_lines[1:]:
+            fields = line.split("\t")
+            if len(fields) != 7 or fields[0] != cache_name:
+                raise RuntimeError(f"{name}: invalid {cache_name}.cells.tsv row")
+            if fields[4] != "0":
+                raise RuntimeError(f"{name}: {cache_name} V cache unexpectedly transposed")
+            positions.append(int(fields[5]))
+        if positions != list(range(512)):
+            raise RuntimeError(f"{name}: {cache_name} logical positions are not exactly 0..511")
+
+        manifest_lines = manifest_path.read_text(encoding="utf-8").splitlines()
+        if not manifest_lines or manifest_lines[0] != "cache\tlayer\tkind\ttype\trow_bytes\trows":
+            raise RuntimeError(f"{name}: unexpected {cache_name}.manifest.tsv header")
+        if len(manifest_lines) <= 1:
+            raise RuntimeError(f"{name}: empty {cache_name}.manifest.tsv")
+
+        seen_layer_kind = set()
+        for line in manifest_lines[1:]:
+            fields = line.split("\t")
+            if len(fields) != 6:
+                raise RuntimeError(f"{name}: malformed {cache_name} manifest row")
+            cache, layer_s, kind, _type, row_bytes_s, rows_s = fields
+            if cache != cache_name or kind not in {"K", "V"}:
+                raise RuntimeError(f"{name}: invalid {cache_name} manifest identity")
+            layer = int(layer_s)
+            row_bytes = int(row_bytes_s)
+            rows = int(rows_s)
+            if row_bytes <= 0 or rows != 512:
+                raise RuntimeError(
+                    f"{name}: invalid {cache_name} layer {layer} {kind} geometry "
+                    f"row_bytes={row_bytes} rows={rows}"
+                )
+            key = (layer, kind)
+            if key in seen_layer_kind:
+                raise RuntimeError(f"{name}: duplicate {cache_name} layer/kind {key}")
+            seen_layer_kind.add(key)
+
+            bin_name = f"{cache_name}.layer-{layer}.{kind}.bin"
+            bin_path = p / bin_name
+            if not bin_path.is_file():
+                raise RuntimeError(f"{name}: missing payload {bin_name}")
+            expected_size = row_bytes * rows
+            actual_size = bin_path.stat().st_size
+            if actual_size != expected_size:
+                raise RuntimeError(
+                    f"{name}: payload size mismatch {bin_name}: "
+                    f"{actual_size} != {expected_size}"
+                )
+            expected_bins.add(bin_name)
+
+        layer_kinds = {}
+        for layer, kind in seen_layer_kind:
+            layer_kinds.setdefault(layer, set()).add(kind)
+        incomplete_layers = sorted(layer for layer, kinds in layer_kinds.items() if kinds != {"K", "V"})
+        if incomplete_layers:
+            raise RuntimeError(
+                f"{name}: {cache_name} layers missing K/V pair: {incomplete_layers}"
+            )
+
+    actual_bins = {x.name for x in p.glob("*.bin") if x.is_file()}
+    if actual_bins != expected_bins:
+        raise RuntimeError(
+            f"{name}: payload file set differs from manifests: "
+            f"missing={sorted(expected_bins - actual_bins)} "
+            f"unexpected={sorted(actual_bins - expected_bins)}"
+        )
 
 
 def localize_kv(comparison: dict):
