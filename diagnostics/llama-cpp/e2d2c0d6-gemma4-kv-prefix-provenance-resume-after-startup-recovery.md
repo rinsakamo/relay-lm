@@ -102,11 +102,17 @@ FA OFF is not an arm.
 
 ## Execution harness
 
-Use, in order:
+Use the one-shot resume wrapper as the preferred entrypoint:
 
-- `e2d2c0d6-gemma4-kv-artifact-locator.py`
-- `e2d2c0d6-gemma4-kv-request-admission.py`
-- `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
+- `e2d2c0d6-gemma4-kv-prefix-provenance-resume-run.py`
+
+It orchestrates, in order:
+
+1. `e2d2c0d6-gemma4-kv-artifact-locator.py`
+2. locator terminal validation
+3. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
+4. request admission inside the measured runner
+5. exactly-once measured sequence and terminal comparison
 
 The measured runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
 
@@ -138,17 +144,26 @@ After locator PASS, request admission must prove:
 
 If any saved request or frozen token-array artifact cannot be recovered exactly, stop before L0 as `PROBE_NOT_EXERCISED`. Do not reconstruct the request.
 
-Locator example:
+Preferred one-shot invocation:
 
 ```bash
-python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-artifact-locator.py \
-  <prior-diagnostic-root-1> [<prior-diagnostic-root-2> ...] \
-  --out <fresh-preflight-root>/artifact-locator.json
+python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-provenance-resume-run.py \
+  --search-root <prior-logical-batch-evidence-root> \
+  [--search-root <additional-exact-diagnostic-root> ...] \
+  --preflight-root <fresh-preflight-root> \
+  --server-bin <recovered-instrumented-llama-server> \
+  --model <frozen-gguf> \
+  --out-root <fresh-measured-output-root> \
+  --port-wr <fresh-port> \
+  --port-wr2 <fresh-port> \
+  --port-c <fresh-port>
 ```
 
-Use only the locator-selected exact artifact paths as inputs to request admission / measured execution.
+Use known prior diagnostic evidence roots; do not search the entire filesystem when narrower evidence roots are available.
 
-Preferred measured invocation:
+The wrapper records the locator argv/output, selected exact artifacts, measured-runner argv, and measured-runner exit. It transitions into measured execution only after `ARTIFACT_LOCATOR_PASS`.
+
+The underlying measured invocation is:
 
 ```bash
 python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-provenance-run.py \
@@ -270,7 +285,16 @@ Also report instrumented L1 vs LC API first-token/top-N comparison, but do not l
 
 Required terminal artifacts include:
 
+Preflight root:
 - `artifact-locator.json`
+- `artifact-locator.argv.json`
+- `artifact-locator.stdout.txt`
+- `artifact-locator.stderr.txt`
+- `selected-artifacts.json`
+- `measured-runner.argv.json`
+- `measured-runner.exit.json`
+
+Measured output root:
 - `request-admission.json`
 - complete per-server argv/env/startup/logs
 - per-server `startup-evidence.json` proving Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`
