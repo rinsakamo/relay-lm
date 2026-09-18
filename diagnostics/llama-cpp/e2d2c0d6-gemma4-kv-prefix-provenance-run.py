@@ -259,6 +259,14 @@ def require_startup_evidence(server: Server):
             pass
 
     checks = {
+        "n_seq_max_1": _startup_evidence_match(
+            text,
+            r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
+        ),
+        "n_ctx_8192": _startup_evidence_match(
+            text,
+            r"^.*\bllama_context\s*:\s*n_ctx\s*=\s*8192\b.*$",
+        ),
         "flash_attn_enabled": _startup_evidence_match(
             text,
             r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
