@@ -150,6 +150,38 @@ def main():
         )
         return 9
 
+    resource_guard_selftest = here / "e2d2c0d6-gemma4-kv-resource-guard-selftest.py"
+    resource_guard = subprocess.run(
+        [sys.executable, str(resource_guard_selftest)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (args.preflight_root / "kv-resource-guard-selftest.json").write_bytes(resource_guard.stdout)
+    (args.preflight_root / "kv-resource-guard-selftest.stderr.txt").write_bytes(resource_guard.stderr)
+    if resource_guard.returncode != 0:
+        write_terminal(
+            args.preflight_root,
+            stage="kv_resource_guard_selftest",
+            reason="RESOURCE_GUARD_SELFTEST_FAIL",
+        )
+        return 12
+    try:
+        resource_guard_obj = json.loads(resource_guard.stdout)
+    except Exception as exc:
+        write_terminal(
+            args.preflight_root,
+            stage="kv_resource_guard_selftest",
+            reason=f"invalid resource-guard self-test JSON: {exc}",
+        )
+        return 12
+    if resource_guard_obj.get("status") != "RESOURCE_GUARD_SELFTEST_PASS":
+        write_terminal(
+            args.preflight_root,
+            stage="kv_resource_guard_selftest",
+            reason=f"unexpected resource-guard self-test status: {resource_guard_obj.get('status')}",
+        )
+        return 12
+
     contract_selftest = here / "e2d2c0d6-gemma4-kv-runner-contract-selftest.py"
     contract = subprocess.run(
         [sys.executable, str(contract_selftest)],
