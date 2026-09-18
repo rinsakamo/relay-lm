@@ -168,7 +168,9 @@ def test_prepare_rederives_matched_stale_benchmark_material_case_fingerprint(
         assert release["benchmark_material"] == material
 
 
-def test_prepare_rejects_source_axis_release_case_mismatch(tmp_path: Path) -> None:
+def test_prepare_derives_release_case_from_axis_despite_stale_duplicate_case(
+    tmp_path: Path,
+) -> None:
     stale, lifecycle_base = _inputs(tmp_path)
     axes = stale["axes"]
     assert isinstance(axes, list)
@@ -181,21 +183,31 @@ def test_prepare_rejects_source_axis_release_case_mismatch(tmp_path: Path) -> No
     assert isinstance(release_case, dict)
     release_case = copy.deepcopy(release_case)
     release["case"] = release_case
-    release_case["adapter_case_ref"] = str(release_case["adapter_case_ref"]) + "-mismatch"
+    release_case["adapter_case_ref"] = str(release_case["adapter_case_ref"]) + "-stale"
 
-    with pytest.raises(
-        CampaignCarriageError,
-        match="case differs from execution freeze",
-    ):
-        _prepare(
-            tmp_path,
-            owner_id="owner-2965-reject-case-mismatch",
-            stale=stale,
-            lifecycle=lifecycle_base,
-        )
+    prepared = _prepare(
+        tmp_path,
+        owner_id="owner-2965-derived-release-case",
+        stale=stale,
+        lifecycle=lifecycle_base,
+    )
+    raw = prepared.to_mapping()
+    CampaignDescriptor.from_mapping(raw)
+
+    prepared_axes = raw["axes"]
+    assert isinstance(prepared_axes, list)
+    prepared_axis = next(
+        item
+        for item in prepared_axes
+        if isinstance(item, dict) and item.get("axis_id") == axis_id
+    )
+    prepared_release = _release_case(raw, axis_id)
+    assert prepared_release["case"] == prepared_axis["case"]
 
 
-def test_prepare_rejects_source_axis_release_material_mismatch(tmp_path: Path) -> None:
+def test_prepare_derives_release_material_from_axis_despite_stale_duplicate_material(
+    tmp_path: Path,
+) -> None:
     stale, lifecycle_base = _inputs(tmp_path)
     axes = stale["axes"]
     assert isinstance(axes, list)
@@ -210,16 +222,24 @@ def test_prepare_rejects_source_axis_release_material_mismatch(tmp_path: Path) -
     release["benchmark_material"] = release_material
     release_material["case_fingerprint"] = "sha256:" + "1" * 64
 
-    with pytest.raises(
-        CampaignCarriageError,
-        match="benchmark_material differs from execution freeze",
-    ):
-        _prepare(
-            tmp_path,
-            owner_id="owner-2965-reject-material-mismatch",
-            stale=stale,
-            lifecycle=lifecycle_base,
-        )
+    prepared = _prepare(
+        tmp_path,
+        owner_id="owner-2965-derived-release-material",
+        stale=stale,
+        lifecycle=lifecycle_base,
+    )
+    raw = prepared.to_mapping()
+    CampaignDescriptor.from_mapping(raw)
+
+    prepared_axes = raw["axes"]
+    assert isinstance(prepared_axes, list)
+    prepared_axis = next(
+        item
+        for item in prepared_axes
+        if isinstance(item, dict) and item.get("axis_id") == axis_id
+    )
+    prepared_release = _release_case(raw, axis_id)
+    assert prepared_release["benchmark_material"] == prepared_axis["benchmark_material"]
 
 
 def test_static_proof_accepts_preserved_hindsight_and_exact_rc_spellings(
