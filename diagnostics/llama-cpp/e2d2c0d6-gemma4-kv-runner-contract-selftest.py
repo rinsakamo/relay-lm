@@ -110,6 +110,29 @@ def main():
             "ok": expect_runtime_error(lambda: runner.require_dump(root, "missing-pair")),
         })
 
+    consistent_geometry = {
+        name: {
+            "base": {"stream": 0, "kv_size": 8192, "v_trans": 0, "logical_rows": 512, "layer_count": 1},
+            "swa": {"stream": 0, "kv_size": 1536, "v_trans": 0, "logical_rows": 512, "layer_count": 1},
+        }
+        for name in ("WR-P512", "WR-R512", "WR2-P512", "C-P512")
+    }
+    try:
+        consistency = runner.require_consistent_dump_geometry(consistent_geometry)
+        geometry_ok = consistency["signature"]["base"]["kv_size"] == 8192 and consistency["signature"]["swa"]["kv_size"] == 1536
+    except Exception:
+        geometry_ok = False
+    results.append({"name": "consistent_dump_geometry_passes", "ok": geometry_ok})
+
+    inconsistent_geometry = json.loads(json.dumps(consistent_geometry))
+    inconsistent_geometry["C-P512"]["swa"]["kv_size"] = 8192
+    results.append({
+        "name": "cross_observation_geometry_drift_fails",
+        "ok": expect_runtime_error(
+            lambda: runner.require_consistent_dump_geometry(inconsistent_geometry)
+        ),
+    })
+
     comparison = {
         "classification": "PREFIX_KV_GENERATION_DIFFERS",
         "kv": {
