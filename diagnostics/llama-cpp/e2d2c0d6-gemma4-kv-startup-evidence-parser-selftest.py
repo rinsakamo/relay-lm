@@ -89,6 +89,8 @@ def main():
             "revision": "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d",
             "source": "src/llama-context.cpp",
             "lines": {
+                "n_seq_max": 'LLAMA_LOG_INFO("%s: n_seq_max             = %u\\n", ...)',
+                "n_ctx": 'LLAMA_LOG_INFO("%s: n_ctx                 = %u\\n", ...)',
                 "n_batch": 'LLAMA_LOG_INFO("%s: n_batch               = %u\\n", ...)',
                 "n_ubatch": 'LLAMA_LOG_INFO("%s: n_ubatch              = %u\\n", ...)',
                 "flash_attn": 'LLAMA_LOG_INFO("%s: flash_attn            = %s\\n", ...)',
