@@ -4,13 +4,13 @@ Diagnostic-only execution handoff.
 
 ## Fresh repository authority at resume authoring
 
-- protected v1: `1e3a6ed3136fbb68342973e63386b4468d96327f`
-- protected v1 tree: `a1251b57efc1fb631b8d9513c3422e34dc1d4903`
+- protected v1: `117ff21a8b51c174de4b0cbff9dc2bf1e1b97fc2`
+- protected v1 tree: `bfb4a26e1b4e1c18a0faf48093379bd098f34b63`
 - open PRs targeting v1: 0
 - ruleset 20931403: active on v1
 - #2961: CLOSED / completed zero-semantic proof
 - #2964: OPEN historical scientific owner, explicitly not to be rebound/reused/executed
-- #2965: OPEN qualification-only repair owner
+- #2965: OPEN qualification-only repair owner; latest host packet at authoring is v9 and scientific `--execute` remains unauthorized
 - #1449 / #1447: remain open; no scientific campaign authorization is carried by this diagnostic
 
 Current repository authority at execution time wins over this snapshot.
@@ -102,14 +102,27 @@ FA OFF is not an arm.
 
 ## Execution harness
 
-Use:
+Use, in order:
 
+- `e2d2c0d6-gemma4-kv-artifact-locator.py`
 - `e2d2c0d6-gemma4-kv-request-admission.py`
 - `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
 
-The runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
+The measured runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
 
-Before L0 it must prove:
+Before request admission, use the artifact locator over the prior diagnostic evidence roots. The locator:
+
+- finds frozen token-array files only by their exact raw SHA256;
+- identifies measured-request candidates only when their numeric prompt equals the frozen arrays and their request semantics match L0/L1/LC;
+- permits duplicate byte-identical copies;
+- fails closed if a role has multiple distinct raw request SHA256 identities;
+- never creates or rewrites a request.
+
+Required locator terminal: `ARTIFACT_LOCATOR_PASS`.
+
+If the locator reports missing or ambiguous request identity, stop before L0 as `PROBE_NOT_EXERCISED`. Do not choose one candidate manually and do not reconstruct a request.
+
+After locator PASS, request admission must prove:
 
 - raw `warm-token-ids.json` SHA256 equals `c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2`;
 - raw `target-token-ids.json` SHA256 equals `549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e`;
@@ -125,7 +138,17 @@ Before L0 it must prove:
 
 If any saved request or frozen token-array artifact cannot be recovered exactly, stop before L0 as `PROBE_NOT_EXERCISED`. Do not reconstruct the request.
 
-Preferred invocation:
+Locator example:
+
+```bash
+python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-artifact-locator.py \
+  <prior-diagnostic-root-1> [<prior-diagnostic-root-2> ...] \
+  --out <fresh-preflight-root>/artifact-locator.json
+```
+
+Use only the locator-selected exact artifact paths as inputs to request admission / measured execution.
+
+Preferred measured invocation:
 
 ```bash
 python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-provenance-run.py \
@@ -247,6 +270,7 @@ Also report instrumented L1 vs LC API first-token/top-N comparison, but do not l
 
 Required terminal artifacts include:
 
+- `artifact-locator.json`
 - `request-admission.json`
 - complete per-server argv/env/startup/logs
 - exact measured request bytes and SHA256
