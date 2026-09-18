@@ -11,13 +11,21 @@ from typing import Any
 
 import pytest
 
-from tools.external_qualification import DurableQuestion
+from tools.external_qualification import (
+    DurableQuestion,
+    DurableQuestionRun,
+    ExactResumeError,
+    freeze_experiment_identity,
+)
 from tools.external_qualification_readiness import ExternalQualificationReadinessError
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     CampaignCarriageError,
     CampaignAxis,
     CampaignDescriptor,
+    CommonAnswerModelExecutor,
+    CommonAnswerModelResult,
+    COMMON_ANSWER_SYSTEM_PROMPT,
     HindsightComparatorExecutor,
     HindsightHistoryPlan,
     HindsightSemanticRequestError,
@@ -424,12 +432,31 @@ class _SemanticClient:
         return None
 
 
+class _AnswerClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, Mapping[str, object]]] = []
+
+    def post(self, url: str, *, json: Mapping[str, object]) -> _SemanticResponse:
+        self.calls.append((url, dict(json)))
+        return _SemanticResponse(
+            200,
+            {
+                "choices": [{"message": {"content": "cannot confirm"}}],
+                "usage": {"prompt_tokens": 12, "completion_tokens": 3},
+            },
+        )
+
+    def close(self) -> None:
+        return None
+
+
 class _ComparatorLifecycle:
     def __init__(self, profile: str) -> None:
         self.spec = type("Spec", (), {"database_profile": profile})()
         self.retain_calls: list[tuple[str, tuple[Mapping[str, object], ...]]] = []
         self.recall_calls: list[tuple[str, str]] = []
         self.reflect_calls: list[tuple[str, str, Mapping[str, object]]] = []
+        self.wait_calls: list[tuple[str, set[str]]] = []
 
     def retain(
         self,
@@ -440,9 +467,27 @@ class _ComparatorLifecycle:
         self.retain_calls.append((bank_id, tuple(dict(item) for item in items)))
         return {"retained": len(items)}
 
-    def recall(self, prompt: str, *, bank_id: str) -> Mapping[str, object]:
+    def recall(
+        self,
+        prompt: str,
+        *,
+        bank_id: str,
+        query_timestamp: str | None = None,
+    ) -> Mapping[str, object]:
         self.recall_calls.append((bank_id, prompt))
         return {"results": []}
+
+    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
+        return set()
+
+    def wait_for_consolidation(
+        self,
+        *,
+        bank_id: str,
+        pre_existing_pending_ids: set[str],
+    ) -> Mapping[str, object]:
+        self.wait_calls.append((bank_id, set(pre_existing_pending_ids)))
+        return {"poll_count": 1, "elapsed_ms": 0.0, "outstanding_count": 0}
 
     def reflect(
         self,
@@ -453,6 +498,91 @@ class _ComparatorLifecycle:
     ) -> Mapping[str, object]:
         self.reflect_calls.append((bank_id, prompt, dict(context)))
         return {"text": "synthetic reflection"}
+
+
+class _PreloadJournal:
+    """Small in-memory double for the ordinary routing test."""
+
+    def __init__(self) -> None:
+        self.completed: set[str] = set()
+        self.started: set[str] = set()
+
+    def _key(
+        self,
+        *,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> str:
+        return json.dumps(
+            [bank_id, session_id, exchange_index, dict(request)],
+            sort_keys=True,
+        )
+
+    def begin_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> bool:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+            request=request,
+        )
+        if key in self.completed:
+            return False
+        if key in self.started:
+            raise ExactResumeError("synthetic preload ambiguity")
+        self.started.add(key)
+        return True
+
+    def complete_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> None:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+            request=request,
+        )
+        if key not in self.started:
+            raise ExactResumeError("synthetic preload completion without start")
+        self.started.remove(key)
+        self.completed.add(key)
+
+    def hindsight_history_preload_counts(self) -> dict[str, int]:
+        return {"completed": len(self.completed), "in_flight": len(self.started)}
+
+
+class _CommonAnswerModel:
+    def __init__(self) -> None:
+        self.calls: list[list[Mapping[str, object]]] = []
+
+    def answer(
+        self,
+        context: ParticipantExecutionContext,
+        retrieved_memories: list[Mapping[str, object]],
+    ) -> CommonAnswerModelResult:
+        self.calls.append(list(retrieved_memories))
+        return CommonAnswerModelResult(
+            observation=_observation(),
+            request_evidence={
+                "boundary": "common_answer_model",
+                "response_shape": ["choices", "usage"],
+            },
+        )
 
 
 def _controller_parts(
@@ -964,6 +1094,8 @@ def test_hindsight_v010_semantic_routes_and_failure_evidence_are_typed(
     assert client.calls[0][1]["async"] is False
     assert client.calls[1][1] == {
         "query": "synthetic question",
+        "types": ["observation"],
+        "prefer_observations": True,
         "max_tokens": 4096,
         "budget": "mid",
     }
@@ -1050,7 +1182,12 @@ def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
     )
     plan = HindsightHistoryPlan.from_path(history_path)
     lifecycle = _ComparatorLifecycle("repair-profile-a")
-    executor = HindsightComparatorExecutor(lifecycle)  # type: ignore[arg-type]
+    journal = _PreloadJournal()
+    answer_model = _CommonAnswerModel()
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        answer_model,  # type: ignore[arg-type]
+    )
 
     def context(question_id: str, prompt: str) -> ParticipantExecutionContext:
         return ParticipantExecutionContext(
@@ -1068,34 +1205,211 @@ def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
             frozen_identity=None,  # type: ignore[arg-type]
             live_attestation=None,  # type: ignore[arg-type]
             history=plan,
+            durable_run=journal,  # type: ignore[arg-type]
         )
 
     first = executor(context("question-0", "synthetic question 0"))
     second = executor(context("question-1", "synthetic question 1"))
     repeated = executor(context("question-1", "synthetic question 1"))
 
-    assert [item["content"] for item in lifecycle.retain_calls[0][1]] == [
-        "synthetic first user",
-        "synthetic first assistant",
+    first_request = lifecycle.retain_calls[0][1][0]
+    assert json.loads(str(first_request["content"])) == [
+        {
+            "role": "user",
+            "content": "User: synthetic first user",
+            "timestamp": None,
+        },
+        {
+            "role": "assistant",
+            "content": "Assistant: synthetic first assistant",
+            "timestamp": None,
+        },
     ]
-    assert [item["content"] for item in lifecycle.retain_calls[1][1]] == [
-        "synthetic second user",
+    assert first_request["document_id"] == (
+        f"{_hindsight_axis_bank_id('repair-profile-a', 'axis-a')}_doc_session-0"
+    )
+    assert first_request["update_mode"] == "append"
+    assert lifecycle.retain_calls[1][1][0]["document_id"] == (
+        f"{_hindsight_axis_bank_id('repair-profile-a', 'axis-a')}_doc_session-1"
+    )
+    assert first.request_evidence[0]["operations"] == [
+        "retain",
+        "consolidation_wait",
+        "recall",
     ]
-    assert [item["document_id"] for item in lifecycle.retain_calls[0][1]] == [
-        "relaylm-history-00000000",
-        "relaylm-history-00000000",
+    assert second.request_evidence[0]["operations"] == [
+        "retain",
+        "consolidation_wait",
+        "recall",
     ]
-    assert lifecycle.retain_calls[1][1][0]["document_id"] == "relaylm-history-00000001"
-    assert first.request_evidence[0]["operations"] == ["retain", "recall", "reflect"]
-    assert second.request_evidence[0]["operations"] == ["retain", "recall", "reflect"]
-    assert repeated.request_evidence[0]["operations"] == ["recall", "reflect"]
+    assert repeated.request_evidence[0]["operations"] == ["recall"]
+    assert first.request_evidence[0]["recall_request"] == {
+        "budget": "mid",
+        "max_tokens": 4096,
+        "types": ["observation"],
+        "prefer_observations": True,
+        "query_timestamp": None,
+    }
     assert len(lifecycle.retain_calls) == 2
     assert len(lifecycle.recall_calls) == 3
-    assert len(lifecycle.reflect_calls) == 3
+    assert len(lifecycle.reflect_calls) == 0
+    assert len(answer_model.calls) == 3
     assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") == lifecycle.retain_calls[0][0]
     assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") != _hindsight_axis_bank_id(
         "repair-profile-b", "axis-a"
     )
+
+
+def test_common_answer_boundary_uses_frozen_prompt_and_one_generation() -> None:
+    spec = type(
+        "Spec",
+        (),
+        {"port": 8199, "expected_model_alias": "frozen-answer-model"},
+    )()
+    answer_model = CommonAnswerModelExecutor(spec)  # type: ignore[arg-type]
+    client = _AnswerClient()
+    answer_model.client = client  # type: ignore[assignment]
+    context = ParticipantExecutionContext(
+        axis_id="axis-a",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=DurableQuestion.from_content(
+            "question-0",
+            "What changed?",
+            session_id="session-0",
+        ),
+        prompt="What changed?",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=None,  # type: ignore[arg-type]
+        live_attestation=None,  # type: ignore[arg-type]
+    )
+
+    result = answer_model.answer(
+        context,
+        [{"memory": "the value changed", "created_at": "2025-01-02T12:00:00+00:00"}],
+    )
+    payload = client.calls[0][1]
+    assert payload["model"] == "frozen-answer-model"
+    assert payload["temperature"] == 0
+    assert "top_p" not in payload
+    assert payload["stream"] is False
+    assert payload["messages"][0] == {
+        "role": "system",
+        "content": COMMON_ANSWER_SYSTEM_PROMPT,
+    }
+    assert payload["messages"][1] == {
+        "role": "user",
+        "content": (
+            "Retrieved Memory Context:\nRetrieved memories:\n"
+            "1. [2025-01-02T12:00:00+00:00] the value changed\n\n"
+            "Question:\nWhat changed?\n\nAnswer:"
+        ),
+    }
+    assert result.observation["tokens"]["model_call_count"] == 1
+    assert result.request_evidence["boundary"] == "common_answer_model"
+
+
+def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "synthetic-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "history before crash",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "assistant history before crash",
+                                "timestamp": "2025-01-02T03:04:06+00:00",
+                            },
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-0"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    live = _live_mapping()
+    identity = freeze_experiment_identity(
+        identity=_frozen_identity("memconflict", live),
+        live_attestation=live,
+    )
+    question = DurableQuestion.from_content(
+        "question-0",
+        "synthetic question",
+        session_id="question-0",
+    )
+    run_root = tmp_path / "durable-run"
+    durable = DurableQuestionRun.start(
+        artifact_root=run_root,
+        identity=identity,
+        questions=(question,),
+    )
+    durable.begin_question(question.question_id)
+
+    class _CrashAfterRetain(_ComparatorLifecycle):
+        def wait_for_consolidation(
+            self,
+            *,
+            bank_id: str,
+            pre_existing_pending_ids: set[str],
+        ) -> Mapping[str, object]:
+            raise RuntimeError("synthetic process stop after external retain")
+
+    lifecycle = _CrashAfterRetain("repair-profile-crash")
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        _CommonAnswerModel(),  # type: ignore[arg-type]
+    )
+    context = ParticipantExecutionContext(
+        axis_id="axis-crash",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=question,
+        prompt="synthetic question",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=identity,
+        live_attestation=None,  # type: ignore[arg-type]
+        history=plan,
+        durable_run=durable,
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic process stop"):
+        executor(context)
+    durable.mark_process_exited()
+    assert len(lifecycle.retain_calls) == 1
+
+    with pytest.raises(
+        ExactResumeError,
+        match="Hindsight retain acknowledgement is ambiguous",
+    ):
+        DurableQuestionRun.resume(
+            artifact_root=run_root,
+            identity=identity,
+            questions=(question,),
+        )
+
+    # The exact-resume attempt fails before a comparator is callable, so no
+    # second provider retain can be issued.
+    assert len(lifecycle.retain_calls) == 1
 
 
 def test_hindsight_history_rejects_reference_or_gold_fields(tmp_path: Path) -> None:
