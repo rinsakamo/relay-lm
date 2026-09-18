@@ -261,15 +261,15 @@ def require_startup_evidence(server: Server):
     checks = {
         "flash_attn_enabled": _startup_evidence_match(
             text,
-            r"^.*\bflash_attn\s*=\s*enabled\b.*$",
+            r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
         ),
         "n_batch_512": _startup_evidence_match(
             text,
-            r"^.*\bn_batch\s*=\s*512\b.*$",
+            r"^.*\bllama_context\s*:\s*n_batch\s*=\s*512\b.*$",
         ),
         "n_ubatch_512": _startup_evidence_match(
             text,
-            r"^.*\bn_ubatch\s*=\s*512\b.*$",
+            r"^.*\bllama_context\s*:\s*n_ubatch\s*=\s*512\b.*$",
         ),
     }
     write_json(server.out / "startup-evidence.json", checks)
