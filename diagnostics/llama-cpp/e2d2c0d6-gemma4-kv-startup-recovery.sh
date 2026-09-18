@@ -116,6 +116,22 @@ cmd=(
   printf '\n'
 } >"$out_dir/server.argv.txt"
 
+# Canonical startup identity for cross-arm comparison.
+# Mode is environment-only and the loopback port may differ between fresh arms.
+{
+  printf 'server_bin=%q\n' "$server_bin"
+  printf 'model_path=%q\n' "$model_path"
+  printf '%s\n' '--host=127.0.0.1'
+  printf '%s\n' '--ctx-size=8192'
+  printf '%s\n' '--parallel=1'
+  printf '%s\n' '--gpu-layers=999'
+  printf '%s\n' '--no-context-shift'
+  printf '%s\n' '--batch-size=512'
+  printf '%s\n' '--ubatch-size=512'
+  printf '%s\n' '--flash-attn=on'
+  printf '%s\n' '--log-verbosity=4'
+} >"$out_dir/server.argv.canonical.txt"
+
 probe_root=""
 if [[ "$mode" == "probe" ]]; then
   probe_root="$out_dir/probe-root"
