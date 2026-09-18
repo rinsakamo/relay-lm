@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+import importlib.util
+import json
+from pathlib import Path
+import tempfile
+import sys
+
+
+def load_runner():
+    here = Path(__file__).resolve().parent
+    runner_path = here / "e2d2c0d6-gemma4-kv-prefix-provenance-run.py"
+    spec = importlib.util.spec_from_file_location("kv_prefix_provenance_runner_contract", runner_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load KV provenance runner")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def make_dump(root: Path, name: str):
+    dump = root / name
+    dump.mkdir(parents=True)
+    for cache_name, layer in (("base", 0), ("swa", 1)):
+        cells = dump / f"{cache_name}.cells.tsv"
+        with cells.open("w", encoding="utf-8") as out:
+            out.write("cache\tstream\thead\tkv_size\tv_trans\tposition\tcell\n")
+            for pos in range(512):
+                out.write(f"{cache_name}\t0\t0\t1536\t0\t{pos}\t{pos}\n")
+
+        manifest = dump / f"{cache_name}.manifest.tsv"
+        with manifest.open("w", encoding="utf-8") as out:
+            out.write("cache\tlayer\tkind\ttype\trow_bytes\trows\n")
+            out.write(f"{cache_name}\t{layer}\tK\tf16\t2\t512\n")
+            out.write(f"{cache_name}\t{layer}\tV\tf16\t2\t512\n")
+
+        (dump / f"{cache_name}.layer-{layer}.K.bin").write_bytes(b"K" * 1024)
+        (dump / f"{cache_name}.layer-{layer}.V.bin").write_bytes(b"V" * 1024)
+    return dump
+
+
+def expect_runtime_error(fn):
+    try:
+        fn()
+    except RuntimeError:
+        return True
+    return False
+
+
+def main():
+    runner = load_runner()
+    results = []
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-kv-contract-") as td:
+        root = Path(td)
+
+        make_dump(root, "valid")
+        try:
+            runner.require_dump(root, "valid")
+            valid_ok = True
+        except Exception:
+            valid_ok = False
+        results.append({"name": "valid_dump_passes", "ok": valid_ok})
+
+        truncated = make_dump(root, "truncated")
+        (truncated / "base.layer-0.K.bin").write_bytes(b"K" * 1023)
+        results.append({
+            "name": "truncated_payload_fails",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "truncated")),
+        })
+
+        missing_meta = make_dump(root, "missing-meta")
+        (missing_meta / "swa.manifest.tsv").unlink()
+        results.append({
+            "name": "missing_metadata_fails",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "missing-meta")),
+        })
+
+        bad_pos = make_dump(root, "bad-position")
+        cells = bad_pos / "base.cells.tsv"
+        lines = cells.read_text(encoding="utf-8").splitlines()
+        fields = lines[-1].split("\t")
+        fields[5] = "510"
+        lines[-1] = "\t".join(fields)
+        cells.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        results.append({
+            "name": "logical_position_drift_fails",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "bad-position")),
+        })
+
+        missing_pair = make_dump(root, "missing-pair")
+        manifest = missing_pair / "base.manifest.tsv"
+        lines = manifest.read_text(encoding="utf-8").splitlines()
+        manifest.write_text("\n".join(lines[:2]) + "\n", encoding="utf-8")
+        (missing_pair / "base.layer-0.V.bin").unlink()
+        results.append({
+            "name": "missing_kv_pair_fails",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "missing-pair")),
+        })
+
+    comparison = {
+        "classification": "PREFIX_KV_GENERATION_DIFFERS",
+        "kv": {
+            "W_vs_C": {
+                "different": ["swa.layer-3.V.bin"],
+                "missing_left": ["base.layer-2.K.bin"],
+                "missing_right": [],
+            },
+        },
+        "layout_metadata": {
+            "W_vs_C": {"equal": False},
+        },
+    }
+    localized = runner.localize_kv(comparison)
+    localization_ok = (
+        localized["comparison_pair"] == "W_vs_C"
+        and localized["mismatch_file_count"] == 2
+        and localized["hash_diff_count"] == 1
+        and localized["missing_left_count"] == 1
+        and localized["missing_right_count"] == 0
+        and localized["layout_metadata_differs"] is True
+        and localized["first_mismatch"]["file"] == "base.layer-2.K.bin"
+        and localized["first_mismatch"]["cache_class"] == "base"
+        and localized["first_mismatch"]["layer"] == 2
+        and localized["first_mismatch"]["kind"] == "K"
+        and localized["first_mismatch"]["difference_types"] == ["missing_left"]
+    )
+    results.append({
+        "name": "missing_payload_localization_counts",
+        "ok": localization_ok,
+        "observed": localized,
+    })
+
+    errors = [r["name"] for r in results if not r["ok"]]
+    out = {
+        "status": "KV_RUNNER_CONTRACT_SELFTEST_PASS" if not errors else "KV_RUNNER_CONTRACT_SELFTEST_FAIL",
+        "results": results,
+        "errors": errors,
+    }
+    print(json.dumps(out, indent=2, sort_keys=True))
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
