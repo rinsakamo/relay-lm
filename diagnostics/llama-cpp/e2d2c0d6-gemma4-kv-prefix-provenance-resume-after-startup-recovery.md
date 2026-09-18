@@ -144,9 +144,10 @@ It orchestrates, in order:
 
 Required parser self-test terminal: `STARTUP_EVIDENCE_PARSER_SELFTEST_PASS`.
 
-The self-test is grounded in the exact llama.cpp revision's source logging format from `src/llama-context.cpp`:
+The self-test is grounded in the exact llama.cpp revision's `llama_context::llama_context(...)` source logging format from `src/llama-context.cpp`:
 
 ```text
+llama_context: constructing llama_context
 n_seq_max             = %u
 n_ctx                 = %u
 n_batch               = %u
@@ -154,7 +155,9 @@ n_ubatch              = %u
 flash_attn            = %s
 ```
 
-It also exercises compact/mixed whitespace and negative controls. A self-test failure stops before GPU flock acquisition and before L0.
+The production parser selects the final `llama_context: constructing llama_context` block and requires all five runtime facts from that same block; it must not combine matching values across multiple context constructions.
+
+The self-test exercises exact source spacing, compact/mixed whitespace, wrong values, near-miss identifiers, argv-like text that is not runtime evidence, and values deliberately split across two context blocks. A self-test failure stops before GPU flock acquisition and before L0.
 
 Required runner-contract self-test terminal: `KV_RUNNER_CONTRACT_SELFTEST_PASS`.
 
@@ -381,7 +384,7 @@ Preflight root:
 Measured output root:
 - `request-admission.json`
 - complete per-server argv/env/startup/logs
-- per-server `startup-evidence.json` proving `n_seq_max=1`, `n_ctx=8192`, Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`, each from `llama_context:` runtime log lines
+- per-server `startup-evidence.json` proving `n_seq_max=1`, `n_ctx=8192`, Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`, all from the same final `llama_context:` runtime-construction block, with matched raw lines retained
 - exact measured request bytes and SHA256
 - raw and pretty responses
 - `api-L1-vs-LC.json`
