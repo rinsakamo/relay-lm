@@ -44,7 +44,7 @@ def main():
                 "classification": read_text(root / "classification.txt"),
                 "server_sha256": read_sha_line(root / "server-binary.sha256"),
                 "model_sha256": read_sha_line(root / "model.sha256"),
-                "argv_sha256": sha256(root / "server.argv.txt"),
+                "argv_canonical_sha256": sha256(root / "server.argv.canonical.txt"),
             }
         except Exception as exc:
             errors.append(f"{name}: {exc}")
@@ -54,8 +54,8 @@ def main():
             errors.append("server binary SHA256 differs between plain and probe")
         if evidence["plain"]["model_sha256"] != evidence["probe"]["model_sha256"]:
             errors.append("model SHA256 differs between plain and probe")
-        if evidence["plain"]["argv_sha256"] != evidence["probe"]["argv_sha256"]:
-            errors.append("server argv differs between plain and probe")
+        if evidence["plain"]["argv_canonical_sha256"] != evidence["probe"]["argv_canonical_sha256"]:
+            errors.append("canonical server argv differs between plain and probe")
 
         probe_root = args.probe / "probe-root"
         if probe_root.exists() and any(probe_root.iterdir()):
