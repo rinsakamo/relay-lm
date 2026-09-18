@@ -202,7 +202,13 @@ Retained prefix K/V itself is byte-identical. If instrumented L1 vs LC still dif
 
 ### PROBE_NOT_EXERCISED
 
-A required dump point, exact reuse path, or byte-comparison precondition was not reached.
+The probe stopped before the first measured L0 request was submitted. The measured probe remains unconsumed.
+
+### PROBE_EXERCISED_INCOMPLETE
+
+The first measured L0 request was submitted, but the four-point dump/comparison sequence did not complete to a valid KV-state classification.
+
+This state is consumed and terminal for this probe attempt. Preserve the partial evidence and do not retry/replay/repair/reseed/fallback or automatically start a replacement attempt.
 
 ## Secondary localization
 
