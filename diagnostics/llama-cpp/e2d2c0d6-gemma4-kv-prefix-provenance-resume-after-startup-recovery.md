@@ -4,13 +4,13 @@ Diagnostic-only execution handoff.
 
 ## Fresh repository authority at resume authoring
 
-- protected v1: `117ff21a8b51c174de4b0cbff9dc2bf1e1b97fc2`
-- protected v1 tree: `bfb4a26e1b4e1c18a0faf48093379bd098f34b63`
+- protected v1: `bf45360c6812ef5e8be2a699acd71eb68a335269`
+- protected v1 tree: `1e6d46bde093b32d771c340da193c096ecf8539c`
 - open PRs targeting v1: 0
 - ruleset 20931403: active on v1
 - #2961: CLOSED / completed zero-semantic proof
 - #2964: OPEN historical scientific owner, explicitly not to be rebound/reused/executed
-- #2965: OPEN qualification-only repair owner; latest host packet at authoring is v9 and scientific `--execute` remains unauthorized
+- #2965: OPEN qualification-only repair owner; latest host packet at authoring is v10 and scientific `--execute` remains unauthorized
 - #1449 / #1447: remain open; no scientific campaign authorization is carried by this diagnostic
 
 Current repository authority at execution time wins over this snapshot.
@@ -31,6 +31,29 @@ This KV diagnostic MUST NOT:
 The scientific campaign spend boundary remains independent and unconsumed by this diagnostic.
 
 This diagnostic does perform llama.cpp model inference for mechanism analysis. Those calls are diagnostic evidence and are not scientific campaign participant/judge/benchmark execution.
+
+## Latest pre-L0 parser stop
+
+The first run of the one-shot resume wrapper after startup recovery ended:
+
+`PROBE_NOT_EXERCISED`
+
+before L0 because the measured startup-evidence parser required fixed log spacing. The raw WR startup log did contain the required Flash-Attention / batch / ubatch values, but alignment whitespace prevented the old literal-string checks from matching.
+
+Observed in that stopped attempt:
+
+- artifact locator: `ARTIFACT_LOCATOR_PASS`
+- request admission: `REQUEST_ADMISSION_PASS`
+- canonical diagnostic GPU flock acquired and released
+- external runtime idle in both observations
+- WR health: HTTP 200
+- L0/L1/L0R/LC submitted: 0
+- KV dump/comparison: not executed
+- retry/replay/repair/FA-OFF: 0
+
+The runner now parses these startup facts with whitespace-independent regular expressions and records each matched raw log line in `startup-evidence.json`.
+
+This parser-only repair does not alter model/runtime/request/KV semantics and does not consume the measured probe.
 
 ## Recovery bridge
 
