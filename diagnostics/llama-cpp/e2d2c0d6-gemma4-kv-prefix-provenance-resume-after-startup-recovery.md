@@ -163,9 +163,11 @@ It orchestrates, in order:
 
 1. `e2d2c0d6-gemma4-kv-startup-evidence-parser-selftest.py`
 2. parser self-test terminal validation
-3. `e2d2c0d6-gemma4-kv-runner-contract-selftest.py`
-4. dump/localization contract self-test terminal validation
-5. canonical diagnostic GPU resource guard
+3. `e2d2c0d6-gemma4-kv-resource-guard-selftest.py`
+4. loopback/resource-guard contract validation
+5. `e2d2c0d6-gemma4-kv-runner-contract-selftest.py`
+6. dump/localization/success-path contract self-test terminal validation
+7. canonical diagnostic GPU resource guard
 6. `e2d2c0d6-gemma4-kv-artifact-locator.py`
 7. locator terminal validation
 8. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
@@ -188,6 +190,16 @@ flash_attn            = %s
 The production parser selects the final `llama_context: constructing llama_context` block and requires all five runtime facts from that same block; it must not combine matching values across multiple context constructions.
 
 The self-test exercises exact source spacing, compact/mixed whitespace, wrong values, near-miss identifiers, argv-like text that is not runtime evidence, and values deliberately split across two context blocks. A self-test failure stops before GPU flock acquisition and before L0.
+
+Required resource-guard self-test terminal: `RESOURCE_GUARD_SELFTEST_PASS`.
+
+The resource-guard self-test exercises the exact production `connect_ex` interpretation:
+
+- return code 0 => listener busy;
+- `ECONNREFUSED` => listener absent/idle;
+- `EPERM`, `EACCES`, timeout, and any other unexpected socket result => inconclusive error, never idle.
+
+Therefore a restricted sandbox that cannot establish loopback listener state must stop before L0 instead of silently passing quiescence.
 
 Required runner-contract self-test terminal: `KV_RUNNER_CONTRACT_SELFTEST_PASS`.
 
@@ -259,6 +271,7 @@ Before artifact discovery, the wrapper cooperates with the repository's canonica
 - it reads or mutates no #2965 owner/plan/spend artifact;
 - it fails before L0 if the canonical flock is already held;
 - after acquisition it requires two idle observations, five seconds apart, with no `llama-server`, `llama-cli`, or `llama-run` process and no listener on `127.0.0.1:1234`;
+- loopback listener probing is fail-closed: only `ECONNREFUSED` proves listener absence; permission denial or other socket uncertainty stops before L0;
 - the flock is held through the measured child and released on every wrapper exit path;
 - `shared-resource-guard.json` records acquisition/release without claiming a #2965 campaign lease.
 
@@ -410,6 +423,8 @@ Required terminal artifacts include:
 Preflight root:
 - `startup-evidence-parser-selftest.json`
 - `startup-evidence-parser-selftest.stderr.txt`
+- `kv-resource-guard-selftest.json`
+- `kv-resource-guard-selftest.stderr.txt`
 - `kv-runner-contract-selftest.json`
 - `kv-runner-contract-selftest.stderr.txt`
 - `shared-resource-guard.json`
