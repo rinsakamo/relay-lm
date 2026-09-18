@@ -236,6 +236,36 @@ def api_compare(l1: dict, lc: dict):
     }
 
 
+def require_startup_evidence(server: Server):
+    # Flush userspace buffers before reading retained startup logs.
+    if server.stdout:
+        server.stdout.flush()
+    if server.stderr:
+        server.stderr.flush()
+    text = ""
+    for path in (server.out / "server.stdout.txt", server.out / "server.stderr.txt"):
+        try:
+            text += path.read_text(encoding="utf-8", errors="replace") + "\n"
+        except OSError:
+            pass
+
+    checks = {
+        "flash_attn_enabled": (
+            "flash_attn = enabled" in text
+            or "flash_attn=enabled" in text
+            or "flash attention = enabled" in text.lower()
+        ),
+        "n_batch_512": ("n_batch = 512" in text or "n_batch=512" in text),
+        "n_ubatch_512": ("n_ubatch = 512" in text or "n_ubatch=512" in text),
+    }
+    write_json(server.out / "startup-evidence.json", checks)
+    missing = [name for name, ok in checks.items() if not ok]
+    if missing:
+        raise RuntimeError(
+            f"{server.label}: required startup evidence missing: {','.join(missing)}"
+        )
+
+
 def require_dump(kv_root: Path, name: str):
     p = kv_root / name
     if not p.is_dir():
@@ -364,6 +394,7 @@ def main():
         )
         servers.append(wr)
         wr.start()
+        require_startup_evidence(wr)
 
         measured_l0 = True
         l0 = send_request(wr, "L0", args.l0_request, 0, 883)
@@ -379,6 +410,7 @@ def main():
         )
         servers.append(wr2)
         wr2.start()
+        require_startup_evidence(wr2)
         l0r = send_request(wr2, "L0R", args.l0_request, 0, 883)
         require_dump(kv_root, "WR2-P512")
         wr2.stop()
@@ -389,6 +421,7 @@ def main():
         )
         servers.append(cold)
         cold.start()
+        require_startup_evidence(cold)
         lc = send_request(cold, "LC", args.lc_request, 0, 2927)
         require_dump(kv_root, "C-P512")
         cold.stop()
