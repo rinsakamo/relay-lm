@@ -225,7 +225,16 @@ Before artifact discovery, the wrapper cooperates with the repository's canonica
 - the flock is held through the measured child and released on every wrapper exit path;
 - `shared-resource-guard.json` records acquisition/release without claiming a #2965 campaign lease.
 
-The wrapper records the locator argv/output, selected exact artifacts, measured-runner argv, and measured-runner exit. It transitions into measured execution only after the resource guard and `ARTIFACT_LOCATOR_PASS`.
+The wrapper records the locator argv/output, selected exact artifacts, measured-runner argv/stdout/stderr/exit, and transitions into measured execution only after the resource guard and `ARTIFACT_LOCATOR_PASS`.
+
+If the measured runner exits without producing its own `terminal.json`, the wrapper must fail closed:
+
+- `server-WR/L0.request.json` is written before the L0 HTTP POST;
+- if that record exists, classify conservatively as `PROBE_EXERCISED_INCOMPLETE`, set rerun authorization false, and treat the attempt as consumed;
+- if that record does not exist, classify as `PROBE_NOT_EXERCISED`;
+- the missing runner terminal remains a harness failure and the wrapper exits non-zero even when the consumption boundary is recoverable.
+
+This fallback exists only to preserve exactly-once semantics under unexpected runner termination. It does not authorize automatic rerun after an L0-attempt record exists.
 
 The underlying measured invocation is:
 
@@ -365,6 +374,8 @@ Preflight root:
 - `artifact-locator.stderr.txt`
 - `selected-artifacts.json`
 - `measured-runner.argv.json`
+- `measured-runner.stdout.txt`
+- `measured-runner.stderr.txt`
 - `measured-runner.exit.json`
 
 Measured output root:
