@@ -316,11 +316,49 @@ def main():
         })
 
         # This is the only transition from artifact discovery into measured execution.
-        run = subprocess.run(runner_cmd, pass_fds=(lock_file.fileno(),))
+        run = subprocess.run(
+            runner_cmd,
+            pass_fds=(lock_file.fileno(),),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        (args.preflight_root / "measured-runner.stdout.txt").write_bytes(run.stdout)
+        (args.preflight_root / "measured-runner.stderr.txt").write_bytes(run.stderr)
         write_json(args.preflight_root / "measured-runner.exit.json", {
             "returncode": run.returncode,
             "measured_output_root": str(args.out_root),
         })
+
+        measured_terminal = args.out_root / "terminal.json"
+        if not measured_terminal.is_file():
+            l0_request_record = args.out_root / "server-WR" / "L0.request.json"
+            l0_attempted = l0_request_record.is_file()
+            fallback = {
+                "primary_classification": (
+                    "PROBE_EXERCISED_INCOMPLETE"
+                    if l0_attempted
+                    else "PROBE_NOT_EXERCISED"
+                ),
+                "measured_l0_submitted": l0_attempted,
+                "stage": "measured_runner_terminal_fallback",
+                "reason": (
+                    "measured runner exited without terminal.json; "
+                    "classification derived conservatively from presence of the "
+                    "pre-POST L0 request record"
+                ),
+                "runner_returncode": run.returncode,
+                "l0_request_record": str(l0_request_record),
+                "l0_request_record_exists": l0_attempted,
+                "rerun_authorized": False if l0_attempted else None,
+            }
+            if args.out_root.is_dir():
+                write_json(measured_terminal, fallback)
+            else:
+                write_json(args.preflight_root / "terminal.json", fallback)
+            # Missing runner terminal is itself a harness failure even when the
+            # conservative scientific-consumption classification is clear.
+            return 11
+
         return run.returncode
     except Exception as exc:
         write_terminal(
