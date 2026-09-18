@@ -713,6 +713,10 @@ def test_typed_controller_freezes_live_identity_and_cleans_owned_session(tmp_pat
         "scientific_durable_run_completion_count": 2,
     }
     assert receipt["SCIENTIFIC_SPEND"] == "UNSPENT"
+    observed = receipt["observed_execution"]
+    assert observed["authority"] == "OBSERVED_EXECUTION"
+    assert observed["live_launch_attestation"] == live
+    assert observed["live_launch_attestation_fingerprint"]
     assert all(item["status"] == "completed" for item in receipt["axis_receipts"])
 
 
@@ -1054,6 +1058,9 @@ def test_strict_pre_call_rehearsal_stays_unspent_and_invokes_no_participant(
     assert receipt["SCIENTIFIC_SPEND"] == "UNSPENT"
     assert receipt["counters"]["semantic_generation_count"] == 0
     assert receipt["counters"]["benchmark_question_count"] == 0
+    observed = receipt["observed_execution"]
+    assert observed["authority"] == "OBSERVED_EXECUTION"
+    assert observed["live_launch_attestation"] == live
     assert session.cleanup_calls == 1
     ledger = json.loads(descriptor.spend_ledger_path.read_text(encoding="utf-8"))
     assert ledger["state"] == "UNSPENT"
