@@ -17,9 +17,9 @@ Current repository authority at execution time wins over this snapshot.
 
 ## #2965 separation boundary
 
-#2965 is currently stopped at a static fail-closed preparation barrier before any public rehearsal or execute invocation.
+#2965 is an independent qualification-only campaign owner whose live state may advance separately under its own current authority. This resume document does not freeze or reinterpret #2965 lifecycle state.
 
-This KV diagnostic MUST NOT:
+Regardless of whether #2965 is prequeue, queued, rehearsing, reconciled, or otherwise advanced under newer authority, this KV diagnostic MUST NOT:
 
 - read or mutate #2965 owner-local plan/proof/queue/spend artifacts;
 - invoke `v1:external-qualification-campaign`;
