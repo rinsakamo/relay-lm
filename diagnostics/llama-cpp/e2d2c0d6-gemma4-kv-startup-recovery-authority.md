@@ -41,15 +41,16 @@ Run each once on a fresh loopback port:
 
 Do not send completion/chat requests in either arm.
 
-After both arms finish, run:
+Prefer the one-shot runner:
 
 ```bash
-python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-startup-recovery-classify.py \
-  <plain-out-dir> <probe-out-dir> \
-  > startup-recovery-terminal.json
+bash diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-startup-recovery-run.sh \
+  <fresh-output-root> <server-bin> <model-path> <plain-port> <probe-port>
 ```
 
-The classifier also requires identical server/model SHA256 across arms and rejects any unexpected probe dump/output.
+The runner requires distinct loopback ports and a fresh output root, executes exactly `plain -> probe -> classifier`, records each arm's harness exit code, and emits `startup-recovery-terminal.json`.
+
+The classifier requires identical server/model SHA256 and identical canonical server arguments across arms, while intentionally allowing different loopback ports and different probe-environment state. It also rejects any unexpected probe dump/output.
 
 ## Classification
 
