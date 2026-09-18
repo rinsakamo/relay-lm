@@ -100,6 +100,50 @@ generated tokens per measured request = 1
 
 FA OFF is not an arm.
 
+## Execution harness
+
+Use:
+
+- `e2d2c0d6-gemma4-kv-request-admission.py`
+- `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
+
+The runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
+
+Before L0 it must prove:
+
+- raw `warm-token-ids.json` SHA256 equals `c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2`;
+- raw `target-token-ids.json` SHA256 equals `549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e`;
+- lengths 883 / 2927 and LCP 865;
+- saved L0 prompt equals the frozen warm array;
+- saved L1/LC prompts equal the frozen target array;
+- L0/L1 use `cache_prompt=true`;
+- LC uses `cache_prompt=false`;
+- L1 and LC differ semantically only by `cache_prompt`;
+- L1/LC retain top-N logprobs;
+- instrumented binary/model hashes equal the recovered identities;
+- all three intended loopback ports are free.
+
+If any saved request or frozen token-array artifact cannot be recovered exactly, stop before L0 as `PROBE_NOT_EXERCISED`. Do not reconstruct the request.
+
+Preferred invocation:
+
+```bash
+python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-provenance-run.py \
+  --server-bin <recovered-instrumented-llama-server> \
+  --model <frozen-gguf> \
+  --warm-tokens <exact-warm-token-ids.json> \
+  --target-tokens <exact-target-token-ids.json> \
+  --l0-request <saved-logical-batch-L0-request.json> \
+  --l1-request <saved-logical-batch-L1-request.json> \
+  --lc-request <saved-logical-batch-LC-request.json> \
+  --out-root <fresh-output-root> \
+  --port-wr <fresh-port> \
+  --port-wr2 <fresh-port> \
+  --port-c <fresh-port>
+```
+
+The runner sends the saved request file bytes directly to native `/completion`. L0R sends the exact L0 bytes again on a fresh server. No request JSON is regenerated for measured inference.
+
 ## Exactly-once measured sequence
 
 Use a fresh empty KV dump root.
@@ -166,7 +210,16 @@ Retain for each measured request:
 
 ## Terminal comparison
 
-After and only after all four required dump directories exist, run:
+The runner validates response timings directly:
+
+- L0: cache_n=0 / prompt_n=883
+- L1: cache_n=512 / prompt_n=2415
+- L0R: cache_n=0 / prompt_n=883
+- LC: cache_n=0 / prompt_n=2927
+
+It also requires one predicted token for every measured request.
+
+After and only after all four required dump directories exist, it runs:
 
 ```bash
 python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-prefix-digest-compare.py \
@@ -191,6 +244,19 @@ If KV payload differs, report:
 - whether layout metadata also differs
 
 Also report instrumented L1 vs LC API first-token/top-N comparison, but do not let API identity override the KV-state primary classification.
+
+Required terminal artifacts include:
+
+- `request-admission.json`
+- complete per-server argv/env/startup/logs
+- exact measured request bytes and SHA256
+- raw and pretty responses
+- `api-L1-vs-LC.json`
+- `kv-prefix-comparison.json`
+- `kv-localization.json`
+- `terminal.json`
+
+For a KV mismatch, `kv-localization.json` must identify the governing comparison pair, mismatch-file count, earliest differing layer/cache-class/K-or-V when parseable, and whether layout metadata differs.
 
 ## Retry boundary
 
