@@ -9,6 +9,7 @@ import pytest
 
 import tools.v1_external_qualification_campaign_proof as campaign_proof
 from test_v1_external_qualification_llama_cpp_campaign import _strict_descriptor_mapping
+from tools.external_qualification import LiveLaunchAdmissionAttestation
 from tools.v1_external_qualification_campaign_proof import (
     CampaignProofError,
     prepare_static_proof,
@@ -372,6 +373,16 @@ def _physical_bundle(
     if bad_counter:
         counters["judge_call_count"] = 1
 
+    axes = plan["axes"]
+    assert isinstance(axes, list) and axes
+    first_axis = axes[0]
+    assert isinstance(first_axis, dict)
+    identity = first_axis["identity"]
+    assert isinstance(identity, dict)
+    live_mapping = identity["launch_admission"]
+    assert isinstance(live_mapping, dict)
+    live_attestation = LiveLaunchAdmissionAttestation.from_mapping(live_mapping)
+
     result = {
         "target": "v1:external-qualification-campaign",
         "status": "PRE_CALL_BARRIER_REACHED",
@@ -385,6 +396,19 @@ def _physical_bundle(
             "all_owned_processes_terminated": True,
             "external_processes_touched": 0,
             "errors": [],
+        },
+        "observed_execution": {
+            "authority": "OBSERVED_EXECUTION",
+            "live_launch_attestation": live_attestation.to_mapping(),
+            "live_launch_attestation_fingerprint": live_attestation.fingerprint,
+            "hindsight_runtime_identity_path": str(runtime_identity_path),
+            "artifact_root": str(plan["artifact_root"]),
+            "spend_ledger_path": str(plan["spend_ledger_path"]),
+            "axis_evidence_paths": {
+                str(axis["axis_id"]): None
+                for axis in axes
+                if isinstance(axis, dict)
+            },
         },
         "hindsight_cleanup": {
             "started": True,
@@ -436,6 +460,7 @@ def test_verify_zero_semantic_rehearsal_accepts_clean_bundle(tmp_path: Path) -> 
     assert receipt["queue_state"] == "CHILD_EXITED"
     assert receipt["lease_state"] == "RELEASED"
     assert receipt["descriptor_sha256"] == hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    assert receipt["observed_live_launch_fingerprint"]
 
 
 def test_verify_zero_semantic_rehearsal_rejects_nonzero_counter(tmp_path: Path) -> None:
