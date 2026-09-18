@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -24,6 +25,16 @@ def sha256(path: Path) -> str:
 
 def write_json(path: Path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def require_port_free(port: int):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", port))
+    except OSError as exc:
+        raise RuntimeError(f"port {port} is not free: {exc}") from exc
+    finally:
+        sock.close()
 
 
 def http_get(port: int, path: str, timeout=2):
@@ -234,6 +245,56 @@ def require_dump(kv_root: Path, name: str):
         raise RuntimeError(f"required KV dump has no binary payload: {name}")
 
 
+def localize_kv(comparison: dict):
+    primary = comparison.get("classification")
+    pair_for_class = {
+        "PREFIX_DUMP_NOT_REPRODUCIBLE": "W_vs_W2",
+        "PREFIX_KV_GENERATION_DIFFERS": "W_vs_C",
+        "RETAINED_PREFIX_KV_MUTATED_BY_REUSE": "W_vs_R",
+    }
+    pair = pair_for_class.get(primary)
+    if pair is None:
+        return {
+            "comparison_pair": None,
+            "mismatch_file_count": 0,
+            "first_mismatch": None,
+            "layout_metadata_differs": False,
+        }
+
+    kv_pair = comparison.get("kv", {}).get(pair, {})
+    different = list(kv_pair.get("different", []))
+
+    def key(name: str):
+        import re
+        m = re.match(r"^(base|swa)\.layer-(\d+)\.(K|V)\.bin$", name)
+        if not m:
+            return (10**9, name, "")
+        return (int(m.group(2)), m.group(1), m.group(3))
+
+    ordered = sorted(different, key=key)
+    first = None
+    if ordered:
+        import re
+        m = re.match(r"^(base|swa)\.layer-(\d+)\.(K|V)\.bin$", ordered[0])
+        if m:
+            first = {
+                "file": ordered[0],
+                "cache_class": m.group(1),
+                "layer": int(m.group(2)),
+                "kind": m.group(3),
+            }
+        else:
+            first = {"file": ordered[0]}
+
+    layout = comparison.get("layout_metadata", {}).get(pair, {})
+    return {
+        "comparison_pair": pair,
+        "mismatch_file_count": len(different),
+        "first_mismatch": first,
+        "layout_metadata_differs": not bool(layout.get("equal", False)),
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server-bin", type=Path, required=True)
@@ -251,6 +312,8 @@ def main():
 
     if len({args.port_wr, args.port_wr2, args.port_c}) != 3:
         raise SystemExit("all three ports must be distinct")
+    for port in (args.port_wr, args.port_wr2, args.port_c):
+        require_port_free(port)
     if args.out_root.exists():
         raise SystemExit(f"output root must not exist: {args.out_root}")
     if sha256(args.server_bin) != EXPECTED_SERVER_SHA:
@@ -346,6 +409,8 @@ def main():
         cmp_obj = json.loads(cmp_run.stdout)
 
         primary = cmp_obj.get("classification")
+        kv_localization = localize_kv(cmp_obj)
+        write_json(args.out_root / "kv-localization.json", kv_localization)
         allowed = {
             "PREFIX_DUMP_NOT_REPRODUCIBLE",
             "PREFIX_KV_GENERATION_DIFFERS",
@@ -362,6 +427,7 @@ def main():
             "requests": ["L0", "L1", "L0R", "LC"],
             "api_L1_vs_LC": api,
             "kv_comparison_file": str(cmp_path),
+            "kv_localization": kv_localization,
             "scientific_campaign_interaction": 0,
             "flash_attention_off_arms": 0,
         }
