@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import importlib.util
 import json
 from pathlib import Path
@@ -47,9 +48,71 @@ def expect_runtime_error(fn):
     return False
 
 
+def success_path_static_check():
+    here = Path(__file__).resolve().parent
+    runner_path = here / "e2d2c0d6-gemma4-kv-prefix-provenance-run.py"
+    tree = ast.parse(runner_path.read_text(encoding="utf-8"))
+    main_fn = next(
+        (node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "main"),
+        None,
+    )
+    if main_fn is None:
+        return {
+            "ok": False,
+            "reason": "runner main() not found",
+        }
+
+    assignments = []
+    loads = []
+    terminal_refs = []
+    for node in ast.walk(main_fn):
+        if isinstance(node, ast.Assign):
+            if any(isinstance(t, ast.Name) and t.id == "geometry_consistency" for t in node.targets):
+                if (
+                    isinstance(node.value, ast.Call)
+                    and isinstance(node.value.func, ast.Name)
+                    and node.value.func.id == "require_consistent_dump_geometry"
+                ):
+                    assignments.append(node.lineno)
+        if isinstance(node, ast.Name) and node.id == "geometry_consistency" and isinstance(node.ctx, ast.Load):
+            loads.append(node.lineno)
+        if isinstance(node, ast.Dict):
+            keys = node.keys
+            values = node.values
+            for key, value in zip(keys, values):
+                if (
+                    isinstance(key, ast.Constant)
+                    and key.value == "kv_dump_geometry_consistency"
+                    and isinstance(value, ast.Name)
+                    and value.id == "geometry_consistency"
+                ):
+                    terminal_refs.append(node.lineno)
+
+    ok = (
+        len(assignments) == 1
+        and len(terminal_refs) == 1
+        and loads
+        and assignments[0] < min(loads)
+        and assignments[0] < terminal_refs[0]
+    )
+    return {
+        "ok": ok,
+        "assignment_lines": assignments,
+        "load_lines": sorted(loads),
+        "terminal_reference_lines": terminal_refs,
+    }
+
+
 def main():
     runner = load_runner()
     results = []
+
+    static_check = success_path_static_check()
+    results.append({
+        "name": "success_path_geometry_consistency_bound_before_terminal",
+        "ok": static_check["ok"],
+        "observed": static_check,
+    })
 
     with tempfile.TemporaryDirectory(prefix="relaylm-kv-contract-") as td:
         root = Path(td)
