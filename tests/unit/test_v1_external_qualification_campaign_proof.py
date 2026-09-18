@@ -93,6 +93,69 @@ def _write_source_with_axis_case_mismatch(
     return source, hashlib.sha256(source.read_bytes()).hexdigest()
 
 
+def _write_source_with_material_mismatch(
+    tmp_path: Path,
+    *,
+    mismatch: str,
+) -> tuple[Path, str, Path]:
+    source, _ = _write_source(tmp_path)
+    raw = json.loads(source.read_text(encoding="utf-8"))
+
+    axes = raw["axes"]
+    freeze = raw["execution_freeze"]
+    assert isinstance(axes, list)
+    assert isinstance(freeze, dict)
+    release_cases = freeze["release_cases"]
+    assert isinstance(release_cases, list)
+
+    axis = axes[0]
+    assert isinstance(axis, dict)
+    axis_id = axis["axis_id"]
+    assert isinstance(axis_id, str)
+    release = next(
+        item
+        for item in release_cases
+        if isinstance(item, dict) and item.get("axis_id") == axis_id
+    )
+    assert isinstance(release, dict)
+
+    axis_case = axis["case"]
+    release_case = release["case"]
+    assert isinstance(axis_case, dict)
+    assert isinstance(release_case, dict)
+    release["case"] = copy.deepcopy(release_case)
+    axis_case["adapter_case_ref"] = str(axis_case["adapter_case_ref"]) + "-historical"
+
+    axis_material = axis["benchmark_material"]
+    release_material = release["benchmark_material"]
+    assert isinstance(axis_material, dict)
+    assert isinstance(release_material, dict)
+    release["benchmark_material"] = copy.deepcopy(release_material)
+    release_material = release["benchmark_material"]
+    assert isinstance(release_material, dict)
+
+    material_path = Path(str(axis_material["path"]))
+    assert material_path.is_file()
+
+    if mismatch == "dependent":
+        axis_material["case_fingerprint"] = "sha256:" + "1" * 64
+        axis_material["question_fingerprints"] = [
+            "sha256:" + "2" * 64
+            for _ in axis_material["question_fingerprints"]
+        ]
+    elif mismatch == "path":
+        release_material["path"] = str(material_path.with_name("other-material.json"))
+    elif mismatch == "sha":
+        release_material["sha256"] = "3" * 64
+    elif mismatch == "bytes":
+        material_path.write_bytes(material_path.read_bytes() + b"\n")
+    else:
+        raise AssertionError(f"unsupported mismatch {mismatch!r}")
+
+    source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
+    return source, hashlib.sha256(source.read_bytes()).hexdigest(), material_path
+
+
 def _prepare(tmp_path: Path) -> tuple[dict[str, object], Path, Path, str]:
     source, source_sha = _write_source(tmp_path)
     plan_path = tmp_path / "fresh-plan.json"
@@ -232,6 +295,122 @@ def test_prepare_static_proof_rejects_nonwhitelisted_adapter_case_ref_difference
             source_path=source,
             source_sha256=source_sha,
             plan_path=tmp_path / "should-not-exist-nonwhitelist.json",
+            owner_root=tmp_path / owner_id,
+            owner_id=owner_id,
+            repository_head="a" * 40,
+            repository_tree="b" * 40,
+        )
+
+
+def test_prepare_static_proof_canonicalizes_exact_preserved_material_dependent_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, source_sha, _ = _write_source_with_material_mismatch(
+        tmp_path,
+        mismatch="dependent",
+    )
+    monkeypatch.setattr(
+        campaign_proof,
+        "_PRESERVED_2964_SOURCE_SHA256",
+        source_sha,
+    )
+    owner_id = "owner-proof-material-compat"
+    plan_path = tmp_path / "fresh-material-compat-plan.json"
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
+    )
+
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
+    compatibility = receipt["preserved_case_compatibility"]
+    assert isinstance(compatibility, dict)
+    assert compatibility["status"] == "APPLIED"
+    axes = compatibility["axes"]
+    assert isinstance(axes, list)
+    assert len(axes) == 1
+    applied = axes[0]
+    assert isinstance(applied, dict)
+    assert applied["material_derived_fields"] == [
+        "case_fingerprint",
+        "question_fingerprints",
+    ]
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    prepared_axis = plan["axes"][0]
+    release = next(
+        item
+        for item in plan["execution_freeze"]["release_cases"]
+        if item["axis_id"] == prepared_axis["axis_id"]
+    )
+    assert prepared_axis["case"] == release["case"]
+    assert prepared_axis["benchmark_material"] == release["benchmark_material"]
+    CampaignDescriptor.from_mapping(plan)
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "message"),
+    (
+        ("path", "benchmark material path differs"),
+        ("sha", "benchmark material SHA256 differs"),
+        ("bytes", "benchmark material bytes drifted"),
+    ),
+)
+def test_prepare_static_proof_rejects_exact_preserved_material_identity_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+    message: str,
+) -> None:
+    source, source_sha, _ = _write_source_with_material_mismatch(
+        tmp_path,
+        mismatch=mismatch,
+    )
+    monkeypatch.setattr(
+        campaign_proof,
+        "_PRESERVED_2964_SOURCE_SHA256",
+        source_sha,
+    )
+    owner_id = f"owner-proof-material-{mismatch}-reject"
+
+    with pytest.raises(CampaignProofError, match=message):
+        prepare_static_proof(
+            repo_root=tmp_path,
+            source_path=source,
+            source_sha256=source_sha,
+            plan_path=tmp_path / f"should-not-exist-material-{mismatch}.json",
+            owner_root=tmp_path / owner_id,
+            owner_id=owner_id,
+            repository_head="a" * 40,
+            repository_tree="b" * 40,
+        )
+
+
+def test_prepare_static_proof_rejects_nonwhitelisted_material_dependent_drift(
+    tmp_path: Path,
+) -> None:
+    source, source_sha, _ = _write_source_with_material_mismatch(
+        tmp_path,
+        mismatch="dependent",
+    )
+    owner_id = "owner-proof-material-nonwhitelist-reject"
+
+    with pytest.raises(
+        CampaignCarriageError,
+        match=r"source axis '.+' case differs from execution freeze",
+    ):
+        prepare_static_proof(
+            repo_root=tmp_path,
+            source_path=source,
+            source_sha256=source_sha,
+            plan_path=tmp_path / "should-not-exist-material-nonwhitelist.json",
             owner_root=tmp_path / owner_id,
             owner_id=owner_id,
             repository_head="a" * 40,

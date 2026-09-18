@@ -27,6 +27,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignDescriptor,
     CampaignQuestion,
+    _fingerprint,
     _hindsight_owner_deployment_id,
 )
 
@@ -73,17 +74,33 @@ def _canonical_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+def _valid_fingerprint(value: object) -> bool:
+    if not isinstance(value, str) or not value.startswith("sha256:"):
+        return False
+    digest = value.removeprefix("sha256:")
+    return len(digest) == 64 and all(char in "0123456789abcdef" for char in digest)
+
+
+def _valid_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
 def _apply_preserved_2964_case_compatibility(
     raw: dict[str, Any],
     *,
     source_sha256: str,
 ) -> dict[str, object]:
-    """Canonicalize only the known #2964 adapter-case reference split.
+    """Canonicalize only known dependent duplicate drift in exact #2964 source.
 
     Generic fresh-owner preparation remains strict.  This compatibility is
-    available only for the exact preserved #2964 descriptor bytes and only
-    when the duplicated frozen case identities agree in every validated field
-    except the opaque adapter_case_ref.
+    available only for the exact preserved #2964 descriptor bytes.  Case
+    identity may differ only by the opaque adapter_case_ref.  Benchmark
+    material must identify exactly the same path and bytes; only the dependent
+    case/question fingerprints may be re-derived.
     """
 
     if source_sha256 != _PRESERVED_2964_SOURCE_SHA256:
@@ -95,7 +112,9 @@ def _apply_preserved_2964_case_compatibility(
         raise CampaignProofError("preserved #2964 source is missing axes/execution_freeze")
     release_cases = freeze.get("release_cases")
     if not isinstance(release_cases, list):
-        raise CampaignProofError("preserved #2964 execution_freeze release_cases must be a list")
+        raise CampaignProofError(
+            "preserved #2964 execution_freeze release_cases must be a list"
+        )
 
     axis_by_id: dict[str, dict[str, Any]] = {}
     for axis in axes:
@@ -126,17 +145,17 @@ def _apply_preserved_2964_case_compatibility(
             "preserved #2964 axes/release cases do not cover the same axis ids"
         )
 
-    applied: list[dict[str, str]] = []
+    material_keys = {"path", "sha256", "case_fingerprint", "question_fingerprints"}
+    applied: list[dict[str, object]] = []
     for axis_id, axis in axis_by_id.items():
         release_case = release_by_id[axis_id]
 
-        for field in ("manifest", "benchmark_material"):
-            if _canonical_json(axis.get(field)) != _canonical_json(
-                release_case.get(field)
-            ):
-                raise CampaignProofError(
-                    f"preserved #2964 axis {axis_id!r} {field} differs from execution freeze"
-                )
+        if _canonical_json(axis.get("manifest")) != _canonical_json(
+            release_case.get("manifest")
+        ):
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} manifest differs from execution freeze"
+            )
 
         axis_case = axis.get("case")
         frozen_case = release_case.get("case")
@@ -144,9 +163,6 @@ def _apply_preserved_2964_case_compatibility(
             raise CampaignProofError(
                 f"preserved #2964 axis {axis_id!r} cases must be objects"
             )
-        if _canonical_json(axis_case) == _canonical_json(frozen_case):
-            continue
-
         try:
             normalized_axis = validate_case(axis_case)
             normalized_frozen = validate_case(frozen_case)
@@ -167,8 +183,11 @@ def _apply_preserved_2964_case_compatibility(
                 f"preserved #2964 axis {axis_id!r} substantive case fields differ "
                 f"from execution freeze: {', '.join(differing)}"
             )
+
+        case_differs = _canonical_json(axis_case) != _canonical_json(frozen_case)
         if (
-            normalized_axis["adapter_case_ref"]
+            case_differs
+            and normalized_axis["adapter_case_ref"]
             == normalized_frozen["adapter_case_ref"]
         ):
             raise CampaignProofError(
@@ -181,23 +200,116 @@ def _apply_preserved_2964_case_compatibility(
             raise CampaignProofError(
                 f"preserved #2964 axis {axis_id!r} questions must be a non-empty list"
             )
+        parsed_questions: list[CampaignQuestion] = []
         for question in questions:
             if not isinstance(question, Mapping):
                 raise CampaignProofError(
                     f"preserved #2964 axis {axis_id!r} question must be an object"
                 )
-            CampaignQuestion.from_mapping(question)
+            parsed_questions.append(CampaignQuestion.from_mapping(question))
 
-        axis["case"] = copy.deepcopy(dict(frozen_case))
-        applied.append(
-            {
-                "axis_id": axis_id,
-                "source_adapter_case_ref": str(normalized_axis["adapter_case_ref"]),
-                "execution_freeze_adapter_case_ref": str(
-                    normalized_frozen["adapter_case_ref"]
-                ),
-            }
+        axis_material = axis.get("benchmark_material")
+        frozen_material = release_case.get("benchmark_material")
+        if not isinstance(axis_material, dict) or not isinstance(frozen_material, dict):
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark_material must be an object"
+            )
+        if set(axis_material) != material_keys or set(frozen_material) != material_keys:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark_material keys drifted"
+            )
+
+        if axis_material["path"] != frozen_material["path"]:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material path differs "
+                "from execution freeze"
+            )
+        if axis_material["sha256"] != frozen_material["sha256"]:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material SHA256 differs "
+                "from execution freeze"
+            )
+
+        material_path_value = axis_material["path"]
+        if not isinstance(material_path_value, str) or not material_path_value:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material path is invalid"
+            )
+        material_path = Path(material_path_value)
+        if not material_path.is_absolute() or not material_path.is_file():
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material path is not an "
+                "existing absolute file"
+            )
+        material_sha = axis_material["sha256"]
+        if not _valid_sha256(material_sha):
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material SHA256 is invalid"
+            )
+        if _sha256_file(material_path) != material_sha:
+            raise CampaignProofError(
+                f"preserved #2964 axis {axis_id!r} benchmark material bytes drifted"
+            )
+
+        for label, material in (
+            ("source axis", axis_material),
+            ("execution freeze", frozen_material),
+        ):
+            if not _valid_fingerprint(material["case_fingerprint"]):
+                raise CampaignProofError(
+                    f"preserved #2964 axis {axis_id!r} {label} material "
+                    "case_fingerprint is invalid"
+                )
+            question_fingerprints = material["question_fingerprints"]
+            if (
+                not isinstance(question_fingerprints, list)
+                or len(question_fingerprints) != len(parsed_questions)
+                or not all(_valid_fingerprint(item) for item in question_fingerprints)
+            ):
+                raise CampaignProofError(
+                    f"preserved #2964 axis {axis_id!r} {label} material "
+                    "question_fingerprints are invalid"
+                )
+
+        canonical_material = {
+            "path": material_path_value,
+            "sha256": material_sha,
+            "case_fingerprint": _fingerprint(normalized_frozen),
+            "question_fingerprints": [
+                question.content_fingerprint for question in parsed_questions
+            ],
+        }
+        dependent_fields = ("case_fingerprint", "question_fingerprints")
+        material_differences = sorted(
+            field
+            for field in dependent_fields
+            if _canonical_json(axis_material[field])
+            != _canonical_json(frozen_material[field])
+            or _canonical_json(axis_material[field])
+            != _canonical_json(canonical_material[field])
+            or _canonical_json(frozen_material[field])
+            != _canonical_json(canonical_material[field])
         )
+
+        if case_differs:
+            axis["case"] = copy.deepcopy(dict(frozen_case))
+        if material_differences:
+            axis["benchmark_material"] = copy.deepcopy(canonical_material)
+            release_case["benchmark_material"] = copy.deepcopy(canonical_material)
+
+        if case_differs or material_differences:
+            item: dict[str, object] = {
+                "axis_id": axis_id,
+                "material_derived_fields": material_differences,
+            }
+            if case_differs:
+                item["source_adapter_case_ref"] = str(
+                    normalized_axis["adapter_case_ref"]
+                )
+                item["execution_freeze_adapter_case_ref"] = str(
+                    normalized_frozen["adapter_case_ref"]
+                )
+            applied.append(item)
 
     return {
         "status": "APPLIED" if applied else "NOT_NEEDED",
