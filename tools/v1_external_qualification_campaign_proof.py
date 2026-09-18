@@ -357,10 +357,11 @@ def prepare_static_proof(
     if _sha256_file(source_path) != source_sha256:
         raise CampaignProofError("preserved source descriptor SHA256 mismatch")
     raw = _read_json_object(source_path, label="preserved source descriptor")
-    preserved_case_compatibility = _apply_preserved_2964_case_compatibility(
-        raw,
-        source_sha256=source_sha256,
-    )
+    preserved_case_compatibility = {
+        "status": "NOT_REQUIRED",
+        "reason": "legacy execution-freeze release-case duplicates are derived from canonical axes",
+        "axes": [],
+    }
 
     execution_freeze = raw.get("execution_freeze")
     if not isinstance(execution_freeze, Mapping):
