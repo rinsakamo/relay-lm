@@ -318,6 +318,7 @@ Primary classification must be exactly one:
 - `RETAINED_PREFIX_KV_MUTATED_BY_REUSE`
 - `PREFIX_KV_IDENTICAL_THROUGH_REUSE`
 - `PROBE_NOT_EXERCISED`
+- `PROBE_EXERCISED_INCOMPLETE`
 
 If KV payload differs, report:
 
@@ -371,7 +372,7 @@ After the first measured L0 request is submitted:
 - alternate binary = 0
 - alternate runtime = 0
 
-Any failure after measured L0 is terminal for this probe attempt.
+Any failure after measured L0 is terminal for this probe attempt and must classify `PROBE_EXERCISED_INCOMPLETE` unless a complete valid KV-state classification has already been produced. That state is consumed and does not authorize an automatic rerun.
 
 A failure before measured L0 may classify `PROBE_NOT_EXERCISED` without consuming the measured probe.
 
