@@ -133,12 +133,14 @@ It orchestrates, in order:
 
 1. `e2d2c0d6-gemma4-kv-startup-evidence-parser-selftest.py`
 2. parser self-test terminal validation
-3. canonical diagnostic GPU resource guard
-4. `e2d2c0d6-gemma4-kv-artifact-locator.py`
-5. locator terminal validation
-6. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
-7. request admission inside the measured runner
-8. exactly-once measured sequence and terminal comparison
+3. `e2d2c0d6-gemma4-kv-runner-contract-selftest.py`
+4. dump/localization contract self-test terminal validation
+5. canonical diagnostic GPU resource guard
+6. `e2d2c0d6-gemma4-kv-artifact-locator.py`
+7. locator terminal validation
+8. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
+9. request admission inside the measured runner
+10. exactly-once measured sequence and terminal comparison
 
 Required parser self-test terminal: `STARTUP_EVIDENCE_PARSER_SELFTEST_PASS`.
 
@@ -153,6 +155,19 @@ flash_attn            = %s
 ```
 
 It also exercises compact/mixed whitespace and negative controls. A self-test failure stops before GPU flock acquisition and before L0.
+
+Required runner-contract self-test terminal: `KV_RUNNER_CONTRACT_SELFTEST_PASS`.
+
+The runner-contract self-test imports the measured runner and exercises, without GPU/model access:
+
+- a valid synthetic manifest-driven dump;
+- truncated payload rejection;
+- missing metadata rejection;
+- logical-position drift rejection;
+- missing K/V pair rejection;
+- cross-dump missing-payload localization/counting.
+
+A runner-contract self-test failure also stops before GPU flock acquisition and before L0.
 
 The measured runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
 
@@ -340,6 +355,8 @@ Required terminal artifacts include:
 Preflight root:
 - `startup-evidence-parser-selftest.json`
 - `startup-evidence-parser-selftest.stderr.txt`
+- `kv-runner-contract-selftest.json`
+- `kv-runner-contract-selftest.stderr.txt`
 - `shared-resource-guard.json`
 - `external-quiescence.json`
 - `artifact-locator.json`
@@ -361,7 +378,7 @@ Measured output root:
 - `kv-localization.json`
 - `terminal.json`
 
-For a KV mismatch, `kv-localization.json` must identify the governing comparison pair, mismatch-file count, earliest differing layer/cache-class/K-or-V when parseable, and whether layout metadata differs.
+For a KV mismatch, `kv-localization.json` must identify the governing comparison pair, total mismatch-file count including hash differences and left/right missing payloads, the separate hash/missing counts, earliest differing layer/cache-class/K-or-V when parseable, difference type(s), and whether layout metadata differs.
 
 ## Retry boundary
 
