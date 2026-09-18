@@ -385,34 +385,47 @@ def localize_kv(comparison: dict):
         }
 
     kv_pair = comparison.get("kv", {}).get(pair, {})
-    different = list(kv_pair.get("different", []))
+    different = set(kv_pair.get("different", []))
+    missing_left = set(kv_pair.get("missing_left", []))
+    missing_right = set(kv_pair.get("missing_right", []))
+    mismatched = different | missing_left | missing_right
 
     def key(name: str):
-        import re
         m = re.match(r"^(base|swa)\.layer-(\d+)\.(K|V)\.bin$", name)
         if not m:
             return (10**9, name, "")
         return (int(m.group(2)), m.group(1), m.group(3))
 
-    ordered = sorted(different, key=key)
+    ordered = sorted(mismatched, key=key)
     first = None
     if ordered:
-        import re
-        m = re.match(r"^(base|swa)\.layer-(\d+)\.(K|V)\.bin$", ordered[0])
+        filename = ordered[0]
+        m = re.match(r"^(base|swa)\.layer-(\d+)\.(K|V)\.bin$", filename)
+        difference_types = []
+        if filename in different:
+            difference_types.append("hash_diff")
+        if filename in missing_left:
+            difference_types.append("missing_left")
+        if filename in missing_right:
+            difference_types.append("missing_right")
         if m:
             first = {
-                "file": ordered[0],
+                "file": filename,
                 "cache_class": m.group(1),
                 "layer": int(m.group(2)),
                 "kind": m.group(3),
+                "difference_types": difference_types,
             }
         else:
-            first = {"file": ordered[0]}
+            first = {"file": filename, "difference_types": difference_types}
 
     layout = comparison.get("layout_metadata", {}).get(pair, {})
     return {
         "comparison_pair": pair,
-        "mismatch_file_count": len(different),
+        "mismatch_file_count": len(mismatched),
+        "hash_diff_count": len(different),
+        "missing_left_count": len(missing_left),
+        "missing_right_count": len(missing_right),
         "first_mismatch": first,
         "layout_metadata_differs": not bool(layout.get("equal", False)),
     }
