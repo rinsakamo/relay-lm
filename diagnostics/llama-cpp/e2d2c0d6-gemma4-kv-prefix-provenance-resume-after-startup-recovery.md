@@ -273,6 +273,7 @@ Required terminal artifacts include:
 - `artifact-locator.json`
 - `request-admission.json`
 - complete per-server argv/env/startup/logs
+- per-server `startup-evidence.json` proving Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`
 - exact measured request bytes and SHA256
 - raw and pretty responses
 - `api-L1-vs-LC.json`
