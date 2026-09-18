@@ -24,38 +24,45 @@ def main():
         {
             "name": "exact-source-format",
             "text": (
-                "llama_init_from_model: n_batch               = 512\n"
-                "llama_init_from_model: n_ubatch              = 512\n"
-                "llama_init_from_model: flash_attn            = enabled\n"
+                "llama_context: n_batch               = 512\n"
+                "llama_context: n_ubatch              = 512\n"
+                "llama_context: flash_attn            = enabled\n"
             ),
             "expected": {"batch": True, "ubatch": True, "flash": True},
         },
         {
             "name": "compact-spacing",
-            "text": "n_batch=512\nn_ubatch=512\nflash_attn=enabled\n",
+            "text": "llama_context:n_batch=512\nllama_context:n_ubatch=512\nllama_context:flash_attn=enabled\n",
             "expected": {"batch": True, "ubatch": True, "flash": True},
         },
         {
             "name": "mixed-whitespace",
-            "text": "n_batch\t =\t512\nn_ubatch    =  512\nflash_attn\t= enabled\n",
+            "text": "prefix llama_context : n_batch\t =\t512\nprefix llama_context: n_ubatch    =  512\nprefix llama_context : flash_attn\t= enabled\n",
             "expected": {"batch": True, "ubatch": True, "flash": True},
         },
         {
             "name": "wrong-values",
-            "text": "n_batch = 2048\nn_ubatch = 256\nflash_attn = disabled\n",
+            "text": "llama_context: n_batch = 2048\nllama_context: n_ubatch = 256\nllama_context: flash_attn = disabled\n",
             "expected": {"batch": False, "ubatch": False, "flash": False},
         },
         {
             "name": "near-miss-identifiers",
-            "text": "x_n_batch = 512\nn_ubatch_extra = 512\nmy_flash_attn = enabled\n",
+            "text": "llama_context: x_n_batch = 512\nllama_context: n_ubatch_extra = 512\nllama_context: my_flash_attn = enabled\n",
             "expected": {"batch": False, "ubatch": False, "flash": False},
         },
     ]
 
+    cases.append({
+        "name": "argv-echo-is-not-runtime-evidence",
+        "text": "--batch-size 512 --ubatch-size 512 --flash-attn on\n"
+                "n_batch = 512 n_ubatch = 512 flash_attn = enabled\n",
+        "expected": {"batch": False, "ubatch": False, "flash": False},
+    })
+
     patterns = {
-        "batch": r"^.*\bn_batch\s*=\s*512\b.*$",
-        "ubatch": r"^.*\bn_ubatch\s*=\s*512\b.*$",
-        "flash": r"^.*\bflash_attn\s*=\s*enabled\b.*$",
+        "batch": r"^.*\bllama_context\s*:\s*n_batch\s*=\s*512\b.*$",
+        "ubatch": r"^.*\bllama_context\s*:\s*n_ubatch\s*=\s*512\b.*$",
+        "flash": r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
     }
 
     results = []
