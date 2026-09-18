@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import errno
 import fcntl
 import hashlib
 import json
@@ -57,10 +58,22 @@ def process_executable_names():
     return names
 
 
+def interpret_connect_ex(code: int) -> bool:
+    if code == 0:
+        return True
+    if code == errno.ECONNREFUSED:
+        return False
+    raise RuntimeError(
+        f"loopback listener probe inconclusive: connect_ex errno={code} "
+        f"({os.strerror(code) if code > 0 else 'unknown'})"
+    )
+
+
 def listener_busy(host: str, port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.25)
-        return sock.connect_ex((host, port)) == 0
+        code = sock.connect_ex((host, port))
+    return interpret_connect_ex(code)
 
 
 def require_external_quiescence(preflight_root: Path):
