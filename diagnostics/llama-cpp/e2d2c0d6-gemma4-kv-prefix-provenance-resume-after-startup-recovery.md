@@ -10,7 +10,7 @@ Diagnostic-only execution handoff.
 - ruleset 20931403: active on v1
 - #2961: CLOSED / completed zero-semantic proof
 - #2964: OPEN historical scientific owner, explicitly not to be rebound/reused/executed
-- #2965: OPEN qualification-only repair owner; latest host packet at authoring is v10 and scientific `--execute` remains unauthorized
+- #2965: OPEN qualification-only repair owner; latest continuation at authoring is v10.1 and scientific `--execute` remains unauthorized
 - #1449 / #1447: remain open; no scientific campaign authorization is carried by this diagnostic
 
 Current repository authority at execution time wins over this snapshot.
@@ -131,11 +131,26 @@ Use the one-shot resume wrapper as the preferred entrypoint:
 
 It orchestrates, in order:
 
-1. `e2d2c0d6-gemma4-kv-artifact-locator.py`
-2. locator terminal validation
-3. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
-4. request admission inside the measured runner
-5. exactly-once measured sequence and terminal comparison
+1. `e2d2c0d6-gemma4-kv-startup-evidence-parser-selftest.py`
+2. parser self-test terminal validation
+3. canonical diagnostic GPU resource guard
+4. `e2d2c0d6-gemma4-kv-artifact-locator.py`
+5. locator terminal validation
+6. `e2d2c0d6-gemma4-kv-prefix-provenance-run.py`
+7. request admission inside the measured runner
+8. exactly-once measured sequence and terminal comparison
+
+Required parser self-test terminal: `STARTUP_EVIDENCE_PARSER_SELFTEST_PASS`.
+
+The self-test is grounded in the exact llama.cpp revision's source logging format from `src/llama-context.cpp`:
+
+```text
+n_batch               = %u
+n_ubatch              = %u
+flash_attn            = %s
+```
+
+It also exercises compact/mixed whitespace and negative controls. A self-test failure stops before GPU flock acquisition and before L0.
 
 The measured runner accepts only previously retained request JSON artifacts and frozen token-array files. It does not retokenize or reconstruct requests.
 
@@ -318,6 +333,8 @@ Also report instrumented L1 vs LC API first-token/top-N comparison, but do not l
 Required terminal artifacts include:
 
 Preflight root:
+- `startup-evidence-parser-selftest.json`
+- `startup-evidence-parser-selftest.stderr.txt`
 - `shared-resource-guard.json`
 - `external-quiescence.json`
 - `artifact-locator.json`
