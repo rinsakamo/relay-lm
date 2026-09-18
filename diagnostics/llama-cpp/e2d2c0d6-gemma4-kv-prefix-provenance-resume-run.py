@@ -104,6 +104,39 @@ def main():
 
     args.preflight_root.mkdir(parents=True)
 
+    here = Path(__file__).resolve().parent
+    parser_selftest = here / "e2d2c0d6-gemma4-kv-startup-evidence-parser-selftest.py"
+    selftest = subprocess.run(
+        [sys.executable, str(parser_selftest)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (args.preflight_root / "startup-evidence-parser-selftest.json").write_bytes(selftest.stdout)
+    (args.preflight_root / "startup-evidence-parser-selftest.stderr.txt").write_bytes(selftest.stderr)
+    if selftest.returncode != 0:
+        write_terminal(
+            args.preflight_root,
+            stage="startup_evidence_parser_selftest",
+            reason="STARTUP_EVIDENCE_PARSER_SELFTEST_FAIL",
+        )
+        return 9
+    try:
+        selftest_obj = json.loads(selftest.stdout)
+    except Exception as exc:
+        write_terminal(
+            args.preflight_root,
+            stage="startup_evidence_parser_selftest",
+            reason=f"invalid self-test JSON: {exc}",
+        )
+        return 9
+    if selftest_obj.get("status") != "STARTUP_EVIDENCE_PARSER_SELFTEST_PASS":
+        write_terminal(
+            args.preflight_root,
+            stage="startup_evidence_parser_selftest",
+            reason=f"unexpected self-test status: {selftest_obj.get('status')}",
+        )
+        return 9
+
     # Cooperate with the repository's canonical shared local-GPU flock without
     # creating or mutating any #2965 campaign queue/receipt/spend artifact.
     LOCK_ROOT.mkdir(parents=True, exist_ok=True)
@@ -147,7 +180,6 @@ def main():
             )
             return 7
 
-        here = Path(__file__).resolve().parent
         locator = here / "e2d2c0d6-gemma4-kv-artifact-locator.py"
         runner = here / "e2d2c0d6-gemma4-kv-prefix-provenance-run.py"
 
