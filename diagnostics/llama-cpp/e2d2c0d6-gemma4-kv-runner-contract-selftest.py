@@ -17,15 +17,16 @@ def load_runner():
     return module
 
 
-def make_dump(root: Path, name: str):
+def make_dump(root: Path, name: str, *, base_kv_size: int = 8192, swa_kv_size: int = 1536):
     dump = root / name
     dump.mkdir(parents=True)
     for cache_name, layer in (("base", 0), ("swa", 1)):
+        kv_size = base_kv_size if cache_name == "base" else swa_kv_size
         cells = dump / f"{cache_name}.cells.tsv"
         with cells.open("w", encoding="utf-8") as out:
             out.write("cache\tstream\thead\tkv_size\tv_trans\tposition\tcell\n")
             for pos in range(512):
-                out.write(f"{cache_name}\t0\t0\t1536\t0\t{pos}\t{pos}\n")
+                out.write(f"{cache_name}\t0\t0\t{kv_size}\t0\t{pos}\t{pos}\n")
 
         manifest = dump / f"{cache_name}.manifest.tsv"
         with manifest.open("w", encoding="utf-8") as out:
@@ -60,6 +61,18 @@ def main():
         except Exception:
             valid_ok = False
         results.append({"name": "valid_dump_passes", "ok": valid_ok})
+
+        full_swa = make_dump(root, "full-swa", base_kv_size=8192, swa_kv_size=8192)
+        results.append({
+            "name": "full_size_swa_fails_compact_contract",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "full-swa")),
+        })
+
+        wrong_base = make_dump(root, "wrong-base", base_kv_size=4096, swa_kv_size=1536)
+        results.append({
+            "name": "wrong_base_kv_size_fails",
+            "ok": expect_runtime_error(lambda: runner.require_dump(root, "wrong-base")),
+        })
 
         truncated = make_dump(root, "truncated")
         (truncated / "base.layer-0.K.bin").write_bytes(b"K" * 1023)
