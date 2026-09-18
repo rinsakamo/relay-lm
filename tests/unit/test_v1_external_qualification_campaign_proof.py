@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-import tools.v1_external_qualification_campaign_proof as campaign_proof
 from test_v1_external_qualification_llama_cpp_campaign import _strict_descriptor_mapping
 from tools.external_qualification import LiveLaunchAdmissionAttestation
 from tools.v1_external_qualification_campaign_proof import (
