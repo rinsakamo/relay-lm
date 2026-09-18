@@ -145,6 +145,8 @@ Required parser self-test terminal: `STARTUP_EVIDENCE_PARSER_SELFTEST_PASS`.
 The self-test is grounded in the exact llama.cpp revision's source logging format from `src/llama-context.cpp`:
 
 ```text
+n_seq_max             = %u
+n_ctx                 = %u
 n_batch               = %u
 n_ubatch              = %u
 flash_attn            = %s
@@ -351,7 +353,7 @@ Preflight root:
 Measured output root:
 - `request-admission.json`
 - complete per-server argv/env/startup/logs
-- per-server `startup-evidence.json` proving Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`
+- per-server `startup-evidence.json` proving `n_seq_max=1`, `n_ctx=8192`, Flash Attention enabled, `n_batch=512`, and `n_ubatch=512`, each from `llama_context:` runtime log lines
 - exact measured request bytes and SHA256
 - raw and pretty responses
 - `api-L1-vs-LC.json`
