@@ -198,18 +198,12 @@ def test_prepare_static_proof_canonicalizes_historical_hindsight(tmp_path: Path)
     assert admitted.fingerprint == receipt["campaign_fingerprint"]
 
 
-def test_prepare_static_proof_canonicalizes_exact_preserved_adapter_case_ref_only(
+def test_prepare_static_proof_derives_release_case_from_axis_and_ignores_stale_duplicate(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-case-compat"
-    plan_path = tmp_path / "fresh-case-compat-plan.json"
+    owner_id = "owner-proof-derived-release-case"
+    plan_path = tmp_path / "fresh-derived-release-case.json"
 
     receipt = prepare_static_proof(
         repo_root=tmp_path,
@@ -225,123 +219,7 @@ def test_prepare_static_proof_canonicalizes_exact_preserved_adapter_case_ref_onl
     assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
     compatibility = receipt["preserved_case_compatibility"]
     assert isinstance(compatibility, dict)
-    assert compatibility["status"] == "APPLIED"
-    axes = compatibility["axes"]
-    assert isinstance(axes, list)
-    assert len(axes) == 1
-
-    plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    prepared_axes = plan["axes"]
-    freeze = plan["execution_freeze"]
-    assert isinstance(prepared_axes, list)
-    assert isinstance(freeze, dict)
-    release_cases = freeze["release_cases"]
-    assert isinstance(release_cases, list)
-    prepared_axis = prepared_axes[0]
-    assert isinstance(prepared_axis, dict)
-    prepared_release = next(
-        item
-        for item in release_cases
-        if isinstance(item, dict)
-        and item.get("axis_id") == prepared_axis["axis_id"]
-    )
-    assert prepared_axis["case"] == prepared_release["case"]
-    CampaignDescriptor.from_mapping(plan)
-
-
-def test_prepare_static_proof_rejects_exact_preserved_substantive_case_difference(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source, source_sha = _write_source_with_axis_case_mismatch(
-        tmp_path,
-        substantive=True,
-    )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-case-substantive-reject"
-
-    with pytest.raises(
-        CampaignProofError,
-        match="substantive case fields differ.*benchmark",
-    ):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-substantive.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
-
-
-def test_prepare_static_proof_rejects_nonwhitelisted_adapter_case_ref_difference(
-    tmp_path: Path,
-) -> None:
-    source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
-    owner_id = "owner-proof-case-nonwhitelist-reject"
-
-    with pytest.raises(
-        CampaignCarriageError,
-        match=r"source axis '.+' case differs from execution freeze",
-    ):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-nonwhitelist.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
-
-
-def test_prepare_static_proof_canonicalizes_exact_preserved_material_dependent_drift(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source, source_sha, _ = _write_source_with_material_mismatch(
-        tmp_path,
-        mismatch="dependent",
-    )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-material-compat"
-    plan_path = tmp_path / "fresh-material-compat-plan.json"
-
-    receipt = prepare_static_proof(
-        repo_root=tmp_path,
-        source_path=source,
-        source_sha256=source_sha,
-        plan_path=plan_path,
-        owner_root=tmp_path / owner_id,
-        owner_id=owner_id,
-        repository_head="a" * 40,
-        repository_tree="b" * 40,
-    )
-
-    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
-    compatibility = receipt["preserved_case_compatibility"]
-    assert isinstance(compatibility, dict)
-    assert compatibility["status"] == "APPLIED"
-    axes = compatibility["axes"]
-    assert isinstance(axes, list)
-    assert len(axes) == 1
-    applied = axes[0]
-    assert isinstance(applied, dict)
-    assert applied["material_derived_fields"] == [
-        "case_fingerprint",
-        "question_fingerprints",
-    ]
+    assert compatibility["status"] == "NOT_REQUIRED"
 
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     prepared_axis = plan["axes"][0]
@@ -355,62 +233,56 @@ def test_prepare_static_proof_canonicalizes_exact_preserved_material_dependent_d
     CampaignDescriptor.from_mapping(plan)
 
 
-@pytest.mark.parametrize(
-    ("mismatch", "message"),
-    (
-        ("path", "benchmark material path differs"),
-        ("sha", "benchmark material SHA256 differs"),
-        ("bytes", "benchmark material bytes drifted"),
-    ),
-)
-def test_prepare_static_proof_rejects_exact_preserved_material_identity_drift(
+@pytest.mark.parametrize("mismatch", ("dependent", "path", "sha"))
+def test_prepare_static_proof_ignores_stale_release_material_duplicate(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     mismatch: str,
-    message: str,
 ) -> None:
     source, source_sha, _ = _write_source_with_material_mismatch(
         tmp_path,
         mismatch=mismatch,
     )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
+    owner_id = f"owner-proof-derived-material-{mismatch}"
+    plan_path = tmp_path / f"fresh-derived-material-{mismatch}.json"
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
     )
-    owner_id = f"owner-proof-material-{mismatch}-reject"
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
 
-    with pytest.raises(CampaignProofError, match=message):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / f"should-not-exist-material-{mismatch}.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    prepared_axis = plan["axes"][0]
+    release = next(
+        item
+        for item in plan["execution_freeze"]["release_cases"]
+        if item["axis_id"] == prepared_axis["axis_id"]
+    )
+    assert prepared_axis["benchmark_material"] == release["benchmark_material"]
+    CampaignDescriptor.from_mapping(plan)
 
 
-def test_prepare_static_proof_rejects_nonwhitelisted_material_dependent_drift(
+def test_prepare_static_proof_still_rejects_material_byte_drift(
     tmp_path: Path,
 ) -> None:
     source, source_sha, _ = _write_source_with_material_mismatch(
         tmp_path,
-        mismatch="dependent",
+        mismatch="bytes",
     )
-    owner_id = "owner-proof-material-nonwhitelist-reject"
+    owner_id = "owner-proof-material-bytes-reject"
 
-    with pytest.raises(
-        CampaignCarriageError,
-        match=r"source axis '.+' case differs from execution freeze",
-    ):
+    with pytest.raises(CampaignCarriageError, match="content drifted"):
         prepare_static_proof(
             repo_root=tmp_path,
             source_path=source,
             source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-material-nonwhitelist.json",
+            plan_path=tmp_path / "should-not-exist-material-bytes.json",
             owner_root=tmp_path / owner_id,
             owner_id=owner_id,
             repository_head="a" * 40,
