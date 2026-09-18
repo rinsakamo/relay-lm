@@ -162,6 +162,19 @@ against a root containing:
 
 The comparator hashes all per-layer K/V binary dumps independently.
 
+Before comparison, each dump point must pass manifest-driven completeness validation:
+
+- both `base.cells.tsv` and `swa.cells.tsv` exist with exactly 512 data rows;
+- logical positions are exactly 0..511;
+- `v_trans=0`;
+- both `base.manifest.tsv` and `swa.manifest.tsv` exist and are non-empty;
+- every manifest row reports rows=512 and positive row_bytes;
+- every participating layer has both K and V entries;
+- every corresponding payload exists with exact byte size `row_bytes * 512`;
+- actual `.bin` file set equals the manifest-derived expected set.
+
+A partial/inconsistent dump must not be interpreted as a KV mismatch.
+
 Layout metadata hashes are reported separately and must not be conflated with KV value equality.
 
 ## Primary KV classifications
