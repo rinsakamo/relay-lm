@@ -304,6 +304,8 @@ The runner validates response timings directly:
 
 It also requires one predicted token for every measured request.
 
+Each required dump is validated before proceeding/comparison from its cells and manifest metadata: 512 logical rows, positions exactly 0..511, non-transposed V layout, complete K/V layer pairs, exact payload byte sizes, and exact manifest-to-payload file-set equality. A partial dump after L0 terminalizes as `PROBE_EXERCISED_INCOMPLETE`; it is not a KV mismatch classification.
+
 After and only after all four required dump directories exist, it runs:
 
 ```bash
