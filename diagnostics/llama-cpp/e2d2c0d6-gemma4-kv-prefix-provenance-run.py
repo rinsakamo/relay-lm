@@ -15,6 +15,14 @@ import time
 EXPECTED_SERVER_SHA = "0a9160015c31d11b607b1bd7559e69fe90c02d1079ad7517ccb24ea75c71b08e"
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
 
+STARTUP_EVIDENCE_PATTERNS = {
+    "n_seq_max_1": r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
+    "n_ctx_8192": r"^.*\bllama_context\s*:\s*n_ctx\s*=\s*8192\b.*$",
+    "n_batch_512": r"^.*\bllama_context\s*:\s*n_batch\s*=\s*512\b.*$",
+    "n_ubatch_512": r"^.*\bllama_context\s*:\s*n_ubatch\s*=\s*512\b.*$",
+    "flash_attn_enabled": r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
+}
+
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -259,26 +267,8 @@ def require_startup_evidence(server: Server):
             pass
 
     checks = {
-        "n_seq_max_1": _startup_evidence_match(
-            text,
-            r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
-        ),
-        "n_ctx_8192": _startup_evidence_match(
-            text,
-            r"^.*\bllama_context\s*:\s*n_ctx\s*=\s*8192\b.*$",
-        ),
-        "flash_attn_enabled": _startup_evidence_match(
-            text,
-            r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
-        ),
-        "n_batch_512": _startup_evidence_match(
-            text,
-            r"^.*\bllama_context\s*:\s*n_batch\s*=\s*512\b.*$",
-        ),
-        "n_ubatch_512": _startup_evidence_match(
-            text,
-            r"^.*\bllama_context\s*:\s*n_ubatch\s*=\s*512\b.*$",
-        ),
+        name: _startup_evidence_match(text, pattern)
+        for name, pattern in STARTUP_EVIDENCE_PATTERNS.items()
     }
     write_json(server.out / "startup-evidence.json", checks)
     missing = [name for name, result in checks.items() if not result["ok"]]
