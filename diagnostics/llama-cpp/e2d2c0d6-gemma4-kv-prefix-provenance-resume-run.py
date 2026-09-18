@@ -10,7 +10,6 @@ import subprocess
 import sys
 import time
 
-
 RESOURCE_KEY = "llama-cpp:local-gpu"
 LOCK_ROOT = Path("/tmp/relaylm/physical/locks")
 BUSY_NAMES = {"llama-server", "llama-cli", "llama-run"}
@@ -18,6 +17,15 @@ BUSY_NAMES = {"llama-server", "llama-cli", "llama-run"}
 
 def write_json(path: Path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def write_terminal(root: Path, *, stage: str, reason: str):
+    write_json(root / "terminal.json", {
+        "primary_classification": "PROBE_NOT_EXERCISED",
+        "measured_l0_submitted": False,
+        "stage": stage,
+        "reason": reason,
+    })
 
 
 def safe_resource_id(resource_key: str) -> str:
@@ -41,7 +49,7 @@ def process_executable_names():
         except OSError:
             pass
         try:
-            raw = (entry / "cmdline").read_bytes().split(b"\\0", 1)[0]
+            raw = (entry / "cmdline").read_bytes().split(b"\0", 1)[0]
         except OSError:
             continue
         if raw:
@@ -96,26 +104,31 @@ def main():
 
     args.preflight_root.mkdir(parents=True)
 
-    # Cooperate with the repository's canonical local-GPU resource lock without
-    # creating or touching any #2965 campaign queue/receipt/spend artifact.
+    # Cooperate with the repository's canonical shared local-GPU flock without
+    # creating or mutating any #2965 campaign queue/receipt/spend artifact.
     LOCK_ROOT.mkdir(parents=True, exist_ok=True)
     lock_path = LOCK_ROOT / safe_resource_id(RESOURCE_KEY)
     lock_file = lock_path.open("a+", encoding="utf-8")
     try:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        write_json(args.preflight_root / "terminal.json", {
-            "primary_classification": "PROBE_NOT_EXERCISED",
-            "measured_l0_submitted": False,
-            "stage": "shared_resource_guard",
-            "reason": "canonical local GPU lease is already held",
+        write_json(args.preflight_root / "shared-resource-guard.json", {
             "resource_key": RESOURCE_KEY,
             "lock_path": str(lock_path),
+            "guard_state": "NOT_ACQUIRED_BUSY",
+            "campaign_queue_receipt_created": False,
+            "campaign_queue_or_spend_artifact_touched": False,
         })
+        write_terminal(
+            args.preflight_root,
+            stage="shared_resource_guard",
+            reason="canonical local GPU flock is already held",
+        )
         lock_file.close()
-        raise SystemExit(6)
+        return 6
 
-    write_json(args.preflight_root / "shared-resource-guard.json", {
+    guard_path = args.preflight_root / "shared-resource-guard.json"
+    write_json(guard_path, {
         "resource_key": RESOURCE_KEY,
         "lock_path": str(lock_path),
         "guard_state": "ACQUIRED_CANONICAL_DIAGNOSTIC_FLOCK",
@@ -124,122 +137,143 @@ def main():
     })
 
     try:
-        require_external_quiescence(args.preflight_root)
-    except Exception as exc:
-        write_json(args.preflight_root / "terminal.json", {
-            "primary_classification": "PROBE_NOT_EXERCISED",
-            "measured_l0_submitted": False,
-            "stage": "shared_resource_guard",
-            "reason": str(exc),
+        try:
+            require_external_quiescence(args.preflight_root)
+        except Exception as exc:
+            write_terminal(
+                args.preflight_root,
+                stage="shared_resource_guard",
+                reason=str(exc),
+            )
+            return 7
+
+        here = Path(__file__).resolve().parent
+        locator = here / "e2d2c0d6-gemma4-kv-artifact-locator.py"
+        runner = here / "e2d2c0d6-gemma4-kv-prefix-provenance-run.py"
+
+        locator_json = args.preflight_root / "artifact-locator.json"
+        locator_cmd = [
+            sys.executable,
+            str(locator),
+            *[str(p) for p in args.search_root],
+            "--out",
+            str(locator_json),
+        ]
+        write_json(args.preflight_root / "artifact-locator.argv.json", locator_cmd)
+        located = subprocess.run(locator_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (args.preflight_root / "artifact-locator.stdout.txt").write_bytes(located.stdout)
+        (args.preflight_root / "artifact-locator.stderr.txt").write_bytes(located.stderr)
+
+        if located.returncode != 0:
+            write_terminal(
+                args.preflight_root,
+                stage="artifact_locator",
+                reason="ARTIFACT_LOCATOR_FAIL",
+            )
+            return 2
+
+        try:
+            obj = json.loads(locator_json.read_text(encoding="utf-8"))
+        except Exception as exc:
+            write_terminal(
+                args.preflight_root,
+                stage="artifact_locator",
+                reason=f"invalid locator JSON: {exc}",
+            )
+            return 3
+
+        if obj.get("status") != "ARTIFACT_LOCATOR_PASS":
+            write_terminal(
+                args.preflight_root,
+                stage="artifact_locator",
+                reason=f"unexpected locator status: {obj.get('status')}",
+            )
+            return 3
+
+        selected = obj.get("selected")
+        if not isinstance(selected, dict):
+            write_terminal(
+                args.preflight_root,
+                stage="artifact_locator",
+                reason="locator selected block missing",
+            )
+            return 4
+
+        required = ("warm_tokens", "target_tokens", "L0", "L1", "LC")
+        missing = [name for name in required if name not in selected]
+        if missing:
+            write_terminal(
+                args.preflight_root,
+                stage="artifact_locator",
+                reason=f"locator selected entries missing: {missing}",
+            )
+            return 4
+
+        paths = {}
+        for name in required:
+            entry = selected[name]
+            try:
+                artifact = Path(entry["path"])
+            except Exception:
+                write_terminal(
+                    args.preflight_root,
+                    stage="artifact_locator",
+                    reason=f"invalid selected artifact entry: {name}",
+                )
+                return 5
+            if not artifact.is_file():
+                write_terminal(
+                    args.preflight_root,
+                    stage="artifact_locator",
+                    reason=f"selected artifact disappeared: {name}: {artifact}",
+                )
+                return 5
+            paths[name] = artifact
+
+        runner_cmd = [
+            sys.executable,
+            str(runner),
+            "--server-bin", str(args.server_bin),
+            "--model", str(args.model),
+            "--warm-tokens", str(paths["warm_tokens"]),
+            "--target-tokens", str(paths["target_tokens"]),
+            "--l0-request", str(paths["L0"]),
+            "--l1-request", str(paths["L1"]),
+            "--lc-request", str(paths["LC"]),
+            "--out-root", str(args.out_root),
+            "--port-wr", str(args.port_wr),
+            "--port-wr2", str(args.port_wr2),
+            "--port-c", str(args.port_c),
+        ]
+        write_json(args.preflight_root / "measured-runner.argv.json", runner_cmd)
+        write_json(args.preflight_root / "selected-artifacts.json", {
+            name: {"path": str(paths[name]), "locator_entry": selected[name]}
+            for name in required
         })
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-        lock_file.close()
-        raise SystemExit(7)
 
-    here = Path(__file__).resolve().parent
-    locator = here / "e2d2c0d6-gemma4-kv-artifact-locator.py"
-    runner = here / "e2d2c0d6-gemma4-kv-prefix-provenance-run.py"
-
-    locator_json = args.preflight_root / "artifact-locator.json"
-    locator_cmd = [
-        sys.executable,
-        str(locator),
-        *[str(p) for p in args.search_root],
-        "--out",
-        str(locator_json),
-    ]
-    write_json(args.preflight_root / "artifact-locator.argv.json", locator_cmd)
-    located = subprocess.run(locator_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (args.preflight_root / "artifact-locator.stdout.txt").write_bytes(located.stdout)
-    (args.preflight_root / "artifact-locator.stderr.txt").write_bytes(located.stderr)
-
-    if located.returncode != 0:
-        write_json(args.preflight_root / "terminal.json", {
-            "primary_classification": "PROBE_NOT_EXERCISED",
-            "measured_l0_submitted": False,
-            "stage": "artifact_locator",
-            "reason": "ARTIFACT_LOCATOR_FAIL",
-        })
-        raise SystemExit(2)
-
-    obj = json.loads(locator_json.read_text(encoding="utf-8"))
-    if obj.get("status") != "ARTIFACT_LOCATOR_PASS":
-        write_json(args.preflight_root / "terminal.json", {
-            "primary_classification": "PROBE_NOT_EXERCISED",
-            "measured_l0_submitted": False,
-            "stage": "artifact_locator",
-            "reason": f"unexpected locator status: {obj.get('status')}",
-        })
-        raise SystemExit(3)
-
-    selected = obj.get("selected")
-    if not isinstance(selected, dict):
-        raise SystemExit("locator selected block missing")
-
-    required = ("warm_tokens", "target_tokens", "L0", "L1", "LC")
-    missing = [name for name in required if name not in selected]
-    if missing:
-        write_json(args.preflight_root / "terminal.json", {
-            "primary_classification": "PROBE_NOT_EXERCISED",
-            "measured_l0_submitted": False,
-            "stage": "artifact_locator",
-            "reason": f"locator selected entries missing: {missing}",
-        })
-        raise SystemExit(4)
-
-    paths = {}
-    for name in required:
-        entry = selected[name]
-        path = Path(entry["path"])
-        if not path.is_file():
-            write_json(args.preflight_root / "terminal.json", {
-                "primary_classification": "PROBE_NOT_EXERCISED",
-                "measured_l0_submitted": False,
-                "stage": "artifact_locator",
-                "reason": f"selected artifact disappeared: {name}: {path}",
-            })
-            raise SystemExit(5)
-        paths[name] = path
-
-    runner_cmd = [
-        sys.executable,
-        str(runner),
-        "--server-bin", str(args.server_bin),
-        "--model", str(args.model),
-        "--warm-tokens", str(paths["warm_tokens"]),
-        "--target-tokens", str(paths["target_tokens"]),
-        "--l0-request", str(paths["L0"]),
-        "--l1-request", str(paths["L1"]),
-        "--lc-request", str(paths["LC"]),
-        "--out-root", str(args.out_root),
-        "--port-wr", str(args.port_wr),
-        "--port-wr2", str(args.port_wr2),
-        "--port-c", str(args.port_c),
-    ]
-    write_json(args.preflight_root / "measured-runner.argv.json", runner_cmd)
-    write_json(args.preflight_root / "selected-artifacts.json", {
-        name: {"path": str(paths[name]), "locator_entry": selected[name]}
-        for name in required
-    })
-
-    # This is the only transition from artifact discovery into measured execution.
-    try:
+        # This is the only transition from artifact discovery into measured execution.
         run = subprocess.run(runner_cmd, pass_fds=(lock_file.fileno(),))
         write_json(args.preflight_root / "measured-runner.exit.json", {
             "returncode": run.returncode,
             "measured_output_root": str(args.out_root),
         })
-        # The measured runner owns its own terminal.json and exactly-once semantics.
-        rc = run.returncode
+        return run.returncode
+    except Exception as exc:
+        write_terminal(
+            args.preflight_root,
+            stage="resume_wrapper",
+            reason=f"{type(exc).__name__}: {exc}",
+        )
+        return 8
     finally:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-        lock_file.close()
-        guard = json.loads((args.preflight_root / "shared-resource-guard.json").read_text(encoding="utf-8"))
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_file.close()
+        guard = json.loads(guard_path.read_text(encoding="utf-8"))
         guard["guard_state"] = "RELEASED_CANONICAL_DIAGNOSTIC_FLOCK"
-        write_json(args.preflight_root / "shared-resource-guard.json", guard)
-
-    raise SystemExit(rc)
+        write_json(guard_path, guard)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
