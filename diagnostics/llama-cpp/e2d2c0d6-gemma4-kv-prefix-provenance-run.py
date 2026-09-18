@@ -400,6 +400,7 @@ def main():
         raise SystemExit(2)
 
     measured_l0 = False
+    submitted_requests = []
     servers = []
     try:
         wr = Server(
@@ -411,9 +412,11 @@ def main():
         require_startup_evidence(wr)
 
         measured_l0 = True
+        submitted_requests.append("L0")
         l0 = send_request(wr, "L0", args.l0_request, 0, 883)
         require_dump(kv_root, "WR-P512")
 
+        submitted_requests.append("L1")
         l1 = send_request(wr, "L1", args.l1_request, 512, 2415)
         require_dump(kv_root, "WR-R512")
         wr.stop()
@@ -425,6 +428,7 @@ def main():
         servers.append(wr2)
         wr2.start()
         require_startup_evidence(wr2)
+        submitted_requests.append("L0R")
         l0r = send_request(wr2, "L0R", args.l0_request, 0, 883)
         require_dump(kv_root, "WR2-P512")
         wr2.stop()
@@ -436,6 +440,7 @@ def main():
         servers.append(cold)
         cold.start()
         require_startup_evidence(cold)
+        submitted_requests.append("LC")
         lc = send_request(cold, "LC", args.lc_request, 0, 2927)
         require_dump(kv_root, "C-P512")
         cold.stop()
@@ -487,10 +492,15 @@ def main():
             except Exception:
                 pass
         terminal = {
-            "primary_classification": "PROBE_NOT_EXERCISED",
+            "primary_classification": (
+                "PROBE_EXERCISED_INCOMPLETE" if measured_l0 else "PROBE_NOT_EXERCISED"
+            ),
             "measured_l0_submitted": measured_l0,
+            "submitted_requests": submitted_requests,
+            "request_count_submitted": len(submitted_requests),
             "reason": str(exc),
             "retry_replay_repair": 0,
+            "rerun_authorized": False if measured_l0 else None,
         }
         write_json(args.out_root / "terminal.json", terminal)
         print(json.dumps(terminal, indent=2, sort_keys=True))
