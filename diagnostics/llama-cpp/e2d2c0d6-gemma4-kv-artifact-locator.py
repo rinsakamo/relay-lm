@@ -130,6 +130,16 @@ def main():
 
     selected = {}
     if not errors:
+        selected["warm_tokens"] = {
+            "path": str(warm_path),
+            "sha256": WARM_SHA,
+            "copies": sorted(warm_paths),
+        }
+        selected["target_tokens"] = {
+            "path": str(target_path),
+            "sha256": TARGET_SHA,
+            "copies": sorted(target_paths),
+        }
         for role in ("L0", "L1", "LC"):
             hits = request_hits[role]
             if not hits:
