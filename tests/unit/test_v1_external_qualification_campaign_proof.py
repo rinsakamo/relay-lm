@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-import tools.v1_external_qualification_campaign_proof as campaign_proof
 from test_v1_external_qualification_llama_cpp_campaign import _strict_descriptor_mapping
+from tools.external_qualification import LiveLaunchAdmissionAttestation
 from tools.v1_external_qualification_campaign_proof import (
     CampaignProofError,
     prepare_static_proof,
@@ -198,18 +198,12 @@ def test_prepare_static_proof_canonicalizes_historical_hindsight(tmp_path: Path)
     assert admitted.fingerprint == receipt["campaign_fingerprint"]
 
 
-def test_prepare_static_proof_canonicalizes_exact_preserved_adapter_case_ref_only(
+def test_prepare_static_proof_derives_release_case_from_axis_and_ignores_stale_duplicate(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-case-compat"
-    plan_path = tmp_path / "fresh-case-compat-plan.json"
+    owner_id = "owner-proof-derived-release-case"
+    plan_path = tmp_path / "fresh-derived-release-case.json"
 
     receipt = prepare_static_proof(
         repo_root=tmp_path,
@@ -225,123 +219,7 @@ def test_prepare_static_proof_canonicalizes_exact_preserved_adapter_case_ref_onl
     assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
     compatibility = receipt["preserved_case_compatibility"]
     assert isinstance(compatibility, dict)
-    assert compatibility["status"] == "APPLIED"
-    axes = compatibility["axes"]
-    assert isinstance(axes, list)
-    assert len(axes) == 1
-
-    plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    prepared_axes = plan["axes"]
-    freeze = plan["execution_freeze"]
-    assert isinstance(prepared_axes, list)
-    assert isinstance(freeze, dict)
-    release_cases = freeze["release_cases"]
-    assert isinstance(release_cases, list)
-    prepared_axis = prepared_axes[0]
-    assert isinstance(prepared_axis, dict)
-    prepared_release = next(
-        item
-        for item in release_cases
-        if isinstance(item, dict)
-        and item.get("axis_id") == prepared_axis["axis_id"]
-    )
-    assert prepared_axis["case"] == prepared_release["case"]
-    CampaignDescriptor.from_mapping(plan)
-
-
-def test_prepare_static_proof_rejects_exact_preserved_substantive_case_difference(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source, source_sha = _write_source_with_axis_case_mismatch(
-        tmp_path,
-        substantive=True,
-    )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-case-substantive-reject"
-
-    with pytest.raises(
-        CampaignProofError,
-        match="substantive case fields differ.*benchmark",
-    ):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-substantive.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
-
-
-def test_prepare_static_proof_rejects_nonwhitelisted_adapter_case_ref_difference(
-    tmp_path: Path,
-) -> None:
-    source, source_sha = _write_source_with_axis_case_mismatch(tmp_path)
-    owner_id = "owner-proof-case-nonwhitelist-reject"
-
-    with pytest.raises(
-        CampaignCarriageError,
-        match=r"source axis '.+' case differs from execution freeze",
-    ):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-nonwhitelist.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
-
-
-def test_prepare_static_proof_canonicalizes_exact_preserved_material_dependent_drift(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source, source_sha, _ = _write_source_with_material_mismatch(
-        tmp_path,
-        mismatch="dependent",
-    )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
-    )
-    owner_id = "owner-proof-material-compat"
-    plan_path = tmp_path / "fresh-material-compat-plan.json"
-
-    receipt = prepare_static_proof(
-        repo_root=tmp_path,
-        source_path=source,
-        source_sha256=source_sha,
-        plan_path=plan_path,
-        owner_root=tmp_path / owner_id,
-        owner_id=owner_id,
-        repository_head="a" * 40,
-        repository_tree="b" * 40,
-    )
-
-    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
-    compatibility = receipt["preserved_case_compatibility"]
-    assert isinstance(compatibility, dict)
-    assert compatibility["status"] == "APPLIED"
-    axes = compatibility["axes"]
-    assert isinstance(axes, list)
-    assert len(axes) == 1
-    applied = axes[0]
-    assert isinstance(applied, dict)
-    assert applied["material_derived_fields"] == [
-        "case_fingerprint",
-        "question_fingerprints",
-    ]
+    assert compatibility["status"] == "NOT_REQUIRED"
 
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     prepared_axis = plan["axes"][0]
@@ -355,62 +233,56 @@ def test_prepare_static_proof_canonicalizes_exact_preserved_material_dependent_d
     CampaignDescriptor.from_mapping(plan)
 
 
-@pytest.mark.parametrize(
-    ("mismatch", "message"),
-    (
-        ("path", "benchmark material path differs"),
-        ("sha", "benchmark material SHA256 differs"),
-        ("bytes", "benchmark material bytes drifted"),
-    ),
-)
-def test_prepare_static_proof_rejects_exact_preserved_material_identity_drift(
+@pytest.mark.parametrize("mismatch", ("dependent", "path", "sha"))
+def test_prepare_static_proof_ignores_stale_release_material_duplicate(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     mismatch: str,
-    message: str,
 ) -> None:
     source, source_sha, _ = _write_source_with_material_mismatch(
         tmp_path,
         mismatch=mismatch,
     )
-    monkeypatch.setattr(
-        campaign_proof,
-        "_PRESERVED_2964_SOURCE_SHA256",
-        source_sha,
+    owner_id = f"owner-proof-derived-material-{mismatch}"
+    plan_path = tmp_path / f"fresh-derived-material-{mismatch}.json"
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
     )
-    owner_id = f"owner-proof-material-{mismatch}-reject"
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
 
-    with pytest.raises(CampaignProofError, match=message):
-        prepare_static_proof(
-            repo_root=tmp_path,
-            source_path=source,
-            source_sha256=source_sha,
-            plan_path=tmp_path / f"should-not-exist-material-{mismatch}.json",
-            owner_root=tmp_path / owner_id,
-            owner_id=owner_id,
-            repository_head="a" * 40,
-            repository_tree="b" * 40,
-        )
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    prepared_axis = plan["axes"][0]
+    release = next(
+        item
+        for item in plan["execution_freeze"]["release_cases"]
+        if item["axis_id"] == prepared_axis["axis_id"]
+    )
+    assert prepared_axis["benchmark_material"] == release["benchmark_material"]
+    CampaignDescriptor.from_mapping(plan)
 
 
-def test_prepare_static_proof_rejects_nonwhitelisted_material_dependent_drift(
+def test_prepare_static_proof_still_rejects_material_byte_drift(
     tmp_path: Path,
 ) -> None:
     source, source_sha, _ = _write_source_with_material_mismatch(
         tmp_path,
-        mismatch="dependent",
+        mismatch="bytes",
     )
-    owner_id = "owner-proof-material-nonwhitelist-reject"
+    owner_id = "owner-proof-material-bytes-reject"
 
-    with pytest.raises(
-        CampaignCarriageError,
-        match=r"source axis '.+' case differs from execution freeze",
-    ):
+    with pytest.raises(CampaignCarriageError, match="content drifted"):
         prepare_static_proof(
             repo_root=tmp_path,
             source_path=source,
             source_sha256=source_sha,
-            plan_path=tmp_path / "should-not-exist-material-nonwhitelist.json",
+            plan_path=tmp_path / "should-not-exist-material-bytes.json",
             owner_root=tmp_path / owner_id,
             owner_id=owner_id,
             repository_head="a" * 40,
@@ -500,6 +372,16 @@ def _physical_bundle(
     if bad_counter:
         counters["judge_call_count"] = 1
 
+    axes = plan["axes"]
+    assert isinstance(axes, list) and axes
+    first_axis = axes[0]
+    assert isinstance(first_axis, dict)
+    identity = first_axis["identity"]
+    assert isinstance(identity, dict)
+    live_mapping = identity["launch_admission"]
+    assert isinstance(live_mapping, dict)
+    live_attestation = LiveLaunchAdmissionAttestation.from_mapping(live_mapping)
+
     result = {
         "target": "v1:external-qualification-campaign",
         "status": "PRE_CALL_BARRIER_REACHED",
@@ -513,6 +395,19 @@ def _physical_bundle(
             "all_owned_processes_terminated": True,
             "external_processes_touched": 0,
             "errors": [],
+        },
+        "observed_execution": {
+            "authority": "OBSERVED_EXECUTION",
+            "live_launch_attestation": live_attestation.to_mapping(),
+            "live_launch_attestation_fingerprint": live_attestation.fingerprint,
+            "hindsight_runtime_identity_path": str(runtime_identity_path),
+            "artifact_root": str(plan["artifact_root"]),
+            "spend_ledger_path": str(plan["spend_ledger_path"]),
+            "axis_evidence_paths": {
+                str(axis["axis_id"]): None
+                for axis in axes
+                if isinstance(axis, dict)
+            },
         },
         "hindsight_cleanup": {
             "started": True,
@@ -564,6 +459,7 @@ def test_verify_zero_semantic_rehearsal_accepts_clean_bundle(tmp_path: Path) -> 
     assert receipt["queue_state"] == "CHILD_EXITED"
     assert receipt["lease_state"] == "RELEASED"
     assert receipt["descriptor_sha256"] == hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    assert receipt["observed_live_launch_fingerprint"]
 
 
 def test_verify_zero_semantic_rehearsal_rejects_nonzero_counter(tmp_path: Path) -> None:

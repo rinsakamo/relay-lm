@@ -254,6 +254,29 @@ The #2957 rehearsal is explicitly non-citable and must report zero semantic,
 model, benchmark-question, answer-model, and judge calls with
 `SCIENTIFIC_SPEND=UNSPENT`.
 
+### Launch intent and observed execution authority
+
+A fresh-owner campaign descriptor is a **launch intent**, not the final
+scientific observation. Campaign axes are the canonical pre-execution input
+representation. The duplicated `execution_freeze.release_cases` surface is
+derived from those validated prepared axes; historical release-case copies are
+not an independent authority that must match before a fresh launch can be
+constructed.
+
+Pre-execution fail-closed gates remain for facts that can change the
+experiment: benchmark-material bytes and SHA-256, question content, accepted
+RC bytes/configuration, owner-local Hindsight identity, registered physical
+carriage, current repository authority, and no-retry/exact-resume policy.
+
+After the registered campaign launches, the scientific evidence authority is
+the observed execution bundle: terminal campaign receipt, fresh
+`LiveLaunchAdmissionAttestation`, Hindsight runtime identity, durable
+question/participant records, citable per-axis evidence, spend ledger, and
+cleanup receipts. The terminal receipt exposes direct references and the live
+attestation under `observed_execution`. Declared intent may be compared with
+observed execution, but stale historical duplicate copies are not themselves a
+reason to block a fresh canonical launch.
+
 ## MemConflict RelayLM adapter boundary (#2047, #2068, #2075)
 
 The shared MemConflict harness has two different provider operations: it ingests

@@ -2050,6 +2050,7 @@ class CampaignController:
         )
         barrier_reached = False
         health: HindsightHealthAttestation | None = None
+        live_attestation: LiveLaunchAdmissionAttestation | None = None
         lifecycle_cleanup: Mapping[str, Any] | None = None
         try:
             if self.hindsight_lifecycle is not None:
@@ -2465,6 +2466,25 @@ class CampaignController:
             status = "PRE_CALL_BARRIER_REACHED"
         if lifecycle_cleanup is None and self.hindsight_lifecycle is not None:
             raise CampaignCarriageError("Hindsight lifecycle did not create a cleanup receipt")
+        if live_attestation is None:
+            raise CampaignCarriageError("campaign did not retain live launch attestation")
+
+        observed_execution = {
+            "authority": "OBSERVED_EXECUTION",
+            "live_launch_attestation": live_attestation.to_mapping(),
+            "live_launch_attestation_fingerprint": live_attestation.fingerprint,
+            "hindsight_runtime_identity_path": (
+                lifecycle_cleanup.get("runtime_identity_path")
+                if lifecycle_cleanup is not None
+                else None
+            ),
+            "artifact_root": str(descriptor.artifact_root),
+            "spend_ledger_path": str(descriptor.spend_ledger_path),
+            "axis_evidence_paths": {
+                str(item["axis_id"]): item.get("evidence_path")
+                for item in axis_receipts
+            },
+        }
 
         return {
             "format_version": CAMPAIGN_FORMAT_VERSION,
@@ -2480,6 +2500,7 @@ class CampaignController:
             "llama_server_launch_count": 1,
             "cleanup": cleanup,
             "hindsight_cleanup": lifecycle_cleanup,
+            "observed_execution": observed_execution,
             "pre_call_barrier_reached": barrier_reached,
             "SCIENTIFIC_SPEND": ledger.state,
         }

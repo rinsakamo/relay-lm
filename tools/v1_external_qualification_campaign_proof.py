@@ -17,7 +17,11 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from tools.external_qualification import ExternalQualificationError, validate_case
+from tools.external_qualification import (
+    ExternalQualificationError,
+    LiveLaunchAdmissionAttestation,
+    validate_case,
+)
 from tools.repository_authority import load_declarations, qualification_fingerprint
 from tools.v1_external_qualification_campaign_prepare import (
     prepare_scientific_owner_descriptor,
@@ -357,10 +361,11 @@ def prepare_static_proof(
     if _sha256_file(source_path) != source_sha256:
         raise CampaignProofError("preserved source descriptor SHA256 mismatch")
     raw = _read_json_object(source_path, label="preserved source descriptor")
-    preserved_case_compatibility = _apply_preserved_2964_case_compatibility(
-        raw,
-        source_sha256=source_sha256,
-    )
+    preserved_case_compatibility = {
+        "status": "NOT_REQUIRED",
+        "reason": "legacy execution-freeze release-case duplicates are derived from canonical axes",
+        "axes": [],
+    }
 
     execution_freeze = raw.get("execution_freeze")
     if not isinstance(execution_freeze, Mapping):
@@ -649,6 +654,24 @@ def verify_zero_semantic_rehearsal(
     if result.get("exact_rc_server_launch_count") != 0:
         raise CampaignProofError("exact RC server unexpectedly launched during rehearsal")
 
+    observed_execution = result.get("observed_execution")
+    if not isinstance(observed_execution, Mapping):
+        raise CampaignProofError("observed execution receipt is absent")
+    if observed_execution.get("authority") != "OBSERVED_EXECUTION":
+        raise CampaignProofError("observed execution receipt authority is invalid")
+    observed_live = observed_execution.get("live_launch_attestation")
+    if not isinstance(observed_live, Mapping):
+        raise CampaignProofError("observed live launch attestation is absent")
+    try:
+        observed_attestation = LiveLaunchAdmissionAttestation.from_mapping(observed_live)
+    except ExternalQualificationError as exc:
+        raise CampaignProofError(f"observed live launch attestation is invalid: {exc}") from exc
+    if (
+        observed_execution.get("live_launch_attestation_fingerprint")
+        != observed_attestation.fingerprint
+    ):
+        raise CampaignProofError("observed live launch attestation fingerprint drifted")
+
     expected_counters = {
         "semantic_generation_count": 0,
         "benchmark_question_count": 0,
@@ -688,6 +711,8 @@ def verify_zero_semantic_rehearsal(
     runtime_identity_path_value = hindsight_cleanup.get("runtime_identity_path")
     if not isinstance(runtime_identity_path_value, str) or not runtime_identity_path_value:
         raise CampaignProofError("Hindsight runtime identity path is absent")
+    if observed_execution.get("hindsight_runtime_identity_path") != runtime_identity_path_value:
+        raise CampaignProofError("observed Hindsight runtime identity path drifted")
     runtime_identity_path = Path(runtime_identity_path_value)
     runtime_identity = _read_json_object(
         runtime_identity_path,
@@ -729,6 +754,7 @@ def verify_zero_semantic_rehearsal(
         "stdout_sha256": _sha256_file(stdout_path),
         "runtime_identity_path": str(runtime_identity_path),
         "runtime_identity_sha256": _sha256_file(runtime_identity_path),
+        "observed_live_launch_fingerprint": observed_attestation.fingerprint,
     }
 
 

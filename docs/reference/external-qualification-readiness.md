@@ -45,6 +45,18 @@ Only then does validation return:
 EXECUTION_FROZEN
 ```
 
+For fresh-owner preparation, the release-case copies inside an older
+execution-freeze template are not independent input authority. The prepared
+campaign axes are validated first, including immutable benchmark-material
+bytes and question content, and fresh `release_cases` are derived from those
+axes before this readiness validator is invoked. This keeps the validator
+strict while avoiding historical duplicate-copy drift as a pre-execution
+blocker.
+
+The resulting execution freeze remains a launch contract. The scientific
+record is established by the later observed execution receipt and durable
+evidence after the registered runner actually launches the campaign.
+
 `assess_launch_readiness(...)` exposes a bounded `BLOCKED` record for invalid or unresolved plans. It never repairs a plan or launches anything.
 
 ## Preferred bounded Core 1.0 ring
