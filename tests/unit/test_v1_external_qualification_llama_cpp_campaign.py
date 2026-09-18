@@ -1260,6 +1260,191 @@ def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
     )
 
 
+def test_hindsight_memconflict_exchange_append_metadata_matches_frozen_arm_c(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "memconflict-metadata-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-metadata",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "first turn",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": "second turn",
+                                "timestamp": "2025-01-02T03:04:06+00:00",
+                            },
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-metadata"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    session = HindsightHistoryPlan.from_path(history_path).sessions[0]
+
+    request = session.to_retain_requests(
+        bank_id="synthetic-bank",
+        context_label="MemConflict",
+    )[0]
+
+    metadata = request["metadata"]
+    assert isinstance(metadata, Mapping)
+    assert set(metadata) == {
+        "retained_at",
+        "message_count",
+        "turn_index",
+        "session_date",
+    }
+    assert metadata["message_count"] == "2"
+    assert metadata["turn_index"] == "0"
+    assert metadata["session_date"] == "2025-01-02T03:04:05+00:00"
+    assert isinstance(metadata["retained_at"], str)
+    assert str(metadata["retained_at"]).endswith("+00:00")
+
+
+def test_hindsight_preload_identity_does_not_retry_when_only_retained_at_changes(
+    tmp_path: Path,
+) -> None:
+    live = _live_mapping()
+    identity = freeze_experiment_identity(
+        identity=_frozen_identity("memconflict", live),
+        live_attestation=live,
+    )
+    question = DurableQuestion.from_content(
+        "question-0",
+        "synthetic question",
+        session_id="question-0",
+    )
+    durable = DurableQuestionRun.start(
+        artifact_root=tmp_path / "durable-preload",
+        identity=identity,
+        questions=(question,),
+    )
+    durable.begin_question(question.question_id)
+    base_request = {
+        "content": '[{"role":"user","content":"User: hello","timestamp":null}]',
+        "context": "MemConflict dialogue session session-0",
+        "timestamp": None,
+        "document_id": "synthetic-bank_doc_session-0",
+        "update_mode": "append",
+        "metadata": {
+            "retained_at": "2026-09-19T00:00:00+00:00",
+            "message_count": "1",
+            "turn_index": "0",
+            "session_date": "None",
+        },
+    }
+    assert durable.begin_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=base_request,
+    )
+    durable.complete_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=base_request,
+    )
+
+    changed_clock_request = json.loads(json.dumps(base_request))
+    changed_clock_request["metadata"]["retained_at"] = "2026-09-19T00:10:00+00:00"
+    assert not durable.begin_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=changed_clock_request,
+    )
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "durable-preload" / "hindsight-history-preloads.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [record["event"] for record in records] == ["started", "completed"]
+    assert records[0]["request"] == base_request
+    assert records[1]["request"] == base_request
+
+
+def test_hindsight_consolidation_wait_is_scoped_per_history_session(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "multi-session-history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {"role": "user", "content": "first", "timestamp": None},
+                            {"role": "assistant", "content": "reply", "timestamp": None},
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {"role": "user", "content": "second", "timestamp": None},
+                            {"role": "assistant", "content": "reply 2", "timestamp": None},
+                        ],
+                    },
+                ],
+                "question_history": {"question-0": ["session-0", "session-1"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    lifecycle = _ComparatorLifecycle("repair-profile-waits")
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        _CommonAnswerModel(),  # type: ignore[arg-type]
+    )
+    context = ParticipantExecutionContext(
+        axis_id="axis-waits",
+        case={"benchmark": {"id": "memconflict"}},
+        manifest={},
+        question=DurableQuestion.from_content(
+            "question-0",
+            "synthetic question",
+            session_id="question-0",
+        ),
+        prompt="synthetic question",
+        participant_slot="serious_comparator",
+        participant_identity=_participant_identity(
+            "hindsight", revision="c" * 40, version="v0.10.0"
+        ),
+        frozen_identity=None,  # type: ignore[arg-type]
+        live_attestation=None,  # type: ignore[arg-type]
+        history=plan,
+        durable_run=_PreloadJournal(),  # type: ignore[arg-type]
+    )
+
+    executor(context)
+
+    assert len(lifecycle.retain_calls) == 2
+    assert len(lifecycle.wait_calls) == 2
+
+
+
 def test_common_answer_boundary_uses_frozen_prompt_and_one_generation() -> None:
     spec = type(
         "Spec",
