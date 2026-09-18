@@ -19,6 +19,7 @@ def load_runner():
 def main():
     runner = load_runner()
     match = runner._startup_evidence_match
+    patterns = runner.STARTUP_EVIDENCE_PATTERNS
 
     cases = [
         {
@@ -30,27 +31,27 @@ def main():
                 "llama_context: n_ubatch              = 512\n"
                 "llama_context: flash_attn            = enabled\n"
             ),
-            "expected": {"n_seq": True, "ctx": True, "batch": True, "ubatch": True, "flash": True},
+            "expected": {"n_seq_max_1": True, "n_ctx_8192": True, "n_batch_512": True, "n_ubatch_512": True, "flash_attn_enabled": True},
         },
         {
             "name": "compact-spacing",
             "text": "llama_context:n_seq_max=1\nllama_context:n_ctx=8192\nllama_context:n_batch=512\nllama_context:n_ubatch=512\nllama_context:flash_attn=enabled\n",
-            "expected": {"n_seq": True, "ctx": True, "batch": True, "ubatch": True, "flash": True},
+            "expected": {"n_seq_max_1": True, "n_ctx_8192": True, "n_batch_512": True, "n_ubatch_512": True, "flash_attn_enabled": True},
         },
         {
             "name": "mixed-whitespace",
             "text": "prefix llama_context : n_seq_max = 1\nprefix llama_context: n_ctx = 8192\nprefix llama_context : n_batch\t =\t512\nprefix llama_context: n_ubatch    =  512\nprefix llama_context : flash_attn\t= enabled\n",
-            "expected": {"n_seq": True, "ctx": True, "batch": True, "ubatch": True, "flash": True},
+            "expected": {"n_seq_max_1": True, "n_ctx_8192": True, "n_batch_512": True, "n_ubatch_512": True, "flash_attn_enabled": True},
         },
         {
             "name": "wrong-values",
             "text": "llama_context: n_seq_max = 2\nllama_context: n_ctx = 4096\nllama_context: n_batch = 2048\nllama_context: n_ubatch = 256\nllama_context: flash_attn = disabled\n",
-            "expected": {"n_seq": False, "ctx": False, "batch": False, "ubatch": False, "flash": False},
+            "expected": {"n_seq_max_1": False, "n_ctx_8192": False, "n_batch_512": False, "n_ubatch_512": False, "flash_attn_enabled": False},
         },
         {
             "name": "near-miss-identifiers",
             "text": "llama_context: x_n_seq_max = 1\nllama_context: n_ctx_extra = 8192\nllama_context: x_n_batch = 512\nllama_context: n_ubatch_extra = 512\nllama_context: my_flash_attn = enabled\n",
-            "expected": {"n_seq": False, "ctx": False, "batch": False, "ubatch": False, "flash": False},
+            "expected": {"n_seq_max_1": False, "n_ctx_8192": False, "n_batch_512": False, "n_ubatch_512": False, "flash_attn_enabled": False},
         },
     ]
 
@@ -58,16 +59,8 @@ def main():
         "name": "argv-echo-is-not-runtime-evidence",
         "text": "--ctx-size 8192 --parallel 1 --batch-size 512 --ubatch-size 512 --flash-attn on\n"
                 "n_seq_max = 1 n_ctx = 8192 n_batch = 512 n_ubatch = 512 flash_attn = enabled\n",
-        "expected": {"n_seq": False, "ctx": False, "batch": False, "ubatch": False, "flash": False},
+        "expected": {"n_seq_max_1": False, "n_ctx_8192": False, "n_batch_512": False, "n_ubatch_512": False, "flash_attn_enabled": False},
     })
-
-    patterns = {
-        "n_seq": r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
-        "ctx": r"^.*\bllama_context\s*:\s*n_ctx\s*=\s*8192\b.*$",
-        "batch": r"^.*\bllama_context\s*:\s*n_batch\s*=\s*512\b.*$",
-        "ubatch": r"^.*\bllama_context\s*:\s*n_ubatch\s*=\s*512\b.*$",
-        "flash": r"^.*\bllama_context\s*:\s*flash_attn\s*=\s*enabled\b.*$",
-    }
 
     results = []
     errors = []
