@@ -26,6 +26,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignQuestion,
     CampaignDescriptor,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+    HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
     RelayLMExactRCSpec,
@@ -107,6 +108,7 @@ def _derive_hindsight_lifecycle(
         "database_profile",
         "retain_max_completion_tokens",
         "fail_on_extraction_errors",
+        "llm_supports_string_pattern",
     } & set(raw)
     if forbidden:
         raise CampaignCarriageError(
@@ -117,6 +119,7 @@ def _derive_hindsight_lifecycle(
     raw["database_profile"] = owner_id
     raw["retain_max_completion_tokens"] = HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     raw["fail_on_extraction_errors"] = HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
+    raw["llm_supports_string_pattern"] = HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN
     return HindsightLifecycleSpec.from_mapping(raw)
 
 
