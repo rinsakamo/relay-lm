@@ -12,6 +12,7 @@ from tools.v1_external_qualification_campaign_prepare import (
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignDescriptor,
+    HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
     _campaign_contract,
@@ -27,6 +28,7 @@ def _inputs(tmp_path: Path) -> tuple[dict[str, object], dict[str, object]]:
     lifecycle.pop("deployment_id")
     lifecycle.pop("database_profile")
     lifecycle.pop("retain_max_completion_tokens")
+    lifecycle.pop("fail_on_extraction_errors")
     return stale, lifecycle
 
 
@@ -88,6 +90,7 @@ def test_prepare_derives_fresh_owner_identity_and_admits(tmp_path: Path) -> None
         lifecycle["retain_max_completion_tokens"]
         == HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     )
+    assert lifecycle["fail_on_extraction_errors"] is HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
     assert health["source_revision"] == lifecycle["source_revision"]
     assert health["version"] == lifecycle["runtime_version"]
     deployment = health["deployment"]
@@ -267,6 +270,21 @@ def test_prepare_forbids_caller_owned_hindsight_retain_bound(tmp_path: Path) -> 
         _prepare(
             tmp_path,
             owner_id="owner-2994-reject-retain-bound",
+            stale=stale,
+            lifecycle=lifecycle_base,
+        )
+
+
+def test_prepare_forbids_caller_owned_hindsight_extraction_loss_policy(
+    tmp_path: Path,
+) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    lifecycle_base["fail_on_extraction_errors"] = False
+
+    with pytest.raises(CampaignCarriageError, match="must omit owner-local fields"):
+        _prepare(
+            tmp_path,
+            owner_id="owner-2996-reject-extraction-policy",
             stale=stale,
             lifecycle=lifecycle_base,
         )
