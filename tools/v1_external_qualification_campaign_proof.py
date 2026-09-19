@@ -32,6 +32,7 @@ from tools.v1_external_qualification_history_material import (
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+    HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     CampaignCarriageError,
     CampaignDescriptor,
@@ -394,6 +395,7 @@ def prepare_static_proof(
     # carry it only as evidence and are normalized away before fresh derivation.
     lifecycle_base.pop("retain_max_completion_tokens", None)
     lifecycle_base.pop("fail_on_extraction_errors", None)
+    lifecycle_base.pop("llm_supports_string_pattern", None)
     try:
         stale_deployment = lifecycle_base.pop("deployment_id")
         stale_profile = lifecycle_base.pop("database_profile")
@@ -500,6 +502,10 @@ def prepare_static_proof(
     if lifecycle.get("fail_on_extraction_errors") is not HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS:
         raise CampaignProofError(
             "fresh owner Hindsight extraction-loss policy was not repository-derived"
+        )
+    if lifecycle.get("llm_supports_string_pattern") is not HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN:
+        raise CampaignProofError(
+            "fresh owner Hindsight string-pattern capability was not repository-derived"
         )
     if expected_deployment == stale_deployment or owner_id == stale_profile:
         raise CampaignProofError("fresh owner retained stale owner-local identity")
@@ -635,6 +641,7 @@ def _assert_runtime_identity(
         "llm_base_url": lifecycle.get("llm_base_url"),
         "retain_max_completion_tokens": lifecycle.get("retain_max_completion_tokens"),
         "fail_on_extraction_errors": lifecycle.get("fail_on_extraction_errors"),
+        "llm_supports_string_pattern": lifecycle.get("llm_supports_string_pattern"),
         "embeddings_provider": lifecycle.get("embeddings_provider"),
         "reranker_provider": lifecycle.get("reranker_provider"),
         "embeddings_onnx_model_sha256": lifecycle.get("embeddings_onnx_model_sha256"),

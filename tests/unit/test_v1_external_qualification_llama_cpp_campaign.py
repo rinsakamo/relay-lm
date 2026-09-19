@@ -32,6 +32,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+    HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     ExactRelayLMExecutor,
@@ -840,6 +841,7 @@ def _strict_descriptor_mapping(
         "llm_base_url": "http://127.0.0.1:18091/v1",
         "retain_max_completion_tokens": HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
         "fail_on_extraction_errors": HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+        "llm_supports_string_pattern": HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -1834,6 +1836,18 @@ def test_strict_descriptor_rejects_hindsight_extraction_loss_policy_substitution
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_string_pattern_capability_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["llm_supports_string_pattern"] = False
+    with pytest.raises(
+        CampaignCarriageError,
+        match="repository-owned frozen-backend capability",
+    ):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -1937,12 +1951,14 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
         HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     )
     assert argument("--fail-on-extraction-errors") == "true"
+    assert argument("--llm-supports-string-pattern") == "true"
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]
     assert isinstance(environment, dict)
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] == "true"
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] == "true"
+    assert environment["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] == "true"
     cleanup = lifecycle.cleanup()
     assert cleanup["semantic_operation_count"] == 0
 

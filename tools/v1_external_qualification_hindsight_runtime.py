@@ -60,6 +60,7 @@ def _write_identity(
     llm_base_url: str,
     retain_max_completion_tokens: int,
     fail_on_extraction_errors: bool,
+    llm_supports_string_pattern: bool,
     embeddings_provider: str,
     reranker_provider: str,
     onnx_model_path: Path,
@@ -105,6 +106,7 @@ def _write_identity(
         "llm_base_url": llm_base_url,
         "retain_max_completion_tokens": retain_max_completion_tokens,
         "fail_on_extraction_errors": fail_on_extraction_errors,
+        "llm_supports_string_pattern": llm_supports_string_pattern,
         "embeddings_provider": embeddings_provider,
         "reranker_provider": reranker_provider,
         "embeddings_onnx_model_path": str(onnx_model_path),
@@ -140,6 +142,11 @@ def main() -> int:
         required=True,
         choices=("true", "false"),
     )
+    parser.add_argument(
+        "--llm-supports-string-pattern",
+        required=True,
+        choices=("true", "false"),
+    )
     parser.add_argument("--embeddings-provider", required=True)
     parser.add_argument("--reranker-provider", required=True)
     parser.add_argument("--onnx-model-path", required=True)
@@ -155,6 +162,10 @@ def main() -> int:
     fail_on_extraction_errors = args.fail_on_extraction_errors == "true"
     os.environ["HINDSIGHT_API_FAIL_ON_EXTRACTION_ERRORS"] = (
         "true" if fail_on_extraction_errors else "false"
+    )
+    llm_supports_string_pattern = args.llm_supports_string_pattern == "true"
+    os.environ["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] = (
+        "true" if llm_supports_string_pattern else "false"
     )
     os.environ["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = args.embeddings_provider
     os.environ["HINDSIGHT_API_RERANKER_PROVIDER"] = args.reranker_provider
@@ -199,6 +210,7 @@ def main() -> int:
         llm_base_url=args.llm_base_url,
         retain_max_completion_tokens=args.retain_max_completion_tokens,
         fail_on_extraction_errors=fail_on_extraction_errors,
+        llm_supports_string_pattern=llm_supports_string_pattern,
         embeddings_provider=args.embeddings_provider,
         reranker_provider=args.reranker_provider,
         onnx_model_path=onnx_model_path,
