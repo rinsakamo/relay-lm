@@ -671,6 +671,14 @@ class HindsightHistoryPlan:
             raise CampaignCarriageError(
                 "Hindsight history question ids must exactly match campaign questions"
             )
+        previous: tuple[str, ...] = ()
+        for question_id in question_ids:
+            current = self.question_history[question_id]
+            if current[: len(previous)] != previous:
+                raise CampaignCarriageError(
+                    "Hindsight history prefixes must not regress in campaign question order"
+                )
+            previous = current
 
     def sessions_for_question(self, question_id: str) -> tuple[HindsightHistorySession, ...]:
         try:
@@ -4208,7 +4216,7 @@ def run_production_campaign(
             if result_value is not None:
                 result_value["exact_rc_cleanup"] = {
                     **dict(installation_cleanup),
-                    "server": None if rc_cleanup is None else dict(rc_cleanup),
+                    "adapter": None if rc_cleanup is None else dict(rc_cleanup),
                 }
     if result_value is None:
         raise CampaignCarriageError("production campaign did not return a receipt")
