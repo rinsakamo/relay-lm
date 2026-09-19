@@ -85,6 +85,10 @@ HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS = 4096
 # accumulated extraction errors. Qualification must never treat dropped facts
 # as a successful comparator write.
 HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS = True
+# The frozen llama.cpp backend supports anchored JSON Schema string patterns.
+# Hindsight uses this capability to constrain timestamp fields so strict grammar
+# cannot loop inside an unconstrained string until the completion cap.
+HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN = True
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -169,6 +173,7 @@ _LIFECYCLE_KEYS = {
     "llm_base_url",
     "retain_max_completion_tokens",
     "fail_on_extraction_errors",
+    "llm_supports_string_pattern",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -884,6 +889,7 @@ class HindsightLifecycleSpec:
     llm_base_url: str
     retain_max_completion_tokens: int
     fail_on_extraction_errors: bool
+    llm_supports_string_pattern: bool
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -972,6 +978,16 @@ class HindsightLifecycleSpec:
                 "hindsight_lifecycle.fail_on_extraction_errors must match "
                 "the repository-owned qualification reliability policy"
             )
+        llm_supports_string_pattern = raw["llm_supports_string_pattern"]
+        if not isinstance(llm_supports_string_pattern, bool):
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.llm_supports_string_pattern must be a boolean"
+            )
+        if llm_supports_string_pattern is not HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN:
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.llm_supports_string_pattern must match "
+                "the repository-owned frozen-backend capability"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -1007,6 +1023,7 @@ class HindsightLifecycleSpec:
             ),
             retain_max_completion_tokens=retain_max_completion_tokens,
             fail_on_extraction_errors=fail_on_extraction_errors,
+            llm_supports_string_pattern=llm_supports_string_pattern,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1043,6 +1060,7 @@ class HindsightLifecycleSpec:
             "llm_base_url": self.llm_base_url,
             "retain_max_completion_tokens": self.retain_max_completion_tokens,
             "fail_on_extraction_errors": self.fail_on_extraction_errors,
+            "llm_supports_string_pattern": self.llm_supports_string_pattern,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1224,6 +1242,8 @@ class HindsightDeploymentSession:
                 str(self.spec.retain_max_completion_tokens),
                 "--fail-on-extraction-errors",
                 str(self.spec.fail_on_extraction_errors).lower(),
+                "--llm-supports-string-pattern",
+                str(self.spec.llm_supports_string_pattern).lower(),
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1241,6 +1261,9 @@ class HindsightDeploymentSession:
             environment["HINDSIGHT_API_SKIP_LLM_VERIFICATION"] = "true"
             environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] = "true"
             environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] = "true"
+            environment["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] = (
+                "true" if self.spec.llm_supports_string_pattern else "false"
+            )
             environment["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = (
                 self.spec.embeddings_provider
             )
@@ -1375,6 +1398,7 @@ class HindsightDeploymentSession:
                 ("llm_base_url", self.spec.llm_base_url),
                 ("retain_max_completion_tokens", self.spec.retain_max_completion_tokens),
                 ("fail_on_extraction_errors", self.spec.fail_on_extraction_errors),
+                ("llm_supports_string_pattern", self.spec.llm_supports_string_pattern),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):
