@@ -237,7 +237,10 @@ def run_synthetic_hindsight_smoke(
         )
         live_attestation = live_session.attest()
 
-        pre_existing_pending = lifecycle.consolidation_pending_ids(bank_id=bank_id)
+        pre_existing_pending = lifecycle.consolidation_pending_ids(
+            bank_id=bank_id,
+            allow_missing_bank=True,
+        )
         retain_request = history.to_retain_request(
             bank_id=bank_id,
             context_label="MemConflict",

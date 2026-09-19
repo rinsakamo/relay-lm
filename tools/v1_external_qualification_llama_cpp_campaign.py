@@ -1505,18 +1505,35 @@ class HindsightDeploymentSession:
             payload=payload,
         )
 
-    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
-        """Snapshot pending/processing consolidation ids before new retain."""
+    def consolidation_pending_ids(
+        self,
+        *,
+        bank_id: str,
+        allow_missing_bank: bool = False,
+    ) -> set[str]:
+        """Snapshot pending/processing ids before a new retain.
+
+        Hindsight creates a bank on the first retain, while read-only
+        operation listing returns 404 for a bank that has never been used.
+        Only a caller that has independently proved a fresh empty preload
+        journal may treat that first-use 404 as an empty snapshot. Resume
+        callers keep the default fail-closed behavior.
+        """
 
         if _BANK_ID_RE.fullmatch(bank_id) is None:
             raise CampaignCarriageError("Hindsight bank id is invalid")
-        payload = self._semantic_get(
-            operation="consolidation_snapshot",
-            path=(
-                f"/v1/default/banks/{bank_id}/operations"
-                "?type=consolidation&limit=100&exclude_parents=true"
-            ),
-        )
+        try:
+            payload = self._semantic_get(
+                operation="consolidation_snapshot",
+                path=(
+                    f"/v1/default/banks/{bank_id}/operations"
+                    "?type=consolidation&limit=100&exclude_parents=true"
+                ),
+            )
+        except HindsightSemanticRequestError as exc:
+            if allow_missing_bank and exc.status_code == 404:
+                return set()
+            raise
         operations = payload.get("operations")
         if operations is None:
             return set()
@@ -3834,6 +3851,11 @@ class HindsightComparatorExecutor:
         retained_exchange_count = sum(len(session.exchanges()) for session in sessions)
         newly_retained_exchange_count = 0
         consolidation_waits: list[dict[str, object]] = []
+        initial_preload_counts = context.durable_run.hindsight_history_preload_counts()
+        allow_missing_bank = (
+            initial_preload_counts["completed"] == 0
+            and initial_preload_counts["in_flight"] == 0
+        )
 
         for session in sessions:
             pending_exchange_indices = [
@@ -3851,7 +3873,8 @@ class HindsightComparatorExecutor:
 
             # Frozen Arm-C snapshots and drains consolidation per history session.
             pre_existing_pending_ids = self.lifecycle.consolidation_pending_ids(
-                bank_id=bank_id
+                bank_id=bank_id,
+                allow_missing_bank=allow_missing_bank,
             )
             session_pending: list[tuple[int, Mapping[str, object]]] = []
             for exchange_index in pending_exchange_indices:
