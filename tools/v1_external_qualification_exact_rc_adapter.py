@@ -22,7 +22,9 @@ import relaylm
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.runtime_config_loader import resolve_runtime_config
 from relaylm.runtime_preflight import prepare_runtime
-import tools.memconflict_adapter as memconflict_adapter\nfrom tools.memconflict_adapter import RelayLMReadOnlyQueryAdapter\n
+import tools.memconflict_adapter as memconflict_adapter
+from tools.memconflict_adapter import RelayLMReadOnlyQueryAdapter
+
 
 PUBLIC_PROFILE = "relaylm-exact-rc"
 PROTOCOL_VERSION = 1
