@@ -31,6 +31,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightSemanticRequestError,
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
+    HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     ExactRelayLMExecutor,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
@@ -1072,6 +1073,32 @@ def test_hindsight_health_waits_for_owned_startup_without_semantic_calls(
     ]
     assert lifecycle.health_count == 1
     assert lifecycle.semantic_operation_count == 0
+
+
+def test_hindsight_http_timeout_covers_slow_local_model_transport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor = CampaignDescriptor.from_mapping(_strict_descriptor_mapping(tmp_path))
+    assert descriptor.hindsight_lifecycle is not None
+    seen: dict[str, object] = {}
+
+    class _TimeoutClient:
+        def __init__(self, *, timeout: float, trust_env: bool) -> None:
+            seen["timeout"] = timeout
+            seen["trust_env"] = trust_env
+
+    monkeypatch.setattr(
+        "tools.v1_external_qualification_llama_cpp_campaign.httpx.Client",
+        _TimeoutClient,
+    )
+    HindsightDeploymentSession(
+        descriptor.hindsight_lifecycle,
+        descriptor.hindsight_health,
+    )
+
+    assert seen == {"timeout": HINDSIGHT_HTTP_TIMEOUT_SECONDS, "trust_env": False}
+    assert HINDSIGHT_HTTP_TIMEOUT_SECONDS == 120.0
 
 
 def test_hindsight_v010_semantic_routes_and_failure_evidence_are_typed(

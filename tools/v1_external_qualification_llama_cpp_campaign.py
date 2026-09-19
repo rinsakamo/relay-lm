@@ -80,6 +80,7 @@ HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
 HINDSIGHT_PREFER_OBSERVATIONS = True
+HINDSIGHT_HTTP_TIMEOUT_SECONDS = 120.0
 HINDSIGHT_WAIT_CONSOLIDATION = True
 HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS = 450.0
 HINDSIGHT_CONSOLIDATION_POLL_SECONDS = 0.25
@@ -1126,7 +1127,10 @@ class HindsightDeploymentSession:
         self.expected = expected
         self.repo_root = repo_root
         self.evidence_root = evidence_root
-        self.client = httpx.Client(timeout=20.0, trust_env=False)
+        self.client = httpx.Client(
+            timeout=HINDSIGHT_HTTP_TIMEOUT_SECONDS,
+            trust_env=False,
+        )
         self.process: subprocess.Popen[bytes] | None = None
         self.started = False
         self.start_count = 0
