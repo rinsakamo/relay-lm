@@ -21,8 +21,7 @@ import relaylm
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.runtime_config_loader import resolve_runtime_config
 from relaylm.runtime_preflight import prepare_runtime
-from tools.memconflict_adapter import RelayLMReadOnlyQueryAdapter
-
+import tools.memconflict_adapter as memconflict_adapter\nfrom tools.memconflict_adapter import RelayLMReadOnlyQueryAdapter\n
 
 PUBLIC_PROFILE = "relaylm-exact-rc"
 PROTOCOL_VERSION = 1
@@ -161,7 +160,8 @@ class ExactRCAdapterBridge:
             )
 
         before_evidence = len(state.adapter.dialogue_ingestion_evidence)
-        for item in normalized[len(state.session_ids) :]:
+        previous_session_count = len(state.session_ids)
+        for item in normalized[previous_session_count:]:
             state.adapter.ingest_session_dialogue(
                 item["items"],
                 session_id=str(item["session_id"]),
@@ -204,7 +204,7 @@ class ExactRCAdapterBridge:
             "external_evidence": result.to_external_evidence(),
             "snapshot_fingerprint": snapshot_fingerprint,
             "history_session_ids": requested_ids,
-            "new_history_session_count": len(requested_ids) - (len(requested_ids) - len(normalized[len(state.session_ids):])),
+            "new_history_session_count": len(requested_ids) - previous_session_count,
             "new_history_pass2_calls": len(new_ingestion),
             "model_call_count": model_call_count,
             "prompt_tokens": token_sum("prompt_tokens"),
@@ -253,6 +253,7 @@ def main() -> int:
             "status": "ready",
             "relaylm_version": relaylm.__version__,
             "relaylm_origin": str(Path(relaylm.__file__).resolve()),
+            "adapter_origin": str(Path(memconflict_adapter.__file__).resolve()),
             "profile": PUBLIC_PROFILE,
         }
     )
