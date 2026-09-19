@@ -365,20 +365,44 @@ campaign prompt, writes canonical JSON, validates the result through
 axis templates. An existing output is reusable only when its bytes are exactly
 the deterministic output; otherwise preparation fails closed.
 
+The standalone builder remains useful for inspection, but the preferred
+scientific-owner preparation path is one repository-owned transaction.  Pass
+the two byte-pinned datasets directly to `campaign_proof prepare`; it
+materializes/validates history first and then feeds those transformed axes into
+`prepare_scientific_owner_descriptor(...)` before writing the final plan.
+
 ```bash
-python -m tools.v1_external_qualification_history_material \
-  --axes-template /absolute/path/to/current-axis-templates.json \
+python -m tools.v1_external_qualification_campaign_proof prepare \
+  --repo-root /absolute/path/to/fresh-v1-checkout \
+  --source /absolute/path/to/preserved-input-discovery-descriptor.json \
+  --source-sha256 <exact-preserved-descriptor-sha256> \
+  --plan /absolute/path/to/fresh-campaign-descriptor.json \
+  --owner-root /absolute/path/to/fresh-owner-root \
+  --owner-id owner-2986-scientific-execution-<current-v1-short-sha> \
+  --repository-head <current-v1-head> \
+  --repository-tree <current-v1-tree> \
+  --expected-rc-sha256 3a3f679221cf93e9dc53f29893ad2de30350e842286c1123762feea6d5517506 \
+  --expected-core-fingerprint sha256:2fa3515c9edcb8abb26acd6051d480546e4a083c1320932ddcab2f98745e49b5 \
   --memconflict-source /absolute/path/to/Data/Step4_4.jsonl \
-  --longmemeval-source /absolute/path/to/longmemeval_s_cleaned.json \
-  --output-root /absolute/path/to/history-material \
-  --output-axes /absolute/path/to/current-axes-with-history.json
+  --longmemeval-source /absolute/path/to/longmemeval_s_cleaned.json
 ```
 
-The resulting axes are then inputs to
-`prepare_scientific_owner_descriptor(...)`; owner-local Hindsight identity,
-execution-freeze duplicates, current authority, and campaign contracts are
-still re-derived there. Neither history materialization nor owner preparation
-opens the scientific spend ledger or performs benchmark/model execution.
+If both benchmark sources are supplied, both are mandatory.  Unless explicitly
+overridden with `--history-output-root`, canonical history files are written
+beside the final plan under `<plan-stem>-history/`.  The static proof receipt
+includes the history-materialization receipt, including the zero semantic and
+zero benchmark-execution counters.
+
+The old descriptor remains immutable input-discovery evidence only: its
+owner-local values and stale history references do not become execution
+authority. Owner-local Hindsight identity, execution-freeze duplicates,
+current authority, campaign contracts, and current history references are
+re-derived in the same preparation call. Neither history materialization nor
+owner preparation opens the scientific spend ledger or performs
+benchmark/model execution.
+
+For isolated inspection, the standalone
+`tools.v1_external_qualification_history_material` CLI remains available.
 
 ### Launch intent and observed execution authority
 
