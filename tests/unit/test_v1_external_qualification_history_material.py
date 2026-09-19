@@ -32,7 +32,21 @@ def _axes() -> list[dict[str, object]]:
     return [
         {
             "axis_id": "memconflict-axis",
-            "case": {"axis": "conflict_temporal_validity"},
+            "case": {
+                "case_id": "memconflict-case",
+                "axis": "conflict_temporal_validity",
+                "benchmark": {
+                    "id": "memconflict",
+                    "repository": "https://example.invalid/memconflict",
+                    "revision": "a" * 40,
+                    "license": "MIT",
+                },
+                "dataset": {
+                    "revision": "b" * 40,
+                    "license": "MIT",
+                },
+                "adapter_case_ref": "memconflict-case-ref",
+            },
             "questions": [
                 _question(
                     "memconflict:dynamic_conflict:Q_001",
@@ -53,7 +67,21 @@ def _axes() -> list[dict[str, object]]:
         },
         {
             "axis_id": "longmemeval-axis",
-            "case": {"axis": "update_belief_revision"},
+            "case": {
+                "case_id": "longmemeval-case",
+                "axis": "update_belief_revision",
+                "benchmark": {
+                    "id": "longmemeval",
+                    "repository": "https://example.invalid/longmemeval",
+                    "revision": "c" * 40,
+                    "license": "MIT",
+                },
+                "dataset": {
+                    "revision": "d" * 40,
+                    "license": "MIT",
+                },
+                "adapter_case_ref": "longmemeval-case-ref",
+            },
             "questions": [
                 _question(
                     "longmemeval:knowledge-update:6a1eabeb",
@@ -270,13 +298,38 @@ def test_materialize_axes_is_deterministic_and_validated_by_campaign_parser(
     assert first_receipt["semantic_generation_count"] == 0
     assert first_receipt["benchmark_question_execution_count"] == 0
     for axis in first:
-        material = axis["history_material"]
-        path = Path(material["path"])
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == material["sha256"]
-        plan = HindsightHistoryPlan.from_path(path)
+        history_material = axis["history_material"]
+        history_path = Path(history_material["path"])
+        assert (
+            hashlib.sha256(history_path.read_bytes()).hexdigest()
+            == history_material["sha256"]
+        )
+        plan = HindsightHistoryPlan.from_path(history_path)
         plan.validate_questions(
             [item["question_id"] for item in axis["questions"]]
         )
+
+        benchmark_material = axis["benchmark_material"]
+        benchmark_path = Path(benchmark_material["path"])
+        assert (
+            hashlib.sha256(benchmark_path.read_bytes()).hexdigest()
+            == benchmark_material["sha256"]
+        )
+        benchmark_evidence = json.loads(
+            benchmark_path.read_text(encoding="utf-8")
+        )
+        assert benchmark_evidence["axis_id"] == axis["axis_id"]
+        assert "answer" not in json.dumps(
+            benchmark_evidence,
+            ensure_ascii=False,
+        )
+        assert benchmark_material["question_fingerprints"] == [
+            item["content_fingerprint"] for item in axis["questions"]
+        ]
+
+    receipt_axes = first_receipt["axes"]
+    assert all("benchmark_path" in item for item in receipt_axes)
+    assert all("benchmark_sha256" in item for item in receipt_axes)
 
 
 def test_builder_rejects_source_hash_drift_before_selection(
