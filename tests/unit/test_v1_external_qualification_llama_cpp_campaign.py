@@ -429,6 +429,10 @@ class _SemanticClient:
         self.calls.append((url, dict(json)))
         return self.responses.pop(0)
 
+    def get(self, url: str) -> _SemanticResponse:
+        self.calls.append((url, {}))
+        return self.responses.pop(0)
+
     def close(self) -> None:
         return None
 
@@ -458,6 +462,7 @@ class _ComparatorLifecycle:
         self.recall_calls: list[tuple[str, str]] = []
         self.reflect_calls: list[tuple[str, str, Mapping[str, object]]] = []
         self.wait_calls: list[tuple[str, set[str]]] = []
+        self.allow_missing_bank_calls: list[bool] = []
 
     def retain(
         self,
@@ -478,7 +483,10 @@ class _ComparatorLifecycle:
         self.recall_calls.append((bank_id, prompt))
         return {"results": []}
 
-    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
+    def consolidation_pending_ids(
+        self, *, bank_id: str, allow_missing_bank: bool = False
+    ) -> set[str]:
+        self.allow_missing_bank_calls.append(allow_missing_bank)
         return set()
 
     def wait_for_consolidation(
@@ -1150,6 +1158,25 @@ def test_hindsight_v010_semantic_routes_and_failure_evidence_are_typed(
         "body": '{"detail":"Method Not Allowed"}',
     }
 
+    missing_bank_client = _SemanticClient(
+        [_SemanticResponse(404, {"detail": "Bank 'synthetic-bank' not found"})]
+    )
+    lifecycle.client = missing_bank_client  # type: ignore[assignment]
+    assert lifecycle.consolidation_pending_ids(
+        bank_id="synthetic-bank",
+        allow_missing_bank=True,
+    ) == set()
+
+    missing_bank_client = _SemanticClient(
+        [_SemanticResponse(404, {"detail": "Bank 'synthetic-bank' not found"})]
+    )
+    lifecycle.client = missing_bank_client  # type: ignore[assignment]
+    with pytest.raises(HindsightSemanticRequestError):
+        lifecycle.consolidation_pending_ids(
+            bank_id="synthetic-bank",
+            allow_missing_bank=False,
+        )
+
 
 def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
     tmp_path: Path,
@@ -1271,6 +1298,7 @@ def test_hindsight_history_is_ordered_exactly_once_and_profile_isolated(
     assert len(lifecycle.recall_calls) == 3
     assert len(lifecycle.reflect_calls) == 0
     assert len(answer_model.calls) == 3
+    assert lifecycle.allow_missing_bank_calls == [True, False]
     assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") == lifecycle.retain_calls[0][0]
     assert _hindsight_axis_bank_id("repair-profile-a", "axis-a") != _hindsight_axis_bank_id(
         "repair-profile-b", "axis-a"

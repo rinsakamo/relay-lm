@@ -30,8 +30,11 @@ class _FakeLifecycle:
     def start(self) -> None:
         self.started = True
 
-    def consolidation_pending_ids(self, *, bank_id: str) -> set[str]:
+    def consolidation_pending_ids(
+        self, *, bank_id: str, allow_missing_bank: bool = False
+    ) -> set[str]:
         assert bank_id
+        assert allow_missing_bank is True
         self.semantic_operation_count += 1
         return set()
 
