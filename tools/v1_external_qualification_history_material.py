@@ -16,11 +16,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from tools.external_qualification import validate_case
 from tools.longmemeval_adapter import normalize_longmemeval_knowledge_update
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignQuestion,
     HindsightHistoryPlan,
+    _fingerprint,
 )
 
 MEMCONFLICT_SOURCE_SHA256 = (
@@ -457,21 +459,89 @@ def materialize_bounded_history_axes(
         if not isinstance(axis_id, str) or not axis_id:
             raise CampaignCarriageError("campaign axis_id must be non-empty")
         token = hashlib.sha256(axis_id.encode("utf-8")).hexdigest()[:24]
-        path = root / f"history-{token}.json"
-        sha256 = _write_canonical_json(path, history)
-        HindsightHistoryPlan.from_path(path).validate_questions(
-            [question.question_id for question in _axis_questions(axis)]
+        questions = _axis_questions(axis)
+
+        history_path = root / f"history-{token}.json"
+        history_sha256 = _write_canonical_json(history_path, history)
+        HindsightHistoryPlan.from_path(history_path).validate_questions(
+            [question.question_id for question in questions]
         )
         axis["history_material"] = {
-            "path": str(path),
-            "sha256": sha256,
+            "path": str(history_path),
+            "sha256": history_sha256,
         }
+
+        case = validate_case(
+            _mapping(axis.get("case"), label="campaign axis case")
+        )
+        if source_name == "memconflict":
+            selection: dict[str, object] = {
+                "persona_id": MEMCONFLICT_PERSONA_ID,
+                "session_count": MEMCONFLICT_SESSION_COUNT,
+                "questions": [
+                    {
+                        "campaign_question_id": campaign_question_id,
+                        "source_question_id": source_question_id,
+                        "session_order": session_order,
+                    }
+                    for (
+                        campaign_question_id,
+                        source_question_id,
+                        session_order,
+                    ) in MEMCONFLICT_SELECTION
+                ],
+            }
+            source_receipt = {
+                "path": str(memconflict_source.resolve()),
+                "sha256": MEMCONFLICT_SOURCE_SHA256,
+            }
+        else:
+            selection = {
+                "question_id": LONGMEMEVAL_QUESTION_ID,
+                "session_count": LONGMEMEVAL_SESSION_COUNT,
+            }
+            source_receipt = {
+                "path": str(longmemeval_source.resolve()),
+                "sha256": LONGMEMEVAL_SOURCE_SHA256,
+            }
+
+        benchmark_evidence = {
+            "format_version": 1,
+            "axis_id": axis_id,
+            "source": source_receipt,
+            "selection": selection,
+            "questions": [
+                {
+                    "question_id": question.question_id,
+                    "prompt": question.prompt,
+                    "content_fingerprint": question.content_fingerprint,
+                    "session_id": question.session_id,
+                }
+                for question in questions
+            ],
+        }
+        benchmark_path = root / f"benchmark-{token}.json"
+        benchmark_sha256 = _write_canonical_json(
+            benchmark_path,
+            benchmark_evidence,
+        )
+        axis["benchmark_material"] = {
+            "path": str(benchmark_path),
+            "sha256": benchmark_sha256,
+            "case_fingerprint": _fingerprint(case),
+            "question_fingerprints": [
+                question.content_fingerprint for question in questions
+            ],
+        }
+
         receipt_axes.append(
             {
                 "axis_id": axis_id,
                 "source": source_name,
-                "history_path": str(path),
-                "history_sha256": sha256,
+                "benchmark_path": str(benchmark_path),
+                "benchmark_sha256": benchmark_sha256,
+                "history_path": str(history_path),
+                "history_sha256": history_sha256,
                 "session_count": len(history["sessions"]),
                 "question_count": len(history["question_history"]),
             }

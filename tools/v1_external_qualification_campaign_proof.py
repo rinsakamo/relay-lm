@@ -26,6 +26,9 @@ from tools.repository_authority import load_declarations, qualification_fingerpr
 from tools.v1_external_qualification_campaign_prepare import (
     prepare_scientific_owner_descriptor,
 )
+from tools.v1_external_qualification_history_material import (
+    materialize_bounded_history_axes,
+)
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
     CampaignCarriageError,
@@ -355,6 +358,9 @@ def prepare_static_proof(
     repository_tree: str,
     expected_rc_sha256: str | None = None,
     expected_core_fingerprint: str | None = None,
+    memconflict_source: Path | None = None,
+    longmemeval_source: Path | None = None,
+    history_output_root: Path | None = None,
 ) -> dict[str, object]:
     """Prepare and verify one fresh-owner descriptor without semantic execution."""
 
@@ -398,6 +404,38 @@ def prepare_static_proof(
     relaylm_exact_rc = raw.get("relaylm_exact_rc")
     if not isinstance(axes, Sequence) or isinstance(axes, (str, bytes)):
         raise CampaignProofError("source axes must be a list")
+
+    history_inputs = (memconflict_source, longmemeval_source)
+    if any(value is not None for value in history_inputs):
+        if any(value is None for value in history_inputs):
+            raise CampaignProofError(
+                "MemConflict and LongMemEval sources must be supplied together"
+            )
+        if history_output_root is None:
+            history_output_root = plan_path.parent / f"{plan_path.stem}-history"
+        materialized_axes, history_receipt = materialize_bounded_history_axes(
+            axes=[
+                axis
+                for axis in axes
+                if isinstance(axis, Mapping)
+            ],
+            memconflict_source=memconflict_source,
+            longmemeval_source=longmemeval_source,
+            output_root=history_output_root,
+        )
+        if len(materialized_axes) != len(axes):
+            raise CampaignProofError(
+                "source axes contain a non-object entry"
+            )
+        axes = materialized_axes
+    else:
+        history_receipt = {
+            "status": "NOT_REQUESTED",
+            "semantic_generation_count": 0,
+            "benchmark_question_execution_count": 0,
+            "axes": [],
+        }
+
     if not isinstance(llama_cpp, Mapping):
         raise CampaignProofError("source llama_cpp must be an object")
     if not isinstance(relaylm_exact_rc, Mapping):
@@ -525,6 +563,7 @@ def prepare_static_proof(
         "preserved_case_compatibility": preserved_case_compatibility,
         "accepted_rc_sha256": expected_rc_sha256,
         "core_fingerprint": core_fingerprint,
+        "history_materialization": history_receipt,
         "stale_lifecycle_substitution": "REJECTED",
         "mutually_stale_owner_identity": "REJECTED",
         "SCIENTIFIC_SPEND": "UNSPENT",
@@ -777,6 +816,9 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--repository-tree", required=True)
     prepare.add_argument("--expected-rc-sha256")
     prepare.add_argument("--expected-core-fingerprint")
+    prepare.add_argument("--memconflict-source", type=Path)
+    prepare.add_argument("--longmemeval-source", type=Path)
+    prepare.add_argument("--history-output-root", type=Path)
 
     verify = sub.add_parser("verify")
     verify.add_argument("--plan", type=Path, required=True)
@@ -805,6 +847,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 repository_tree=args.repository_tree,
                 expected_rc_sha256=args.expected_rc_sha256,
                 expected_core_fingerprint=args.expected_core_fingerprint,
+                memconflict_source=(
+                    None
+                    if args.memconflict_source is None
+                    else args.memconflict_source.resolve()
+                ),
+                longmemeval_source=(
+                    None
+                    if args.longmemeval_source is None
+                    else args.longmemeval_source.resolve()
+                ),
+                history_output_root=(
+                    None
+                    if args.history_output_root is None
+                    else args.history_output_root.resolve()
+                ),
             )
         else:
             receipt = verify_zero_semantic_rehearsal(

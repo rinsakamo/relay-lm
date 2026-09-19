@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import tools.v1_external_qualification_campaign_proof as campaign_proof
 from test_v1_external_qualification_llama_cpp_campaign import _strict_descriptor_mapping
 from tools.external_qualification import LiveLaunchAdmissionAttestation
 from tools.v1_external_qualification_campaign_proof import (
@@ -171,6 +172,106 @@ def _prepare(tmp_path: Path) -> tuple[dict[str, object], Path, Path, str]:
         repository_tree="b" * 40,
     )
     return receipt, source, plan_path, owner_id
+
+
+def test_prepare_static_proof_can_materialize_history_in_one_transaction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, source_sha = _write_source(tmp_path)
+    owner_id = "owner-proof-one-shot-history"
+    plan_path = tmp_path / "fresh-one-shot-plan.json"
+    memconflict_source = tmp_path / "Step4_4.jsonl"
+    longmemeval_source = tmp_path / "longmemeval_s_cleaned.json"
+    memconflict_source.write_text("synthetic-memconflict", encoding="utf-8")
+    longmemeval_source.write_text("synthetic-longmemeval", encoding="utf-8")
+    calls: list[dict[str, object]] = []
+
+    def fake_materialize(
+        *,
+        axes,
+        memconflict_source,
+        longmemeval_source,
+        output_root,
+    ):
+        calls.append(
+            {
+                "axes": copy.deepcopy(list(axes)),
+                "memconflict_source": memconflict_source,
+                "longmemeval_source": longmemeval_source,
+                "output_root": output_root,
+            }
+        )
+        return (
+            copy.deepcopy(list(axes)),
+            {
+                "status": "HISTORY_MATERIAL_PREPARED",
+                "semantic_generation_count": 0,
+                "benchmark_question_execution_count": 0,
+                "axes": [
+                    {"axis_id": "axis-a"},
+                    {"axis_id": "axis-b"},
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        campaign_proof,
+        "materialize_bounded_history_axes",
+        fake_materialize,
+    )
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
+        memconflict_source=memconflict_source,
+        longmemeval_source=longmemeval_source,
+    )
+
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
+    history_receipt = receipt["history_materialization"]
+    assert isinstance(history_receipt, dict)
+    assert history_receipt["status"] == "HISTORY_MATERIAL_PREPARED"
+    assert history_receipt["semantic_generation_count"] == 0
+    assert history_receipt["benchmark_question_execution_count"] == 0
+    assert len(calls) == 1
+    assert calls[0]["memconflict_source"] == memconflict_source
+    assert calls[0]["longmemeval_source"] == longmemeval_source
+    assert calls[0]["output_root"] == (
+        plan_path.parent / f"{plan_path.stem}-history"
+    )
+    CampaignDescriptor.from_mapping(
+        json.loads(plan_path.read_text(encoding="utf-8"))
+    )
+
+
+def test_prepare_static_proof_requires_benchmark_sources_as_a_pair(
+    tmp_path: Path,
+) -> None:
+    source, source_sha = _write_source(tmp_path)
+    owner_id = "owner-proof-incomplete-history-input"
+
+    with pytest.raises(
+        CampaignProofError,
+        match="MemConflict and LongMemEval sources must be supplied together",
+    ):
+        prepare_static_proof(
+            repo_root=tmp_path,
+            source_path=source,
+            source_sha256=source_sha,
+            plan_path=tmp_path / "should-not-exist-history-plan.json",
+            owner_root=tmp_path / owner_id,
+            owner_id=owner_id,
+            repository_head="a" * 40,
+            repository_tree="b" * 40,
+            memconflict_source=tmp_path / "only-memconflict.jsonl",
+        )
 
 
 def test_prepare_static_proof_canonicalizes_historical_hindsight(tmp_path: Path) -> None:
