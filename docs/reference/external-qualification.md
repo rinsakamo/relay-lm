@@ -335,9 +335,12 @@ real benchmark history is prepared separately by the repository-owned
 
 ### Deterministic benchmark history material (#2986)
 
-The history builder is zero-semantic preparation. It consumes current axis
-question identities plus the exact byte-pinned benchmark datasets; it does not
-accept a historical campaign descriptor as execution authority.
+The material builder is zero-semantic preparation. It consumes current axis
+case/question identities plus the exact byte-pinned benchmark datasets; it does
+not accept a historical campaign descriptor as execution authority. It rebuilds
+both the current benchmark-material evidence file and the model-facing
+history-material file, so preserved temporary `bounded-selection.json` paths
+are no longer runtime prerequisites.
 
 For the bounded Core 1.0 ring it fixes the immutable source selections already
 recorded by the pre-release owner:
@@ -360,10 +363,13 @@ only role/content/timestamp history; `answer`, `answer_session_ids`,
 material.
 
 The builder compares every selected source question with the current frozen
-campaign prompt, writes canonical JSON, validates the result through
-`HindsightHistoryPlan`, and attaches only path/SHA-256 references to fresh
-axis templates. An existing output is reusable only when its bytes are exactly
-the deterministic output; otherwise preparation fails closed.
+campaign prompt and writes canonical JSON.  The benchmark-material evidence
+records only pinned source identity, frozen selection identity, and frozen
+question identity; the generated history is independently validated through
+`HindsightHistoryPlan`.  Fresh axis templates receive new benchmark path/SHA,
+current case/question fingerprints, and new history path/SHA. An existing
+output is reusable only when its bytes are exactly the deterministic output;
+otherwise preparation fails closed.
 
 The standalone builder remains useful for inspection, but the preferred
 scientific-owner preparation path is one repository-owned transaction.  Pass
