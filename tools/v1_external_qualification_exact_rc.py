@@ -16,7 +16,7 @@ import subprocess
 import sysconfig
 import time
 import venv
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
