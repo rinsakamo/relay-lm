@@ -193,8 +193,7 @@ Hindsight lifecycle. It has no executable, import path, shell fragment,
 only entry: `tools.relay_physical_run` owns the shared lease and invokes the
 registered campaign module.
 
-Production setup is ordered as follows, with no participant call in the
-rehearsal path:
+Production setup is ordered as follows:
 
 ```text
 fresh exact authority
@@ -204,8 +203,19 @@ fresh exact authority
   -> benchmark material and prompt/fingerprint proof
   -> FrozenExperimentIdentity + durable question stores
   -> fsync pre-call barrier (SCIENTIFIC_SPEND=UNSPENT)
-  -> stop for zero-semantic rehearsal
+  -> optional zero-semantic rehearsal stop
+     OR
+  -> fsync UNSPENT -> CONSUMED immediately before the first A/B/C/D call
 ```
+
+The zero-semantic rehearsal is a diagnostic option, not a mandatory gate.  A
+fresh owner may proceed directly through the same registered `--execute` path
+after deterministic and host preflight checks pass, because that path owns the
+fsync-backed spend transition itself.  A pre-spend infrastructure failure with
+zero participant/model/benchmark/Hindsight/judge work may be corrected without
+inventing a new scientific result; all failed-attempt evidence remains
+preserved.  Once the ledger is `CONSUMED`, the stricter no-fresh-retry and exact
+infrastructure-resume rules remain unchanged.
 
 The exact-RC boundary installs the accepted wheel bytes into a checkout-
 external isolated runtime with `--no-deps --no-index`; it verifies the wheel
@@ -271,9 +281,42 @@ Successful citable execution ends in the existing `run_case`/`stable_run_id`/
 vocabulary. It includes the frozen case/manifest, A/B/C/D results, benchmark
 metrics, counters/calls/tokens, latency/resources, limitations, authority,
 runtime observations, campaign identity, and frozen experiment fingerprint.
-The #2957 rehearsal is explicitly non-citable and must report zero semantic,
-model, benchmark-question, answer-model, and judge calls with
-`SCIENTIFIC_SPEND=UNSPENT`.
+When a zero-semantic rehearsal is requested, it remains non-citable and must
+report zero semantic, model, benchmark-question, answer-model, and judge calls
+with `SCIENTIFIC_SPEND=UNSPENT`.  It is not required before direct registered
+execution.
+
+### Repeatable synthetic comparator diagnostic (#2986)
+
+The registered `v1:hindsight-comparator-synthetic-smoke` target separates
+engineering convergence from one-shot benchmark spend.  It runs only fixed
+repository-owned synthetic dialogue and a synthetic question under a fresh
+diagnostic Hindsight deployment/profile/bank and a fresh owned llama.cpp
+process.  The diagnostic exercises the exact v0.10.0 retain endpoint,
+consolidation visibility, recall response mapping, and local OpenAI-compatible
+model transport repaired around #2985.
+
+It never parses benchmark history or selected benchmark questions, never opens
+a `ScientificSpendLedger`, never writes a scientific durable root, and emits
+only `NON_CITABLE_DIAGNOSTIC_*` evidence.  It may therefore be repeated after
+infrastructure-only fixes without spending or selecting against the citable
+campaign.
+
+```bash
+python -m tools.relay_physical_run \
+  --target v1:hindsight-comparator-synthetic-smoke -- \
+  --source-descriptor /absolute/path/to/campaign-descriptor.json \
+  --diagnostic-owner-id diag-2986-hindsight-001 \
+  --repo-root /absolute/path/to/relay-lm-checkout \
+  --artifact-root /absolute/path/to/fresh-diagnostic-root
+```
+
+The smoke is intentionally narrower than scientific acceptance.  In particular,
+it does not prove that the exact-RC D participant receives the benchmark's
+question-bounded history.  Citable execution must remain blocked until the
+production D path is wired through the existing transcript replay/frozen-query
+adapter (or an equivalent exact-RC history-preserving boundary) rather than
+submitting only the isolated question prompt.
 
 ### Launch intent and observed execution authority
 
@@ -405,8 +448,10 @@ A/B/C/D order and exact infrastructure resume verifies identity, observation,
 counter accounting, and the completed-question aggregate before skipping it.
 The descriptor also binds exact benchmark material and prompt content
 fingerprints, exact accepted RC1 wheel/configuration, and one owned/attested
-Hindsight v0.10.0 deployment. A zero-semantic rehearsal reaches the barrier
-without crossing spend and never invokes a participant.
+Hindsight v0.10.0 deployment. An optional zero-semantic rehearsal reaches the
+barrier without crossing spend and never invokes a participant; direct
+`--execute` crosses the fsync-backed spend boundary immediately before its
+first real participant call.
 
 The deterministic acceptance for this boundary is in
 `tests/unit/test_memconflict_adapter.py` and
