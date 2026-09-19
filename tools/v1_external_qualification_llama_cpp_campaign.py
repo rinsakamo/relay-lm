@@ -81,6 +81,10 @@ HINDSIGHT_RETAIN_GRANULARITY = "exchange_append"
 # Keep this repository-owned, benchmark-independent infrastructure bound above
 # Hindsight's pinned default 3000-character retain chunk size.
 HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS = 4096
+# Pinned Hindsight v0.10.0 otherwise permits completed retain operations after
+# accumulated extraction errors. Qualification must never treat dropped facts
+# as a successful comparator write.
+HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS = True
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -164,6 +168,7 @@ _LIFECYCLE_KEYS = {
     "llm_model",
     "llm_base_url",
     "retain_max_completion_tokens",
+    "fail_on_extraction_errors",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -878,6 +883,7 @@ class HindsightLifecycleSpec:
     llm_model: str
     llm_base_url: str
     retain_max_completion_tokens: int
+    fail_on_extraction_errors: bool
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -956,6 +962,16 @@ class HindsightLifecycleSpec:
                 "hindsight_lifecycle.retain_max_completion_tokens must match "
                 "the repository-owned qualification bound"
             )
+        fail_on_extraction_errors = raw["fail_on_extraction_errors"]
+        if not isinstance(fail_on_extraction_errors, bool):
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.fail_on_extraction_errors must be a boolean"
+            )
+        if fail_on_extraction_errors is not HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS:
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.fail_on_extraction_errors must match "
+                "the repository-owned qualification reliability policy"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -990,6 +1006,7 @@ class HindsightLifecycleSpec:
                 raw["llm_base_url"], label="hindsight_lifecycle.llm_base_url"
             ),
             retain_max_completion_tokens=retain_max_completion_tokens,
+            fail_on_extraction_errors=fail_on_extraction_errors,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1025,6 +1042,7 @@ class HindsightLifecycleSpec:
             "llm_model": self.llm_model,
             "llm_base_url": self.llm_base_url,
             "retain_max_completion_tokens": self.retain_max_completion_tokens,
+            "fail_on_extraction_errors": self.fail_on_extraction_errors,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1204,6 +1222,8 @@ class HindsightDeploymentSession:
                 self.spec.llm_base_url,
                 "--retain-max-completion-tokens",
                 str(self.spec.retain_max_completion_tokens),
+                "--fail-on-extraction-errors",
+                str(self.spec.fail_on_extraction_errors).lower(),
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1354,6 +1374,7 @@ class HindsightDeploymentSession:
                 ("llm_model", self.spec.llm_model),
                 ("llm_base_url", self.spec.llm_base_url),
                 ("retain_max_completion_tokens", self.spec.retain_max_completion_tokens),
+                ("fail_on_extraction_errors", self.spec.fail_on_extraction_errors),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):
