@@ -220,8 +220,25 @@ infrastructure-resume rules remain unchanged.
 The exact-RC boundary installs the accepted wheel bytes into a checkout-
 external isolated runtime with `--no-deps --no-index`; it verifies the wheel
 hash before and after installation, package version, and `relaylm` import
-origin. The D participant is therefore never an import of qualification
-checkout code and never a source rebuild. Qualification-only carriage changes
+origin.  D is executed by that installed interpreter through a narrow
+qualification adapter child: `relaylm` resolves only from the accepted wheel
+while the `tools.*` bridge resolves from the current qualification checkout.
+The bridge loads the exact frozen RC runtime config, resolves the
+`relaylm-exact-rc` Cognitive Profile, copies its Cognitive Package separately
+for each benchmark axis, and reuses the accepted profile provider/pass/retrieval
+configuration.
+
+For every D question, the controller passes the same validated
+`HindsightHistoryPlan` prefix used by C.  The child may only extend an axis'
+already-ingested ordered session prefix; it ingests only the new sessions via
+`RelayLMReadOnlyQueryAdapter`, freezes the resulting package, and executes the
+question on the ordinary two-pass frozen-query path.  Question/answer clones are
+discarded, so they never contaminate a later benchmark question.  The child is
+lazy-started on the first D invocation. Its fresh workspace is deliberately
+preserved: if a process is lost after D has been reached, a later exact-resume
+attempt fails closed instead of regenerating transcript-replay semantic calls.
+An attempt that stops before D creates no bridge workspace and keeps the
+existing exact-resume boundary available.  Qualification-only carriage changes
 remain outside the accepted RC1 product identity under REL2.
 
 The campaign-level `ScientificSpendLedger` is outside the per-axis question
@@ -311,12 +328,12 @@ python -m tools.relay_physical_run \
   --artifact-root /absolute/path/to/fresh-diagnostic-root
 ```
 
-The smoke is intentionally narrower than scientific acceptance.  In particular,
-it does not prove that the exact-RC D participant receives the benchmark's
-question-bounded history.  Citable execution must remain blocked until the
-production D path is wired through the existing transcript replay/frozen-query
-adapter (or an equivalent exact-RC history-preserving boundary) rather than
-submitting only the isolated question prompt.
+The smoke is intentionally narrower than scientific acceptance.  The production
+D path now has a history-preserving installed-RC bridge as described above, but
+the smoke by itself does not validate real benchmark-history reconstruction.
+Citable execution therefore still requires repository-owned deterministic
+`history_material` derivation from the pinned benchmark bytes and frozen
+selection identities before the one-shot benchmark transaction is allowed.
 
 ### Launch intent and observed execution authority
 
