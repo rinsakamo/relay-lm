@@ -1863,8 +1863,9 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     seen: dict[str, object] = {}
 
     class _FakePopen:
-        def __init__(self, command: list[str], **_: object) -> None:
+        def __init__(self, command: list[str], **kwargs: object) -> None:
             seen["command"] = list(command)
+            seen["environment"] = kwargs.get("env")
             self.pid = 4242
             self.returncode: int | None = None
 
@@ -1909,6 +1910,10 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     assert argument("--llm-base-url") == descriptor.hindsight_lifecycle.llm_base_url
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
+    environment = seen["environment"]
+    assert isinstance(environment, dict)
+    assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] == "true"
+    assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] == "true"
     cleanup = lifecycle.cleanup()
     assert cleanup["semantic_operation_count"] == 0
 

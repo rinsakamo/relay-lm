@@ -1199,6 +1199,8 @@ class HindsightDeploymentSession:
             environment["PYTHONPATH"] = str(self.repo_root)
             environment["PYTHONNOUSERSITE"] = "1"
             environment["HINDSIGHT_API_SKIP_LLM_VERIFICATION"] = "true"
+            environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] = "true"
+            environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] = "true"
             environment["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = (
                 self.spec.embeddings_provider
             )
