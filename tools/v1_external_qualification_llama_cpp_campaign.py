@@ -76,6 +76,11 @@ _RUN_MODES = {"fresh_run", "exact_infrastructure_resume"}
 # answer generation below uses this one provider-neutral boundary for every
 # governed axis (including the bounded LongMemEval knowledge-update axis).
 HINDSIGHT_RETAIN_GRANULARITY = "exchange_append"
+# Pinned Hindsight v0.10.0 defaults retain extraction to 64k output tokens,
+# which cannot terminate safely inside the frozen 8192-token llama.cpp context.
+# Keep this repository-owned, benchmark-independent infrastructure bound above
+# Hindsight\'s pinned default 3000-character retain chunk size.
+HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS = 4096
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -158,6 +163,7 @@ _LIFECYCLE_KEYS = {
     "database_profile",
     "llm_model",
     "llm_base_url",
+    "retain_max_completion_tokens",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -871,6 +877,7 @@ class HindsightLifecycleSpec:
     database_profile: str
     llm_model: str
     llm_base_url: str
+    retain_max_completion_tokens: int
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -940,6 +947,15 @@ class HindsightLifecycleSpec:
             raise CampaignCarriageError("hindsight ONNX model content drifted")
         if _sha256_file_tree(onnx_tokenizer_path) != onnx_tokenizer_tree_sha256:
             raise CampaignCarriageError("hindsight ONNX tokenizer content drifted")
+        retain_max_completion_tokens = _require_positive_int(
+            raw["retain_max_completion_tokens"],
+            label="hindsight_lifecycle.retain_max_completion_tokens",
+        )
+        if retain_max_completion_tokens != HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS:
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.retain_max_completion_tokens must match "
+                "the repository-owned qualification bound"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -973,6 +989,7 @@ class HindsightLifecycleSpec:
             llm_base_url=_require_nonempty_string(
                 raw["llm_base_url"], label="hindsight_lifecycle.llm_base_url"
             ),
+            retain_max_completion_tokens=retain_max_completion_tokens,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1007,6 +1024,7 @@ class HindsightLifecycleSpec:
             "database_profile": self.database_profile,
             "llm_model": self.llm_model,
             "llm_base_url": self.llm_base_url,
+            "retain_max_completion_tokens": self.retain_max_completion_tokens,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1184,6 +1202,8 @@ class HindsightDeploymentSession:
                 self.spec.llm_model,
                 "--llm-base-url",
                 self.spec.llm_base_url,
+                "--retain-max-completion-tokens",
+                str(self.spec.retain_max_completion_tokens),
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1333,6 +1353,7 @@ class HindsightDeploymentSession:
                 ("source_tree", self.spec.source_tree),
                 ("llm_model", self.spec.llm_model),
                 ("llm_base_url", self.spec.llm_base_url),
+                ("retain_max_completion_tokens", self.spec.retain_max_completion_tokens),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):
