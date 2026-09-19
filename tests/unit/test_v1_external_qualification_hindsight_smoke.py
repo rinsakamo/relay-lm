@@ -234,3 +234,23 @@ def test_synthetic_smoke_preserves_failure_receipt_without_scientific_state(
     assert receipt["scientific_spend"] == "NOT_OPENED"
     assert receipt["benchmark_text_used"] is False
     assert receipt["failure"]["type"] == "CampaignCarriageError"
+
+
+def test_shared_physical_registry_exposes_only_the_synthetic_smoke_module() -> None:
+    registry = json.loads(
+        (
+            Path(__file__).parents[2]
+            / ".ai"
+            / "physical"
+            / "llama_cpp_targets.json"
+        ).read_text(encoding="utf-8")
+    )
+    target = registry["targets"][smoke.SMOKE_TARGET]
+    assert target["branch"] == "v1"
+    assert target["module"] == "tools.v1_external_qualification_hindsight_smoke"
+    assert target["required_distributions"] == ["httpx"]
+
+
+def test_synthetic_smoke_module_has_no_scientific_ledger_dependency() -> None:
+    source = Path(smoke.__file__).read_text(encoding="utf-8")
+    assert "ScientificSpendLedger" not in source
