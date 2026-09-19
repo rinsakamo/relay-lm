@@ -59,6 +59,7 @@ def _write_identity(
     llm_model: str,
     llm_base_url: str,
     retain_max_completion_tokens: int,
+    fail_on_extraction_errors: bool,
     embeddings_provider: str,
     reranker_provider: str,
     onnx_model_path: Path,
@@ -103,6 +104,7 @@ def _write_identity(
         "llm_model": llm_model,
         "llm_base_url": llm_base_url,
         "retain_max_completion_tokens": retain_max_completion_tokens,
+        "fail_on_extraction_errors": fail_on_extraction_errors,
         "embeddings_provider": embeddings_provider,
         "reranker_provider": reranker_provider,
         "embeddings_onnx_model_path": str(onnx_model_path),
@@ -133,6 +135,11 @@ def main() -> int:
     parser.add_argument("--llm-model", required=True)
     parser.add_argument("--llm-base-url", required=True)
     parser.add_argument("--retain-max-completion-tokens", required=True, type=int)
+    parser.add_argument(
+        "--fail-on-extraction-errors",
+        required=True,
+        choices=("true", "false"),
+    )
     parser.add_argument("--embeddings-provider", required=True)
     parser.add_argument("--reranker-provider", required=True)
     parser.add_argument("--onnx-model-path", required=True)
@@ -144,6 +151,10 @@ def main() -> int:
         raise RuntimeError("Hindsight retain completion bound must be positive")
     os.environ["HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS"] = str(
         args.retain_max_completion_tokens
+    )
+    fail_on_extraction_errors = args.fail_on_extraction_errors == "true"
+    os.environ["HINDSIGHT_API_FAIL_ON_EXTRACTION_ERRORS"] = (
+        "true" if fail_on_extraction_errors else "false"
     )
     os.environ["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = args.embeddings_provider
     os.environ["HINDSIGHT_API_RERANKER_PROVIDER"] = args.reranker_provider
@@ -187,6 +198,7 @@ def main() -> int:
         llm_model=args.llm_model,
         llm_base_url=args.llm_base_url,
         retain_max_completion_tokens=args.retain_max_completion_tokens,
+        fail_on_extraction_errors=fail_on_extraction_errors,
         embeddings_provider=args.embeddings_provider,
         reranker_provider=args.reranker_provider,
         onnx_model_path=onnx_model_path,
