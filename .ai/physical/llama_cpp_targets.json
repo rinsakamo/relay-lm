@@ -88,6 +88,14 @@
       "required_distributions": [
         "httpx"
       ]
+    },
+    "v1:hindsight-comparator-synthetic-smoke": {
+      "branch": "v1",
+      "module": "tools.v1_external_qualification_hindsight_smoke",
+      "description": "Repeatable non-citable synthetic Hindsight retain/consolidation/recall and local-model transport diagnostic; never opens scientific spend.",
+      "required_distributions": [
+        "httpx"
+      ]
     }
   }
 }
