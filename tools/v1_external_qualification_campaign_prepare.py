@@ -25,6 +25,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignQuestion,
     CampaignDescriptor,
+    HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
     RelayLMExactRCSpec,
     _campaign_contract,
@@ -100,7 +101,11 @@ def _derive_hindsight_lifecycle(
     base: Mapping[str, object],
 ) -> HindsightLifecycleSpec:
     raw = _mapping_copy(base, label="Hindsight lifecycle base")
-    forbidden = {"deployment_id", "database_profile"} & set(raw)
+    forbidden = {
+        "deployment_id",
+        "database_profile",
+        "retain_max_completion_tokens",
+    } & set(raw)
     if forbidden:
         raise CampaignCarriageError(
             "Hindsight lifecycle base must omit owner-local fields: "
@@ -108,6 +113,7 @@ def _derive_hindsight_lifecycle(
         )
     raw["deployment_id"] = _hindsight_owner_deployment_id(owner_id)
     raw["database_profile"] = owner_id
+    raw["retain_max_completion_tokens"] = HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     return HindsightLifecycleSpec.from_mapping(raw)
 
 
@@ -368,8 +374,9 @@ def prepare_scientific_owner_descriptor(
 ) -> PreparedScientificOwnerDescriptor:
     """Derive a new owner descriptor without accepting an old descriptor object.
 
-    ``hindsight_lifecycle_base`` intentionally cannot carry ``deployment_id`` or
-    ``database_profile``.  Those values, owner-local roots, expected health,
+    ``hindsight_lifecycle_base`` intentionally cannot carry ``deployment_id``,
+    ``database_profile``, or the repository-owned retain completion bound. Those
+    values, owner-local roots, expected health,
     comparator deployment identity, frozen campaign contracts, and authority
     are all derived here before the existing production parser admits the
     result.  Historical execution-freeze release-case copies are deliberately
