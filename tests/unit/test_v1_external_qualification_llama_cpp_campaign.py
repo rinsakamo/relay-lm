@@ -32,6 +32,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
+    HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     ExactRelayLMExecutor,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
@@ -836,6 +837,7 @@ def _strict_descriptor_mapping(
         "database_profile": owner_id,
         "llm_model": "openai/gpt-oss-120b",
         "llm_base_url": "http://127.0.0.1:18091/v1",
+        "retain_max_completion_tokens": HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -1809,6 +1811,15 @@ def test_strict_descriptor_rejects_stale_previous_owner_database_profile(
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_retain_bound_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["retain_max_completion_tokens"] = 8191
+    with pytest.raises(CampaignCarriageError, match="repository-owned qualification bound"):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -1908,6 +1919,9 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     assert argument("--source-tree") == descriptor.hindsight_lifecycle.source_tree
     assert argument("--llm-model") == descriptor.hindsight_lifecycle.llm_model
     assert argument("--llm-base-url") == descriptor.hindsight_lifecycle.llm_base_url
+    assert argument("--retain-max-completion-tokens") == str(
+        HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
+    )
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]

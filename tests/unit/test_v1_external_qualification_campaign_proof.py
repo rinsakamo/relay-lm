@@ -18,6 +18,7 @@ from tools.v1_external_qualification_campaign_proof import (
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignDescriptor,
+    HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
 )
 
 
@@ -172,6 +173,36 @@ def _prepare(tmp_path: Path) -> tuple[dict[str, object], Path, Path, str]:
         repository_tree="b" * 40,
     )
     return receipt, source, plan_path, owner_id
+
+
+def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
+    tmp_path: Path,
+) -> None:
+    source, _source_sha = _write_source(tmp_path)
+    raw = json.loads(source.read_text(encoding="utf-8"))
+    raw["hindsight_lifecycle"]["retain_max_completion_tokens"] = 8191
+    source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
+    source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    owner_id = "owner-2994-proof-retain-bound"
+    plan_path = tmp_path / "fresh-retain-bound-plan.json"
+
+    receipt = prepare_static_proof(
+        repo_root=tmp_path,
+        source_path=source,
+        source_sha256=source_sha,
+        plan_path=plan_path,
+        owner_root=tmp_path / owner_id,
+        owner_id=owner_id,
+        repository_head="a" * 40,
+        repository_tree="b" * 40,
+    )
+
+    assert receipt["status"] == "FRESH_OWNER_STATIC_PROOF_PASS"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert (
+        plan["hindsight_lifecycle"]["retain_max_completion_tokens"]
+        == HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
+    )
 
 
 def test_prepare_static_proof_can_materialize_history_in_one_transaction(
@@ -418,6 +449,7 @@ def _runtime_identity(plan: dict[str, object], owner_id: str) -> dict[str, objec
         "dependency_fingerprint",
         "llm_model",
         "llm_base_url",
+        "retain_max_completion_tokens",
         "embeddings_provider",
         "reranker_provider",
         "embeddings_onnx_model_sha256",
