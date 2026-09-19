@@ -329,11 +329,56 @@ python -m tools.relay_physical_run \
 ```
 
 The smoke is intentionally narrower than scientific acceptance.  The production
-D path now has a history-preserving installed-RC bridge as described above, but
-the smoke by itself does not validate real benchmark-history reconstruction.
-Citable execution therefore still requires repository-owned deterministic
-`history_material` derivation from the pinned benchmark bytes and frozen
-selection identities before the one-shot benchmark transaction is allowed.
+D path has a history-preserving installed-RC bridge as described above, while
+real benchmark history is prepared separately by the repository-owned
+`tools.v1_external_qualification_history_material` builder.
+
+### Deterministic benchmark history material (#2986)
+
+The history builder is zero-semantic preparation. It consumes current axis
+question identities plus the exact byte-pinned benchmark datasets; it does not
+accept a historical campaign descriptor as execution authority.
+
+For the bounded Core 1.0 ring it fixes the immutable source selections already
+recorded by the pre-release owner:
+
+- MemConflict `Data/Step4_4.jsonl` SHA-256
+  `8ef9ec8589eccb86f63ab3a819a9180217405351a8d5846866721ea74babe092`,
+  persona `3c2e5fe5-a0fc-7e3c-b05c-7104ad748705`, 53 ordered sessions, with
+  the frozen dynamic/static/conditional questions at session indexes 5/16/22;
+- LongMemEval `longmemeval_s_cleaned.json` SHA-256
+  `d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442`,
+  knowledge-update question `6a1eabeb`, 40 ordered sessions.
+
+MemConflict dialogue projection mirrors the pinned Hermes benchmark execution:
+numeric `dialogue_turn_N` order, user/assistant messages only, non-empty
+content, and the parsed session date as the history base timestamp. Question
+history is an ordered prefix through each selected question's session. The
+LongMemEval path reuses the current repository adapter normalization and writes
+only role/content/timestamp history; `answer`, `answer_session_ids`,
+`has_answer`, and other reference-only fields never enter the generated
+material.
+
+The builder compares every selected source question with the current frozen
+campaign prompt, writes canonical JSON, validates the result through
+`HindsightHistoryPlan`, and attaches only path/SHA-256 references to fresh
+axis templates. An existing output is reusable only when its bytes are exactly
+the deterministic output; otherwise preparation fails closed.
+
+```bash
+python -m tools.v1_external_qualification_history_material \
+  --axes-template /absolute/path/to/current-axis-templates.json \
+  --memconflict-source /absolute/path/to/Data/Step4_4.jsonl \
+  --longmemeval-source /absolute/path/to/longmemeval_s_cleaned.json \
+  --output-root /absolute/path/to/history-material \
+  --output-axes /absolute/path/to/current-axes-with-history.json
+```
+
+The resulting axes are then inputs to
+`prepare_scientific_owner_descriptor(...)`; owner-local Hindsight identity,
+execution-freeze duplicates, current authority, and campaign contracts are
+still re-derived there. Neither history materialization nor owner preparation
+opens the scientific spend ledger or performs benchmark/model execution.
 
 ### Launch intent and observed execution authority
 
