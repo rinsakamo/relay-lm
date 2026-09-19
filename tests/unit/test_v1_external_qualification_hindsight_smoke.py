@@ -44,6 +44,12 @@ class _FakeLifecycle:
         self.retain_items = tuple(items)
         assert len(self.retain_items) == 1
         assert "copper token" in str(self.retain_items[0]["content"])
+        return {
+            "success": True,
+            "bank_id": bank_id,
+            "items_count": 1,
+            "async": False,
+        }
 
     def wait_for_consolidation(
         self,
@@ -172,6 +178,8 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
     assert result["benchmark_question_count"] == 0
     assert result["judge_call_count"] == 0
     assert result["retrieved_memory_count"] == 1
+    assert result["retain_response"]["success"] is True
+    assert result["recall_response_shape"] == {"keys": ["results"], "result_count": 1}
     assert result["hindsight_semantic_operation_count"] == 4
     assert result["llama_cpp_launch_count"] == 1
     assert live.cleaned is True
@@ -238,6 +246,71 @@ def test_synthetic_smoke_preserves_failure_receipt_without_scientific_state(
     assert receipt["scientific_spend"] == "NOT_OPENED"
     assert receipt["benchmark_text_used"] is False
     assert receipt["failure"]["type"] == "CampaignCarriageError"
+
+
+def test_synthetic_smoke_preserves_retain_and_recall_shape_on_empty_recall(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _EmptyRecallLifecycle(_FakeLifecycle):
+        def recall(
+            self,
+            prompt: str,
+            *,
+            bank_id: str,
+            query_timestamp: str | None = None,
+        ):
+            super().recall(
+                prompt,
+                bank_id=bank_id,
+                query_timestamp=query_timestamp,
+            )
+            return {"results": [], "trace": {"synthetic": True}}
+
+    health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
+    lifecycle_spec = SimpleNamespace(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace()
+    monkeypatch.setattr(
+        smoke,
+        "_derive_diagnostic_bindings",
+        lambda source, diagnostic_owner_id: (
+            llama_spec,
+            lifecycle_spec,
+            health,
+        ),
+    )
+    monkeypatch.setattr(smoke, "HindsightDeploymentSession", _EmptyRecallLifecycle)
+    monkeypatch.setattr(
+        smoke,
+        "verify_hindsight_health",
+        lambda expected, lifecycle: expected,
+    )
+    monkeypatch.setattr(
+        smoke,
+        "start_llama_cpp_session",
+        lambda spec, evidence_root: _FakeLiveSession(),
+    )
+
+    artifact_root = (tmp_path / "diagnostic-empty-recall").resolve()
+    with pytest.raises(CampaignCarriageError, match="no mapped memories"):
+        smoke.run_synthetic_hindsight_smoke(
+            source_descriptor={},
+            diagnostic_owner_id="diagnostic-owner",
+            repo_root=tmp_path.resolve(),
+            artifact_root=artifact_root,
+        )
+
+    receipt = json.loads(
+        (artifact_root / "synthetic-hindsight-smoke.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert receipt["status"] == "NON_CITABLE_DIAGNOSTIC_FAIL"
+    assert receipt["retain_response"]["success"] is True
+    assert receipt["recall_response_shape"] == {
+        "keys": ["results", "trace"],
+        "result_count": 0,
+    }
 
 
 def test_shared_physical_registry_exposes_only_the_synthetic_smoke_module() -> None:

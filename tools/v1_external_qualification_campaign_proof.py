@@ -31,6 +31,7 @@ from tools.v1_external_qualification_history_material import (
 )
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CAMPAIGN_TARGET,
+    HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     CampaignCarriageError,
     CampaignDescriptor,
@@ -392,6 +393,7 @@ def prepare_static_proof(
     # authority. Older preserved descriptors predate this field; newer ones may
     # carry it only as evidence and are normalized away before fresh derivation.
     lifecycle_base.pop("retain_max_completion_tokens", None)
+    lifecycle_base.pop("fail_on_extraction_errors", None)
     try:
         stale_deployment = lifecycle_base.pop("deployment_id")
         stale_profile = lifecycle_base.pop("database_profile")
@@ -495,6 +497,10 @@ def prepare_static_proof(
         raise CampaignProofError("fresh owner database_profile was not derived from owner_id")
     if lifecycle.get("retain_max_completion_tokens") != HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS:
         raise CampaignProofError("fresh owner Hindsight retain bound was not repository-derived")
+    if lifecycle.get("fail_on_extraction_errors") is not HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS:
+        raise CampaignProofError(
+            "fresh owner Hindsight extraction-loss policy was not repository-derived"
+        )
     if expected_deployment == stale_deployment or owner_id == stale_profile:
         raise CampaignProofError("fresh owner retained stale owner-local identity")
 
@@ -628,6 +634,7 @@ def _assert_runtime_identity(
         "llm_model": lifecycle.get("llm_model"),
         "llm_base_url": lifecycle.get("llm_base_url"),
         "retain_max_completion_tokens": lifecycle.get("retain_max_completion_tokens"),
+        "fail_on_extraction_errors": lifecycle.get("fail_on_extraction_errors"),
         "embeddings_provider": lifecycle.get("embeddings_provider"),
         "reranker_provider": lifecycle.get("reranker_provider"),
         "embeddings_onnx_model_sha256": lifecycle.get("embeddings_onnx_model_sha256"),

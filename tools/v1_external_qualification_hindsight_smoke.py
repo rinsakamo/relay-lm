@@ -227,6 +227,8 @@ def run_synthetic_hindsight_smoke(
     live_cleanup: Mapping[str, Any] | None = None
     result: dict[str, Any] | None = None
     failure: BaseException | None = None
+    retain_response: Mapping[str, Any] | None = None
+    recall_response_shape: Mapping[str, object] | None = None
 
     try:
         lifecycle.start()
@@ -246,7 +248,7 @@ def run_synthetic_hindsight_smoke(
             context_label="MemConflict",
             exchange_index=0,
         )
-        lifecycle.retain(bank_id=bank_id, items=(retain_request,))
+        retain_response = lifecycle.retain(bank_id=bank_id, items=(retain_request,))
         consolidation = lifecycle.wait_for_consolidation(
             bank_id=bank_id,
             pre_existing_pending_ids=pre_existing_pending,
@@ -256,6 +258,13 @@ def run_synthetic_hindsight_smoke(
             bank_id=bank_id,
             query_timestamp=_SYNTHETIC_QUERY_TIMESTAMP,
         )
+        recalled_results = recalled.get("results")
+        recall_response_shape = {
+            "keys": sorted(str(key) for key in recalled),
+            "result_count": (
+                len(recalled_results) if isinstance(recalled_results, list) else None
+            ),
+        }
         retrieved = _hindsight_retrieved_memories(recalled)
         if not retrieved:
             raise CampaignCarriageError(
@@ -276,6 +285,8 @@ def run_synthetic_hindsight_smoke(
             "bank_id": bank_id,
             "hindsight_health_fingerprint": observed_health.fingerprint,
             "hindsight_semantic_operation_count": lifecycle.semantic_operation_count,
+            "retain_response": dict(retain_response),
+            "recall_response_shape": dict(recall_response_shape),
             "retrieved_memory_count": len(retrieved),
             "consolidation": dict(consolidation),
             "llama_cpp_launch_count": live_session.launch_count,
@@ -331,6 +342,14 @@ def run_synthetic_hindsight_smoke(
                 "type": type(failure).__name__,
                 "message": str(failure),
             },
+            "retain_response": (
+                None if retain_response is None else dict(retain_response)
+            ),
+            "recall_response_shape": (
+                None
+                if recall_response_shape is None
+                else dict(recall_response_shape)
+            ),
         }
 
     result["cleanup"] = {

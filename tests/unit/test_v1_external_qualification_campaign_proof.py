@@ -18,6 +18,7 @@ from tools.v1_external_qualification_campaign_proof import (
 from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
     CampaignDescriptor,
+    HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
 )
 
@@ -181,6 +182,7 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     source, _source_sha = _write_source(tmp_path)
     raw = json.loads(source.read_text(encoding="utf-8"))
     raw["hindsight_lifecycle"]["retain_max_completion_tokens"] = 8191
+    raw["hindsight_lifecycle"]["fail_on_extraction_errors"] = False
     source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
     source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
     owner_id = "owner-2994-proof-retain-bound"
@@ -202,6 +204,10 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     assert (
         plan["hindsight_lifecycle"]["retain_max_completion_tokens"]
         == HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
+    )
+    assert (
+        plan["hindsight_lifecycle"]["fail_on_extraction_errors"]
+        is HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
     )
 
 
@@ -450,6 +456,7 @@ def _runtime_identity(plan: dict[str, object], owner_id: str) -> dict[str, objec
         "llm_model",
         "llm_base_url",
         "retain_max_completion_tokens",
+        "fail_on_extraction_errors",
         "embeddings_provider",
         "reranker_provider",
         "embeddings_onnx_model_sha256",
