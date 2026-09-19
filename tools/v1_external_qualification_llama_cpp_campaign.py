@@ -79,7 +79,7 @@ HINDSIGHT_RETAIN_GRANULARITY = "exchange_append"
 # Pinned Hindsight v0.10.0 defaults retain extraction to 64k output tokens,
 # which cannot terminate safely inside the frozen 8192-token llama.cpp context.
 # Keep this repository-owned, benchmark-independent infrastructure bound above
-# Hindsight\'s pinned default 3000-character retain chunk size.
+# Hindsight's pinned default 3000-character retain chunk size.
 HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS = 4096
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
