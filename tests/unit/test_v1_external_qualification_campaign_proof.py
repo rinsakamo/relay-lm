@@ -388,7 +388,8 @@ def _physical_bundle(
         "pre_call_barrier_reached": True,
         "SCIENTIFIC_SPEND": "UNSPENT",
         "llama_server_launch_count": 1,
-        "exact_rc_server_launch_count": 0,
+        "exact_rc_adapter_launch_count": 0,
+        "exact_rc_adapter_query_count": 0,
         "counters": counters,
         "campaign_fingerprint": CampaignDescriptor.from_mapping(plan).fingerprint,
         "cleanup": {
@@ -424,7 +425,7 @@ def _physical_bundle(
         "exact_rc_cleanup": {
             "removed": True,
             "errors": [],
-            "server": None,
+            "adapter": None,
         },
     }
     stdout_path = tmp_path / "stdout.log"
