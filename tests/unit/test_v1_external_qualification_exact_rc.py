@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ import pytest
 
 from tools import v1_external_qualification_exact_rc as exact_rc
 from tools.v1_external_qualification_exact_rc import (
+    ExactRCAdapterSession,
     ExactRCError,
     ExactRCInstallation,
     ExactRCServerSession,
@@ -205,3 +207,172 @@ def test_server_pre_health_exit_preserves_exit_code_and_log(
     assert cleanup["exit_code"] == 2
     assert cleanup["log_path"] == str(session.log_path)
     assert cleanup["errors"] == []
+
+
+class _LineInput:
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def write(self, value: str) -> int:
+        self.lines.append(value)
+        return len(value)
+
+    def flush(self) -> None:
+        return None
+
+
+class _LineOutput:
+    def __init__(self, values: list[dict[str, object]]) -> None:
+        self.values = list(values)
+
+    def readline(self) -> str:
+        if not self.values:
+            return ""
+        return json.dumps(self.values.pop(0), sort_keys=True) + "\n"
+
+
+class _AdapterProcess:
+    def __init__(self, values: list[dict[str, object]]) -> None:
+        self.stdin = _LineInput()
+        self.stdout = _LineOutput(values)
+        self.returncode: int | None = None
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def wait(self, timeout: float | None = None) -> int:
+        del timeout
+        if self.returncode is None:
+            self.returncode = 0
+        return self.returncode
+
+    def terminate(self) -> None:
+        self.returncode = -15
+
+    def kill(self) -> None:
+        self.returncode = -9
+
+
+def test_adapter_session_separates_installed_relaylm_from_checkout_tools(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    installation, config, config_sha = _installation(tmp_path)
+    checkout = tmp_path / "qualification-checkout"
+    (checkout / "tools").mkdir(parents=True)
+    workspace = tmp_path / "adapter-workspace"
+    process = _AdapterProcess(
+        [
+            {
+                "protocol_version": 1,
+                "status": "ready",
+                "relaylm_version": installation.version,
+                "relaylm_origin": installation.import_origin,
+                "adapter_origin": str(
+                    checkout / "tools" / "memconflict_adapter.py"
+                ),
+                "profile": "relaylm-exact-rc",
+            },
+            {
+                "protocol_version": 1,
+                "request_id": "exact-rc-00000001",
+                "status": "ok",
+                "external_evidence": {"answer": "synthetic"},
+                "history_session_ids": ["session-0"],
+                "new_history_session_count": 1,
+                "new_history_pass2_calls": 1,
+                "model_call_count": 3,
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "snapshot_fingerprint": "sha256:" + "1" * 64,
+            },
+            {"protocol_version": 1, "status": "closed"},
+        ]
+    )
+    seen: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_popen(command: list[str], **kwargs: object) -> _AdapterProcess:
+        seen.append((command, kwargs))
+        return process
+
+    monkeypatch.setattr(exact_rc.subprocess, "Popen", fake_popen)
+    session = ExactRCAdapterSession(
+        installation,
+        config_path=config,
+        config_sha256=config_sha,
+        checkout_root=checkout,
+        workspace_root=workspace,
+    )
+
+    ready = session.start()
+    result = session.query(
+        axis_id="memconflict",
+        question_id="Q_001",
+        question="synthetic question",
+        sessions=[
+            {
+                "session_id": "session-0",
+                "order": 0,
+                "items": [
+                    {
+                        "role": "user",
+                        "content": "history",
+                        "timestamp": None,
+                    }
+                ],
+            }
+        ],
+    )
+    cleanup = session.cleanup()
+
+    assert ready["relaylm_origin"] == installation.import_origin
+    assert result["model_call_count"] == 3
+    command, kwargs = seen[0]
+    assert command[:3] == [
+        str(installation.python),
+        "-m",
+        "tools.v1_external_qualification_exact_rc_adapter",
+    ]
+    environment = kwargs["env"]
+    assert isinstance(environment, dict)
+    pythonpath = environment["PYTHONPATH"].split(exact_rc.os.pathsep)
+    assert pythonpath == [
+        str(checkout.resolve()),
+        str(installation.dependency_overlay.resolve()),
+    ]
+    assert str(checkout / "src") not in pythonpath
+    sent = json.loads(process.stdin.lines[0])
+    assert sent["axis_id"] == "memconflict"
+    assert sent["question_id"] == "Q_001"
+    assert sent["sessions"][0]["session_id"] == "session-0"
+    assert cleanup["terminated"] is True
+    assert cleanup["errors"] == []
+
+
+def test_adapter_session_rejects_existing_workspace_before_child_launch(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    installation, config, config_sha = _installation(tmp_path)
+    checkout = tmp_path / "qualification-checkout"
+    checkout.mkdir()
+    workspace = tmp_path / "adapter-workspace"
+    workspace.mkdir()
+    called = False
+
+    def fail_popen(*_args: object, **_kwargs: object) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(exact_rc.subprocess, "Popen", fail_popen)
+    session = ExactRCAdapterSession(
+        installation,
+        config_path=config,
+        config_sha256=config_sha,
+        checkout_root=checkout,
+        workspace_root=workspace,
+    )
+
+    with pytest.raises(ExactRCError, match="workspace must be fresh"):
+        session.start()
+    assert called is False

@@ -651,8 +651,10 @@ def verify_zero_semantic_rehearsal(
         raise CampaignProofError("scientific spend was not preserved as UNSPENT")
     if result.get("llama_server_launch_count") != 1:
         raise CampaignProofError("owned llama-server launch count was not exactly one")
-    if result.get("exact_rc_server_launch_count") != 0:
-        raise CampaignProofError("exact RC server unexpectedly launched during rehearsal")
+    if result.get("exact_rc_adapter_launch_count") != 0:
+        raise CampaignProofError("exact RC adapter unexpectedly launched during rehearsal")
+    if result.get("exact_rc_adapter_query_count") != 0:
+        raise CampaignProofError("exact RC adapter unexpectedly queried during rehearsal")
 
     observed_execution = result.get("observed_execution")
     if not isinstance(observed_execution, Mapping):
@@ -729,8 +731,8 @@ def verify_zero_semantic_rehearsal(
         raise CampaignProofError("exact RC cleanup receipt is absent")
     if exact_cleanup.get("removed") is not True or exact_cleanup.get("errors") != []:
         raise CampaignProofError("exact RC installation cleanup failed")
-    if exact_cleanup.get("server") is not None:
-        raise CampaignProofError("exact RC server cleanup exists despite zero launch")
+    if exact_cleanup.get("adapter") is not None:
+        raise CampaignProofError("exact RC adapter cleanup exists despite zero launch")
 
     if source_path is not None or source_sha256 is not None:
         if source_path is None or source_sha256 is None:

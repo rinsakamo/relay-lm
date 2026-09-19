@@ -16,7 +16,7 @@ import subprocess
 import sysconfig
 import time
 import venv
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -313,6 +313,218 @@ def cleanup_exact_rc(installation: ExactRCInstallation) -> Mapping[str, object]:
         "removed": not installation.root.exists(),
         "errors": errors,
     }
+
+
+class ExactRCAdapterSession:
+    """Persistent installed-RC transcript replay/frozen-query bridge."""
+
+    def __init__(
+        self,
+        installation: ExactRCInstallation,
+        *,
+        config_path: Path,
+        config_sha256: str,
+        checkout_root: Path,
+        workspace_root: Path,
+    ) -> None:
+        self.installation = installation
+        self.config_path = config_path.resolve()
+        self.config_sha256 = config_sha256
+        self.checkout_root = checkout_root.resolve()
+        self.workspace_root = workspace_root.resolve()
+        self.process: subprocess.Popen[str] | None = None
+        self.start_count = 0
+        self.query_count = 0
+        self._request_counter = 0
+        self.log_path = self.workspace_root.with_name(
+            f"{self.workspace_root.name}.stderr.log"
+        )
+
+    def _environment(self) -> dict[str, str]:
+        env = _runtime_environment(
+            dependency_overlay=self.installation.dependency_overlay,
+        )
+        env["PYTHONPATH"] = os.pathsep.join(
+            [
+                str(self.checkout_root),
+                str(self.installation.dependency_overlay.resolve()),
+            ]
+        )
+        return env
+
+    @staticmethod
+    def _read_message(stream: object, *, label: str) -> Mapping[str, object]:
+        readline = getattr(stream, "readline", None)
+        if not callable(readline):
+            raise ExactRCError(f"exact RC adapter {label} stream is unavailable")
+        line = readline()
+        if not isinstance(line, str) or not line:
+            raise ExactRCError(f"exact RC adapter {label} closed unexpectedly")
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ExactRCError(f"exact RC adapter {label} was not JSON") from exc
+        if not isinstance(payload, Mapping):
+            raise ExactRCError(f"exact RC adapter {label} was not an object")
+        return payload
+
+    def start(self) -> Mapping[str, object]:
+        if not self.config_path.is_file():
+            raise ExactRCError(f"exact RC config is not a file: {self.config_path}")
+        if _sha256(self.config_path) != self.config_sha256:
+            raise ExactRCError("exact RC config content drifted during adapter setup")
+        if not self.checkout_root.is_dir():
+            raise ExactRCError("qualification checkout root is unavailable")
+        if self.workspace_root.exists():
+            raise ExactRCError("exact RC adapter workspace must be fresh")
+        if self.process is not None:
+            raise ExactRCError("exact RC adapter was started twice")
+        self.workspace_root.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            log_handle = self.log_path.open("xb")
+        except OSError as exc:
+            raise ExactRCError(
+                f"cannot create exact RC adapter log: {self.log_path}"
+            ) from exc
+        try:
+            self.process = subprocess.Popen(
+                [
+                    str(self.installation.python),
+                    "-m",
+                    "tools.v1_external_qualification_exact_rc_adapter",
+                    "--config",
+                    str(self.config_path),
+                    "--workspace-root",
+                    str(self.workspace_root),
+                ],
+                cwd=Path("/"),
+                env=self._environment(),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=log_handle,
+                text=True,
+                bufsize=1,
+            )
+        except OSError as exc:
+            raise ExactRCError("exact RC adapter launch failed") from exc
+        finally:
+            log_handle.close()
+        self.start_count += 1
+        assert self.process.stdout is not None
+        ready = self._read_message(self.process.stdout, label="ready response")
+        if ready.get("status") != "ready" or ready.get("protocol_version") != 1:
+            raise ExactRCError("exact RC adapter did not report ready")
+        if ready.get("relaylm_version") != self.installation.version:
+            raise ExactRCError("exact RC adapter imported the wrong RelayLM version")
+        origin = ready.get("relaylm_origin")
+        if not isinstance(origin, str) or Path(origin).resolve() != Path(
+            self.installation.import_origin
+        ).resolve():
+            raise ExactRCError("exact RC adapter imported RelayLM outside accepted RC")
+        adapter_origin = ready.get("adapter_origin")
+        if not isinstance(adapter_origin, str):
+            raise ExactRCError("exact RC adapter omitted qualification adapter origin")
+        resolved_adapter = Path(adapter_origin).resolve()
+        if (
+            resolved_adapter != self.checkout_root
+            and self.checkout_root not in resolved_adapter.parents
+        ):
+            raise ExactRCError(
+                "exact RC adapter tools module did not resolve from qualification checkout"
+            )
+        return dict(ready)
+
+    def query(
+        self,
+        *,
+        axis_id: str,
+        question_id: str,
+        question: str,
+        sessions: Sequence[Mapping[str, object]],
+    ) -> Mapping[str, object]:
+        if self.process is None or self.process.poll() is not None:
+            raise ExactRCError("exact RC adapter is not running")
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
+        self._request_counter += 1
+        request_id = f"exact-rc-{self._request_counter:08d}"
+        request = {
+            "op": "query",
+            "protocol_version": 1,
+            "request_id": request_id,
+            "axis_id": axis_id,
+            "question_id": question_id,
+            "question": question,
+            "sessions": [dict(item) for item in sessions],
+        }
+        try:
+            self.process.stdin.write(
+                json.dumps(request, sort_keys=True, separators=(",", ":")) + "\n"
+            )
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as exc:
+            raise ExactRCError("exact RC adapter request pipe failed") from exc
+        response = self._read_message(self.process.stdout, label="query response")
+        if response.get("status") == "error":
+            error_type = response.get("error_type")
+            message = response.get("error")
+            raise ExactRCError(
+                "exact RC adapter query failed"
+                + (
+                    f": {error_type}: {message}"
+                    if isinstance(error_type, str) and isinstance(message, str)
+                    else ""
+                )
+            )
+        if (
+            response.get("status") != "ok"
+            or response.get("protocol_version") != 1
+            or response.get("request_id") != request_id
+        ):
+            raise ExactRCError("exact RC adapter query response identity is invalid")
+        self.query_count += 1
+        return dict(response)
+
+    def cleanup(self) -> Mapping[str, object]:
+        errors: list[str] = []
+        if self.process is not None and self.process.poll() is None:
+            try:
+                assert self.process.stdin is not None
+                assert self.process.stdout is not None
+                self.process.stdin.write(
+                    json.dumps(
+                        {"op": "close", "protocol_version": 1},
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                )
+                self.process.stdin.flush()
+                closed = self._read_message(
+                    self.process.stdout,
+                    label="close response",
+                )
+                if closed.get("status") != "closed":
+                    errors.append("exact RC adapter close acknowledgement was invalid")
+                self.process.wait(timeout=20)
+            except (OSError, BrokenPipeError, subprocess.TimeoutExpired, ExactRCError) as exc:
+                errors.append(str(exc))
+                if self.process.poll() is None:
+                    self.process.terminate()
+                    try:
+                        self.process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        self.process.kill()
+                        self.process.wait(timeout=10)
+        return {
+            "start_count": self.start_count,
+            "query_count": self.query_count,
+            "terminated": self.process is None or self.process.poll() is not None,
+            "exit_code": None if self.process is None else self.process.poll(),
+            "log_path": str(self.log_path),
+            "workspace_root": str(self.workspace_root),
+            "errors": errors,
+        }
 
 
 class ExactRCServerSession:

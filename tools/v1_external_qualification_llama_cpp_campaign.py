@@ -671,6 +671,14 @@ class HindsightHistoryPlan:
             raise CampaignCarriageError(
                 "Hindsight history question ids must exactly match campaign questions"
             )
+        previous: tuple[str, ...] = ()
+        for question_id in question_ids:
+            current = self.question_history[question_id]
+            if current[: len(previous)] != previous:
+                raise CampaignCarriageError(
+                    "Hindsight history prefixes must not regress in campaign question order"
+                )
+            previous = current
 
     def sessions_for_question(self, question_id: str) -> tuple[HindsightHistorySession, ...]:
         try:
@@ -3947,28 +3955,138 @@ class HindsightComparatorExecutor:
 
 
 class ExactRelayLMExecutor:
-    def __init__(self, server: Any) -> None:
-        self.server = server
+    def __init__(self, adapter: Any) -> None:
+        self.adapter = adapter
+
+    @staticmethod
+    def _history_sessions(
+        context: ParticipantExecutionContext,
+    ) -> list[dict[str, object]]:
+        if context.history is None:
+            raise CampaignCarriageError(
+                "exact RC participant requires benchmark-faithful history material"
+            )
+        sessions = context.history.sessions_for_question(context.question.question_id)
+        if not sessions:
+            raise CampaignCarriageError(
+                "exact RC participant requires a non-empty question history prefix"
+            )
+        return [
+            {
+                "session_id": session.session_id,
+                "order": session.order,
+                "items": [dict(item) for item in session.items],
+            }
+            for session in sessions
+        ]
 
     def __call__(self, context: ParticipantExecutionContext) -> ParticipantExecutionResult:
         started = time.monotonic()
         try:
-            payload = self.server.query(context.prompt)
+            if self.adapter.start_count == 0:
+                self.adapter.start()
+            payload = self.adapter.query(
+                axis_id=context.axis_id,
+                question_id=context.question.question_id,
+                question=context.prompt,
+                sessions=self._history_sessions(context),
+            )
         except Exception as exc:
             raise CampaignCarriageError("exact RC participant request failed") from exc
+
+        model_call_count = payload.get("model_call_count")
+        if (
+            isinstance(model_call_count, bool)
+            or not isinstance(model_call_count, int)
+            or model_call_count <= 0
+        ):
+            raise CampaignCarriageError(
+                "exact RC adapter returned an invalid model_call_count"
+            )
+        prompt_tokens = payload.get("prompt_tokens")
+        completion_tokens = payload.get("completion_tokens")
+        for name, value in (
+            ("prompt_tokens", prompt_tokens),
+            ("completion_tokens", completion_tokens),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise CampaignCarriageError(
+                    f"exact RC adapter returned invalid {name}"
+                )
+        external_evidence = payload.get("external_evidence")
+        if not isinstance(external_evidence, Mapping):
+            raise CampaignCarriageError(
+                "exact RC adapter omitted RelayLM query evidence"
+            )
+        history_session_ids = payload.get("history_session_ids")
+        if not isinstance(history_session_ids, list) or not all(
+            isinstance(item, str) and item for item in history_session_ids
+        ):
+            raise CampaignCarriageError(
+                "exact RC adapter returned invalid history session ids"
+            )
+
+        elapsed_ms = (time.monotonic() - started) * 1000.0
+        total_tokens = (
+            None
+            if prompt_tokens is None or completion_tokens is None
+            else prompt_tokens + completion_tokens
+        )
+        observation = {
+            "quality": {},
+            "tokens": {
+                "model_input_tokens": prompt_tokens,
+                "model_output_tokens": completion_tokens,
+                "model_call_count": model_call_count,
+            },
+            "latency": {
+                "ttft_ms": None,
+                "query_latency_ms": elapsed_ms,
+                "end_to_end_ms": elapsed_ms,
+            },
+            "resources": {
+                "peak_gpu_memory_bytes": None,
+                "peak_cpu_memory_bytes": None,
+                "persistent_storage_bytes": None,
+                "notes": [
+                    "accepted RC1 installed runtime transcript-replay/frozen-query adapter"
+                ],
+            },
+            "known_limitations": [
+                "benchmark-native scoring is owner-supplied",
+                (
+                    "exact-RC adapter trajectory is fail-closed after process loss; "
+                    "semantic replay is not regenerated"
+                ),
+            ],
+            "failure": None,
+        }
         return ParticipantExecutionResult(
             slot=context.participant_slot,
-            observation=_openai_observation(
-                payload=payload,
-                elapsed_ms=(time.monotonic() - started) * 1000.0,
-                note="accepted RC1 installed runtime /v1/chat/completions",
-            ),
-            semantic_generation_count=1,
+            observation=observation,
+            semantic_generation_count=model_call_count,
             request_evidence=(
                 {
-                    "boundary": "relaylm_exact_rc",
+                    "boundary": "relaylm_exact_rc_history_adapter",
                     "installed_runtime": True,
                     "question_id": context.question.question_id,
+                    "history_session_ids": history_session_ids,
+                    "new_history_session_count": payload.get(
+                        "new_history_session_count"
+                    ),
+                    "new_history_pass2_calls": payload.get(
+                        "new_history_pass2_calls"
+                    ),
+                    "snapshot_fingerprint": payload.get(
+                        "snapshot_fingerprint"
+                    ),
+                    "adapter_query_evidence": dict(external_evidence),
+                    "token_total": total_tokens,
+                    "resume_policy": (
+                        "fail_closed_after_exact_rc_adapter_trajectory_start"
+                    ),
                 },
             ),
         )
@@ -4011,8 +4129,8 @@ def run_production_campaign(
             "production campaign requires exact RC and Hindsight lifecycle bindings"
         )
     from tools.v1_external_qualification_exact_rc import (
+        ExactRCAdapterSession,
         ExactRCError,
-        ExactRCServerSession,
         cleanup_exact_rc,
         install_exact_rc,
     )
@@ -4022,7 +4140,7 @@ def run_production_campaign(
         descriptor.artifact_root.name + ".exact-rc-runtime"
     )
     installation = None
-    rc_server: Any | None = None
+    rc_adapter: Any | None = None
     result_value: dict[str, Any] | None = None
     rc_cleanup: Mapping[str, object] | None = None
     installation_cleanup: Mapping[str, object] | None = None
@@ -4055,16 +4173,16 @@ def run_production_campaign(
             exact_executor: ParticipantExecutor = d_rehearsal
         else:
             try:
-                rc_server = ExactRCServerSession(
+                rc_adapter = ExactRCAdapterSession(
                     installation,
                     config_path=rc.config_path,
                     config_sha256=rc.config_sha256,
-                    port=rc.port,
+                    checkout_root=repo_root,
+                    workspace_root=descriptor.artifact_root / "exact-rc-adapter",
                 )
-                rc_server.start()
             except ExactRCError as exc:
                 raise CampaignCarriageError(str(exc)) from exc
-            exact_executor = ExactRelayLMExecutor(rc_server)
+            exact_executor = ExactRelayLMExecutor(rc_adapter)
         comparator = HindsightComparatorExecutor(lifecycle, answer_model)
         result = run_campaign(
             descriptor,
@@ -4082,12 +4200,15 @@ def run_production_campaign(
         result_value = dict(result)
         result_value["exact_rc_installation"] = installation.to_mapping()
         result_value["exact_rc_identity"] = rc.to_mapping()
-        result_value["exact_rc_server_launch_count"] = (
-            0 if rc_server is None else rc_server.start_count
+        result_value["exact_rc_adapter_launch_count"] = (
+            0 if rc_adapter is None else rc_adapter.start_count
+        )
+        result_value["exact_rc_adapter_query_count"] = (
+            0 if rc_adapter is None else rc_adapter.query_count
         )
     finally:
-        if rc_server is not None:
-            rc_cleanup = rc_server.cleanup()
+        if rc_adapter is not None:
+            rc_cleanup = rc_adapter.cleanup()
         direct.client.close()
         answer_model.client.close()
         if installation is not None:
@@ -4095,14 +4216,14 @@ def run_production_campaign(
             if result_value is not None:
                 result_value["exact_rc_cleanup"] = {
                     **dict(installation_cleanup),
-                    "server": None if rc_cleanup is None else dict(rc_cleanup),
+                    "adapter": None if rc_cleanup is None else dict(rc_cleanup),
                 }
     if result_value is None:
         raise CampaignCarriageError("production campaign did not return a receipt")
     if installation_cleanup is not None and installation_cleanup.get("errors"):
         raise CampaignCarriageError("exact RC runtime cleanup failed")
     if rc_cleanup is not None and rc_cleanup.get("errors"):
-        raise CampaignCarriageError("exact RC server cleanup failed")
+        raise CampaignCarriageError("exact RC adapter cleanup failed")
     return result_value
 
 

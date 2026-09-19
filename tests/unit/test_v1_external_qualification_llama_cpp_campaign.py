@@ -31,6 +31,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightSemanticRequestError,
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
+    ExactRelayLMExecutor,
     ParticipantExecutionContext,
     ParticipantExecutionResult,
     ParticipantExecutors,
@@ -2034,3 +2035,160 @@ def test_strict_resume_rejects_completed_question_aggregate_drift(
                 scientific=True,
             ),
         )
+
+
+def test_history_plan_rejects_prefix_regression_in_campaign_question_order(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "regressing-history.json"
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {"role": "user", "content": "first", "timestamp": None}
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {"role": "user", "content": "second", "timestamp": None}
+                        ],
+                    },
+                ],
+                "question_history": {
+                    "Q_001": ["session-0", "session-1"],
+                    "Q_002": ["session-0"],
+                },
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(path)
+    with pytest.raises(CampaignCarriageError, match="must not regress"):
+        plan.validate_questions(["Q_001", "Q_002"])
+
+
+class _ExactRCAdapter:
+    def __init__(self) -> None:
+        self.start_count = 0
+        self.query_count = 0
+        self.calls: list[dict[str, object]] = []
+
+    def start(self) -> dict[str, object]:
+        self.start_count += 1
+        return {"status": "ready"}
+
+    def query(self, **kwargs: object) -> dict[str, object]:
+        self.query_count += 1
+        self.calls.append(dict(kwargs))
+        sessions = kwargs["sessions"]
+        assert isinstance(sessions, list)
+        return {
+            "status": "ok",
+            "model_call_count": 3,
+            "prompt_tokens": 11,
+            "completion_tokens": 7,
+            "external_evidence": {
+                "answer": "synthetic exact RC answer",
+                "adapter_mechanics": {"question_isolation": "fresh clone"},
+            },
+            "history_session_ids": [
+                str(item["session_id"])
+                for item in sessions
+                if isinstance(item, Mapping)
+            ],
+            "new_history_session_count": 1,
+            "new_history_pass2_calls": 1,
+            "snapshot_fingerprint": "sha256:" + "3" * 64,
+        }
+
+
+def test_exact_rc_executor_uses_question_bounded_history_adapter(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "exact-rc-history.json"
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "history zero",
+                                "timestamp": None,
+                            }
+                        ],
+                    },
+                    {
+                        "session_id": "session-1",
+                        "order": 1,
+                        "items": [
+                            {
+                                "role": "assistant",
+                                "content": "history one",
+                                "timestamp": None,
+                            }
+                        ],
+                    },
+                ],
+                "question_history": {
+                    "Q_001": ["session-0"],
+                    "Q_002": ["session-0", "session-1"],
+                },
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(path)
+    adapter = _ExactRCAdapter()
+    executor = ExactRelayLMExecutor(adapter)
+
+    def context(question_id: str, prompt: str) -> ParticipantExecutionContext:
+        return ParticipantExecutionContext(
+            axis_id="memconflict",
+            case={"benchmark": {"id": "memconflict"}},
+            manifest={},
+            question=DurableQuestion.from_content(
+                question_id,
+                prompt,
+                session_id=question_id,
+            ),
+            prompt=prompt,
+            participant_slot="relaylm_exact_rc",
+            participant_identity={},
+            frozen_identity=None,  # type: ignore[arg-type]
+            live_attestation=None,  # type: ignore[arg-type]
+            history=plan,
+            durable_run=None,
+        )
+
+    first = executor(context("Q_001", "question one"))
+    second = executor(context("Q_002", "question two"))
+
+    assert adapter.start_count == 1
+    assert adapter.query_count == 2
+    assert [
+        [item["session_id"] for item in call["sessions"]]
+        for call in adapter.calls
+    ] == [["session-0"], ["session-0", "session-1"]]
+    assert first.semantic_generation_count == 3
+    assert first.observation["tokens"]["model_call_count"] == 3
+    assert second.semantic_generation_count == 3
+    evidence = first.request_evidence[0]
+    assert evidence["boundary"] == "relaylm_exact_rc_history_adapter"
+    assert evidence["history_session_ids"] == ["session-0"]
+    assert evidence["adapter_query_evidence"]["answer"] == (
+        "synthetic exact RC answer"
+    )
