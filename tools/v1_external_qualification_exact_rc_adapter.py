@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import shutil
 import sys
@@ -66,7 +67,8 @@ class ExactRCAdapterBridge:
         if existing is not None:
             return existing
 
-        axis_root = self.workspace_root / axis_id
+        axis_token = hashlib.sha256(axis_id.encode("utf-8")).hexdigest()[:24]
+        axis_root = self.workspace_root / f"axis-{axis_token}"
         if axis_root.exists():
             raise ExactRCAdapterBridgeError("exact RC axis package root is not fresh")
         shutil.copytree(self.profile.package.root, axis_root, symlinks=True)
