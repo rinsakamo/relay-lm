@@ -31,6 +31,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightSemanticRequestError,
     HindsightDeploymentSession,
     HindsightLifecycleSpec,
+    HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     ExactRelayLMExecutor,
@@ -838,6 +839,7 @@ def _strict_descriptor_mapping(
         "llm_model": "openai/gpt-oss-120b",
         "llm_base_url": "http://127.0.0.1:18091/v1",
         "retain_max_completion_tokens": HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
+        "fail_on_extraction_errors": HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -1820,6 +1822,18 @@ def test_strict_descriptor_rejects_hindsight_retain_bound_substitution(
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_extraction_loss_policy_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["fail_on_extraction_errors"] = False
+    with pytest.raises(
+        CampaignCarriageError,
+        match="repository-owned qualification reliability policy",
+    ):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -1922,6 +1936,7 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     assert argument("--retain-max-completion-tokens") == str(
         HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     )
+    assert argument("--fail-on-extraction-errors") == "true"
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]
