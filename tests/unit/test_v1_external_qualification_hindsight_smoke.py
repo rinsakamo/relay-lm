@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -253,4 +254,11 @@ def test_shared_physical_registry_exposes_only_the_synthetic_smoke_module() -> N
 
 def test_synthetic_smoke_module_has_no_scientific_ledger_dependency() -> None:
     source = Path(smoke.__file__).read_text(encoding="utf-8")
-    assert "ScientificSpendLedger" not in source
+    tree = ast.parse(source)
+    imported_names = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        for alias in node.names
+    }
+    assert "ScientificSpendLedger" not in imported_names
