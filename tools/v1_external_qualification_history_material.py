@@ -144,7 +144,7 @@ def _memconflict_dialogue(session: Mapping[str, object]) -> list[dict[str, objec
                 continue
             role = message.get("role")
             content = message.get("content")
-            if role not in {"user", "assistant"} or content in {None, ""}:
+            if role not in {"user", "assistant"} or content is None or content == "":
                 continue
             items.append(
                 {
