@@ -1,5 +1,33 @@
 # Gemma 4 KV provenance resume after startup recovery
 
+## Consumed measured attempt terminal
+
+A subsequent full-access measured attempt crossed the L0 consumption boundary and ended:
+
+`PROBE_EXERCISED_INCOMPLETE`
+
+Observed terminal facts:
+
+- L0 submitted exactly once and returned HTTP 200
+- L0 cache_n/prompt_n = 0 / 883
+- L0 first token = 607 (`" with"`)
+- required `WR-P512/` dump was absent
+- L1 / L0R / LC were not submitted
+- no KV comparison/localization was produced
+- retry / replay / repair / FA-OFF = 0
+- all owned processes terminated and measured ports returned idle
+
+This attempt is consumed. **Do not use this resume authority to launch another measured attempt.**
+
+The missing `WR-P512` is an instrumentation/apparatus failure, not a KV-state classification. The four-way KV causal question remains unresolved.
+
+A distinct replacement apparatus is defined by:
+
+- `e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch`
+- `e2d2c0d6-gemma4-kv-logical-prefix-replacement-authority.md`
+
+The replacement must receive a new instrumented binary identity and non-generative startup qualification before any new measured L0 is authorized.
+
 Diagnostic-only execution handoff.
 
 ## Fresh repository authority at resume authoring
