@@ -33,6 +33,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightLifecycleSpec,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     ExactRelayLMExecutor,
@@ -842,6 +843,7 @@ def _strict_descriptor_mapping(
         "retain_max_completion_tokens": HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
         "fail_on_extraction_errors": HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
         "llm_supports_string_pattern": HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+        "retain_llm_reasoning_effort": HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -1848,6 +1850,18 @@ def test_strict_descriptor_rejects_hindsight_string_pattern_capability_substitut
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_retain_reasoning_policy_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["retain_llm_reasoning_effort"] = "low"
+    with pytest.raises(
+        CampaignCarriageError,
+        match="repository-owned structured-retain reasoning policy",
+    ):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -1952,6 +1966,7 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     )
     assert argument("--fail-on-extraction-errors") == "true"
     assert argument("--llm-supports-string-pattern") == "true"
+    assert argument("--retain-llm-reasoning-effort") == HINDSIGHT_RETAIN_LLM_REASONING_EFFORT
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]
