@@ -150,6 +150,8 @@ A newly built replacement binary is a new physical artifact.
 
 Before replacement measured L0, run a fresh non-generative startup recovery/qualification using the exact intended runtime and probe environment. The preferred orchestration is `e2d2c0d6-gemma4-kv-logical-prefix-qualification-run.sh`, normally invoked by the top-level pre-measured preparation wrapper.
 
+Before either plain/probe server model load, qualification MUST acquire the canonical diagnostic shared-GPU flock for resource `llama-cpp:local-gpu` under `/tmp/relaylm/physical/locks/<sha256(resource_key)[:16]>.lock`. While holding that flock, it MUST prove two consecutive external-idle observations five seconds apart for `llama-server`, `llama-cli`, `llama-run`, and `127.0.0.1:1234`. Socket result `0` is busy, `ECONNREFUSED` is idle, and permission/timeout/other errno is inconclusive and fails closed. This guard is diagnostic-only and MUST NOT create or touch #2965 campaign queue/receipt/lease/spend artifacts.
+
 Required evidence:
 
 - server/model SHA256;
@@ -194,8 +196,10 @@ It performs only:
 6. `git diff --check`;
 7. CUDA Release build of target `llama-server`;
 8. replacement binary provenance preflight;
-9. non-generative plain/probe startup recovery;
-10. strict final-context and compact-SWA startup classification.
+9. resource-guard self-test plus canonical `llama-cpp:local-gpu` flock acquisition;
+10. two consecutive external-idle observations five seconds apart while the flock is held;
+11. non-generative plain/probe startup recovery under that same held flock;
+12. strict final-context and compact-SWA startup classification.
 
 The build helper uses:
 
@@ -219,6 +223,8 @@ measured_l0_submitted = false
 measured_attempt_consumed = false
 measured_execution_authorized_by_this_result = false
 ```
+
+A successful qualification must also record the canonical diagnostic flock as acquired and cleanly released, exactly two idle observations with no busy process/default listener, guarded startup child exit 0, and explicit `campaign_queue_receipt_created=false` / `campaign_queue_or_spend_artifact_touched=false`.
 
 Therefore even a successful prepare result is **not** authority to send replacement L0. The returned new server SHA256 and qualification evidence must first be reconciled into a distinct measured-attempt authority.
 
