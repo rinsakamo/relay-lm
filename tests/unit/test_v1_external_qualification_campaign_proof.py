@@ -20,6 +20,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignDescriptor,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
 )
 
@@ -185,6 +186,7 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     raw["hindsight_lifecycle"]["retain_max_completion_tokens"] = 8191
     raw["hindsight_lifecycle"]["fail_on_extraction_errors"] = False
     raw["hindsight_lifecycle"]["llm_supports_string_pattern"] = False
+    raw["hindsight_lifecycle"]["retain_llm_reasoning_effort"] = "low"
     source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
     source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
     owner_id = "owner-2994-proof-retain-bound"
@@ -214,6 +216,10 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     assert (
         plan["hindsight_lifecycle"]["llm_supports_string_pattern"]
         is HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN
+    )
+    assert (
+        plan["hindsight_lifecycle"]["retain_llm_reasoning_effort"]
+        == HINDSIGHT_RETAIN_LLM_REASONING_EFFORT
     )
 
 
@@ -464,6 +470,7 @@ def _runtime_identity(plan: dict[str, object], owner_id: str) -> dict[str, objec
         "retain_max_completion_tokens",
         "fail_on_extraction_errors",
         "llm_supports_string_pattern",
+        "retain_llm_reasoning_effort",
         "embeddings_provider",
         "reranker_provider",
         "embeddings_onnx_model_sha256",
