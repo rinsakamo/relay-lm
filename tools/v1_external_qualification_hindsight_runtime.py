@@ -127,6 +127,13 @@ def _write_identity(
     os.replace(temporary, path)
 
 
+def _configure_retain_reasoning_effort(value: str) -> str:
+    if value != "none":
+        raise RuntimeError("Hindsight retain reasoning effort must be none")
+    os.environ["HINDSIGHT_API_RETAIN_LLM_REASONING_EFFORT"] = value
+    return value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", required=True)
@@ -170,9 +177,7 @@ def main() -> int:
     os.environ["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] = (
         "true" if llm_supports_string_pattern else "false"
     )
-    if args.retain_llm_reasoning_effort != "none":
-        raise RuntimeError("Hindsight retain reasoning effort must be none")
-    os.environ["HINDSIGHT_API_RETAIN_LLM_REASONING_EFFORT"] = (
+    retain_llm_reasoning_effort = _configure_retain_reasoning_effort(
         args.retain_llm_reasoning_effort
     )
     os.environ["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = args.embeddings_provider
@@ -219,7 +224,7 @@ def main() -> int:
         retain_max_completion_tokens=args.retain_max_completion_tokens,
         fail_on_extraction_errors=fail_on_extraction_errors,
         llm_supports_string_pattern=llm_supports_string_pattern,
-        retain_llm_reasoning_effort=args.retain_llm_reasoning_effort,
+        retain_llm_reasoning_effort=retain_llm_reasoning_effort,
         embeddings_provider=args.embeddings_provider,
         reranker_provider=args.reranker_provider,
         onnx_model_path=onnx_model_path,
