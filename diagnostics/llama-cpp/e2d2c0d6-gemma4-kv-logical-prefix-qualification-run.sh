@@ -42,8 +42,9 @@ patch_selftest="$script_dir/e2d2c0d6-gemma4-kv-logical-prefix-patch-selftest.py"
 binary_preflight="$script_dir/e2d2c0d6-gemma4-kv-logical-prefix-binary-preflight.py"
 startup_run="$script_dir/e2d2c0d6-gemma4-kv-startup-recovery-run.sh"
 startup_classify="$script_dir/e2d2c0d6-gemma4-kv-logical-prefix-startup-classify.py"
+startup_classifier_selftest="$script_dir/e2d2c0d6-gemma4-kv-logical-prefix-startup-classifier-selftest.py"
 
-for required in "$patch_selftest" "$binary_preflight" "$startup_run" "$startup_classify"; do
+for required in "$patch_selftest" "$binary_preflight" "$startup_run" "$startup_classify" "$startup_classifier_selftest"; do
   if [[ ! -f "$required" ]]; then
     echo "required helper missing: $required" >&2
     exit 67
@@ -51,6 +52,18 @@ for required in "$patch_selftest" "$binary_preflight" "$startup_run" "$startup_c
 done
 
 mkdir -p "$out_root"
+
+python3 -m py_compile \
+  "$patch_selftest" \
+  "$binary_preflight" \
+  "$startup_classify" \
+  "$startup_classifier_selftest"
+
+bash -n "$startup_run"
+bash -n "$script_dir/e2d2c0d6-gemma4-kv-startup-recovery.sh"
+
+python3 "$startup_classifier_selftest" \
+  >"$out_root/logical-prefix-startup-classifier-selftest.json"
 
 python3 "$patch_selftest" >"$out_root/logical-prefix-patch-selftest.json"
 
