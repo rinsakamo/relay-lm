@@ -202,15 +202,23 @@ It performs only:
 11. non-generative plain/probe startup recovery under that same held flock;
 12. strict final-context and compact-SWA startup classification.
 
-The build helper uses:
+The build helper uses the host-qualified native Linux CUDA toolkit binding:
 
 ```text
+CUDA toolkit root = /usr/local/cuda-12.8
+nvcc = /usr/local/cuda-12.8/bin/nvcc
+required nvcc release = 12.8
+configure PATH = /usr/local/cuda-12.8/bin:/usr/bin:/bin
 -DGGML_CUDA=ON
 -DCMAKE_BUILD_TYPE=Release
+-DCUDAToolkit_ROOT=/usr/local/cuda-12.8
+-DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.8/bin/nvcc
 target = llama-server
 ```
 
-and operates only in its fresh output root. It does not mutate the supplied source checkout.
+This explicit binding is required because the WSL host inherits a Windows CUDA 12.1 path whose `nvcc.exe` can otherwise be selected by CMake while Linux `cudart` remains unresolved. The helper must fail closed before clone/build if the qualified native root/nvcc is absent, non-canonical, or not CUDA release 12.8. It records the exact toolkit root, nvcc path/version, native build PATH, and version.json hash when present.
+
+The helper operates only in its fresh output root. It does not mutate the supplied source checkout, CUDA installation, symlinks, shell profile, or inherited host PATH.
 
 Required terminal:
 
@@ -229,7 +237,7 @@ A successful qualification must also record the canonical diagnostic flock as ac
 
 Therefore even a successful prepare result is **not** authority to send replacement L0. The returned new server SHA256 and qualification evidence must first be reconciled into a distinct measured-attempt authority.
 
-A pre-measured preparation failure before replacement L0 submission does not consume the replacement measured attempt. After deterministic apparatus repair, any subsequent preparation must use a fresh output root and a fresh preparation transaction; it is not a resume of the failed preparation.
+A pre-measured preparation failure before replacement L0 submission does not consume the replacement measured attempt. A build-stage CUDA discovery/configuration failure is apparatus-only when no model/server/generation boundary has been crossed. After deterministic apparatus repair, any subsequent preparation must use a fresh output root and a fresh preparation transaction; it is not a resume of the failed preparation.
 
 ## Replacement measured attempt boundary
 
