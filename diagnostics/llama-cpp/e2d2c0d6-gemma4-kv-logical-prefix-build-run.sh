@@ -24,6 +24,9 @@ llama_repo=$2
 jobs=${3:-4}
 
 REV=e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d
+CUDA_TOOLKIT_ROOT=/usr/local/cuda-12.8
+CUDA_NVCC="$CUDA_TOOLKIT_ROOT/bin/nvcc"
+CUDA_NATIVE_PATH="$CUDA_TOOLKIT_ROOT/bin:/usr/bin:/bin"
 
 if [[ -e "$out_root" ]]; then
   echo "output root must not exist: $out_root" >&2
@@ -51,6 +54,44 @@ for required in "$aligned_patch" "$logical_patch" "$patch_selftest"; do
 done
 
 mkdir -p "$out_root"
+
+# Host binding is intentionally explicit. WSL may inherit a Windows CUDA path;
+# using it can make FindCUDAToolkit select nvcc.exe while Linux cudart remains
+# unresolved. The replacement build is qualified only against this observed
+# native Linux toolkit.
+if [[ ! -d "$CUDA_TOOLKIT_ROOT" ]]; then
+  echo "qualified native CUDA toolkit root missing: $CUDA_TOOLKIT_ROOT" >&2
+  exit 72
+fi
+if [[ ! -x "$CUDA_NVCC" ]]; then
+  echo "qualified native CUDA nvcc missing or non-executable: $CUDA_NVCC" >&2
+  exit 73
+fi
+
+cuda_root_real=$(readlink -f "$CUDA_TOOLKIT_ROOT")
+cuda_nvcc_real=$(readlink -f "$CUDA_NVCC")
+if [[ "$cuda_root_real" != "$CUDA_TOOLKIT_ROOT" ]]; then
+  echo "unexpected CUDA toolkit canonical root: $cuda_root_real" >&2
+  exit 74
+fi
+if [[ "$cuda_nvcc_real" != "$CUDA_NVCC" ]]; then
+  echo "unexpected CUDA nvcc canonical path: $cuda_nvcc_real" >&2
+  exit 75
+fi
+
+PATH="$CUDA_NATIVE_PATH" "$CUDA_NVCC" --version >"$out_root/cuda-nvcc-version.txt" 2>&1
+if ! grep -Fq "release 12.8" "$out_root/cuda-nvcc-version.txt"; then
+  echo "qualified CUDA nvcc is not release 12.8" >&2
+  exit 76
+fi
+
+printf "%s\n" "$CUDA_TOOLKIT_ROOT" >"$out_root/cuda-toolkit-root.txt"
+printf "%s\n" "$CUDA_NVCC" >"$out_root/cuda-nvcc.txt"
+printf "%s\n" "$CUDA_NATIVE_PATH" >"$out_root/cuda-native-path.txt"
+if [[ -f "$CUDA_TOOLKIT_ROOT/version.json" ]]; then
+  sha256sum "$CUDA_TOOLKIT_ROOT/version.json" >"$out_root/cuda-version-json.sha256"
+fi
+
 python3 -m py_compile "$patch_selftest"
 python3 "$patch_selftest" >"$out_root/logical-prefix-patch-selftest.json"
 
@@ -85,11 +126,19 @@ git -C "$src" diff --binary >"$out_root/applied.patch"
 sha256sum "$out_root/applied.patch" >"$out_root/applied.patch.sha256"
 git -C "$src" status --porcelain --untracked-files=all >"$out_root/source.status-after-patches.txt"
 
+PATH="$CUDA_NATIVE_PATH" \
+CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
+CUDACXX="$CUDA_NVCC" \
 cmake -S "$src" -B "$build" \
   -DGGML_CUDA=ON \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
+  -DCMAKE_CUDA_COMPILER="$CUDA_NVCC" \
   >"$out_root/cmake-configure.stdout.txt" 2>"$out_root/cmake-configure.stderr.txt"
 
+PATH="$CUDA_NATIVE_PATH" \
+CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
+CUDACXX="$CUDA_NVCC" \
 cmake --build "$build" --target llama-server --parallel "$jobs" \
   >"$out_root/cmake-build.stdout.txt" 2>"$out_root/cmake-build.stderr.txt"
 
@@ -120,6 +169,10 @@ out = {
     "aligned_reuse_patch_sha256": first("aligned-reuse.patch.sha256"),
     "logical_prefix_patch_sha256": first("logical-prefix.patch.sha256"),
     "applied_patch_sha256": first("applied.patch.sha256"),
+    "cuda_toolkit_root": (root / "cuda-toolkit-root.txt").read_text(encoding="utf-8").strip(),
+    "cuda_nvcc": (root / "cuda-nvcc.txt").read_text(encoding="utf-8").strip(),
+    "cuda_nvcc_version": (root / "cuda-nvcc-version.txt").read_text(encoding="utf-8").strip(),
+    "cuda_native_path": (root / "cuda-native-path.txt").read_text(encoding="utf-8").strip(),
     "server_binary": str(server),
     "server_sha256": first("server-binary.sha256"),
     "generated_requests": 0,
