@@ -27,6 +27,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignDescriptor,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
     RelayLMExactRCSpec,
@@ -109,6 +110,7 @@ def _derive_hindsight_lifecycle(
         "retain_max_completion_tokens",
         "fail_on_extraction_errors",
         "llm_supports_string_pattern",
+        "retain_llm_reasoning_effort",
     } & set(raw)
     if forbidden:
         raise CampaignCarriageError(
@@ -120,6 +122,7 @@ def _derive_hindsight_lifecycle(
     raw["retain_max_completion_tokens"] = HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
     raw["fail_on_extraction_errors"] = HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
     raw["llm_supports_string_pattern"] = HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN
+    raw["retain_llm_reasoning_effort"] = HINDSIGHT_RETAIN_LLM_REASONING_EFFORT
     return HindsightLifecycleSpec.from_mapping(raw)
 
 
@@ -381,8 +384,8 @@ def prepare_scientific_owner_descriptor(
     """Derive a new owner descriptor without accepting an old descriptor object.
 
     ``hindsight_lifecycle_base`` intentionally cannot carry ``deployment_id``,
-    ``database_profile``, the repository-owned retain completion bound, or the
-    extraction-loss reliability policy. Those values, owner-local roots, expected health,
+    ``database_profile``, the repository-owned retain completion bound, extraction-loss
+    reliability policy, or retain reasoning policy. Those values, owner-local roots, expected health,
     comparator deployment identity, frozen campaign contracts, and authority
     are all derived here before the existing production parser admits the
     result.  Historical execution-freeze release-case copies are deliberately
