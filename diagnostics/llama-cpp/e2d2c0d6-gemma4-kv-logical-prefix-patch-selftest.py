@@ -13,7 +13,7 @@ def without_cpp_line_comments(text: str) -> str:
 
 
 HUNK_HEADER = re.compile(
-    r"^@@ -\\d+(?:,(\\d+))? \\+\\d+(?:,(\\d+))? @@"
+    r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@(?: .*)?$"
 )
 
 
@@ -21,9 +21,12 @@ def unified_diff_hunk_counts_match(text: str) -> bool:
     lines = text.splitlines()
     seen = 0
     for i, line in enumerate(lines):
-        match = HUNK_HEADER.match(line)
-        if match is None:
+        if not line.startswith("@@ "):
             continue
+
+        match = HUNK_HEADER.fullmatch(line)
+        if match is None:
+            return False
 
         seen += 1
         declared_old = int(match.group(1) or "1")
@@ -78,6 +81,14 @@ def main():
     generated_code = without_cpp_line_comments(generated)
 
     checks = {
+        "hunk_header_detector_accepts_valid_header": unified_diff_hunk_counts_match(
+            "diff --git a/x b/x\n"
+            "--- a/x\n"
+            "+++ b/x\n"
+            "@@ -1 +1,2 @@ optional context\n"
+            " old\n"
+            "+new\n"
+        ),
         "unified_diff_hunk_counts_match": unified_diff_hunk_counts_match(text),
         "hunk_count_detector_rejects_bad_header": not unified_diff_hunk_counts_match(
             "diff --git a/x b/x\n"
@@ -86,6 +97,13 @@ def main():
             "@@ -1 +1,3 @@\n"
             " old\n"
             "+new\n"
+        ),
+        "hunk_header_detector_rejects_unparseable_header": not unified_diff_hunk_counts_match(
+            "diff --git a/x b/x\n"
+            "--- a/x\n"
+            "+++ b/x\n"
+            "@@ malformed @@\n"
+            " old\n"
         ),
         "logical_position_511_trigger": "batch_view.pos[i] != 511" in generated,
         "no_physical_512_batch_requirement": "n_tokens == 512" not in generated_code,
