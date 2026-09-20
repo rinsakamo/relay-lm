@@ -7,6 +7,10 @@ import sys
 PATCH = Path(__file__).resolve().parent / "e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch"
 
 
+def without_cpp_line_comments(text: str) -> str:
+    return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+
+
 def main():
     text = PATCH.read_text(encoding="utf-8")
 
@@ -30,9 +34,19 @@ def main():
     if next_hunk >= 0:
         generated = generated[:next_hunk]
 
+    generated_code = without_cpp_line_comments(generated)
+
     checks = {
         "logical_position_511_trigger": "batch_view.pos[i] != 511" in generated,
-        "no_physical_512_batch_requirement": "n_tokens == 512" not in generated,
+        "no_physical_512_batch_requirement": "n_tokens == 512" not in generated_code,
+        "physical_512_detector_catches_code": (
+            "n_tokens == 512"
+            in without_cpp_line_comments("if (n_tokens == 512) { return; }")
+        ),
+        "physical_512_detector_ignores_comment": (
+            "n_tokens == 512"
+            not in without_cpp_line_comments("// do not require n_tokens == 512")
+        ),
         "prompt_only_trigger": "!batch.tokens[off + i].is_prompt" in generated,
         "single_sequence_requirement": "batch_view.n_seq_id[i] != 1" in generated,
         "duplicate_511_fails_closed": "multiple logical position-511 prompt tokens" in generated,
