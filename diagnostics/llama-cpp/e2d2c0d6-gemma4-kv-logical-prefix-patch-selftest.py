@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+import re
 import sys
 
 
@@ -9,6 +10,46 @@ PATCH = Path(__file__).resolve().parent / "e2d2c0d6-gemma4-kv-logical-prefix-dum
 
 def without_cpp_line_comments(text: str) -> str:
     return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+
+
+HUNK_HEADER = re.compile(
+    r"^@@ -\\d+(?:,(\\d+))? \\+\\d+(?:,(\\d+))? @@"
+)
+
+
+def unified_diff_hunk_counts_match(text: str) -> bool:
+    lines = text.splitlines()
+    seen = 0
+    for i, line in enumerate(lines):
+        match = HUNK_HEADER.match(line)
+        if match is None:
+            continue
+
+        seen += 1
+        declared_old = int(match.group(1) or "1")
+        declared_new = int(match.group(2) or "1")
+        actual_old = 0
+        actual_new = 0
+
+        for body in lines[i + 1 :]:
+            if body.startswith("@@ ") or body.startswith("diff --git "):
+                break
+            if body.startswith("\\ No newline at end of file"):
+                continue
+            if body.startswith("+"):
+                actual_new += 1
+            elif body.startswith("-"):
+                actual_old += 1
+            elif body.startswith(" "):
+                actual_old += 1
+                actual_new += 1
+            else:
+                break
+
+        if actual_old != declared_old or actual_new != declared_new:
+            return False
+
+    return seen > 0
 
 
 def main():
@@ -37,6 +78,15 @@ def main():
     generated_code = without_cpp_line_comments(generated)
 
     checks = {
+        "unified_diff_hunk_counts_match": unified_diff_hunk_counts_match(text),
+        "hunk_count_detector_rejects_bad_header": not unified_diff_hunk_counts_match(
+            "diff --git a/x b/x\n"
+            "--- a/x\n"
+            "+++ b/x\n"
+            "@@ -1 +1,3 @@\n"
+            " old\n"
+            "+new\n"
+        ),
         "logical_position_511_trigger": "batch_view.pos[i] != 511" in generated,
         "no_physical_512_batch_requirement": "n_tokens == 512" not in generated_code,
         "physical_512_detector_catches_code": (
