@@ -295,7 +295,7 @@ diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
  
                      // If using an alora, there may be uncached tokens that come
                      // before the invocation sequence. When this happens, the
-@@ -2880,6 +2880,39 @@
+@@ -2880,6 +2880,40 @@
  #endif
  
                  if (ok) {
