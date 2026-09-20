@@ -14,6 +14,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignDescriptor,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
     _campaign_contract,
@@ -31,6 +32,7 @@ def _inputs(tmp_path: Path) -> tuple[dict[str, object], dict[str, object]]:
     lifecycle.pop("retain_max_completion_tokens")
     lifecycle.pop("fail_on_extraction_errors")
     lifecycle.pop("llm_supports_string_pattern")
+    lifecycle.pop("retain_llm_reasoning_effort")
     return stale, lifecycle
 
 
@@ -94,6 +96,7 @@ def test_prepare_derives_fresh_owner_identity_and_admits(tmp_path: Path) -> None
     )
     assert lifecycle["fail_on_extraction_errors"] is HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
     assert lifecycle["llm_supports_string_pattern"] is HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN
+    assert lifecycle["retain_llm_reasoning_effort"] == HINDSIGHT_RETAIN_LLM_REASONING_EFFORT
     assert health["source_revision"] == lifecycle["source_revision"]
     assert health["version"] == lifecycle["runtime_version"]
     deployment = health["deployment"]
@@ -303,6 +306,21 @@ def test_prepare_forbids_caller_owned_hindsight_string_pattern_capability(
         _prepare(
             tmp_path,
             owner_id="owner-2998-reject-string-pattern-capability",
+            stale=stale,
+            lifecycle=lifecycle_base,
+        )
+
+
+def test_prepare_forbids_caller_owned_hindsight_retain_reasoning_policy(
+    tmp_path: Path,
+) -> None:
+    stale, lifecycle_base = _inputs(tmp_path)
+    lifecycle_base["retain_llm_reasoning_effort"] = "low"
+
+    with pytest.raises(CampaignCarriageError, match="must omit owner-local fields"):
+        _prepare(
+            tmp_path,
+            owner_id="owner-3002-reject-retain-reasoning-policy",
             stale=stale,
             lifecycle=lifecycle_base,
         )
