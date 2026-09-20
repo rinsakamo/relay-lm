@@ -89,6 +89,10 @@ HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS = True
 # Hindsight uses this capability to constrain timestamp fields so strict grammar
 # cannot loop inside an unconstrained string until the completion cap.
 HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN = True
+# Structured retain extraction is not a reasoning task.  The frozen local Gemma
+# otherwise spends the entire completion budget in reasoning_content before
+# emitting the schema-constrained JSON body.
+HINDSIGHT_RETAIN_LLM_REASONING_EFFORT = "none"
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -174,6 +178,7 @@ _LIFECYCLE_KEYS = {
     "retain_max_completion_tokens",
     "fail_on_extraction_errors",
     "llm_supports_string_pattern",
+    "retain_llm_reasoning_effort",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -890,6 +895,7 @@ class HindsightLifecycleSpec:
     retain_max_completion_tokens: int
     fail_on_extraction_errors: bool
     llm_supports_string_pattern: bool
+    retain_llm_reasoning_effort: str
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -988,6 +994,15 @@ class HindsightLifecycleSpec:
                 "hindsight_lifecycle.llm_supports_string_pattern must match "
                 "the repository-owned frozen-backend capability"
             )
+        retain_llm_reasoning_effort = _require_nonempty_string(
+            raw["retain_llm_reasoning_effort"],
+            label="hindsight_lifecycle.retain_llm_reasoning_effort",
+        )
+        if retain_llm_reasoning_effort != HINDSIGHT_RETAIN_LLM_REASONING_EFFORT:
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.retain_llm_reasoning_effort must match "
+                "the repository-owned structured-retain reasoning policy"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -1024,6 +1039,7 @@ class HindsightLifecycleSpec:
             retain_max_completion_tokens=retain_max_completion_tokens,
             fail_on_extraction_errors=fail_on_extraction_errors,
             llm_supports_string_pattern=llm_supports_string_pattern,
+            retain_llm_reasoning_effort=retain_llm_reasoning_effort,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1061,6 +1077,7 @@ class HindsightLifecycleSpec:
             "retain_max_completion_tokens": self.retain_max_completion_tokens,
             "fail_on_extraction_errors": self.fail_on_extraction_errors,
             "llm_supports_string_pattern": self.llm_supports_string_pattern,
+            "retain_llm_reasoning_effort": self.retain_llm_reasoning_effort,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1244,6 +1261,8 @@ class HindsightDeploymentSession:
                 str(self.spec.fail_on_extraction_errors).lower(),
                 "--llm-supports-string-pattern",
                 str(self.spec.llm_supports_string_pattern).lower(),
+                "--retain-llm-reasoning-effort",
+                self.spec.retain_llm_reasoning_effort,
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1399,6 +1418,7 @@ class HindsightDeploymentSession:
                 ("retain_max_completion_tokens", self.spec.retain_max_completion_tokens),
                 ("fail_on_extraction_errors", self.spec.fail_on_extraction_errors),
                 ("llm_supports_string_pattern", self.spec.llm_supports_string_pattern),
+                ("retain_llm_reasoning_effort", self.spec.retain_llm_reasoning_effort),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):
