@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,9 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     _write_json_fsync,
     start_llama_cpp_session,
     verify_hindsight_health,
+)
+from tools.v1_external_qualification_synthetic_capture import (
+    SyntheticLlamaCaptureProxy,
 )
 
 
@@ -216,21 +220,29 @@ def run_synthetic_hindsight_smoke(
         items=_SYNTHETIC_ITEMS,
     )
 
-    lifecycle = HindsightDeploymentSession(
-        lifecycle_spec,
-        expected_health,
-        repo_root=repo_root,
-        evidence_root=artifact_root / "hindsight",
+    capture_proxy = SyntheticLlamaCaptureProxy(
+        upstream_base_url=f"http://127.0.0.1:{llama_spec.port}/v1",
+        artifact_root=artifact_root / "llama-capture",
     )
+    lifecycle_spec = replace(lifecycle_spec, llm_base_url=capture_proxy.base_url)
+    lifecycle: HindsightDeploymentSession | None = None
     live_session: LiveLaunchSession | None = None
     lifecycle_cleanup: Mapping[str, Any] | None = None
     live_cleanup: Mapping[str, Any] | None = None
+    capture_cleanup: Mapping[str, Any] | None = None
     result: dict[str, Any] | None = None
     failure: BaseException | None = None
     retain_response: Mapping[str, Any] | None = None
     recall_response_shape: Mapping[str, object] | None = None
 
     try:
+        capture_proxy.start()
+        lifecycle = HindsightDeploymentSession(
+            lifecycle_spec,
+            expected_health,
+            repo_root=repo_root,
+            evidence_root=artifact_root / "hindsight",
+        )
         lifecycle.start()
         observed_health = verify_hindsight_health(expected_health, lifecycle)
         live_session = start_llama_cpp_session(
@@ -302,6 +314,27 @@ def run_synthetic_hindsight_smoke(
     except BaseException as exc:
         failure = exc
     finally:
+        if lifecycle is not None:
+            try:
+                lifecycle_cleanup = lifecycle.cleanup()
+            except BaseException as exc:
+                lifecycle_cleanup = {
+                    "all_owned_processes_terminated": False,
+                    "external_processes_touched": 0,
+                    "errors": [f"Hindsight cleanup raised {type(exc).__name__}"],
+                }
+                if failure is None:
+                    failure = exc
+        try:
+            capture_cleanup = capture_proxy.cleanup()
+        except BaseException as exc:
+            capture_cleanup = {
+                "all_owned_processes_terminated": False,
+                "external_processes_touched": 0,
+                "errors": [f"capture proxy cleanup raised {type(exc).__name__}"],
+            }
+            if failure is None:
+                failure = exc
         if live_session is not None:
             try:
                 live_cleanup = live_session.cleanup()
@@ -313,16 +346,6 @@ def run_synthetic_hindsight_smoke(
                 }
                 if failure is None:
                     failure = exc
-        try:
-            lifecycle_cleanup = lifecycle.cleanup()
-        except BaseException as exc:
-            lifecycle_cleanup = {
-                "all_owned_processes_terminated": False,
-                "external_processes_touched": 0,
-                "errors": [f"Hindsight cleanup raised {type(exc).__name__}"],
-            }
-            if failure is None:
-                failure = exc
 
     if result is None:
         result = {
@@ -352,10 +375,25 @@ def run_synthetic_hindsight_smoke(
             ),
         }
 
+    result["llama_capture"] = (
+        None if capture_cleanup is None else dict(capture_cleanup)
+    )
     result["cleanup"] = {
         "llama_cpp": None if live_cleanup is None else dict(live_cleanup),
         "hindsight": (
             None if lifecycle_cleanup is None else dict(lifecycle_cleanup)
+        ),
+        "capture_proxy": (
+            None if capture_cleanup is None else {
+                "all_owned_processes_terminated": capture_cleanup.get(
+                    "all_owned_processes_terminated"
+                ),
+                "external_processes_touched": capture_cleanup.get(
+                    "external_processes_touched"
+                ),
+                "errors": capture_cleanup.get("errors"),
+                "proxy_port": capture_cleanup.get("proxy_port"),
+            }
         ),
     }
     _write_json_fsync(
