@@ -148,7 +148,7 @@ This is non-generative and does not consume a measured replacement attempt.
 
 A newly built replacement binary is a new physical artifact.
 
-Before replacement measured L0, run a fresh non-generative startup recovery/qualification using the exact intended runtime and probe environment.
+Before replacement measured L0, run a fresh non-generative startup recovery/qualification using the exact intended runtime and probe environment. The preferred orchestration is `e2d2c0d6-gemma4-kv-logical-prefix-qualification-run.sh`, normally invoked by the top-level pre-measured preparation wrapper.
 
 Required evidence:
 
@@ -158,9 +158,69 @@ Required evidence:
 - same final `llama_context` block proves n_seq_max=1, n_ctx=8192, n_batch=512, n_ubatch=512, flash_attn=enabled;
 - startup allocation proves base KV 8192 and compact SWA smaller than base;
 - probe environment alone creates no dump;
+- strict startup-classifier self-test passes;
+- plain/probe allocation geometry agrees;
 - no generation request is sent.
 
 After this gate, record the new binary SHA into a fresh replacement measured-runner authority. Do not silently edit the consumed runner identity.
+
+## Preferred pre-measured preparation entrypoint
+
+Use:
+
+`e2d2c0d6-gemma4-kv-logical-prefix-prepare-run.sh`
+
+as the preferred host entrypoint for the replacement preparation stage.
+
+Invocation:
+
+```bash
+bash diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-logical-prefix-prepare-run.sh \
+  <fresh-output-root> \
+  <existing-llama.cpp-source-repository> \
+  <frozen-model-path> \
+  <fresh-plain-port> \
+  <fresh-probe-port> \
+  [build-jobs]
+```
+
+It performs only:
+
+1. isolated local clone of the supplied llama.cpp repository;
+2. checkout of exact source revision `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`;
+3. patch self-test;
+4. aligned-reuse patch apply-check/application;
+5. logical-prefix patch apply-check/application;
+6. `git diff --check`;
+7. CUDA Release build of target `llama-server`;
+8. replacement binary provenance preflight;
+9. non-generative plain/probe startup recovery;
+10. strict final-context and compact-SWA startup classification.
+
+The build helper uses:
+
+```text
+-DGGML_CUDA=ON
+-DCMAKE_BUILD_TYPE=Release
+target = llama-server
+```
+
+and operates only in its fresh output root. It does not mutate the supplied source checkout.
+
+Required terminal:
+
+`LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY`
+
+This terminal explicitly records:
+
+```text
+generated_requests = 0
+measured_l0_submitted = false
+measured_attempt_consumed = false
+measured_execution_authorized_by_this_result = false
+```
+
+Therefore even a successful prepare result is **not** authority to send replacement L0. The returned new server SHA256 and qualification evidence must first be reconciled into a distinct measured-attempt authority.
 
 ## Replacement measured attempt boundary
 
