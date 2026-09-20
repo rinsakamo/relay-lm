@@ -233,6 +233,7 @@ class _CaptureHandler(BaseHTTPRequestHandler):
         with server.capture_lock:
             server.request_count += 1
 
+        connection: http.client.HTTPConnection | None = None
         try:
             connection = http.client.HTTPConnection(
                 server.upstream_host,
@@ -262,10 +263,21 @@ class _CaptureHandler(BaseHTTPRequestHandler):
             self.wfile.write(error)
             return
         finally:
-            try:
-                connection.close()  # type: ignore[possibly-undefined]
-            except (NameError, OSError):
-                pass
+            if connection is not None:
+                try:
+                    connection.close()
+                except OSError:
+                    pass
+
+        if self.command == "POST" and self.path.split("?", 1)[0] == "/v1/chat/completions":
+            server.record_chat_completion(
+                method=self.command,
+                path=self.path,
+                request_body=request_body,
+                status_code=status_code,
+                response_headers=response_headers,
+                response_body=response_body,
+            )
 
         self.send_response(status_code, reason)
         for name, value in response_headers:
@@ -277,16 +289,6 @@ class _CaptureHandler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(response_body)
-
-        if self.command == "POST" and self.path.split("?", 1)[0] == "/v1/chat/completions":
-            server.record_chat_completion(
-                method=self.command,
-                path=self.path,
-                request_body=request_body,
-                status_code=status_code,
-                response_headers=response_headers,
-                response_body=response_body,
-            )
 
 
 class SyntheticLlamaCaptureProxy:
