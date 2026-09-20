@@ -94,8 +94,9 @@ Before any replacement measured generation:
 4. verify patch application with `git apply --check`;
 5. build `llama-server`;
 6. record exact source/tree, patch SHA256 values, compiler/build identity, and new binary SHA256;
-7. prove the built binary contains the replacement instrumentation strings;
-8. run only non-generative startup qualification first.
+7. run `e2d2c0d6-gemma4-kv-logical-prefix-binary-preflight.py` and require `LOGICAL_PREFIX_BINARY_PREFLIGHT_PASS`;
+8. prove the built binary contains the replacement instrumentation strings and does not retain the old generated-prefix failure marker;
+9. run only non-generative startup qualification first.
 
 Do not rewrite any runner's expected binary SHA until the new binary SHA has been observed and reconciled.
 
@@ -116,6 +117,32 @@ The self-test must prove at minimum:
 - the dump request remains 0..512;
 - the retained-prefix R512 hook remains bound to reuse p0==512;
 - both P512 and R512 remain diagnostic-only hooks.
+
+## Binary provenance preflight
+
+After build and before startup qualification, run:
+
+```bash
+python3 diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-logical-prefix-binary-preflight.py \
+  --server-bin <new-llama-server> \
+  --model <frozen-gguf> \
+  --out <fresh-preflight-root>/logical-prefix-binary-preflight.json
+```
+
+Required terminal:
+
+`LOGICAL_PREFIX_BINARY_PREFLIGHT_PASS`
+
+It records:
+
+- new server SHA256;
+- frozen model SHA256;
+- logical-prefix patch SHA256;
+- aligned-reuse patch SHA256;
+- presence of required replacement instrumentation markers;
+- absence of the old `generated-prefix dump` failure marker.
+
+This is non-generative and does not consume a measured replacement attempt.
 
 ## Non-generative recovery gate
 
