@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,6 +12,49 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     CampaignCarriageError,
 )
 from tools import v1_external_qualification_hindsight_smoke as smoke
+
+
+@dataclass(frozen=True)
+class _FakeLifecycleSpec:
+    database_profile: str
+    llm_base_url: str = "http://127.0.0.1:18097/v1"
+
+
+class _FakeCaptureProxy:
+    instances: list["_FakeCaptureProxy"] = []
+
+    def __init__(self, *, upstream_base_url: str, artifact_root: Path) -> None:
+        assert upstream_base_url == "http://127.0.0.1:18097/v1"
+        assert artifact_root.is_absolute()
+        self.base_url = "http://127.0.0.1:49000/v1"
+        self.port = 49000
+        self.started = False
+        self.cleaned = False
+        self.__class__.instances.append(self)
+
+    def start(self) -> None:
+        self.started = True
+
+    def cleanup(self):
+        self.cleaned = True
+        return {
+            "format_version": 1,
+            "proxy_base_url": self.base_url,
+            "proxy_port": self.port,
+            "upstream": "http://127.0.0.1:18097",
+            "request_count": 0,
+            "chat_completion_capture_count": 0,
+            "captures": [],
+            "all_owned_processes_terminated": True,
+            "external_processes_touched": 0,
+            "errors": [],
+        }
+
+
+@pytest.fixture(autouse=True)
+def _synthetic_capture_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    _FakeCaptureProxy.instances.clear()
+    monkeypatch.setattr(smoke, "SyntheticLlamaCaptureProxy", _FakeCaptureProxy)
 
 
 class _FakeLifecycle:
@@ -128,8 +172,8 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
 ) -> None:
     _FakeLifecycle.instances.clear()
     health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
-    lifecycle_spec = SimpleNamespace(database_profile="diagnostic-owner")
-    llama_spec = SimpleNamespace()
+    lifecycle_spec = _FakeLifecycleSpec(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace(port=18097)
 
     monkeypatch.setattr(
         smoke,
@@ -182,6 +226,11 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
     assert result["recall_response_shape"] == {"keys": ["results"], "result_count": 1}
     assert result["hindsight_semantic_operation_count"] == 4
     assert result["llama_cpp_launch_count"] == 1
+    assert result["llama_capture"]["chat_completion_capture_count"] == 0
+    assert result["cleanup"]["capture_proxy"]["all_owned_processes_terminated"] is True
+    assert _FakeCaptureProxy.instances[0].started is True
+    assert _FakeCaptureProxy.instances[0].cleaned is True
+    assert _FakeLifecycle.instances[0].spec.llm_base_url == "http://127.0.0.1:49000/v1"
     assert live.cleaned is True
     assert _FakeLifecycle.instances[0].cleaned is True
 
@@ -204,8 +253,8 @@ def test_synthetic_smoke_preserves_failure_receipt_without_scientific_state(
             raise CampaignCarriageError("synthetic retain failed")
 
     health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
-    lifecycle_spec = SimpleNamespace(database_profile="diagnostic-owner")
-    llama_spec = SimpleNamespace()
+    lifecycle_spec = _FakeLifecycleSpec(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace(port=18097)
     monkeypatch.setattr(
         smoke,
         "_derive_diagnostic_bindings",
@@ -246,6 +295,8 @@ def test_synthetic_smoke_preserves_failure_receipt_without_scientific_state(
     assert receipt["scientific_spend"] == "NOT_OPENED"
     assert receipt["benchmark_text_used"] is False
     assert receipt["failure"]["type"] == "CampaignCarriageError"
+    assert receipt["llama_capture"]["chat_completion_capture_count"] == 0
+    assert receipt["cleanup"]["capture_proxy"]["all_owned_processes_terminated"] is True
 
 
 def test_synthetic_smoke_preserves_retain_and_recall_shape_on_empty_recall(
@@ -268,8 +319,8 @@ def test_synthetic_smoke_preserves_retain_and_recall_shape_on_empty_recall(
             return {"results": [], "trace": {"synthetic": True}}
 
     health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
-    lifecycle_spec = SimpleNamespace(database_profile="diagnostic-owner")
-    llama_spec = SimpleNamespace()
+    lifecycle_spec = _FakeLifecycleSpec(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace(port=18097)
     monkeypatch.setattr(
         smoke,
         "_derive_diagnostic_bindings",
@@ -311,6 +362,7 @@ def test_synthetic_smoke_preserves_retain_and_recall_shape_on_empty_recall(
         "keys": ["results", "trace"],
         "result_count": 0,
     }
+    assert receipt["llama_capture"]["chat_completion_capture_count"] == 0
 
 
 def test_shared_physical_registry_exposes_only_the_synthetic_smoke_module() -> None:
