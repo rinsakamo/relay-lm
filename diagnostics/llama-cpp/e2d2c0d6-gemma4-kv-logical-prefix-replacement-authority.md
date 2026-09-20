@@ -112,6 +112,7 @@ Required terminal:
 
 The self-test must prove at minimum:
 
+- every unified-diff hunk's declared old/new line counts match its actual body, so malformed patch metadata fails before build;
 - logical position 511 is the P512 trigger;
 - the generated-prefix hook does not require `n_tokens == 512`;
 - the dump request remains 0..512;
@@ -227,6 +228,8 @@ measured_execution_authorized_by_this_result = false
 A successful qualification must also record the canonical diagnostic flock as acquired and cleanly released, exactly two idle observations with no busy process/default listener, guarded startup child exit 0, and explicit `campaign_queue_receipt_created=false` / `campaign_queue_or_spend_artifact_touched=false`.
 
 Therefore even a successful prepare result is **not** authority to send replacement L0. The returned new server SHA256 and qualification evidence must first be reconciled into a distinct measured-attempt authority.
+
+A pre-measured preparation failure before replacement L0 submission does not consume the replacement measured attempt. After deterministic apparatus repair, any subsequent preparation must use a fresh output root and a fresh preparation transaction; it is not a resume of the failed preparation.
 
 ## Replacement measured attempt boundary
 
