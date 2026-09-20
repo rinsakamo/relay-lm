@@ -93,6 +93,10 @@ HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN = True
 # otherwise spends the entire completion budget in reasoning_content before
 # emitting the schema-constrained JSON body.
 HINDSIGHT_RETAIN_LLM_REASONING_EFFORT = "none"
+# Consolidation is likewise a schema-constrained memory-maintenance operation;
+# reasoning is not part of the comparator-visible result and must not consume
+# the frozen local model budget.
+HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT = "none"
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -179,6 +183,7 @@ _LIFECYCLE_KEYS = {
     "fail_on_extraction_errors",
     "llm_supports_string_pattern",
     "retain_llm_reasoning_effort",
+    "consolidation_llm_reasoning_effort",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -896,6 +901,7 @@ class HindsightLifecycleSpec:
     fail_on_extraction_errors: bool
     llm_supports_string_pattern: bool
     retain_llm_reasoning_effort: str
+    consolidation_llm_reasoning_effort: str
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -1003,6 +1009,18 @@ class HindsightLifecycleSpec:
                 "hindsight_lifecycle.retain_llm_reasoning_effort must match "
                 "the repository-owned structured-retain reasoning policy"
             )
+        consolidation_llm_reasoning_effort = _require_nonempty_string(
+            raw["consolidation_llm_reasoning_effort"],
+            label="hindsight_lifecycle.consolidation_llm_reasoning_effort",
+        )
+        if (
+            consolidation_llm_reasoning_effort
+            != HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
+        ):
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.consolidation_llm_reasoning_effort must match "
+                "the repository-owned structured-consolidation reasoning policy"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -1040,6 +1058,7 @@ class HindsightLifecycleSpec:
             fail_on_extraction_errors=fail_on_extraction_errors,
             llm_supports_string_pattern=llm_supports_string_pattern,
             retain_llm_reasoning_effort=retain_llm_reasoning_effort,
+            consolidation_llm_reasoning_effort=consolidation_llm_reasoning_effort,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1078,6 +1097,7 @@ class HindsightLifecycleSpec:
             "fail_on_extraction_errors": self.fail_on_extraction_errors,
             "llm_supports_string_pattern": self.llm_supports_string_pattern,
             "retain_llm_reasoning_effort": self.retain_llm_reasoning_effort,
+            "consolidation_llm_reasoning_effort": self.consolidation_llm_reasoning_effort,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1263,6 +1283,8 @@ class HindsightDeploymentSession:
                 str(self.spec.llm_supports_string_pattern).lower(),
                 "--retain-llm-reasoning-effort",
                 self.spec.retain_llm_reasoning_effort,
+                "--consolidation-llm-reasoning-effort",
+                self.spec.consolidation_llm_reasoning_effort,
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1419,6 +1441,10 @@ class HindsightDeploymentSession:
                 ("fail_on_extraction_errors", self.spec.fail_on_extraction_errors),
                 ("llm_supports_string_pattern", self.spec.llm_supports_string_pattern),
                 ("retain_llm_reasoning_effort", self.spec.retain_llm_reasoning_effort),
+                (
+                    "consolidation_llm_reasoning_effort",
+                    self.spec.consolidation_llm_reasoning_effort,
+                ),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):

@@ -62,6 +62,7 @@ def _write_identity(
     fail_on_extraction_errors: bool,
     llm_supports_string_pattern: bool,
     retain_llm_reasoning_effort: str,
+    consolidation_llm_reasoning_effort: str,
     embeddings_provider: str,
     reranker_provider: str,
     onnx_model_path: Path,
@@ -109,6 +110,7 @@ def _write_identity(
         "fail_on_extraction_errors": fail_on_extraction_errors,
         "llm_supports_string_pattern": llm_supports_string_pattern,
         "retain_llm_reasoning_effort": retain_llm_reasoning_effort,
+        "consolidation_llm_reasoning_effort": consolidation_llm_reasoning_effort,
         "embeddings_provider": embeddings_provider,
         "reranker_provider": reranker_provider,
         "embeddings_onnx_model_path": str(onnx_model_path),
@@ -131,6 +133,13 @@ def _configure_retain_reasoning_effort(value: str) -> str:
     if value != "none":
         raise RuntimeError("Hindsight retain reasoning effort must be none")
     os.environ["HINDSIGHT_API_RETAIN_LLM_REASONING_EFFORT"] = value
+    return value
+
+
+def _configure_consolidation_reasoning_effort(value: str) -> str:
+    if value != "none":
+        raise RuntimeError("Hindsight consolidation reasoning effort must be none")
+    os.environ["HINDSIGHT_API_CONSOLIDATION_LLM_REASONING_EFFORT"] = value
     return value
 
 
@@ -157,6 +166,7 @@ def main() -> int:
         choices=("true", "false"),
     )
     parser.add_argument("--retain-llm-reasoning-effort", required=True)
+    parser.add_argument("--consolidation-llm-reasoning-effort", required=True)
     parser.add_argument("--embeddings-provider", required=True)
     parser.add_argument("--reranker-provider", required=True)
     parser.add_argument("--onnx-model-path", required=True)
@@ -179,6 +189,9 @@ def main() -> int:
     )
     retain_llm_reasoning_effort = _configure_retain_reasoning_effort(
         args.retain_llm_reasoning_effort
+    )
+    consolidation_llm_reasoning_effort = _configure_consolidation_reasoning_effort(
+        args.consolidation_llm_reasoning_effort
     )
     os.environ["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = args.embeddings_provider
     os.environ["HINDSIGHT_API_RERANKER_PROVIDER"] = args.reranker_provider
@@ -225,6 +238,7 @@ def main() -> int:
         fail_on_extraction_errors=fail_on_extraction_errors,
         llm_supports_string_pattern=llm_supports_string_pattern,
         retain_llm_reasoning_effort=retain_llm_reasoning_effort,
+        consolidation_llm_reasoning_effort=consolidation_llm_reasoning_effort,
         embeddings_provider=args.embeddings_provider,
         reranker_provider=args.reranker_provider,
         onnx_model_path=onnx_model_path,
