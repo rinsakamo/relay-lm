@@ -2,6 +2,7 @@
 import ast
 import importlib.util
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -43,7 +44,22 @@ def main():
             if isinstance(arg, ast.Name) and arg.id == "runner_cmd":
                 direct_runner_runs.append(node.lineno)
 
+    frozen_sha_values = [
+        wrapper.EXPECTED_SERVER_SHA,
+        wrapper.EXPECTED_SERVER_IMPL_SHA,
+        wrapper.EXPECTED_LLAMA_SHA,
+        wrapper.EXPECTED_MODEL_SHA,
+        wrapper.EXPECTED_ALIGNED_PATCH_SHA,
+        wrapper.EXPECTED_LOGICAL_PATCH_SHA,
+        wrapper.EXPECTED_APPLIED_PATCH_SHA,
+        *wrapper.EXPECTED_INPUTS.values(),
+    ]
+
     checks = {
+        "all_frozen_sha256_are_64_lower_hex": all(
+            re.fullmatch(r"[0-9a-f]{64}", value)
+            for value in frozen_sha_values
+        ),
         "authority_generation_bound": (
             wrapper.AUTHORITY_GENERATION
             == "logical-prefix-kv-replacement-measured-authority-20260921-l0sha64"
