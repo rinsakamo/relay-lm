@@ -505,6 +505,44 @@ Until that reconciliation is complete:
 - no L0/L1/L0R/LC may be sent;
 - the consumed measured authority remains terminal and immutable.
 
+## Post-repair reconciliation static-gate correction
+
+The first invocation attempt of the post-repair exact reconciliation was stopped before the reconciliation helper itself was invoked.
+
+Observed static result:
+
+```text
+LOGICAL_PREFIX_POST_REPAIR_RECONCILE_SELFTEST_FAIL
+all_frozen_sha256_are_64_lower_hex = false
+only_request_admission_subprocess = false
+```
+
+No reconciliation output root was created. No request admission, build, model load, server startup, GPU runtime, generation, L0/L1/L0R/LC, guard runtime, or measured execution occurred. The repaired pre-measured apparatus remains unconsumed and the consumed measured authority remains terminal.
+
+The self-test failures were self-test defects:
+
+1. the frozen upstream Git commit/tree object IDs are 40-hex Git object IDs, not SHA256 values;
+2. the string-based subprocess check rejected the read-only string `shared-resource-guard` used to inspect already-recorded qualification evidence, even though the helper's only actual subprocess transition is request admission.
+
+Diagnostic-only static repair:
+
+```text
+9835b92bf5162d7e29c0549d5288079f67744563
+  Fix post-repair reconciliation self-test typing
+```
+
+The corrected self-test now requires:
+
+- frozen Git commit/tree object IDs to match `[0-9a-f]{40}`;
+- model/server/request SHA256 identities to match `[0-9a-f]{64}`;
+- exactly one `subprocess.run` transition;
+- that transition's first positional argument is the local `cmd` constructed for `e2d2c0d6-gemma4-kv-request-admission.py`;
+- no `subprocess.Popen` transition.
+
+This correction does not alter the reconciliation helper or any physical/runtime artifact.
+
+A new zero-GPU reconciliation transaction may be attempted only from fresh repository authority and a fresh non-existing reconciliation output root. It is not a retry of a consumed measured attempt because the prior reconciliation helper invocation count was zero.
+
 ## Campaign separation
 
 This remains independent of the RelayLM v1 scientific campaign.
