@@ -11,9 +11,13 @@ work.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib.metadata
 import json
+import subprocess
+import sys
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -49,6 +53,45 @@ from tools.v1_external_qualification_synthetic_capture import (
 SMOKE_TARGET = "v1:hindsight-comparator-synthetic-smoke"
 SMOKE_FORMAT_VERSION = 1
 _STRESS_PROFILES = {"single", "post2986"}
+
+# Persistent qualification material pins.  These are engineering-diagnostic
+# inputs, not benchmark authority, and intentionally survive host reboot.
+_DIAGNOSTIC_LLAMA_CPP_REVISION = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
+_DIAGNOSTIC_LLAMA_CPP_BUILD_INFO = "b10874-e2d2c0d6a"
+_DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256 = (
+    "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+)
+_DIAGNOSTIC_LLAMA_CPP_CONTEXT = 8192
+_DIAGNOSTIC_LLAMA_CPP_SLOTS = 1
+_DIAGNOSTIC_LLAMA_CPP_GPU_LAYERS = 999
+_DIAGNOSTIC_GPU_IDENTITY = {
+    "name": "NVIDIA GeForce RTX 3060",
+    "driver_version": "591.44",
+    "memory_total_mib": "12288",
+}
+
+_DIAGNOSTIC_HINDSIGHT_VERSION = "v0.10.0"
+_DIAGNOSTIC_HINDSIGHT_SOURCE_REVISION = (
+    "5d46f9c8c8eb4fb96f549aa63abe1191b82a7840"
+)
+_DIAGNOSTIC_HINDSIGHT_SOURCE_TREE = (
+    "91f1531dfc615dcd940d6b13f139bd0f85335d1f"
+)
+_DIAGNOSTIC_HINDSIGHT_DEPENDENCY_FINGERPRINT = (
+    "sha256:b99ab626d249fe027631db742ebe275469b5a1de4c01b96835bbe0ff1e848846"
+)
+_DIAGNOSTIC_HINDSIGHT_ONNX_SHA256 = (
+    "ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665"
+)
+_DIAGNOSTIC_HINDSIGHT_TOKENIZER_TREE_SHA256 = (
+    "c084a47ff0e32d3c2874b69a72044eea19abded1824d1627da0a8fdd13822d22"
+)
+_DIAGNOSTIC_HINDSIGHT_WHEEL_SHA256 = {
+    "hindsight-all": "adcf529524c22dc13ebe0c788c9dbfcaf3e489c476c958677e50be2cce42a560",
+    "hindsight-api-slim": "6f7a11fb43735bcc8164d3bee84622690bfa081ca02aaa88e3b88ef72ef3eca3",
+    "hindsight-client": "b16ac3f8b13fc2c35f92ed57129021e53c548a26ee0354015f9ef1394f678e06",
+    "hindsight-embed": "2831ce2d1d7c927c55646f748bb0113342fdf5a2bea9dcb15273d29f64326502",
+}
 _POST2986_WARMUP_EXCHANGES = 40
 _POST2986_STRESS_EXCHANGES = 45
 _SYNTHETIC_SESSION_ID = "synthetic-session-0001"
@@ -67,6 +110,238 @@ _SYNTHETIC_ITEMS: tuple[Mapping[str, str | None], ...] = (
         "timestamp": _SYNTHETIC_TIMESTAMP,
     },
 )
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentHostMaterial:
+    llama_cpp_root: Path
+    model_path: Path
+    onnx_model_path: Path
+    onnx_tokenizer_path: Path
+    llama_port: int
+    hindsight_port: int
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_file_tree(path: Path) -> str:
+    entries = [
+        {
+            "path": child.relative_to(path).as_posix(),
+            "sha256": _sha256_file(child),
+        }
+        for child in sorted(item for item in path.rglob("*") if item.is_file())
+    ]
+    if not entries:
+        raise CampaignCarriageError(
+            f"diagnostic tokenizer path is empty: {path}"
+        )
+    encoded = json.dumps(
+        entries,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _installed_hindsight_wheel_hashes() -> dict[str, str]:
+    observed: dict[str, str] = {}
+    for name, expected in _DIAGNOSTIC_HINDSIGHT_WHEEL_SHA256.items():
+        try:
+            distribution = importlib.metadata.distribution(name)
+        except importlib.metadata.PackageNotFoundError as exc:
+            raise CampaignCarriageError(
+                f"required Hindsight distribution is absent: {name}"
+            ) from exc
+        direct_url = distribution.read_text("direct_url.json")
+        if direct_url is None:
+            raise CampaignCarriageError(
+                f"Hindsight distribution has no exact direct_url.json: {name}"
+            )
+        try:
+            direct = json.loads(direct_url)
+        except json.JSONDecodeError as exc:
+            raise CampaignCarriageError(
+                f"Hindsight direct_url.json is invalid: {name}"
+            ) from exc
+        archive_info = direct.get("archive_info")
+        digest = (
+            archive_info.get("hashes", {}).get("sha256")
+            if isinstance(archive_info, Mapping)
+            else None
+        )
+        if digest != expected:
+            raise CampaignCarriageError(
+                f"Hindsight wheel hash drifted for {name}: "
+                f"expected {expected}, observed {digest}"
+            )
+        observed[name] = expected
+    if importlib.metadata.version("hindsight-all") != "0.10.0":
+        raise CampaignCarriageError(
+            "installed Hindsight version drifted from v0.10.0"
+        )
+    return observed
+
+
+def _require_current_host_material(material: CurrentHostMaterial) -> None:
+    for label, path, kind in (
+        ("llama.cpp root", material.llama_cpp_root, "dir"),
+        ("GGUF", material.model_path, "file"),
+        ("Hindsight ONNX model", material.onnx_model_path, "file"),
+        ("Hindsight ONNX tokenizer", material.onnx_tokenizer_path, "dir"),
+    ):
+        valid = path.is_dir() if kind == "dir" else path.is_file()
+        if not valid:
+            raise CampaignCarriageError(
+                f"current-host diagnostic {label} is unavailable: {path}"
+            )
+    if not 1 <= material.llama_port <= 65535:
+        raise CampaignCarriageError("diagnostic llama port is invalid")
+    if not 1 <= material.hindsight_port <= 65535:
+        raise CampaignCarriageError("diagnostic Hindsight port is invalid")
+    source = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=material.llama_cpp_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if (
+        source.returncode != 0
+        or source.stdout.strip() != _DIAGNOSTIC_LLAMA_CPP_REVISION
+    ):
+        raise CampaignCarriageError(
+            "current-host llama.cpp revision drifted from diagnostic pin"
+        )
+    clean = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=material.llama_cpp_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if clean.returncode != 0 or clean.stdout.strip():
+        raise CampaignCarriageError(
+            "current-host llama.cpp checkout is not clean"
+        )
+    if _sha256_file(material.model_path) != _DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256:
+        raise CampaignCarriageError(
+            "current-host GGUF hash drifted from diagnostic pin"
+        )
+    if _sha256_file(material.onnx_model_path) != _DIAGNOSTIC_HINDSIGHT_ONNX_SHA256:
+        raise CampaignCarriageError(
+            "current-host Hindsight ONNX model hash drifted from diagnostic pin"
+        )
+    if (
+        _sha256_file_tree(material.onnx_tokenizer_path)
+        != _DIAGNOSTIC_HINDSIGHT_TOKENIZER_TREE_SHA256
+    ):
+        raise CampaignCarriageError(
+            "current-host Hindsight tokenizer tree drifted from diagnostic pin"
+        )
+    _installed_hindsight_wheel_hashes()
+
+
+def _derive_current_host_bindings(
+    material: CurrentHostMaterial,
+    *,
+    diagnostic_owner_id: str,
+) -> tuple[LlamaCppLaunchSpec, HindsightLifecycleSpec, HindsightHealthAttestation]:
+    """Derive the synthetic comparator from persistent exact host material."""
+
+    _require_current_host_material(material)
+    runtime_python = Path(sys.executable).resolve()
+    deployment_id = _hindsight_owner_deployment_id(diagnostic_owner_id)
+    model_path = material.model_path.resolve()
+
+    llama = LlamaCppLaunchSpec.from_mapping(
+        {
+            "llama_cpp_root": str(material.llama_cpp_root.resolve()),
+            "artifact_path": str(model_path),
+            "upstream_revision": _DIAGNOSTIC_LLAMA_CPP_REVISION,
+            "expected_build_info": _DIAGNOSTIC_LLAMA_CPP_BUILD_INFO,
+            # Pinned llama.cpp defaults model_alias to common_params_model::get_name(),
+            # which is the local model path when launched with -m.
+            "expected_model_alias": str(model_path),
+            "artifact_sha256": _DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256,
+            "runtime": "llama.cpp-0.4.0-dev",
+            "model_runner": "llama-server-build-10874-e2d2c0d6aa",
+            "context": _DIAGNOSTIC_LLAMA_CPP_CONTEXT,
+            "slots": _DIAGNOSTIC_LLAMA_CPP_SLOTS,
+            "port": material.llama_port,
+            "gpu_layers": _DIAGNOSTIC_LLAMA_CPP_GPU_LAYERS,
+            "effective_gpu_reservation": 1.0,
+            "capacity_evidence": {
+                "gpu_identity": dict(_DIAGNOSTIC_GPU_IDENTITY),
+            },
+        }
+    )
+
+    lifecycle = HindsightLifecycleSpec.from_mapping(
+        {
+            "mode": "owned_local",
+            "base_url": f"http://127.0.0.1:{material.hindsight_port}",
+            "health_path": "/health",
+            "deployment_id": deployment_id,
+            "dependency_fingerprint": _DIAGNOSTIC_HINDSIGHT_DEPENDENCY_FINGERPRINT,
+            "cleanup_path": "/cleanup",
+            "start_path": "/start",
+            "runtime_python": str(runtime_python),
+            "runtime_version": _DIAGNOSTIC_HINDSIGHT_VERSION,
+            "source_revision": _DIAGNOSTIC_HINDSIGHT_SOURCE_REVISION,
+            "source_tree": _DIAGNOSTIC_HINDSIGHT_SOURCE_TREE,
+            "database_profile": diagnostic_owner_id,
+            "llm_model": str(model_path),
+            "llm_base_url": f"http://127.0.0.1:{material.llama_port}/v1",
+            "retain_max_completion_tokens": HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
+            "fail_on_extraction_errors": HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+            "llm_supports_string_pattern": HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+            "retain_llm_reasoning_effort": HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
+            "consolidation_llm_reasoning_effort": HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
+            "llm_max_concurrent": HINDSIGHT_LLM_MAX_CONCURRENT,
+            "embeddings_provider": "onnx",
+            "reranker_provider": "rrf",
+            "embeddings_onnx_model_path": str(material.onnx_model_path.resolve()),
+            "embeddings_onnx_model_sha256": _DIAGNOSTIC_HINDSIGHT_ONNX_SHA256,
+            "embeddings_onnx_tokenizer_path": str(
+                material.onnx_tokenizer_path.resolve()
+            ),
+            "embeddings_onnx_tokenizer_tree_sha256": (
+                _DIAGNOSTIC_HINDSIGHT_TOKENIZER_TREE_SHA256
+            ),
+            "package_wheel_sha256": dict(_DIAGNOSTIC_HINDSIGHT_WHEEL_SHA256),
+            "port": material.hindsight_port,
+        }
+    )
+
+    health = HindsightHealthAttestation.from_mapping(
+        {
+            "implementation": "hindsight",
+            "source_revision": lifecycle.source_revision,
+            "version": lifecycle.runtime_version,
+            "license": "MIT",
+            "deployment": {
+                "deployment_id": lifecycle.deployment_id,
+                "dependency_fingerprint": lifecycle.dependency_fingerprint,
+                "import_status": "passed",
+                "llm_connection_verification": "skipped_zero_semantic_policy",
+                "process_health_status": "passed",
+                "capability_status": "passed",
+            },
+            "semantic_operations_called": [],
+            "semantic_generation_count": 0,
+            "benchmark_question_count": 0,
+            "answer_model_generation_count": 0,
+            "judge_call_count": 0,
+        }
+    )
+    return llama, lifecycle, health
 
 
 def _synthetic_stress_session(
@@ -281,11 +556,12 @@ def _llama_cpp_chat_smoke(spec: LlamaCppLaunchSpec) -> Mapping[str, object]:
 
 def run_synthetic_hindsight_smoke(
     *,
-    source_descriptor: Mapping[str, Any],
+    source_descriptor: Mapping[str, Any] | None,
     diagnostic_owner_id: str,
     repo_root: Path,
     artifact_root: Path,
     stress_profile: str = "single",
+    current_host_material: CurrentHostMaterial | None = None,
 ) -> Mapping[str, Any]:
     """Run one isolated synthetic live comparator diagnostic.
 
@@ -306,10 +582,22 @@ def run_synthetic_hindsight_smoke(
         )
     artifact_root.mkdir(parents=True, exist_ok=False)
 
-    llama_spec, lifecycle_spec, expected_health = _derive_diagnostic_bindings(
-        source_descriptor,
-        diagnostic_owner_id=diagnostic_owner_id,
-    )
+    if (source_descriptor is None) == (current_host_material is None):
+        raise CampaignCarriageError(
+            "synthetic smoke requires exactly one operational source: "
+            "source_descriptor or current_host_material"
+        )
+    if current_host_material is not None:
+        llama_spec, lifecycle_spec, expected_health = _derive_current_host_bindings(
+            current_host_material,
+            diagnostic_owner_id=diagnostic_owner_id,
+        )
+    else:
+        assert source_descriptor is not None
+        llama_spec, lifecycle_spec, expected_health = _derive_diagnostic_bindings(
+            source_descriptor,
+            diagnostic_owner_id=diagnostic_owner_id,
+        )
     bank_id = _hindsight_axis_bank_id(
         lifecycle_spec.database_profile,
         "synthetic-smoke",
@@ -544,7 +832,22 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run a non-citable synthetic Hindsight comparator smoke."
     )
-    parser.add_argument("--source-descriptor", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--source-descriptor", type=Path)
+    source.add_argument(
+        "--current-host-material",
+        action="store_true",
+        help=(
+            "derive the diagnostic operational binding from persistent current-host "
+            "llama.cpp/GGUF/Hindsight/ONNX material instead of a campaign descriptor"
+        ),
+    )
+    parser.add_argument("--llama-cpp-root", type=Path)
+    parser.add_argument("--model-path", type=Path)
+    parser.add_argument("--onnx-model-path", type=Path)
+    parser.add_argument("--onnx-tokenizer-path", type=Path)
+    parser.add_argument("--llama-port", type=int, default=1234)
+    parser.add_argument("--hindsight-port", type=int, default=18096)
     parser.add_argument("--diagnostic-owner-id", required=True)
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
@@ -558,13 +861,45 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
-    source = _load_source_descriptor(args.source_descriptor.resolve())
+    source: Mapping[str, Any] | None
+    host_material: CurrentHostMaterial | None
+    if args.current_host_material:
+        required_paths = {
+            "llama_cpp_root": args.llama_cpp_root,
+            "model_path": args.model_path,
+            "onnx_model_path": args.onnx_model_path,
+            "onnx_tokenizer_path": args.onnx_tokenizer_path,
+        }
+        missing = sorted(name for name, value in required_paths.items() if value is None)
+        if missing:
+            raise CampaignCarriageError(
+                "current-host diagnostic source requires paths: "
+                + ", ".join(missing)
+            )
+        assert args.llama_cpp_root is not None
+        assert args.model_path is not None
+        assert args.onnx_model_path is not None
+        assert args.onnx_tokenizer_path is not None
+        source = None
+        host_material = CurrentHostMaterial(
+            llama_cpp_root=args.llama_cpp_root.resolve(),
+            model_path=args.model_path.resolve(),
+            onnx_model_path=args.onnx_model_path.resolve(),
+            onnx_tokenizer_path=args.onnx_tokenizer_path.resolve(),
+            llama_port=args.llama_port,
+            hindsight_port=args.hindsight_port,
+        )
+    else:
+        assert args.source_descriptor is not None
+        source = _load_source_descriptor(args.source_descriptor.resolve())
+        host_material = None
     result = run_synthetic_hindsight_smoke(
         source_descriptor=source,
         diagnostic_owner_id=args.diagnostic_owner_id,
         repo_root=args.repo_root.resolve(),
         artifact_root=args.artifact_root.resolve(),
         stress_profile=args.stress_profile,
+        current_host_material=host_material,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0
