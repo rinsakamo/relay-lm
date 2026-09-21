@@ -229,19 +229,12 @@ def validate_premeasured(root: Path, here: Path):
     }
 
 
-def revalidate_requests(prior_root: Path, out_root: Path, here: Path):
-    prior = load_json(prior_root / "terminal.json")
-    require_equal(
-        prior.get("status"),
-        "LOGICAL_PREFIX_REQUEST_IDENTITY_RECONCILED",
-        "prior request reconciliation",
-    )
-    identities = prior.get("identities")
-    require(isinstance(identities, dict), "prior request identities missing")
+def _validate_selected_requests(selected, out_root: Path, here: Path, provenance):
+    require(isinstance(selected, dict), "request identities missing")
 
     live = {}
     for name, expected_sha in EXPECTED_REQUESTS.items():
-        entry = identities.get(name)
+        entry = selected.get(name)
         require(isinstance(entry, dict), f"request identity missing: {name}")
         require_equal(entry.get("sha256"), expected_sha, f"recorded {name} SHA")
         path = Path(entry.get("path", ""))
@@ -257,7 +250,7 @@ def revalidate_requests(prior_root: Path, out_root: Path, here: Path):
     admission = here / "e2d2c0d6-gemma4-kv-request-admission.py"
     require(admission.is_file(), "request admission helper missing")
     admission_out = out_root / "request-admission.json"
-    cmd = [
+    admission_cmd = [
         sys.executable,
         str(admission),
         "--warm-tokens", live["warm_tokens"]["path"],
@@ -267,8 +260,8 @@ def revalidate_requests(prior_root: Path, out_root: Path, here: Path):
         "--lc", live["LC"]["path"],
         "--out", str(admission_out),
     ]
-    write_json(out_root / "request-admission.argv.json", cmd)
-    run = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    write_json(out_root / "request-admission.argv.json", admission_cmd)
+    run = subprocess.run(admission_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (out_root / "request-admission.stdout.txt").write_bytes(run.stdout)
     (out_root / "request-admission.stderr.txt").write_bytes(run.stderr)
     require_equal(run.returncode, 0, "request admission returncode")
@@ -276,17 +269,67 @@ def revalidate_requests(prior_root: Path, out_root: Path, here: Path):
     require_equal(admitted.get("status"), "REQUEST_ADMISSION_PASS", "request admission status")
 
     return {
-        "prior_reconciliation_root": str(prior_root),
+        "provenance": provenance,
         "identities": live,
         "request_admission": admitted,
         "l0r_rule": "send the exact L0 request bytes again on a fresh WR2 server",
     }
 
 
+def revalidate_requests(prior_root, search_roots, out_root: Path, here: Path):
+    if prior_root is not None and (prior_root / "terminal.json").is_file():
+        prior = load_json(prior_root / "terminal.json")
+        require_equal(
+            prior.get("status"),
+            "LOGICAL_PREFIX_REQUEST_IDENTITY_RECONCILED",
+            "prior request reconciliation",
+        )
+        return _validate_selected_requests(
+            prior.get("identities"),
+            out_root,
+            here,
+            {
+                "mode": "prior_reconciliation",
+                "prior_reconciliation_root": str(prior_root),
+            },
+        )
+
+    require(search_roots, "prior request reconciliation missing and no request search roots supplied")
+    locator = here / "e2d2c0d6-gemma4-kv-artifact-locator.py"
+    require(locator.is_file(), "artifact locator helper missing")
+    locator_out = out_root / "artifact-locator.json"
+    locator_cmd = [
+        sys.executable,
+        str(locator),
+        *[str(root) for root in search_roots],
+        "--out",
+        str(locator_out),
+    ]
+    write_json(out_root / "artifact-locator.argv.json", locator_cmd)
+    located = subprocess.run(locator_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (out_root / "artifact-locator.stdout.txt").write_bytes(located.stdout)
+    (out_root / "artifact-locator.stderr.txt").write_bytes(located.stderr)
+    require_equal(located.returncode, 0, "artifact locator returncode")
+    located_obj = load_json(locator_out)
+    require_equal(located_obj.get("status"), "ARTIFACT_LOCATOR_PASS", "artifact locator status")
+
+    return _validate_selected_requests(
+        located_obj.get("selected"),
+        out_root,
+        here,
+        {
+            "mode": "bounded_artifact_rediscovery",
+            "searched_roots": [str(root) for root in search_roots],
+            "artifact_locator": str(locator_out),
+        },
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--premeasured-root", type=Path, required=True)
-    ap.add_argument("--prior-request-reconciliation-root", type=Path, required=True)
+    ap.add_argument("--prior-request-reconciliation-root", type=Path)
+    ap.add_argument("--request-search-root", action="append", type=Path, default=[])
     ap.add_argument("--out-root", type=Path, required=True)
     args = ap.parse_args()
 
@@ -299,6 +342,7 @@ def main():
         apparatus = validate_premeasured(args.premeasured_root, here)
         requests = revalidate_requests(
             args.prior_request_reconciliation_root,
+            args.request_search_root,
             args.out_root,
             here,
         )
