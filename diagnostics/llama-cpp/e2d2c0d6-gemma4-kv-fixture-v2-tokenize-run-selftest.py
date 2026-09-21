@@ -14,6 +14,23 @@ def main():
 
     popen_calls = []
     run_calls = []
+    http_endpoint_templates = []
+
+    def endpoint_template(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.JoinedStr):
+            parts = []
+            for value in node.values:
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    parts.append(value.value)
+                elif isinstance(value, ast.FormattedValue):
+                    parts.append("{}")
+                else:
+                    return None
+            return "".join(parts)
+        return None
+
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -23,13 +40,42 @@ def main():
             if node.func.value.id == "subprocess" and node.func.attr == "run":
                 run_calls.append(node.lineno)
 
+        if isinstance(node.func, ast.Name) and node.func.id in {"http_get", "http_post_raw"}:
+            if node.args:
+                template = endpoint_template(node.args[0])
+                if template is not None:
+                    http_endpoint_templates.append({
+                        "function": node.func.id,
+                        "template": template,
+                        "line": node.lineno,
+                    })
+
+    endpoint_pairs = {
+        (entry["function"], entry["template"])
+        for entry in http_endpoint_templates
+    }
+
     checks = {
         "one_server_popen_site": len(popen_calls) == 1,
         "one_helper_run_site": len(run_calls) == 1,
-        "health_endpoint_present": '"/health"' in source,
-        "tokenize_endpoint_present": '"/tokenize"' in source,
-        "no_completion_endpoint": "/completion" not in source,
-        "no_chat_completion_endpoint": "/v1/chat/completions" not in source,
+        "health_endpoint_present": (
+            ("http_get", "http://127.0.0.1:{}/health") in endpoint_pairs
+        ),
+        "tokenize_endpoint_present": (
+            ("http_post_raw", "http://127.0.0.1:{}/tokenize") in endpoint_pairs
+        ),
+        "only_health_and_tokenize_http_calls": endpoint_pairs == {
+            ("http_get", "http://127.0.0.1:{}/health"),
+            ("http_post_raw", "http://127.0.0.1:{}/tokenize"),
+        },
+        "no_completion_endpoint": all(
+            "/completion" not in entry["template"]
+            for entry in http_endpoint_templates
+        ),
+        "no_chat_completion_endpoint": all(
+            "/v1/chat/completions" not in entry["template"]
+            for entry in http_endpoint_templates
+        ),
         "generation_counter_zero": '"generation_requests": 0' in source,
         "measured_l0_false": '"measured_l0_submitted": False' in source,
         "non_authorizing": '"measured_execution_authorized_by_this_result": False' in source,
@@ -54,6 +100,7 @@ def main():
         "checks": checks,
         "popen_lines": popen_calls,
         "run_lines": run_calls,
+        "http_endpoint_templates": http_endpoint_templates,
         "errors": errors,
     }
     print(json.dumps(out, indent=2, sort_keys=True))
