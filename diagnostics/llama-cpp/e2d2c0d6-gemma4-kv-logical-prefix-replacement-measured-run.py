@@ -17,6 +17,11 @@ EXPECTED_SERVER_SHA = "30d3f94f7335821a74828c243ab1dd315df9dc7a4c6df0cdff2f3ce16
 EXPECTED_SERVER_IMPL_SHA = "e6003c1e1a1c1c16dc5a09da485517eec6b6010d17f198acd34981075c14a64c"
 EXPECTED_LLAMA_SHA = "53228c024c04bd4a1acefa03d9ddc602cdfc78b5214d7fb7da13de458d2a2965"
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+EXPECTED_WARM_TOKEN_SHA = "c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2"
+EXPECTED_TARGET_TOKEN_SHA = "549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e"
+EXPECTED_L0_REQUEST_SHA = "9120aed18e9aac20615cab2de00337eb9bf65edb7249015c97d3c41d881e38d"
+EXPECTED_L1_REQUEST_SHA = "d4deaa365324c5ca3c42eba4e6db9defe957a1cf06bbc08e9d3a01ba94ec0d1f"
+EXPECTED_LC_REQUEST_SHA = "284630a2f90e364b5dd336d3d9fadc59ddd0fa072fbac7cc825200bef2e7af52"
 
 STARTUP_EVIDENCE_PATTERNS = {
     "n_seq_max_1": r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
@@ -65,6 +70,21 @@ def require_runtime_closure(server_bin: Path):
                 f"runtime artifact SHA256 mismatch: {name}: {observed} != {expected}"
             )
     return evidence
+
+
+def require_exact_input_sha(path: Path, expected: str, label: str):
+    if not path.is_file():
+        raise RuntimeError(f"{label} missing: {path}")
+    observed = sha256(path)
+    if observed != expected:
+        raise RuntimeError(
+            f"{label} SHA256 mismatch: {observed} != {expected}"
+        )
+    return {
+        "path": str(path),
+        "resolved_path": str(path.resolve(strict=True)),
+        "sha256": observed,
+    }
 
 
 def require_port_free(port: int):
@@ -589,6 +609,23 @@ def main():
         raise SystemExit(f"output root must not exist: {args.out_root}")
     try:
         runtime_closure = require_runtime_closure(args.server_bin)
+        frozen_inputs = {
+            "warm_tokens": require_exact_input_sha(
+                args.warm_tokens, EXPECTED_WARM_TOKEN_SHA, "warm token file"
+            ),
+            "target_tokens": require_exact_input_sha(
+                args.target_tokens, EXPECTED_TARGET_TOKEN_SHA, "target token file"
+            ),
+            "L0": require_exact_input_sha(
+                args.l0_request, EXPECTED_L0_REQUEST_SHA, "L0 request"
+            ),
+            "L1": require_exact_input_sha(
+                args.l1_request, EXPECTED_L1_REQUEST_SHA, "L1 request"
+            ),
+            "LC": require_exact_input_sha(
+                args.lc_request, EXPECTED_LC_REQUEST_SHA, "LC request"
+            ),
+        }
     except Exception as exc:
         raise SystemExit(str(exc))
     if sha256(args.model) != EXPECTED_MODEL_SHA:
@@ -601,6 +638,7 @@ def main():
         "attempt_id": REPLACEMENT_ATTEMPT_ID,
         "server_sha256": sha256(args.server_bin),
         "runtime_artifacts": runtime_closure,
+        "frozen_inputs": frozen_inputs,
         "model_sha256": sha256(args.model),
         "ports": {"WR": args.port_wr, "WR2": args.port_wr2, "C": args.port_c},
     })
