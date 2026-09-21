@@ -197,6 +197,69 @@ Required terminal:
 
 The self-test uses a synthetic integer token pool only. It performs no model/server/GPU call.
 
+## Tokenize-run static endpoint self-test correction
+
+The first fixture-v2 preparation transaction stopped at the tokenize-run static self-test before build, guard acquisition, server startup, tokenization, materialization, admission, repository commit, or push.
+
+Observed static terminal:
+
+`LOGICAL_PREFIX_FIXTURE_V2_TOKENIZE_RUN_SELFTEST_FAIL`
+
+Failed checks:
+
+```text
+health_endpoint_present
+tokenize_endpoint_present
+```
+
+The tokenize runner itself was not invoked. Its Git blob remained:
+
+`ea690526ce281eaf839ce1a64c1008db5577e0c3`
+
+Fresh source inspection confirmed that the runner already calls exactly:
+
+```text
+http_get(f"http://127.0.0.1:{args.port}/health", ...)
+http_post_raw(f"http://127.0.0.1:{args.port}/tokenize", ...)
+```
+
+The prior self-test incorrectly searched the source text for standalone literals `"/health"` and `"/tokenize"`. Those literals do not occur because the endpoints are embedded in f-strings.
+
+Diagnostic-only self-test repair:
+
+```text
+82dd76ef8cdd3c6d704143f2c494e148de3e4001
+  Fix tokenize runner endpoint self-test
+```
+
+The corrected self-test parses the runner AST, extracts endpoint templates from `http_get` and `http_post_raw` call sites, and requires the exact set:
+
+```text
+http_get      -> http://127.0.0.1:{}/health
+http_post_raw -> http://127.0.0.1:{}/tokenize
+```
+
+It also requires that these are the only HTTP endpoint call templates and separately rejects completion/chat-completion endpoint templates.
+
+The failed transaction accounting was:
+
+```text
+build attempts = 0
+guard acquisitions = 0
+idle observations = 0
+server lifetimes = 0/0
+/tokenize requests = 0
+generation requests = 0
+materializer invocations = 0
+admission invocations = 0
+repository commits = 0
+pushes = 0
+v1 mutations = 0
+scientific campaign interactions = 0
+```
+
+Therefore fixture v2 remains unmaterialized and unconsumed. A new fixture-v2 preparation transaction may begin from fresh repository authority. No measured execution authority is created by this correction.
+
 ## Tokenization physical boundary
 
 The only permitted model interaction in the fixture-preparation transaction is one `POST /tokenize` call.
