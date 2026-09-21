@@ -6,6 +6,7 @@ import sys
 import tempfile
 
 HERE = Path(__file__).resolve().parent
+CORPUS = HERE / "e2d2c0d6-gemma4-kv-fixture-v2-corpus.py"
 MATERIALIZE = HERE / "e2d2c0d6-gemma4-kv-fixture-v2-materialize.py"
 ADMISSION = HERE / "e2d2c0d6-gemma4-kv-fixture-v2-admission.py"
 
@@ -14,9 +15,26 @@ def main():
     errors = []
     with tempfile.TemporaryDirectory(prefix="relaylm-kv-fixture-v2-selftest.") as td:
         root = Path(td)
+        corpus = root / "source-corpus.txt"
+        tokenizer_request = root / "tokenizer-request.json"
         tokenizer_response = root / "tokenizer-response.json"
         fixture_dir = root / "fixture"
         admission_out = root / "admission.json"
+
+        generated = subprocess.run(
+            [
+                sys.executable,
+                str(CORPUS),
+                "--out",
+                str(corpus),
+                "--request-out",
+                str(tokenizer_request),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if generated.returncode != 0:
+            errors.append(f"corpus generator failed: rc={generated.returncode}")
 
         # Purely synthetic token pool for contract testing. No model/server call.
         tokenizer_response.write_text(
@@ -28,6 +46,10 @@ def main():
             [
                 sys.executable,
                 str(MATERIALIZE),
+                "--corpus",
+                str(corpus),
+                "--tokenizer-request",
+                str(tokenizer_request),
                 "--tokenizer-response",
                 str(tokenizer_response),
                 "--out-dir",
