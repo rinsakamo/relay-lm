@@ -159,6 +159,14 @@ def main():
             "PROBE_EXERCISED_INCOMPLETE" in source
             and '"rerun_authorized": False if measured_l0 else None' in source
         ),
+        "terminal_consumption_flags_explicit": (
+            '"measured_attempt_consumed": False' in source
+            and '"measured_attempt_consumed": True' in source
+            and '"measured_attempt_consumed": measured_l0' in source
+        ),
+        "all_terminals_non_authorizing": (
+            source.count('"measured_execution_authorized_by_this_result": False') >= 3
+        ),
         "historical_attempt_absent": (
             "logical-prefix-kv-replacement-20260921-30d3f94f" not in source
         ),
