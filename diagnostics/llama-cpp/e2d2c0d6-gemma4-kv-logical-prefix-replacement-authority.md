@@ -645,3 +645,46 @@ Must remain zero:
 - upstream submission.
 
 Current repository authority at execution time always wins over snapshots in this document.
+
+## Current fixture-v2 measured route
+
+Historical statements above saying that no current measured execution authority existed describe earlier apparatus states and are not the current route.
+
+The historical request subject remains terminal:
+
+`REQUEST_PROVENANCE_UNRECOVERABLE`
+
+The historical consumed measured authority remains terminal:
+
+`TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
+
+The current repository-owned request subject is fixture v2:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-authority.md`
+
+with status:
+
+`FIXTURE_V2_COMMITTED`
+
+A distinct measured-attempt authority now exists:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-measured-authority.md`
+
+with required status:
+
+`QUALIFIED_FOR_ONE_FIXTURE_V2_MEASURED_ATTEMPT`
+
+Authority generation:
+
+`logical-prefix-kv-fixture-v2-measured-authority-20260922-f6b67141`
+
+Attempt identity:
+
+`logical-prefix-kv-fixture-v2-20260922-f6b67141`
+
+The only authorized measured entrypoint is:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-execute-once.py`
+
+No historical request runner/wrapper, historical pre-measured root, or consumed apparatus is authorized by this route.
+
