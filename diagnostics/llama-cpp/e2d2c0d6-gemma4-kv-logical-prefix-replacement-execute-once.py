@@ -319,18 +319,41 @@ def main():
             guard_obj = load_json(guard_root / "guard.json")
         except Exception:
             pass
+
         child_invoked = guard_obj.get("child_invoked") is True
-        terminal = terminal_not_exercised(
-            args.preflight_root,
-            "guard_or_child",
-            (
-                "measured runner returned without terminal.json"
+        l0_request_record = args.out_root / "server-WR" / "L0.request.json"
+        l0_attempted = l0_request_record.is_file()
+
+        fallback = {
+            "attempt_id": ATTEMPT_ID,
+            "primary_classification": (
+                "PROBE_EXERCISED_INCOMPLETE"
+                if l0_attempted
+                else "PROBE_NOT_EXERCISED"
+            ),
+            "measured_l0_submitted": l0_attempted,
+            "measured_attempt_consumed": l0_attempted,
+            "measured_execution_authorized_by_this_result": False,
+            "stage": "guard_or_child_terminal_fallback",
+            "reason": (
+                "measured runner exited without terminal.json; classification "
+                "derived conservatively from the pre-POST L0 request record"
                 if child_invoked
                 else "measured runner was not invoked"
             ),
+            "guard_returncode": run.returncode,
+            "l0_request_record": str(l0_request_record),
+            "l0_request_record_exists": l0_attempted,
+            "rerun_authorized": False if l0_attempted else None,
+        }
+
+        fallback_path = (
+            measured_terminal
+            if args.out_root.is_dir()
+            else args.preflight_root / "terminal.json"
         )
-        terminal["guard_returncode"] = run.returncode
-        write_json(args.preflight_root / "terminal.json", terminal)
+        write_json(fallback_path, fallback)
+        write_json(args.preflight_root / "measured-terminal-readback.json", fallback)
         return 5
 
     write_json(args.preflight_root / "measured-terminal-readback.json", terminal)
