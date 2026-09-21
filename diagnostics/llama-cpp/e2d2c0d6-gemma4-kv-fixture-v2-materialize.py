@@ -62,6 +62,8 @@ def write_new(path: Path, raw: bytes):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--corpus", type=Path, required=True)
+    ap.add_argument("--tokenizer-request", type=Path, required=True)
     ap.add_argument("--tokenizer-response", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, required=True)
     args = ap.parse_args()
@@ -69,6 +71,18 @@ def main():
     if args.out_dir.exists():
         raise SystemExit(f"output directory must not exist: {args.out_dir}")
     args.out_dir.mkdir(parents=True)
+
+    corpus_raw = args.corpus.read_bytes()
+    request_raw = args.tokenizer_request.read_bytes()
+    request_obj = json.loads(request_raw)
+    require_request = {
+        "content": corpus_raw.decode("utf-8"),
+        "add_special": False,
+        "parse_special": False,
+        "with_pieces": False,
+    }
+    if request_obj != require_request:
+        raise ValueError("tokenizer request does not exactly match corpus/options contract")
 
     response_raw, pool = load_token_pool(args.tokenizer_response)
     target_offset = choose_target_offset(pool)
@@ -92,6 +106,9 @@ def main():
     lc = {"prompt": target, "cache_prompt": False, **base_generation}
 
     files = {
+        "source-corpus.txt": corpus_raw,
+        "tokenizer-request.json": request_raw,
+        "tokenizer-response.json": response_raw,
         "warm.tokens.json": canonical_json_bytes(warm),
         "target.tokens.json": canonical_json_bytes(target),
         "L0.request.json": canonical_json_bytes(l0),
@@ -105,10 +122,15 @@ def main():
     manifest = {
         "format_version": FORMAT_VERSION,
         "subject": "logical-prefix-kv-fixture-v2",
-        "tokenizer_response": {
-            "path": str(args.tokenizer_response),
-            "sha256": sha256_bytes(response_raw),
+        "tokenizer_provenance": {
+            "corpus_sha256": sha256_bytes(corpus_raw),
+            "tokenizer_request_sha256": sha256_bytes(request_raw),
+            "tokenizer_response_sha256": sha256_bytes(response_raw),
             "token_pool_len": len(pool),
+            "endpoint": "/tokenize",
+            "add_special": False,
+            "parse_special": False,
+            "with_pieces": False,
         },
         "geometry": {
             "warm_len": len(warm),
