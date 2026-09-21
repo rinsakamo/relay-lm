@@ -700,9 +700,12 @@ def main():
     (args.out_root / "request-admission.stderr.txt").write_bytes(admission_run.stderr)
     if admission_run.returncode != 0:
         write_json(args.out_root / "terminal.json", {
+            "attempt_id": ATTEMPT_ID,
             "primary_classification": "PROBE_NOT_EXERCISED",
             "measured_l0_submitted": False,
-            "attempt_id": ATTEMPT_ID,
+            "measured_attempt_consumed": False,
+            "measured_execution_authorized_by_this_result": False,
+            "retry_replay_repair": 0,
             "reason": "fixture v2 admission failed",
         })
         raise SystemExit(2)
@@ -790,6 +793,8 @@ def main():
             "attempt_id": ATTEMPT_ID,
             "primary_classification": primary,
             "measured_l0_submitted": True,
+            "measured_attempt_consumed": True,
+            "measured_execution_authorized_by_this_result": False,
             "request_count": 4,
             "requests": ["L0", "L1", "L0R", "LC"],
             "api_L1_vs_LC": api,
@@ -814,6 +819,8 @@ def main():
                 "PROBE_EXERCISED_INCOMPLETE" if measured_l0 else "PROBE_NOT_EXERCISED"
             ),
             "measured_l0_submitted": measured_l0,
+            "measured_attempt_consumed": measured_l0,
+            "measured_execution_authorized_by_this_result": False,
             "submitted_requests": submitted_requests,
             "request_count_submitted": len(submitted_requests),
             "reason": str(exc),
