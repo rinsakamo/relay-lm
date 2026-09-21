@@ -72,6 +72,10 @@ def main():
             wrapper.FIXTURE_REPO_PATH
             == "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2"
         ),
+        "fixture_commit_bound": (
+            wrapper.EXPECTED_FIXTURE_COMMIT
+            == "58d3c1e9b8cf973648be1aeb8a8b12429a69d088"
+        ),
         "fixture_subtree_bound": (
             wrapper.EXPECTED_FIXTURE_SUBTREE
             == "455d94850515c70995addc6c1c446ba738a01474"
@@ -97,6 +101,11 @@ def main():
             == "5d9d486e67aa19e1b26ff00c33f50c30b57a41788c212bcccc2ab0bf4f992706"
             and wrapper.EXPECTED_BASE_KV == 8192
             and wrapper.EXPECTED_SWA_KV == 1536
+        ),
+        "fixture_commit_ancestry_check_present": (
+            '"merge-base"' in source
+            and '"--is-ancestor"' in source
+            and "EXPECTED_FIXTURE_COMMIT" in source
         ),
         "fixture_subtree_git_readback_present": (
             'f"HEAD:{FIXTURE_REPO_PATH}"' in source
