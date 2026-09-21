@@ -587,6 +587,47 @@ All paths converge on the same fixed request SHA identities and require `REQUEST
 
 Current corrected helper/self-test add only zero-GPU request-provenance recovery. They do not add any model/server/guard/measured runtime transition.
 
+## Historical request provenance terminal
+
+The post-repair reconciliation lane has now exhausted the surviving historical request provenance.
+
+A fresh bounded search found none of:
+
+- the qualified post-repair pre-measured root;
+- the prior request-reconciliation root;
+- the consumed measured preflight `bound-identity.json`;
+- another bounded RelayLM evidence binding;
+- raw warm/target/L0/L1/LC files matching the frozen historical SHA256 identities.
+
+No request reconstruction, regeneration, retokenization, substitution, or fallback was performed.
+
+Therefore the historical request subject is terminal as:
+
+`REQUEST_PROVENANCE_UNRECOVERABLE`
+
+The helper/locator/admission recovery path is not authority to recreate the missing historical bytes.
+
+Further retained-prefix KV investigation must use a distinct new request subject.
+
+Current route:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-authority.md`
+
+Fixture v2 preserves the physical discriminator geometry:
+
+```text
+warm = 883
+target = 2927
+LCP = 865
+aligned reuse = 512
+```
+
+but intentionally creates a new repository-owned synthetic token/request identity.
+
+Historical prompt-specific logits, first-token behavior, and raw request hashes must not be attributed to fixture v2.
+
+No current measured execution authority exists.
+
 ## Campaign separation
 
 This remains independent of the RelayLM v1 scientific campaign.
