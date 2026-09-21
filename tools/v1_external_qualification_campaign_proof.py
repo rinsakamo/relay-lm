@@ -400,6 +400,7 @@ def prepare_static_proof(
     lifecycle_base.pop("llm_supports_string_pattern", None)
     lifecycle_base.pop("retain_llm_reasoning_effort", None)
     lifecycle_base.pop("consolidation_llm_reasoning_effort", None)
+    lifecycle_base.pop("llm_max_concurrent", None)
     try:
         stale_deployment = lifecycle_base.pop("deployment_id")
         stale_profile = lifecycle_base.pop("database_profile")
