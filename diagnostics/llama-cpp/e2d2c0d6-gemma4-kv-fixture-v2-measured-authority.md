@@ -4,7 +4,9 @@ Diagnostic only. This authority is independent of the protected v1 scientific ca
 
 ## Status
 
-`QUALIFIED_FOR_ONE_FIXTURE_V2_MEASURED_ATTEMPT`
+`TERMINAL_CONSUMED_PREFIX_KV_GENERATION_DIFFERS`
+
+The single authorized fixture-v2 measured attempt was executed exactly once and is permanently consumed. It MUST NOT be retried, replayed, resumed, reseeded, repaired in place, or replaced under this authority.
 
 Authority generation:
 
@@ -511,6 +513,169 @@ Once L0 crosses this boundary, any later failure is terminal and consumed.
 No retry, replay, resume, reseed, fallback, repair, or replacement attempt is authorized after consumed status.
 
 A complete four-point classification is also consumed.
+
+## Terminal execution result
+
+Observed terminal classification:
+
+`PREFIX_KV_GENERATION_DIFFERS`
+
+Execution repository identity:
+
+```text
+diagnostic head/tree =
+651a710989b81ceba2dcc055c5104967e7080239
+5bf10780adf498183d137454081886d05d6c141a
+
+post-run diagnostic head/tree =
+651a710989b81ceba2dcc055c5104967e7080239
+5bf10780adf498183d137454081886d05d6c141a
+
+v1 head/tree at terminal read-back =
+671893aafcb353395e8f4dcb3849c2a678e2930e
+eecc3e5d96480eec8f1ffba60bc1561b89e46076
+```
+
+Measured evidence roots:
+
+```text
+preflight =
+/tmp/relaylm-kv-v2-measured.2DZbPg/preflight
+
+measured output =
+/tmp/relaylm-kv-v2-measured.2DZbPg/measured-output
+```
+
+Exactly-once accounting:
+
+```text
+execute-once wrapper invocations = 1
+direct inner-runner invocations = 0
+measured runner guard-child invocations = 1
+fresh idle observations = 2
+retry/replay/resume/reseed/fallback/repair = 0
+FA-OFF arms = 0
+scientific campaign interaction = 0
+campaign queue/receipt/spend mutation = 0
+historical runner/wrapper invocation = 0
+```
+
+Request order and accounting:
+
+```text
+L0  : cache_n=0   prompt_n=883  predicted_n=1
+L1  : cache_n=512 prompt_n=2415 predicted_n=1
+L0R : cache_n=0   prompt_n=883  predicted_n=1
+LC  : cache_n=0   prompt_n=2927 predicted_n=1
+
+order = L0 -> L1 -> L0R -> LC
+request count = 4
+```
+
+The exact consumed L0 raw request SHA256 was:
+
+`d777877485b3307d8ee76e6b6df783d00b4302bb700c405ac5cbf2f6d7344f5d`
+
+The pre-POST `server-WR/L0.request.json` record exists, therefore this attempt is consumed independent of the complete terminal classification.
+
+All four logical-prefix dumps passed completeness and equal-geometry validation:
+
+```text
+WR-P512  = PASS
+WR-R512  = PASS
+WR2-P512 = PASS
+C-P512   = PASS
+
+base rows = 512
+SWA rows = 512
+logical positions = 0..511
+v_trans = 0
+base KV = 8192
+SWA KV = 1536
+base manifest layer rows = 16
+SWA manifest layer rows = 80
+all K/V pairs present
+payload sets exact
+payload sizes exact
+```
+
+KV relation:
+
+```text
+W  = WR-P512
+R  = WR-R512
+W2 = WR2-P512
+C  = C-P512
+
+W == W2
+W == R
+W != C
+
+W_vs_C different payload files = 96
+W_vs_C missing payload files = 0
+first mismatch = swa.layer-0.K.bin
+```
+
+Therefore the complete discriminator is:
+
+`PREFIX_KV_GENERATION_DIFFERS`
+
+This directly rejects `RETAINED_PREFIX_KV_MUTATED_BY_REUSE` for this fixture/physical-apparatus subject: the retained prefix after reuse is byte-identical to the warm prefix, and the independent warm replay is also byte-identical.
+
+The fixture-v2 API comparison observed equal first generated token ID 6571 (`" memory"`) for L1 and LC, while the top-N probability structures were not byte-identical and had top-N intersection 16. These values belong only to fixture v2 and must not be substituted for historical g1/g2 values.
+
+## Post-terminal decode-segmentation interpretation
+
+Fresh static inspection of exact llama.cpp source and the diagnostic hook establishes an important confounder for interpreting `W != C`.
+
+The server builds prompt batches up to `n_batch=512`, but completion tasks using SWA checkpointing deliberately split near the prompt end. The exact checkpoint rule uses offsets:
+
+```text
+4 + n_ubatch = 516 -> min(n_batch, 516) = 512
+4                         -> 4
+```
+
+and breaks when:
+
+`task.n_tokens == prompt.n_tokens + n_last`
+
+For fixture-v2 warm length 883:
+
+```text
+883 - 512 = 371
+```
+
+so the first warm prompt decode stops after logical positions 0..370 (371 tokens).
+
+The following warm decode advances from position 371 to the next checkpoint at:
+
+```text
+883 - 4 = 879
+```
+
+which is 508 tokens (positions 371..878). Logical position 511 is therefore observed after this second physical decode.
+
+Consequently `WR-P512` / `WR2-P512` contain logical positions 0..511 generated across two physical prompt decodes:
+
+```text
+371-token decode
+then
+508-token decode
+```
+
+By contrast, for cold target length 2927 the first checkpoint boundary is:
+
+```text
+2927 - 512 = 2415
+```
+
+so the first cold prompt decode is the ordinary full 512-token batch, positions 0..511. `C-P512` is therefore captured after one 512-token physical decode.
+
+Thus the complete measured result proves that the stored logical-prefix KV bytes differ between these two prompt-processing histories, but it does NOT by itself prove future-token dependence of KV generation. Physical decode segmentation differs between W/W2 and C.
+
+Because `W == W2` and `W == R`, reproducibility and retained-prefix stability are proven for the warm segmentation. The next causal discriminator should equalize physical decode segmentation for warm and cold generation before attributing `W != C` to prompt suffix/context semantics.
+
+No further measured execution is authorized by this terminal authority.
 
 ## Campaign separation
 
