@@ -505,39 +505,55 @@ measured qualification/L0 = 0
 
 The tokenizer build/server SHA `64f73785c3d70203826a8da6a54fbd277b01b542dd343b005ad3a07f9eaaddb0` belongs only to fixture materialization. It is not measured-apparatus authority and must not be promoted or reused as such.
 
-## Next allowed transition
+## Current measured execution route
 
-The next and only physical transition authorized by this fixture authority is a fresh repaired pre-measured apparatus qualification.
+The fresh repaired pre-measured apparatus qualification has completed successfully and a distinct fixture-v2 measured authority now exists.
 
-That transaction must:
+Current measured authority:
 
-- use a fresh isolated exact llama.cpp source checkout;
-- use the current repaired diagnostic patch set;
-- create a fresh build identity;
-- perform binary provenance preflight;
-- perform plain/probe non-generative startup qualification;
-- use the canonical local-GPU resource guard;
-- perform exactly two external-idle observations;
-- submit zero generation requests;
-- submit zero L0/L1/L0R/LC requests;
-- stop at `LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY`.
+`e2d2c0d6-gemma4-kv-fixture-v2-measured-authority.md`
 
-The resulting server/runtime-library identities must be distinct fresh qualification evidence and must not be inferred from the fixture-tokenization build.
+Required status:
 
-Only after that fresh pre-measured terminal may management create a fixture-v2-specific measured runner/wrapper/authority binding both the committed fixture and the newly qualified physical apparatus.
+`QUALIFIED_FOR_ONE_FIXTURE_V2_MEASURED_ATTEMPT`
 
-## After fixture commit
+Authority generation:
 
-The committed fixture is now the sole request authority for the new subject.
+`logical-prefix-kv-fixture-v2-measured-authority-20260922-f6b67141`
 
-Fresh Git read-back and identity reconciliation are complete.
+Attempt identity:
 
-Remaining sequence:
+`logical-prefix-kv-fixture-v2-20260922-f6b67141`
 
-1. perform a fresh repaired pre-measured apparatus qualification;
-2. management creates a fixture-v2 measured runner that reads only committed fixture files;
-3. management creates a distinct measured-attempt authority binding both:
-   - committed fixture Git identity;
-   - freshly qualified physical server/runtime identity.
+Bound fresh physical apparatus:
 
-No measured L0 is authorized by this document.
+```text
+pre-measured root =
+/tmp/relaylm-kv-v2-premeasured.kq8VQ5/output
+
+llama-server SHA256 =
+f6b671417ac9b6c7b4e00da95980caf828b8d63133ca61fdad60153b67a39e22
+
+libllama-server-impl.so SHA256 =
+7456ded50dca4f6ad5f53dd9e178d16954e2c9134ee912c5ea8ed3760db3735a
+
+libllama.so SHA256 =
+178b81207d10e053490627e2755a61069ae912053cf0abcffa258989bac0528e
+
+startup canonical argv SHA256 =
+5d9d486e67aa19e1b26ff00c33f50c30b57a41788c212bcccc2ab0bf4f992706
+
+base KV = 8192
+SWA KV = 1536
+```
+
+The only authorized measured entrypoint is:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-execute-once.py`
+
+This fixture authority does not itself authorize direct execution. The measured-attempt authority above is the execution authority.
+
+The historical request subject remains `REQUEST_PROVENANCE_UNRECOVERABLE`, and the historical consumed measured authority remains terminal.
+
+No other pre-measured qualification, request regeneration, historical runner invocation, or alternate measured path is authorized before this measured authority is resolved.
+
