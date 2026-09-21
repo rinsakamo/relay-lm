@@ -69,15 +69,15 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +        llama_pos p0,
 +        llama_pos p1) const {
 +    if (dir == nullptr || cache_name == nullptr || p0 < 0 || p1 <= p0) {
-+        LLAMA_LOG_ERROR("%s: invalid arguments\\n", __func__);
++        LLAMA_LOG_ERROR("%s: invalid arguments\n", __func__);
 +        return false;
 +    }
 +    if (seq_id < 0 || (size_t) seq_id >= seq_to_stream.size()) {
-+        LLAMA_LOG_ERROR("%s: invalid seq_id %d\\n", __func__, seq_id);
++        LLAMA_LOG_ERROR("%s: invalid seq_id %d\n", __func__, seq_id);
 +        return false;
 +    }
 +    if (v_trans) {
-+        LLAMA_LOG_ERROR("%s: diagnostic expects non-transposed V cache (Flash Attention ON)\\n", __func__);
++        LLAMA_LOG_ERROR("%s: diagnostic expects non-transposed V cache (Flash Attention ON)\n", __func__);
 +        return false;
 +    }
 +
@@ -94,13 +94,13 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +
 +    std::sort(rows.begin(), rows.end());
 +    if (rows.size() != (size_t) (p1 - p0)) {
-+        LLAMA_LOG_ERROR("%s: expected %d live positions, got %zu\\n",
++        LLAMA_LOG_ERROR("%s: expected %d live positions, got %zu\n",
 +                __func__, (int) (p1 - p0), rows.size());
 +        return false;
 +    }
 +    for (size_t i = 0; i < rows.size(); ++i) {
 +        if (rows[i].first != p0 + (llama_pos) i) {
-+            LLAMA_LOG_ERROR("%s: non-contiguous or duplicate logical position at row %zu: got %d expected %d\\n",
++            LLAMA_LOG_ERROR("%s: non-contiguous or duplicate logical position at row %zu: got %d expected %d\n",
 +                    __func__, i, rows[i].first, p0 + (llama_pos) i);
 +            return false;
 +        }
@@ -110,7 +110,7 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +    std::error_code ec;
 +    std::filesystem::create_directories(root, ec);
 +    if (ec) {
-+        LLAMA_LOG_ERROR("%s: failed to create %s: %s\\n", __func__, dir, ec.message().c_str());
++        LLAMA_LOG_ERROR("%s: failed to create %s: %s\n", __func__, dir, ec.message().c_str());
 +        return false;
 +    }
 +
@@ -118,14 +118,14 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +        const auto path = root / (std::string(cache_name) + ".cells.tsv");
 +        std::ofstream out(path, std::ios::out | std::ios::trunc);
 +        if (!out) {
-+            LLAMA_LOG_ERROR("%s: failed to open %s\\n", __func__, path.string().c_str());
++            LLAMA_LOG_ERROR("%s: failed to open %s\n", __func__, path.string().c_str());
 +            return false;
 +        }
-+        out << "cache\\tstream\\thead\\tkv_size\\tv_trans\\tposition\\tcell\\n";
++        out << "cache\tstream\thead\tkv_size\tv_trans\tposition\tcell\n";
 +        for (const auto & [pos, idx] : rows) {
-+            out << cache_name << '\\t' << stream << '\\t' << v_heads[stream] << '\\t'
-+                << cells.size() << '\\t' << (v_trans ? 1 : 0) << '\\t'
-+                << pos << '\\t' << idx << '\\n';
++            out << cache_name << '\t' << stream << '\t' << v_heads[stream] << '\t'
++                << cells.size() << '\t' << (v_trans ? 1 : 0) << '\t'
++                << pos << '\t' << idx << '\n';
 +        }
 +    }
 +
@@ -133,26 +133,26 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +        const auto path = root / (std::string(cache_name) + ".manifest.tsv");
 +        std::ofstream out(path, std::ios::out | std::ios::trunc);
 +        if (!out) {
-+            LLAMA_LOG_ERROR("%s: failed to open %s\\n", __func__, path.string().c_str());
++            LLAMA_LOG_ERROR("%s: failed to open %s\n", __func__, path.string().c_str());
 +            return false;
 +        }
-+        out << "cache\\tlayer\\tkind\\ttype\\trow_bytes\\trows\\n";
++        out << "cache\tlayer\tkind\ttype\trow_bytes\trows\n";
 +        for (const auto & layer : layers) {
 +            if (layer.k == nullptr || layer.v == nullptr) {
-+                LLAMA_LOG_ERROR("%s: missing K/V storage for layer %u\\n", __func__, layer.il);
++                LLAMA_LOG_ERROR("%s: missing K/V storage for layer %u\n", __func__, layer.il);
 +                return false;
 +            }
-+            out << cache_name << '\\t' << layer.il << "\\tK\\t" << ggml_type_name(layer.k->type)
-+                << '\\t' << ggml_row_size(layer.k->type, layer.k->ne[0]) << '\\t' << rows.size() << '\\n';
-+            out << cache_name << '\\t' << layer.il << "\\tV\\t" << ggml_type_name(layer.v->type)
-+                << '\\t' << ggml_row_size(layer.v->type, layer.v->ne[0]) << '\\t' << rows.size() << '\\n';
++            out << cache_name << '\t' << layer.il << "\tK\t" << ggml_type_name(layer.k->type)
++                << '\t' << ggml_row_size(layer.k->type, layer.k->ne[0]) << '\t' << rows.size() << '\n';
++            out << cache_name << '\t' << layer.il << "\tV\t" << ggml_type_name(layer.v->type)
++                << '\t' << ggml_row_size(layer.v->type, layer.v->ne[0]) << '\t' << rows.size() << '\n';
 +        }
 +    }
 +
 +    auto dump_tensor = [&](const kv_layer & layer, ggml_tensor * tensor, const char * kind) -> bool {
 +        const size_t row_bytes = ggml_row_size(tensor->type, tensor->ne[0]);
 +        if (row_bytes == 0 || tensor->nb[1] < row_bytes) {
-+            LLAMA_LOG_ERROR("%s: invalid row geometry for layer %u %s\\n", __func__, layer.il, kind);
++            LLAMA_LOG_ERROR("%s: invalid row geometry for layer %u %s\n", __func__, layer.il, kind);
 +            return false;
 +        }
 +
@@ -160,7 +160,7 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +                std::string(cache_name) + ".layer-" + std::to_string(layer.il) + "." + kind + ".bin");
 +        std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
 +        if (!out) {
-+            LLAMA_LOG_ERROR("%s: failed to open %s\\n", __func__, path.string().c_str());
++            LLAMA_LOG_ERROR("%s: failed to open %s\n", __func__, path.string().c_str());
 +            return false;
 +        }
 +
@@ -169,14 +169,14 @@ diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
 +            GGML_UNUSED(pos);
 +            const size_t offset = (size_t) stream * tensor->nb[2] + (size_t) idx * tensor->nb[1];
 +            if (offset + row_bytes > ggml_nbytes(tensor)) {
-+                LLAMA_LOG_ERROR("%s: row out of bounds for layer %u %s, cell %u\\n",
++                LLAMA_LOG_ERROR("%s: row out of bounds for layer %u %s, cell %u\n",
 +                        __func__, layer.il, kind, idx);
 +                return false;
 +            }
 +            ggml_backend_tensor_get(tensor, buf.data(), offset, row_bytes);
 +            out.write(reinterpret_cast<const char *>(buf.data()), (std::streamsize) buf.size());
 +            if (!out) {
-+                LLAMA_LOG_ERROR("%s: write failed for %s\\n", __func__, path.string().c_str());
++                LLAMA_LOG_ERROR("%s: write failed for %s\n", __func__, path.string().c_str());
 +                return false;
 +            }
 +        }
@@ -225,7 +225,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 +        llama_pos p1,
 +        const char * out_dir,
 +        const char * tag) {
-+    if (ctx == nullptr || out_dir == nullptr || tag == nullptr || tag[0] == '\\0') {
++    if (ctx == nullptr || out_dir == nullptr || tag == nullptr || tag[0] == '\0') {
 +        return false;
 +    }
 +
@@ -233,13 +233,13 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 +
 +    auto * iswa = dynamic_cast<llama_kv_cache_iswa *>(ctx->get_memory());
 +    if (iswa == nullptr) {
-+        LLAMA_LOG_ERROR("%s: target memory is not iSWA KV memory\\n", __func__);
++        LLAMA_LOG_ERROR("%s: target memory is not iSWA KV memory\n", __func__);
 +        return false;
 +    }
 +
 +    const std::filesystem::path root = std::filesystem::path(out_dir) / tag;
 +    if (std::filesystem::exists(root)) {
-+        LLAMA_LOG_ERROR("%s: refusing to overwrite existing diagnostic dump: %s\\n",
++        LLAMA_LOG_ERROR("%s: refusing to overwrite existing diagnostic dump: %s\n",
 +                __func__, root.string().c_str());
 +        return false;
 +    }
@@ -247,7 +247,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 +    std::error_code ec;
 +    std::filesystem::create_directories(root, ec);
 +    if (ec) {
-+        LLAMA_LOG_ERROR("%s: failed to create dump root %s: %s\\n",
++        LLAMA_LOG_ERROR("%s: failed to create dump root %s: %s\n",
 +                __func__, root.string().c_str(), ec.message().c_str());
 +        return false;
 +    }
@@ -285,7 +285,7 @@ diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
 +                    if (p0 == 512) {
 +                        const char * probe_dir   = std::getenv("LLAMA_KV_PROBE_DIR");
 +                        const char * probe_label = std::getenv("LLAMA_KV_PROBE_LABEL");
-+                        if (probe_dir != nullptr && probe_label != nullptr && probe_label[0] != '\\0') {
++                        if (probe_dir != nullptr && probe_label != nullptr && probe_label[0] != '\0') {
 +                            const std::string tag = std::string(probe_label) + "-R512";
 +                            if (!llama_debug_dump_kv_prefix(ctx_tgt, slot.id, 0, 512, probe_dir, tag.c_str())) {
 +                                throw std::runtime_error("RelayLM KV diagnostic failed at retained-prefix dump");
@@ -326,7 +326,7 @@ diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
 +                    if (probe_prefix_512) {
 +                        const char * probe_dir   = std::getenv("LLAMA_KV_PROBE_DIR");
 +                        const char * probe_label = std::getenv("LLAMA_KV_PROBE_LABEL");
-+                        if (probe_dir != nullptr && probe_label != nullptr && probe_label[0] != '\\0') {
++                        if (probe_dir != nullptr && probe_label != nullptr && probe_label[0] != '\0') {
 +                            const std::string tag = std::string(probe_label) + "-P512";
 +                            if (!llama_debug_dump_kv_prefix(ctx_tgt, probe_seq, 0, 512, probe_dir, tag.c_str())) {
 +                                throw std::runtime_error("RelayLM KV diagnostic failed at logical-prefix dump");
