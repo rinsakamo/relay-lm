@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
+AUTHORITY_GENERATION = "logical-prefix-kv-replacement-measured-authority-20260921-l0sha64"
 ATTEMPT_ID = "logical-prefix-kv-replacement-20260921-30d3f94f"
 PREMEASURED_ROOT = Path("/tmp/relaylm-logical-prefix-premeasured.4BYIKs/output")
 REQUEST_RECONCILIATION_ROOT = Path("/tmp/relaylm-logical-prefix-request-id.JWuNTY/reconciliation")
@@ -256,6 +257,7 @@ def main():
             return 4
 
     identity = {
+        "authority_generation": AUTHORITY_GENERATION,
         "attempt_id": ATTEMPT_ID,
         "premeasured_root": str(PREMEASURED_ROOT),
         "request_reconciliation_root": str(REQUEST_RECONCILIATION_ROOT),
