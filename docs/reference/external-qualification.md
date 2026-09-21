@@ -329,14 +329,31 @@ only `NON_CITABLE_DIAGNOSTIC_*` evidence.  It may therefore be repeated after
 infrastructure-only fixes without spending or selecting against the citable
 campaign.
 
+The preferred diagnostic source is current persistent host material, not a
+historical campaign descriptor.  The public target validates the exact pinned
+llama.cpp revision/build and GGUF hash, the installed Hindsight v0.10.0 wheel
+hashes, and the local ONNX model/tokenizer hashes before starting either owned
+runtime.  Owner-local deployment/profile/bank identity and current repairable
+Hindsight policy are then derived by the current repository.  A host reboot
+therefore does not make an old `/tmp` campaign descriptor a prerequisite.
+
 ```bash
-python -m tools.relay_physical_run \
+python3.12 -m tools.relay_physical_run \
   --target v1:hindsight-comparator-synthetic-smoke -- \
-  --source-descriptor /absolute/path/to/campaign-descriptor.json \
-  --diagnostic-owner-id diag-2986-hindsight-001 \
+  --current-host-material \
+  --llama-cpp-root /persistent/path/to/llama.cpp \
+  --model-path /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf \
+  --onnx-model-path /persistent/path/to/onnx/model.onnx \
+  --onnx-tokenizer-path /persistent/path/to/onnx/tokenizer \
+  --diagnostic-owner-id diag-hindsight-synthetic-001 \
   --repo-root /absolute/path/to/relay-lm-checkout \
-  --artifact-root /absolute/path/to/fresh-diagnostic-root
+  --artifact-root /absolute/path/to/fresh-diagnostic-root \
+  --stress-profile post2986
 ```
+
+The older `--source-descriptor` form remains supported for reproducible
+historical engineering diagnostics when an exact descriptor still exists, but
+it is no longer required for the reboot-safe current-host path.
 
 The smoke is intentionally narrower than scientific acceptance.  The production
 D path has a history-preserving installed-RC bridge as described above, while
