@@ -3972,9 +3972,11 @@ class HindsightComparatorExecutor:
         initial_preload_counts = context.durable_run.hindsight_history_preload_counts()
         allow_missing_bank = (
             initial_preload_counts["completed"] == 0
+            and initial_preload_counts["acknowledged"] == 0
             and initial_preload_counts["in_flight"] == 0
         )
 
+        resumed_acknowledged_exchange_count = 0
         for session in sessions:
             pending_exchange_indices = [
                 exchange_index
@@ -3989,18 +3991,48 @@ class HindsightComparatorExecutor:
             if not pending_exchange_indices:
                 continue
 
-            # Frozen Arm-C snapshots and drains consolidation per history session.
-            pre_existing_pending_ids = self.lifecycle.consolidation_pending_ids(
-                bank_id=bank_id,
-                allow_missing_bank=allow_missing_bank,
-            )
+            # Classify already-acknowledged retains before taking the
+            # consolidation snapshot.  On exact resume they are external side
+            # effects that must be observed, never reissued.
             session_pending: list[tuple[int, Mapping[str, object]]] = []
+            new_requests: list[tuple[int, Mapping[str, object]]] = []
+            has_acknowledged = False
             for exchange_index in pending_exchange_indices:
                 request = session.to_retain_request(
                     bank_id=bank_id,
                     context_label=context_label,
                     exchange_index=exchange_index,
                 )
+                acknowledged_request = (
+                    context.durable_run.hindsight_history_preload_acknowledged_request(
+                        question_id=context.question.question_id,
+                        bank_id=bank_id,
+                        session_id=session.session_id,
+                        exchange_index=exchange_index,
+                        request=request,
+                    )
+                )
+                if acknowledged_request is not None:
+                    session_pending.append((exchange_index, acknowledged_request))
+                    has_acknowledged = True
+                    resumed_acknowledged_exchange_count += 1
+                else:
+                    new_requests.append((exchange_index, request))
+
+            # A normal fresh session excludes consolidation work that was
+            # already pending before its retains.  A resumed acknowledged
+            # session instead observes all current work in this isolated
+            # owner/axis bank: those operations may be the unfinished work
+            # created by the acknowledged retains themselves.
+            observed_pending_ids = self.lifecycle.consolidation_pending_ids(
+                bank_id=bank_id,
+                allow_missing_bank=allow_missing_bank and not has_acknowledged,
+            )
+            pre_existing_pending_ids = (
+                set() if has_acknowledged else observed_pending_ids
+            )
+
+            for exchange_index, request in new_requests:
                 if not context.durable_run.begin_hindsight_history_preload(
                     question_id=context.question.question_id,
                     bank_id=bank_id,
@@ -4010,6 +4042,13 @@ class HindsightComparatorExecutor:
                 ):
                     continue
                 self.lifecycle.retain(bank_id=bank_id, items=(request,))
+                context.durable_run.acknowledge_hindsight_history_preload(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                    request=request,
+                )
                 session_pending.append((exchange_index, request))
                 newly_retained_exchange_count += 1
 
@@ -4070,6 +4109,7 @@ class HindsightComparatorExecutor:
                     "consolidation_wait_timeout_seconds": HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS,
                     "retained_exchange_count": retained_exchange_count,
                     "newly_retained_exchange_count": newly_retained_exchange_count,
+                    "resumed_acknowledged_exchange_count": resumed_acknowledged_exchange_count,
                     "retain_metadata_contract": (
                         "memconflict_frozen_arm_c"
                         if context_label == "MemConflict"
