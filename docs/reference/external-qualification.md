@@ -263,7 +263,11 @@ CLI parser structurally matches `build 10874, commit e2d2c0d6a` against
 Owned Hindsight is the same v0.10.0 deployment whose dependency-complete
 health passed. Its source/tree, package hashes, embedding/reranking identity,
 ONNX material, database profile, answer-model condition, start/health/semantic
-endpoint, and cleanup are bound together. The owned health probe waits within
+endpoint, and cleanup are bound together. The Hindsight LLM scheduler is also
+bound to `max_concurrent=1`: pinned v0.10.0 otherwise defaults to 32 concurrent
+LLM requests, while the frozen qualification llama.cpp runtime has exactly one
+slot. Serializing provider dispatch matches physical capacity without changing
+the retained material, consolidation batch size, prompts, decoding, or model. The owned health probe waits within
 the fixed startup deadline for transient process readiness (without issuing a
 semantic request), while deployment/version/identity drift fails closed.
 The serious-comparator C boundary is retrieval-only Hindsight followed by the
