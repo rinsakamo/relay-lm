@@ -4,7 +4,9 @@ Diagnostic only. This authority is independent of the RelayLM v1 scientific camp
 
 ## Status
 
-`QUALIFIED_FOR_ONE_REPLACEMENT_MEASURED_ATTEMPT`
+`TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
+
+The single authority generation `logical-prefix-kv-replacement-measured-authority-20260921-l0sha64` was exercised exactly once and is permanently consumed. It MUST NOT be invoked, retried, replayed, resumed, repaired in place, reseeded, or used as authority for any further measured request.
 
 Authority generation:
 
@@ -405,6 +407,75 @@ campaign queue/receipt/spend mutations
 ```
 
 Do not relabel a partial/consumed run as complete.
+
+## Terminal execution result
+
+Observed terminal:
+
+`PROBE_EXERCISED_INCOMPLETE`
+
+Execution remained on diagnostic HEAD/tree:
+
+```text
+diagnostic head = 1b7c042538dc6de8da1e1819c2491a6d5216afc1
+diagnostic tree = bcf54fac7b618b83ea47ce4e119ccdc55ab5d9e5
+v1 head = 959491d0c36dcfc7d6401c3aa8a6fdab39107515
+v1 tree = d36b2fcf6da166578dbcfc64056649ccf97b0c2b
+```
+
+Evidence roots:
+
+```text
+preflight = /tmp/relaylm-logical-prefix-preflight.enkGnB
+measured = /tmp/relaylm-logical-prefix-measured.vL7I1d
+```
+
+Exactly-once accounting:
+
+```text
+execute-once wrapper invocations = 1
+measured runner invocations = 1
+WR server lifetime attempts/completions = 1/1
+WR2 server lifetime attempts/completions = 0/0
+C server lifetime attempts/completions = 0/0
+retry/replay/reseed/fallback/repair = 0
+FA-OFF arms = 0
+scientific campaign interaction = 0
+campaign queue/receipt/spend mutation = 0
+```
+
+Measured request accounting:
+
+```text
+L0 submitted = true
+L0 HTTP = 200
+L0 cache_n = 0
+L0 prompt_n = 883
+L0 predicted_n = 1
+
+L1 submitted = false
+L0R submitted = false
+LC submitted = false
+```
+
+The exact L0 request SHA256 read back as:
+
+`9120aed18e9aac20615cab2de00337eb9bf65edeb7249015c97d3c41d881e38d`
+
+The conservative consumption marker `server-WR/L0.request.json` exists. Therefore the attempt is consumed and `rerun_authorized=false`.
+
+Dump state:
+
+```text
+WR-P512 = created, validation failed
+WR-R512 = absent
+WR2-P512 = absent
+C-P512 = absent
+```
+
+The created `WR-P512` metadata encoded tab/newline escape sequences as literal characters rather than TSV/newline control characters. Validation therefore observed `base.cells.tsv data rows=0, expected 512`.
+
+No valid four-point KV comparison, mismatch localization, or L1-vs-LC API comparison was reached. This result establishes an apparatus defect only and does not establish any KV causal classification.
 
 ## Campaign separation
 
