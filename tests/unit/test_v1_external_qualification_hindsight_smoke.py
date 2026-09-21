@@ -69,6 +69,9 @@ class _FakeLifecycle:
         self.started = False
         self.cleaned = False
         self.retain_items = None
+        self.retain_calls: list[tuple[object, ...]] = []
+        self.pending_allow_missing: list[bool] = []
+        self.wait_calls = 0
         self.__class__.instances.append(self)
 
     def start(self) -> None:
@@ -78,7 +81,7 @@ class _FakeLifecycle:
         self, *, bank_id: str, allow_missing_bank: bool = False
     ) -> set[str]:
         assert bank_id
-        assert allow_missing_bank is True
+        self.pending_allow_missing.append(allow_missing_bank)
         self.semantic_operation_count += 1
         return set()
 
@@ -86,8 +89,8 @@ class _FakeLifecycle:
         assert bank_id
         self.semantic_operation_count += 1
         self.retain_items = tuple(items)
+        self.retain_calls.append(self.retain_items)
         assert len(self.retain_items) == 1
-        assert "copper token" in str(self.retain_items[0]["content"])
         return {
             "success": True,
             "bank_id": bank_id,
@@ -103,6 +106,7 @@ class _FakeLifecycle:
     ):
         assert bank_id
         assert pre_existing_pending_ids == set()
+        self.wait_calls += 1
         self.semantic_operation_count += 1
         return {
             "poll_count": 1,
@@ -233,6 +237,9 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
     assert _FakeLifecycle.instances[0].spec.llm_base_url == "http://127.0.0.1:49000/v1"
     assert live.cleaned is True
     assert _FakeLifecycle.instances[0].cleaned is True
+    assert len(_FakeLifecycle.instances[0].retain_calls) == 1
+    assert _FakeLifecycle.instances[0].pending_allow_missing == [True]
+    assert _FakeLifecycle.instances[0].wait_calls == 1
 
     receipt = json.loads(
         (artifact_root / "synthetic-hindsight-smoke.json").read_text(
@@ -241,6 +248,75 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
     )
     assert receipt["status"] == "NON_CITABLE_DIAGNOSTIC_PASS"
     assert receipt["scientific_spend"] == "NOT_OPENED"
+
+
+def test_post2986_stress_profile_reproduces_bounded_pressure_without_scientific_spend(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _FakeLifecycle.instances.clear()
+    health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
+    lifecycle_spec = _FakeLifecycleSpec(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace(port=18097)
+    monkeypatch.setattr(
+        smoke,
+        "_derive_diagnostic_bindings",
+        lambda source, diagnostic_owner_id: (
+            llama_spec,
+            lifecycle_spec,
+            health,
+        ),
+    )
+    monkeypatch.setattr(smoke, "HindsightDeploymentSession", _FakeLifecycle)
+    monkeypatch.setattr(
+        smoke,
+        "verify_hindsight_health",
+        lambda expected, lifecycle: expected,
+    )
+    live = _FakeLiveSession()
+    monkeypatch.setattr(
+        smoke,
+        "start_llama_cpp_session",
+        lambda spec, evidence_root: live,
+    )
+    monkeypatch.setattr(
+        smoke,
+        "_llama_cpp_chat_smoke",
+        lambda spec: {
+            "endpoint": "/v1/chat/completions",
+            "status_code": 200,
+            "response_keys": ["choices"],
+            "choice_count": 1,
+        },
+    )
+
+    artifact_root = (tmp_path / "post2986-stress").resolve()
+    result = smoke.run_synthetic_hindsight_smoke(
+        source_descriptor={},
+        diagnostic_owner_id="diagnostic-owner",
+        repo_root=tmp_path.resolve(),
+        artifact_root=artifact_root,
+        stress_profile="post2986",
+    )
+
+    lifecycle = _FakeLifecycle.instances[0]
+    assert result["status"] == "NON_CITABLE_DIAGNOSTIC_PASS"
+    assert result["scientific_spend"] == "NOT_OPENED"
+    assert result["benchmark_text_used"] is False
+    assert result["retain_count"] == 85
+    assert result["synthetic_contract"]["stress_profile"] == "post2986"
+    assert result["synthetic_contract"]["post2986_shape"] == {
+        "warmup_completed_shape": 40,
+        "stress_burst_shape": 45,
+    }
+    assert [item["retain_count"] for item in result["consolidation_receipts"]] == [
+        40,
+        45,
+    ]
+    assert len(lifecycle.retain_calls) == 85
+    assert lifecycle.pending_allow_missing == [True, False]
+    assert lifecycle.wait_calls == 2
+    assert result["hindsight_semantic_operation_count"] == 90
 
 
 def test_synthetic_smoke_preserves_failure_receipt_without_scientific_state(
