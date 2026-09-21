@@ -134,7 +134,7 @@ def main():
         },
         {
             "name": "l0_request_sha_bound",
-            "ok": runner.EXPECTED_L0_REQUEST_SHA == "9120aed18e9aac20615cab2de00337eb9bf65edb7249015c97d3c41d881e38d",
+            "ok": runner.EXPECTED_L0_REQUEST_SHA == "9120aed18e9aac20615cab2de00337eb9bf65edeb7249015c97d3c41d881e38d",
         },
         {
             "name": "l1_request_sha_bound",
