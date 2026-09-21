@@ -64,6 +64,8 @@ e2d2c0d6-gemma4-kv-fixture-v2-corpus.py
 e2d2c0d6-gemma4-kv-fixture-v2-materialize.py
 e2d2c0d6-gemma4-kv-fixture-v2-admission.py
 e2d2c0d6-gemma4-kv-fixture-v2-selftest.py
+e2d2c0d6-gemma4-kv-fixture-v2-tokenize-run.py
+e2d2c0d6-gemma4-kv-fixture-v2-tokenize-run-selftest.py
 ```
 
 The source-corpus generator emits:
@@ -217,6 +219,16 @@ flash attention = ON
 
 A fresh disposable build may use the current repaired diagnostic patch set. Tokenization semantics are model/vocabulary material; nevertheless exact source/patch/server/model identity must be recorded.
 
+The only authorized tokenization child entrypoint is:
+
+`e2d2c0d6-gemma4-kv-fixture-v2-tokenize-run.py`
+
+Its static contract must first pass:
+
+`LOGICAL_PREFIX_FIXTURE_V2_TOKENIZE_RUN_SELFTEST_PASS`
+
+The tokenize-only runner is fixed to the target runtime, validates the model SHA256, generates the repository-owned corpus/request, starts one server, polls only `/health`, sends exactly one `POST /tokenize`, saves raw response bytes, records `generation_requests=0`, and terminates that server. It contains no completion/chat-completion endpoint.
+
 The server must be started only as the child of the canonical diagnostic local-GPU resource guard:
 
 ```text
@@ -226,13 +238,7 @@ lock = /tmp/relaylm/physical/locks/a820834e5681ba28.lock
 
 Require exactly two external-idle observations five seconds apart before the child starts.
 
-The guarded child may:
-
-1. start exactly one fresh llama-server;
-2. wait for health;
-3. send exactly one `POST /tokenize`;
-4. save exact raw request and response bytes;
-5. terminate the server cleanly.
+The guard child must be exactly the tokenize-only runner above. Do not reproduce its server lifecycle manually with curl/bash when the repository-owned runner is available.
 
 It must send zero generation requests.
 
