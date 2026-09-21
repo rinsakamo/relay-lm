@@ -100,6 +100,14 @@ def main():
             "campaign_queue_receipt_created" in source
             and "campaign_queue_or_spend_artifact_touched" in source
         ),
+        "missing_terminal_uses_l0_request_record": (
+            'server-WR" / "L0.request.json"' in source
+            and '"PROBE_EXERCISED_INCOMPLETE"' in source
+            and '"l0_request_record_exists"' in source
+        ),
+        "consumed_fallback_forbids_rerun": (
+            '"rerun_authorized": False if l0_attempted else None' in source
+        ),
     }
 
     errors = [name for name, ok in checks.items() if not ok]
