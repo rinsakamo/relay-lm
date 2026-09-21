@@ -4,7 +4,9 @@ Diagnostic only. This authority creates a new repository-owned synthetic request
 
 ## Status
 
-`FIXTURE_V2_PREPARATION_REQUIRED`
+`FIXTURE_V2_COMMITTED`
+
+The fixture-v2 request subject is now durably repository-owned. No measured execution is authorized by this status.
 
 ## Why a new subject is required
 
@@ -362,17 +364,179 @@ v1 mutations
 scientific campaign interactions
 ```
 
+## Committed fixture authority
+
+Fixture commit:
+
+`58d3c1e9b8cf973648be1aeb8a8b12429a69d088`
+
+Commit tree:
+
+`8c6b356a7b73931cc0a71834c784935cf82bc256`
+
+Fixture subtree:
+
+`455d94850515c70995addc6c1c446ba738a01474`
+
+Repository path:
+
+`diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2/`
+
+The committed directory contains exactly nine authority files and no runtime/admission logs.
+
+Fresh remote read-back from the diagnostic branch confirms:
+
+```text
+subject = logical-prefix-kv-fixture-v2
+format_version = 1
+warm_len = 883
+target_len = 2927
+LCP = 865
+target_suffix_source_offset = 883
+target_suffix_len = 2062
+token_pool_len = 90140
+tokenizer endpoint = /tokenize
+add_special = false
+parse_special = false
+with_pieces = false
+```
+
+Fresh semantic read-back also confirms:
+
+```text
+L0 prompt == warm fixture
+L1 prompt == target fixture
+LC prompt == target fixture
+
+L0 cache_prompt = true
+L1 cache_prompt = true
+LC cache_prompt = false
+
+n_predict = 1 for L0/L1/LC
+temperature = 0 for L0/L1/LC
+stream = false for L0/L1/LC
+n_probs = 20 for L0/L1/LC
+
+L1 and LC differ only by cache_prompt
+```
+
+Committed SHA256 identities:
+
+```text
+source-corpus.txt =
+8f5e83bc034a7678ecce6ddc25dc5507ed726b849f9ecfaa19865b9ba885459a
+
+tokenizer-request.json =
+cd55b727276462f2725e1a13b0f217bb35f0e7a097504f082473200fa2bdb66e
+
+tokenizer-response.json =
+e46ec4970db8dfeca4f7f0a7133da4c5eba75c20815dfbdcf446912310ebe4ac
+
+warm.tokens.json =
+cc42e325d85ed559835225b53152446bc405b2d166c10a3e16b07c7859bf7f27
+
+target.tokens.json =
+8c05cf7a6d11d684be091c49a9f9d76201274e1efad31c9b19234cb4ec985730
+
+L0.request.json =
+d777877485b3307d8ee76e6b6df783d00b4302bb700c405ac5cbf2f6d7344f5d
+
+L1.request.json =
+b7e482874b1a3c8b80136e2d2e8a76594c318230f5f8bae4171d2f0efff465eb
+
+LC.request.json =
+63afb2a44ea12f14377ba52348616a0bd8ac3ebdd65d81d1a3ede1c4c2c64043
+
+manifest.json =
+d08e6aa1c4a9c263f5b3e0d1911f3117335f4dfdc267d9a2d5ea187401c92e3d
+```
+
+Committed Git blob identities:
+
+```text
+source-corpus.txt =
+7ad9ae44ee56f7338cdc8594ed5872e9d1773001
+
+tokenizer-request.json =
+7bf97501c02a813c3ae8b608c1e8f82c869918dd
+
+tokenizer-response.json =
+247a2a285877b217f2f6132f3e7edf5629b1658f
+
+warm.tokens.json =
+c83fffa75bf006804131eb9dd9ad84dfa9f46d1b
+
+target.tokens.json =
+f127cf2bec7f217f27a5c04cb059ddb9ccd039bd
+
+L0.request.json =
+a4d7d31b268cb173a93ff32c87184dc9a16998e4
+
+L1.request.json =
+07dfdc83366dd5ba57e0c9af5571493dbe9ed6ca
+
+LC.request.json =
+5534a9dcb9da289b0448a139b77dcf94287fdfd7
+
+manifest.json =
+ece1a792d3ec60e594131c52d5f0f4900298db04
+```
+
+L0R is now durably defined as the exact raw bytes of the committed `L0.request.json` on a fresh WR2 server.
+
+The fixture-generation transaction was generation-free and measured-L0-free:
+
+```text
+build attempts = 1
+guard acquisitions = 1
+idle observations = 2
+server lifetimes = 1/1
+/tokenize requests = 1
+generation requests = 0
+materializer invocations = 1
+admission invocations = 1
+repository commits = 1
+pushes = 1
+v1 mutations = 0
+scientific campaign interactions = 0
+campaign queue/spend mutation = false
+measured qualification/L0 = 0
+```
+
+The tokenizer build/server SHA `64f73785c3d70203826a8da6a54fbd277b01b542dd343b005ad3a07f9eaaddb0` belongs only to fixture materialization. It is not measured-apparatus authority and must not be promoted or reused as such.
+
+## Next allowed transition
+
+The next and only physical transition authorized by this fixture authority is a fresh repaired pre-measured apparatus qualification.
+
+That transaction must:
+
+- use a fresh isolated exact llama.cpp source checkout;
+- use the current repaired diagnostic patch set;
+- create a fresh build identity;
+- perform binary provenance preflight;
+- perform plain/probe non-generative startup qualification;
+- use the canonical local-GPU resource guard;
+- perform exactly two external-idle observations;
+- submit zero generation requests;
+- submit zero L0/L1/L0R/LC requests;
+- stop at `LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY`.
+
+The resulting server/runtime-library identities must be distinct fresh qualification evidence and must not be inferred from the fixture-tokenization build.
+
+Only after that fresh pre-measured terminal may management create a fixture-v2-specific measured runner/wrapper/authority binding both the committed fixture and the newly qualified physical apparatus.
+
 ## After fixture commit
 
-The committed fixture becomes the sole request authority for the new subject.
+The committed fixture is now the sole request authority for the new subject.
 
-Management must then:
+Fresh Git read-back and identity reconciliation are complete.
 
-1. fresh-read the committed fixture files from Git;
-2. record their complete SHA256 identities;
-3. update/create a fixture-v2 measured runner that reads only committed fixture files;
-4. perform a fresh repaired pre-measured apparatus qualification;
-5. create a distinct measured-attempt authority binding both:
+Remaining sequence:
+
+1. perform a fresh repaired pre-measured apparatus qualification;
+2. management creates a fixture-v2 measured runner that reads only committed fixture files;
+3. management creates a distinct measured-attempt authority binding both:
    - committed fixture Git identity;
    - freshly qualified physical server/runtime identity.
 
