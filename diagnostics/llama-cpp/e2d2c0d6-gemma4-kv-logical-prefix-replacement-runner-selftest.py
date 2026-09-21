@@ -2,6 +2,7 @@
 import ast
 import importlib.util
 import json
+import re
 from pathlib import Path
 import tempfile
 import sys
@@ -106,6 +107,22 @@ def success_path_static_check():
 def main():
     runner = load_runner()
     results = []
+
+    frozen_sha_values = [
+        runner.EXPECTED_SERVER_SHA,
+        runner.EXPECTED_SERVER_IMPL_SHA,
+        runner.EXPECTED_LLAMA_SHA,
+        runner.EXPECTED_MODEL_SHA,
+        runner.EXPECTED_WARM_TOKEN_SHA,
+        runner.EXPECTED_TARGET_TOKEN_SHA,
+        runner.EXPECTED_L0_REQUEST_SHA,
+        runner.EXPECTED_L1_REQUEST_SHA,
+        runner.EXPECTED_LC_REQUEST_SHA,
+    ]
+    results.append({
+        "name": "all_frozen_sha256_are_64_lower_hex",
+        "ok": all(re.fullmatch(r"[0-9a-f]{64}", value) for value in frozen_sha_values),
+    })
 
     results.extend([
         {
