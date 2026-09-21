@@ -353,6 +353,85 @@ A subsequent replacement measured handoff must explicitly bind:
 
 Once the replacement L0 is submitted, it is again exactly-once and consumed on any later failure.
 
+## Post-consumption dump-format repair
+
+The replacement measured attempt authorized by `logical-prefix-kv-replacement-measured-authority-20260921-l0sha64` is terminal and consumed as `PROBE_EXERCISED_INCOMPLETE`.
+
+It MUST NOT be retried or resumed.
+
+The measured failure exposed a deterministic instrumentation-output defect:
+
+- the logical-prefix hook fired and created `WR-P512/`;
+- L0 completed HTTP 200 with the expected cache/prompt/predicted accounting;
+- the metadata writer emitted literal `\\t` / `\\n` escape text instead of tab/newline control characters;
+- `base.cells.tsv` therefore parsed as zero data rows;
+- L1/L0R/LC were not submitted;
+- no KV-state causal classification was produced.
+
+Static inspection of the patch confirmed that its added C++ source contained doubled backslashes for tab/newline/NUL escape sequences.
+
+Diagnostic-only repair commits:
+
+```text
+6c5230f4674f5006dd1fbd6728f5b88eb2b44ff3
+  Fix logical-prefix dump metadata escapes
+
+d2988ac2dd0d7c4268bfaf20144d5116eb426240
+  Detect malformed C++ diagnostic escapes
+```
+
+Current repaired patch Git blob:
+
+`16b3e79a6137e4f84ec5b47f6aff82d135bb1c53`
+
+Current repaired patch self-test Git blob:
+
+`631aa78914695090b744801a11ad574dcf4da573`
+
+Remote byte-level read-back proves:
+
+```text
+doubled \\t occurrences in patch = 0
+doubled \\n occurrences in patch = 0
+doubled \\0 occurrences in patch = 0
+
+single C++ \\t escapes are present
+single C++ \\n escapes are present
+single C++ \\0 escapes are present
+```
+
+The patch self-test now additionally requires:
+
+- no doubled tab escape in added diagnostic code;
+- no doubled newline escape in added diagnostic code;
+- no doubled NUL escape in added diagnostic code;
+- the cells TSV header uses actual C++ `\\t` / `\\n` escapes;
+- the manifest TSV header uses actual C++ `\\t` / `\\n` escapes;
+- row writers use C++ `'\\t'` / `'\\n'` character escapes.
+
+This repair changes the physical instrumented artifact identity. Therefore:
+
+- the prior pre-measured evidence root `/tmp/relaylm-logical-prefix-premeasured.4BYIKs/output` is historical only;
+- server SHA `30d3f94f7335821a74828c243ab1dd315df9dc7a4c6df0cdff2f3ce1629dbaff` and its sibling-library SHAs belong to the consumed apparatus and MUST NOT be used for another measured attempt;
+- the consumed measured authority is terminal;
+- no current measured execution authority exists for the repaired patch.
+
+Before any future measured request, the repaired patch requires a completely fresh pre-measured preparation transaction:
+
+1. fresh isolated exact llama.cpp source checkout;
+2. fresh patch SHA256 calculation;
+3. fresh combined applied.patch SHA256;
+4. fresh CUDA build;
+5. fresh server/runtime-library SHA identities;
+6. fresh binary provenance preflight;
+7. fresh non-generative plain/probe startup qualification;
+8. fresh canonical GPU guard observations;
+9. zero generation / zero L0 during qualification.
+
+Only after a new `LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY` result may management consider creating a distinct new measured-attempt authority.
+
+The frozen request identities may be reused only after fresh read-back/revalidation of their exact raw SHA256 values; they are not regenerated or reconstructed.
+
 ## Campaign separation
 
 This remains independent of the RelayLM v1 scientific campaign.
