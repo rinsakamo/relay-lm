@@ -580,7 +580,6 @@ def run_synthetic_hindsight_smoke(
         raise CampaignCarriageError(
             f"unsupported synthetic stress profile: {stress_profile}"
         )
-    artifact_root.mkdir(parents=True, exist_ok=False)
 
     if (source_descriptor is None) == (current_host_material is None):
         raise CampaignCarriageError(
@@ -592,12 +591,39 @@ def run_synthetic_hindsight_smoke(
             current_host_material,
             diagnostic_owner_id=diagnostic_owner_id,
         )
+        operational_source: dict[str, object] = {
+            "mode": "current_host_material",
+            "llama_cpp_root": str(current_host_material.llama_cpp_root.resolve()),
+            "model_path": str(current_host_material.model_path.resolve()),
+            "model_sha256": _DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256,
+            "onnx_model_path": str(current_host_material.onnx_model_path.resolve()),
+            "onnx_model_sha256": _DIAGNOSTIC_HINDSIGHT_ONNX_SHA256,
+            "onnx_tokenizer_path": str(
+                current_host_material.onnx_tokenizer_path.resolve()
+            ),
+            "onnx_tokenizer_tree_sha256": (
+                _DIAGNOSTIC_HINDSIGHT_TOKENIZER_TREE_SHA256
+            ),
+            "llama_cpp_revision": _DIAGNOSTIC_LLAMA_CPP_REVISION,
+            "hindsight_source_revision": _DIAGNOSTIC_HINDSIGHT_SOURCE_REVISION,
+            "hindsight_source_tree": _DIAGNOSTIC_HINDSIGHT_SOURCE_TREE,
+            "hindsight_dependency_fingerprint": (
+                _DIAGNOSTIC_HINDSIGHT_DEPENDENCY_FINGERPRINT
+            ),
+            "hindsight_wheel_sha256": dict(_DIAGNOSTIC_HINDSIGHT_WHEEL_SHA256),
+            "llm_max_concurrent": HINDSIGHT_LLM_MAX_CONCURRENT,
+        }
     else:
         assert source_descriptor is not None
         llama_spec, lifecycle_spec, expected_health = _derive_diagnostic_bindings(
             source_descriptor,
             diagnostic_owner_id=diagnostic_owner_id,
         )
+        operational_source = {
+            "mode": "source_descriptor",
+        }
+
+    artifact_root.mkdir(parents=True, exist_ok=False)
     bank_id = _hindsight_axis_bank_id(
         lifecycle_spec.database_profile,
         "synthetic-smoke",
@@ -699,6 +725,7 @@ def run_synthetic_hindsight_smoke(
             "benchmark_question_count": 0,
             "judge_call_count": 0,
             "diagnostic_owner_id": diagnostic_owner_id,
+            "operational_source": operational_source,
             "bank_id": bank_id,
             "hindsight_health_fingerprint": observed_health.fingerprint,
             "hindsight_semantic_operation_count": lifecycle.semantic_operation_count,
@@ -776,6 +803,7 @@ def run_synthetic_hindsight_smoke(
             "benchmark_question_count": 0,
             "judge_call_count": 0,
             "diagnostic_owner_id": diagnostic_owner_id,
+            "operational_source": operational_source,
             "bank_id": bank_id,
             "stress_profile": stress_profile,
             "phase": phase,
