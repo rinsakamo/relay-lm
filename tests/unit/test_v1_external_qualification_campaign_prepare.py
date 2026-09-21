@@ -15,6 +15,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
@@ -35,6 +36,7 @@ def _inputs(tmp_path: Path) -> tuple[dict[str, object], dict[str, object]]:
     lifecycle.pop("llm_supports_string_pattern")
     lifecycle.pop("retain_llm_reasoning_effort")
     lifecycle.pop("consolidation_llm_reasoning_effort")
+    lifecycle.pop("llm_max_concurrent")
     return stale, lifecycle
 
 
@@ -103,6 +105,7 @@ def test_prepare_derives_fresh_owner_identity_and_admits(tmp_path: Path) -> None
         lifecycle["consolidation_llm_reasoning_effort"]
         == HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
     )
+    assert lifecycle["llm_max_concurrent"] == HINDSIGHT_LLM_MAX_CONCURRENT
     assert health["source_revision"] == lifecycle["source_revision"]
     assert health["version"] == lifecycle["runtime_version"]
     deployment = health["deployment"]

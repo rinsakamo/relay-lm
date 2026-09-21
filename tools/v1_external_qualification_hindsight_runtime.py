@@ -63,6 +63,7 @@ def _write_identity(
     llm_supports_string_pattern: bool,
     retain_llm_reasoning_effort: str,
     consolidation_llm_reasoning_effort: str,
+    llm_max_concurrent: int,
     embeddings_provider: str,
     reranker_provider: str,
     onnx_model_path: Path,
@@ -111,6 +112,7 @@ def _write_identity(
         "llm_supports_string_pattern": llm_supports_string_pattern,
         "retain_llm_reasoning_effort": retain_llm_reasoning_effort,
         "consolidation_llm_reasoning_effort": consolidation_llm_reasoning_effort,
+        "llm_max_concurrent": llm_max_concurrent,
         "embeddings_provider": embeddings_provider,
         "reranker_provider": reranker_provider,
         "embeddings_onnx_model_path": str(onnx_model_path),
@@ -167,6 +169,7 @@ def main() -> int:
     )
     parser.add_argument("--retain-llm-reasoning-effort", required=True)
     parser.add_argument("--consolidation-llm-reasoning-effort", required=True)
+    parser.add_argument("--llm-max-concurrent", required=True, type=int)
     parser.add_argument("--embeddings-provider", required=True)
     parser.add_argument("--reranker-provider", required=True)
     parser.add_argument("--onnx-model-path", required=True)
@@ -193,6 +196,9 @@ def main() -> int:
     consolidation_llm_reasoning_effort = _configure_consolidation_reasoning_effort(
         args.consolidation_llm_reasoning_effort
     )
+    if args.llm_max_concurrent != 1:
+        raise RuntimeError("Hindsight local qualification LLM concurrency must be 1")
+    os.environ["HINDSIGHT_API_LLM_MAX_CONCURRENT"] = str(args.llm_max_concurrent)
     os.environ["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = args.embeddings_provider
     os.environ["HINDSIGHT_API_RERANKER_PROVIDER"] = args.reranker_provider
     onnx_model_path = Path(args.onnx_model_path)
@@ -239,6 +245,7 @@ def main() -> int:
         llm_supports_string_pattern=llm_supports_string_pattern,
         retain_llm_reasoning_effort=retain_llm_reasoning_effort,
         consolidation_llm_reasoning_effort=consolidation_llm_reasoning_effort,
+        llm_max_concurrent=args.llm_max_concurrent,
         embeddings_provider=args.embeddings_provider,
         reranker_provider=args.reranker_provider,
         onnx_model_path=onnx_model_path,

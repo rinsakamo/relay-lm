@@ -34,6 +34,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
@@ -520,6 +521,7 @@ class _PreloadJournal:
 
     def __init__(self) -> None:
         self.completed: set[str] = set()
+        self.acknowledged: set[str] = set()
         self.started: set[str] = set()
         self.requests: dict[str, Mapping[str, object]] = {}
 
@@ -552,6 +554,27 @@ class _PreloadJournal:
             raise ExactResumeError("synthetic preload ambiguity")
         return key in self.completed
 
+    def hindsight_history_preload_acknowledged_request(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> dict[str, object] | None:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key in self.started:
+            raise ExactResumeError("synthetic preload ambiguity")
+        if key not in self.acknowledged:
+            return None
+        assert self.requests[key] == dict(request)
+        return dict(self.requests[key])
+
     def begin_hindsight_history_preload(
         self,
         *,
@@ -566,13 +589,33 @@ class _PreloadJournal:
             session_id=session_id,
             exchange_index=exchange_index,
         )
-        if key in self.completed:
+        if key in self.completed or key in self.acknowledged:
             return False
         if key in self.started:
             raise ExactResumeError("synthetic preload ambiguity")
         self.started.add(key)
         self.requests[key] = dict(request)
         return True
+
+    def acknowledge_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> None:
+        key = self._key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if key not in self.started:
+            raise ExactResumeError("synthetic preload acknowledgement without start")
+        assert self.requests[key] == dict(request)
+        self.started.remove(key)
+        self.acknowledged.add(key)
 
     def complete_hindsight_history_preload(
         self,
@@ -588,14 +631,18 @@ class _PreloadJournal:
             session_id=session_id,
             exchange_index=exchange_index,
         )
-        if key not in self.started:
-            raise ExactResumeError("synthetic preload completion without start")
+        if key not in self.acknowledged:
+            raise ExactResumeError("synthetic preload completion without acknowledgement")
         assert self.requests[key] == dict(request)
-        self.started.remove(key)
+        self.acknowledged.remove(key)
         self.completed.add(key)
 
     def hindsight_history_preload_counts(self) -> dict[str, int]:
-        return {"completed": len(self.completed), "in_flight": len(self.started)}
+        return {
+            "completed": len(self.completed),
+            "acknowledged": len(self.acknowledged),
+            "in_flight": len(self.started),
+        }
 
 class _CommonAnswerModel:
     def __init__(self) -> None:
@@ -846,6 +893,7 @@ def _strict_descriptor_mapping(
         "llm_supports_string_pattern": HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
         "retain_llm_reasoning_effort": HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
         "consolidation_llm_reasoning_effort": HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
+        "llm_max_concurrent": HINDSIGHT_LLM_MAX_CONCURRENT,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -1469,6 +1517,13 @@ def test_hindsight_preload_identity_does_not_retry_when_only_retained_at_changes
         exchange_index=0,
         request=base_request,
     )
+    durable.acknowledge_hindsight_history_preload(
+        question_id=question.question_id,
+        bank_id="synthetic-bank",
+        session_id="session-0",
+        exchange_index=0,
+        request=base_request,
+    )
     durable.complete_hindsight_history_preload(
         question_id=question.question_id,
         bank_id="synthetic-bank",
@@ -1493,9 +1548,14 @@ def test_hindsight_preload_identity_does_not_retry_when_only_retained_at_changes
         .read_text(encoding="utf-8")
         .splitlines()
     ]
-    assert [record["event"] for record in records] == ["started", "completed"]
+    assert [record["event"] for record in records] == [
+        "started",
+        "acknowledged",
+        "completed",
+    ]
     assert records[0]["request"] == base_request
     assert records[1]["request"] == base_request
+    assert records[2]["request"] == base_request
 
 
 def test_hindsight_consolidation_wait_is_scoped_per_history_session(
@@ -1614,7 +1674,7 @@ def test_common_answer_boundary_uses_frozen_prompt_and_one_generation() -> None:
     assert result.request_evidence["boundary"] == "common_answer_model"
 
 
-def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
+def test_hindsight_history_wait_failure_resumes_acknowledged_without_duplicate(
     tmp_path: Path,
 ) -> None:
     history_path = tmp_path / "synthetic-history.json"
@@ -1665,21 +1725,135 @@ def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
     durable.begin_question(question.question_id)
 
     class _CrashAfterRetain(_ComparatorLifecycle):
+        fail_wait = True
+
         def wait_for_consolidation(
             self,
             *,
             bank_id: str,
             pre_existing_pending_ids: set[str],
         ) -> Mapping[str, object]:
-            raise RuntimeError("synthetic process stop after external retain")
+            if self.fail_wait:
+                self.fail_wait = False
+                raise RuntimeError("synthetic process stop after external retain")
+            return super().wait_for_consolidation(
+                bank_id=bank_id,
+                pre_existing_pending_ids=pre_existing_pending_ids,
+            )
 
     lifecycle = _CrashAfterRetain("repair-profile-crash")
     executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
         lifecycle,
         _CommonAnswerModel(),  # type: ignore[arg-type]
     )
+
+    def context(run: DurableQuestionRun) -> ParticipantExecutionContext:
+        return ParticipantExecutionContext(
+            axis_id="axis-crash",
+            case={"benchmark": {"id": "memconflict"}},
+            manifest={},
+            question=question,
+            prompt="synthetic question",
+            participant_slot="serious_comparator",
+            participant_identity=_participant_identity(
+                "hindsight", revision="c" * 40, version="v0.10.0"
+            ),
+            frozen_identity=identity,
+            live_attestation=None,  # type: ignore[arg-type]
+            history=plan,
+            durable_run=run,
+        )
+
+    with pytest.raises(RuntimeError, match="synthetic process stop"):
+        executor(context(durable))
+    durable.mark_process_exited()
+
+    assert len(lifecycle.retain_calls) == 1
+    assert durable.hindsight_history_preload_counts() == {
+        "completed": 0,
+        "acknowledged": 1,
+        "in_flight": 0,
+    }
+
+    resumed = DurableQuestionRun.resume(
+        artifact_root=run_root,
+        identity=identity,
+        questions=(question,),
+    )
+    resumed.begin_question(question.question_id)
+    result = executor(context(resumed))
+
+    assert result.slot == "serious_comparator"
+    assert len(lifecycle.retain_calls) == 1
+    assert resumed.hindsight_history_preload_counts() == {
+        "completed": 1,
+        "acknowledged": 0,
+        "in_flight": 0,
+    }
+
+
+def test_hindsight_history_failure_before_retain_ack_remains_fail_closed(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "synthetic-history-pre-ack.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "sessions": [
+                    {
+                        "session_id": "session-0",
+                        "order": 0,
+                        "items": [
+                            {
+                                "role": "user",
+                                "content": "history before ambiguous retain",
+                                "timestamp": "2025-01-02T03:04:05+00:00",
+                            }
+                        ],
+                    }
+                ],
+                "question_history": {"question-0": ["session-0"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = HindsightHistoryPlan.from_path(history_path)
+    live = _live_mapping()
+    identity = freeze_experiment_identity(
+        identity=_frozen_identity("memconflict", live),
+        live_attestation=live,
+    )
+    question = DurableQuestion.from_content(
+        "question-0",
+        "synthetic question",
+        session_id="question-0",
+    )
+    run_root = tmp_path / "durable-pre-ack"
+    durable = DurableQuestionRun.start(
+        artifact_root=run_root,
+        identity=identity,
+        questions=(question,),
+    )
+    durable.begin_question(question.question_id)
+
+    class _CrashBeforeAck(_ComparatorLifecycle):
+        def retain(
+            self,
+            *,
+            bank_id: str,
+            items: tuple[Mapping[str, object], ...],
+        ) -> Mapping[str, object]:
+            self.retain_calls.append((bank_id, tuple(dict(item) for item in items)))
+            raise RuntimeError("synthetic retain response lost")
+
+    lifecycle = _CrashBeforeAck("repair-profile-pre-ack")
+    executor = HindsightComparatorExecutor(  # type: ignore[arg-type]
+        lifecycle,
+        _CommonAnswerModel(),  # type: ignore[arg-type]
+    )
     context = ParticipantExecutionContext(
-        axis_id="axis-crash",
+        axis_id="axis-pre-ack",
         case={"benchmark": {"id": "memconflict"}},
         manifest={},
         question=question,
@@ -1694,7 +1868,7 @@ def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
         durable_run=durable,
     )
 
-    with pytest.raises(RuntimeError, match="synthetic process stop"):
+    with pytest.raises(RuntimeError, match="synthetic retain response lost"):
         executor(context)
     durable.mark_process_exited()
     assert len(lifecycle.retain_calls) == 1
@@ -1709,8 +1883,6 @@ def test_hindsight_history_crash_after_retain_fails_closed_without_duplicate(
             questions=(question,),
         )
 
-    # The exact-resume attempt fails before a comparator is callable, so no
-    # second provider retain can be issued.
     assert len(lifecycle.retain_calls) == 1
 
 
@@ -1876,6 +2048,18 @@ def test_strict_descriptor_rejects_hindsight_consolidation_reasoning_policy_subs
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_llm_concurrency_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["llm_max_concurrent"] = 32
+    with pytest.raises(
+        CampaignCarriageError,
+        match="repository-owned single-slot scheduler policy",
+    ):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -1985,6 +2169,7 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
         argument("--consolidation-llm-reasoning-effort")
         == HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
     )
+    assert argument("--llm-max-concurrent") == str(HINDSIGHT_LLM_MAX_CONCURRENT)
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]
@@ -1992,6 +2177,9 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] == "true"
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] == "true"
     assert environment["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] == "true"
+    assert environment["HINDSIGHT_API_LLM_MAX_CONCURRENT"] == str(
+        HINDSIGHT_LLM_MAX_CONCURRENT
+    )
     cleanup = lifecycle.cleanup()
     assert cleanup["semantic_operation_count"] == 0
 

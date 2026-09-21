@@ -21,6 +21,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
 )
@@ -189,6 +190,7 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     raw["hindsight_lifecycle"]["llm_supports_string_pattern"] = False
     raw["hindsight_lifecycle"]["retain_llm_reasoning_effort"] = "low"
     raw["hindsight_lifecycle"]["consolidation_llm_reasoning_effort"] = "low"
+    raw["hindsight_lifecycle"]["llm_max_concurrent"] = 32
     source.write_text(json.dumps(raw, sort_keys=True) + "\n", encoding="utf-8")
     source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
     owner_id = "owner-2994-proof-retain-bound"
@@ -226,6 +228,10 @@ def test_prepare_static_proof_rederives_hindsight_retain_bound_from_repository(
     assert (
         plan["hindsight_lifecycle"]["consolidation_llm_reasoning_effort"]
         == HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
+    )
+    assert (
+        plan["hindsight_lifecycle"]["llm_max_concurrent"]
+        == HINDSIGHT_LLM_MAX_CONCURRENT
     )
 
 
@@ -478,6 +484,7 @@ def _runtime_identity(plan: dict[str, object], owner_id: str) -> dict[str, objec
         "llm_supports_string_pattern",
         "retain_llm_reasoning_effort",
         "consolidation_llm_reasoning_effort",
+        "llm_max_concurrent",
         "embeddings_provider",
         "reranker_provider",
         "embeddings_onnx_model_sha256",

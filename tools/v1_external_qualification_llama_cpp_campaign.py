@@ -97,6 +97,12 @@ HINDSIGHT_RETAIN_LLM_REASONING_EFFORT = "none"
 # reasoning is not part of the comparator-visible result and must not consume
 # the frozen local model budget.
 HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT = "none"
+# Pinned Hindsight v0.10.0 defaults to 32 concurrent LLM requests and explicitly
+# recommends a cap of 1 for local LLM servers. The qualification backend has one
+# llama.cpp slot, so bind scheduler concurrency to that physical capacity. This
+# changes only request scheduling; prompts, batches, decoding, and model identity
+# remain frozen.
+HINDSIGHT_LLM_MAX_CONCURRENT = 1
 HINDSIGHT_RECALL_BUDGET = "mid"
 HINDSIGHT_RECALL_MAX_TOKENS = 4096
 HINDSIGHT_RECALL_TYPES = ("observation",)
@@ -184,6 +190,7 @@ _LIFECYCLE_KEYS = {
     "llm_supports_string_pattern",
     "retain_llm_reasoning_effort",
     "consolidation_llm_reasoning_effort",
+    "llm_max_concurrent",
     "embeddings_provider",
     "reranker_provider",
     "embeddings_onnx_model_path",
@@ -902,6 +909,7 @@ class HindsightLifecycleSpec:
     llm_supports_string_pattern: bool
     retain_llm_reasoning_effort: str
     consolidation_llm_reasoning_effort: str
+    llm_max_concurrent: int
     embeddings_provider: str
     reranker_provider: str
     package_wheel_sha256: Mapping[str, str]
@@ -1021,6 +1029,15 @@ class HindsightLifecycleSpec:
                 "hindsight_lifecycle.consolidation_llm_reasoning_effort must match "
                 "the repository-owned structured-consolidation reasoning policy"
             )
+        llm_max_concurrent = _require_positive_int(
+            raw["llm_max_concurrent"],
+            label="hindsight_lifecycle.llm_max_concurrent",
+        )
+        if llm_max_concurrent != HINDSIGHT_LLM_MAX_CONCURRENT:
+            raise CampaignCarriageError(
+                "hindsight_lifecycle.llm_max_concurrent must match "
+                "the repository-owned single-slot scheduler policy"
+            )
         return cls(
             mode=mode,
             base_url=base_url,
@@ -1059,6 +1076,7 @@ class HindsightLifecycleSpec:
             llm_supports_string_pattern=llm_supports_string_pattern,
             retain_llm_reasoning_effort=retain_llm_reasoning_effort,
             consolidation_llm_reasoning_effort=consolidation_llm_reasoning_effort,
+            llm_max_concurrent=llm_max_concurrent,
             embeddings_provider=_require_nonempty_string(
                 raw["embeddings_provider"],
                 label="hindsight_lifecycle.embeddings_provider",
@@ -1098,6 +1116,7 @@ class HindsightLifecycleSpec:
             "llm_supports_string_pattern": self.llm_supports_string_pattern,
             "retain_llm_reasoning_effort": self.retain_llm_reasoning_effort,
             "consolidation_llm_reasoning_effort": self.consolidation_llm_reasoning_effort,
+            "llm_max_concurrent": self.llm_max_concurrent,
             "embeddings_provider": self.embeddings_provider,
             "reranker_provider": self.reranker_provider,
             "embeddings_onnx_model_path": str(self.embeddings_onnx_model_path),
@@ -1285,6 +1304,8 @@ class HindsightDeploymentSession:
                 self.spec.retain_llm_reasoning_effort,
                 "--consolidation-llm-reasoning-effort",
                 self.spec.consolidation_llm_reasoning_effort,
+                "--llm-max-concurrent",
+                str(self.spec.llm_max_concurrent),
                 "--embeddings-provider",
                 self.spec.embeddings_provider,
                 "--reranker-provider",
@@ -1304,6 +1325,9 @@ class HindsightDeploymentSession:
             environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] = "true"
             environment["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] = (
                 "true" if self.spec.llm_supports_string_pattern else "false"
+            )
+            environment["HINDSIGHT_API_LLM_MAX_CONCURRENT"] = str(
+                self.spec.llm_max_concurrent
             )
             environment["HINDSIGHT_API_EMBEDDINGS_PROVIDER"] = (
                 self.spec.embeddings_provider
@@ -1445,6 +1469,7 @@ class HindsightDeploymentSession:
                     "consolidation_llm_reasoning_effort",
                     self.spec.consolidation_llm_reasoning_effort,
                 ),
+                ("llm_max_concurrent", self.spec.llm_max_concurrent),
                 ("embeddings_provider", self.spec.embeddings_provider),
                 ("reranker_provider", self.spec.reranker_provider),
             ):
@@ -3972,9 +3997,11 @@ class HindsightComparatorExecutor:
         initial_preload_counts = context.durable_run.hindsight_history_preload_counts()
         allow_missing_bank = (
             initial_preload_counts["completed"] == 0
+            and initial_preload_counts["acknowledged"] == 0
             and initial_preload_counts["in_flight"] == 0
         )
 
+        resumed_acknowledged_exchange_count = 0
         for session in sessions:
             pending_exchange_indices = [
                 exchange_index
@@ -3989,18 +4016,48 @@ class HindsightComparatorExecutor:
             if not pending_exchange_indices:
                 continue
 
-            # Frozen Arm-C snapshots and drains consolidation per history session.
-            pre_existing_pending_ids = self.lifecycle.consolidation_pending_ids(
-                bank_id=bank_id,
-                allow_missing_bank=allow_missing_bank,
-            )
+            # Classify already-acknowledged retains before taking the
+            # consolidation snapshot.  On exact resume they are external side
+            # effects that must be observed, never reissued.
             session_pending: list[tuple[int, Mapping[str, object]]] = []
+            new_requests: list[tuple[int, Mapping[str, object]]] = []
+            has_acknowledged = False
             for exchange_index in pending_exchange_indices:
                 request = session.to_retain_request(
                     bank_id=bank_id,
                     context_label=context_label,
                     exchange_index=exchange_index,
                 )
+                acknowledged_request = (
+                    context.durable_run.hindsight_history_preload_acknowledged_request(
+                        question_id=context.question.question_id,
+                        bank_id=bank_id,
+                        session_id=session.session_id,
+                        exchange_index=exchange_index,
+                        request=request,
+                    )
+                )
+                if acknowledged_request is not None:
+                    session_pending.append((exchange_index, acknowledged_request))
+                    has_acknowledged = True
+                    resumed_acknowledged_exchange_count += 1
+                else:
+                    new_requests.append((exchange_index, request))
+
+            # A normal fresh session excludes consolidation work that was
+            # already pending before its retains.  A resumed acknowledged
+            # session instead observes all current work in this isolated
+            # owner/axis bank: those operations may be the unfinished work
+            # created by the acknowledged retains themselves.
+            observed_pending_ids = self.lifecycle.consolidation_pending_ids(
+                bank_id=bank_id,
+                allow_missing_bank=allow_missing_bank and not has_acknowledged,
+            )
+            pre_existing_pending_ids = (
+                set() if has_acknowledged else observed_pending_ids
+            )
+
+            for exchange_index, request in new_requests:
                 if not context.durable_run.begin_hindsight_history_preload(
                     question_id=context.question.question_id,
                     bank_id=bank_id,
@@ -4010,6 +4067,13 @@ class HindsightComparatorExecutor:
                 ):
                     continue
                 self.lifecycle.retain(bank_id=bank_id, items=(request,))
+                context.durable_run.acknowledge_hindsight_history_preload(
+                    question_id=context.question.question_id,
+                    bank_id=bank_id,
+                    session_id=session.session_id,
+                    exchange_index=exchange_index,
+                    request=request,
+                )
                 session_pending.append((exchange_index, request))
                 newly_retained_exchange_count += 1
 
@@ -4070,6 +4134,7 @@ class HindsightComparatorExecutor:
                     "consolidation_wait_timeout_seconds": HINDSIGHT_CONSOLIDATION_WAIT_TIMEOUT_SECONDS,
                     "retained_exchange_count": retained_exchange_count,
                     "newly_retained_exchange_count": newly_retained_exchange_count,
+                    "resumed_acknowledged_exchange_count": resumed_acknowledged_exchange_count,
                     "retain_metadata_contract": (
                         "memconflict_frozen_arm_c"
                         if context_label == "MemConflict"

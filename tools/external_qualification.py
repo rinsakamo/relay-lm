@@ -461,12 +461,16 @@ class DurableQuestionRun:
         self._completed: dict[str, dict[str, object]] = {}
         self._in_flight: dict[str, int] = {}
         self._participant_completed: dict[tuple[str, str], dict[str, object]] = {}
-        # A Hindsight retain is an external side effect.  These two indexes are
-        # deliberately journal-backed rather than process-local: a process can
-        # die after retain has become effective and before the participant
-        # result is committed.  An unresolved started record is therefore an
-        # ambiguity barrier, never a retry invitation.
+        # A Hindsight retain is an external side effect.  The journal separates
+        # a pre-call STARTED record from a post-response ACKNOWLEDGED record and
+        # the later CONSOLIDATION_VISIBLE/COMPLETED record.  This keeps the
+        # unavoidable crash window around the external call fail-closed while
+        # allowing an exact resume to observe already-acknowledged retains
+        # without issuing them twice.
         self._hindsight_history_preload_completed: dict[
+            str, dict[str, object]
+        ] = {}
+        self._hindsight_history_preload_acknowledged: dict[
             str, dict[str, object]
         ] = {}
         self._hindsight_history_preload_in_flight: dict[
@@ -737,6 +741,51 @@ class DurableQuestionRun:
             )
         return preload_key in self._hindsight_history_preload_completed
 
+    def hindsight_history_preload_acknowledged_request(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> dict[str, object] | None:
+        """Return the exact acknowledged retain request, if one is resumable.
+
+        Acknowledgement means the external retain call returned successfully
+        and that fact was fsynced locally.  Exact resume may continue observing
+        consolidation for that request, but must never issue the retain again.
+        """
+
+        self._require_in_flight(question_id)
+        normalized_request = _json_copy(dict(request), "Hindsight preload request")
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        if preload_key in self._hindsight_history_preload_in_flight:
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement is ambiguous; exact resume is fail-closed"
+            )
+        acknowledged = self._hindsight_history_preload_acknowledged.get(preload_key)
+        if acknowledged is None:
+            return None
+        stored_request = acknowledged.get("request")
+        if not isinstance(stored_request, Mapping):
+            raise ExactResumeError(
+                "acknowledged Hindsight history preload request is invalid"
+            )
+        if _canonical_json(
+            self._hindsight_history_preload_request_identity(stored_request)
+        ) != _canonical_json(
+            self._hindsight_history_preload_request_identity(normalized_request)
+        ):
+            raise ExactResumeError(
+                "Hindsight history preload request drifted after durable acknowledgement"
+            )
+        return _json_copy(dict(stored_request), "acknowledged Hindsight preload request")
+
     def begin_hindsight_history_preload(
         self,
         *,
@@ -778,6 +827,22 @@ class DurableQuestionRun:
                     "Hindsight history preload request drifted after durable completion"
                 )
             return False
+        acknowledged = self._hindsight_history_preload_acknowledged.get(preload_key)
+        if acknowledged is not None:
+            acknowledged_request = acknowledged.get("request")
+            if not isinstance(acknowledged_request, Mapping):
+                raise ExactResumeError(
+                    "acknowledged Hindsight history preload request is invalid"
+                )
+            if _canonical_json(
+                self._hindsight_history_preload_request_identity(acknowledged_request)
+            ) != _canonical_json(
+                self._hindsight_history_preload_request_identity(normalized_request)
+            ):
+                raise ExactResumeError(
+                    "Hindsight history preload request drifted after durable acknowledgement"
+                )
+            return False
         if preload_key in self._hindsight_history_preload_in_flight:
             raise ExactResumeError(
                 "Hindsight history preload acknowledgement is ambiguous; exact resume is fail-closed"
@@ -802,6 +867,67 @@ class DurableQuestionRun:
         self._hindsight_history_preload_in_flight[preload_key] = record
         self._write_state()
         return True
+
+    def acknowledge_hindsight_history_preload(
+        self,
+        *,
+        question_id: str,
+        bank_id: str,
+        session_id: str,
+        exchange_index: int,
+        request: Mapping[str, object],
+    ) -> None:
+        """Fsync a successful external retain response before consolidation wait."""
+
+        question = self._require_in_flight(question_id)
+        normalized_request = _json_copy(dict(request), "Hindsight preload request")
+        preload_key = self._hindsight_history_preload_key(
+            bank_id=bank_id,
+            session_id=session_id,
+            exchange_index=exchange_index,
+        )
+        completed = self._hindsight_history_preload_completed.get(preload_key)
+        if completed is not None:
+            completed_request = completed.get("request")
+            if not isinstance(completed_request, Mapping) or _canonical_json(
+                dict(completed_request)
+            ) != _canonical_json(normalized_request):
+                raise ExactResumeError(
+                    "completed Hindsight history preload request does not match"
+                )
+            return
+        existing = self._hindsight_history_preload_acknowledged.get(preload_key)
+        if existing is not None:
+            existing_request = existing.get("request")
+            if not isinstance(existing_request, Mapping) or _canonical_json(
+                dict(existing_request)
+            ) != _canonical_json(normalized_request):
+                raise ExactResumeError(
+                    "acknowledged Hindsight history preload request does not match"
+                )
+            return
+        started = self._hindsight_history_preload_in_flight.get(preload_key)
+        if started is None:
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement has no durable start record"
+            )
+        started_request = started.get("request")
+        if not isinstance(started_request, Mapping) or _canonical_json(
+            dict(started_request)
+        ) != _canonical_json(normalized_request):
+            raise ExactResumeError(
+                "Hindsight history preload acknowledgement request does not match its durable start"
+            )
+        acknowledged = dict(started)
+        acknowledged["event"] = "acknowledged"
+        acknowledged["question_id"] = question.question_id
+        acknowledged["content_fingerprint"] = question.content_fingerprint
+        acknowledged["session_id"] = question.session_id
+        acknowledged["attempt"] = self._in_flight[question_id]
+        self._append_line(self.root / "hindsight-history-preloads.jsonl", acknowledged)
+        self._hindsight_history_preload_acknowledged[preload_key] = acknowledged
+        del self._hindsight_history_preload_in_flight[preload_key]
+        self._write_state()
 
     def complete_hindsight_history_preload(
         self,
@@ -831,19 +957,19 @@ class DurableQuestionRun:
                     "completed Hindsight history preload request does not match"
                 )
             return
-        started = self._hindsight_history_preload_in_flight.get(preload_key)
-        if started is None:
+        acknowledged = self._hindsight_history_preload_acknowledged.get(preload_key)
+        if acknowledged is None:
             raise ExactResumeError(
-                "Hindsight history preload completion has no durable start record"
+                "Hindsight history preload completion has no durable acknowledgement"
             )
-        started_request = started.get("request")
-        if not isinstance(started_request, Mapping) or _canonical_json(
-            dict(started_request)
+        acknowledged_request = acknowledged.get("request")
+        if not isinstance(acknowledged_request, Mapping) or _canonical_json(
+            dict(acknowledged_request)
         ) != _canonical_json(normalized_request):
             raise ExactResumeError(
-                "Hindsight history preload completion request does not match its durable start"
+                "Hindsight history preload completion request does not match its durable acknowledgement"
             )
-        completed = dict(started)
+        completed = dict(acknowledged)
         completed["event"] = "completed"
         completed["question_id"] = question.question_id
         completed["content_fingerprint"] = question.content_fingerprint
@@ -851,13 +977,15 @@ class DurableQuestionRun:
         completed["attempt"] = self._in_flight[question_id]
         self._append_line(self.root / "hindsight-history-preloads.jsonl", completed)
         self._hindsight_history_preload_completed[preload_key] = completed
-        del self._hindsight_history_preload_in_flight[preload_key]
+        del self._hindsight_history_preload_acknowledged[preload_key]
         self._write_state()
+
     def hindsight_history_preload_counts(self) -> dict[str, int]:
         """Return journal counts for citable crash-boundary evidence."""
 
         return {
             "completed": len(self._hindsight_history_preload_completed),
+            "acknowledged": len(self._hindsight_history_preload_acknowledged),
             "in_flight": len(self._hindsight_history_preload_in_flight),
         }
 
@@ -1128,6 +1256,9 @@ class DurableQuestionRun:
             "hindsight_history_preload_completed_count": len(
                 self._hindsight_history_preload_completed
             ),
+            "hindsight_history_preload_acknowledged_count": len(
+                self._hindsight_history_preload_acknowledged
+            ),
             "hindsight_history_preload_in_flight_count": len(
                 self._hindsight_history_preload_in_flight
             ),
@@ -1205,11 +1336,13 @@ class DurableQuestionRun:
             self._participant_completed[key] = dict(record)
 
     def _load_hindsight_history_preloads(self) -> None:
-        """Replay the preload journal and reject every unresolved start.
+        """Replay the preload journal and reject only unresolved external-call ambiguity.
 
-        The rejection happens during ``resume`` before any participant hook is
-        called.  This is the required fail-closed behavior for the interval
-        between external Hindsight effectiveness and local acknowledgement.
+        A STARTED record has no proof that the external retain did or did not
+        take effect, so exact resume fails closed.  ACKNOWLEDGED records prove
+        that retain returned successfully and may resume consolidation
+        observation without reissuing the side effect.  Historical
+        STARTED->COMPLETED journals remain readable for already-finished runs.
         """
 
         for record in self._read_jsonl(self.root / "hindsight-history-preloads.jsonl"):
@@ -1217,7 +1350,7 @@ class DurableQuestionRun:
                 record, "Hindsight history preload"
             )
             event = record.get("event")
-            if event not in {"started", "completed"}:
+            if event not in {"started", "acknowledged", "completed"}:
                 raise ExactResumeError("Hindsight history preload event is invalid")
             preload_key = record.get("preload_key")
             if not isinstance(preload_key, str) or not preload_key:
@@ -1243,24 +1376,57 @@ class DurableQuestionRun:
             if preload_key != expected_key:
                 raise ExactResumeError("Hindsight history preload key does not match payload")
             if event == "started":
-                if preload_key in self._hindsight_history_preload_completed:
+                if (
+                    preload_key in self._hindsight_history_preload_completed
+                    or preload_key in self._hindsight_history_preload_acknowledged
+                ):
                     raise ExactResumeError(
-                        "Hindsight history preload was started after completion"
+                        "Hindsight history preload was started after acknowledgement/completion"
                     )
                 if preload_key in self._hindsight_history_preload_in_flight:
                     raise ExactResumeError(
                         "duplicate Hindsight history preload start is not resumable"
                     )
                 self._hindsight_history_preload_in_flight[preload_key] = dict(record)
-            else:
-                if preload_key not in self._hindsight_history_preload_in_flight:
+            elif event == "acknowledged":
+                started = self._hindsight_history_preload_in_flight.get(preload_key)
+                if started is None:
                     raise ExactResumeError(
-                        "Hindsight history preload completion has no start record"
+                        "Hindsight history preload acknowledgement has no start record"
+                    )
+                started_request = started.get("request")
+                if not isinstance(started_request, Mapping) or _canonical_json(
+                    dict(started_request)
+                ) != _canonical_json(dict(request)):
+                    raise ExactResumeError(
+                        "Hindsight history preload acknowledgement request does not match its start"
+                    )
+                self._hindsight_history_preload_acknowledged[preload_key] = dict(record)
+                del self._hindsight_history_preload_in_flight[preload_key]
+            else:
+                source = self._hindsight_history_preload_acknowledged.get(preload_key)
+                legacy_started = False
+                if source is None:
+                    # Backward compatibility for historical completed journals
+                    # written before the explicit acknowledgement state existed.
+                    source = self._hindsight_history_preload_in_flight.get(preload_key)
+                    legacy_started = source is not None
+                if source is None:
+                    raise ExactResumeError(
+                        "Hindsight history preload completion has no acknowledgement/start record"
+                    )
+                source_request = source.get("request")
+                if not isinstance(source_request, Mapping) or _canonical_json(
+                    dict(source_request)
+                ) != _canonical_json(dict(request)):
+                    raise ExactResumeError(
+                        "Hindsight history preload completion request does not match prior durable state"
                     )
                 self._hindsight_history_preload_completed[preload_key] = dict(record)
-                del self._hindsight_history_preload_in_flight[preload_key]
-            # Keep the local variable visibly tied to the durable identity
-            # validation above; no semantic action is permitted here.
+                if legacy_started:
+                    del self._hindsight_history_preload_in_flight[preload_key]
+                else:
+                    del self._hindsight_history_preload_acknowledged[preload_key]
             if question_id not in self._question_by_id:
                 raise ExactResumeError("Hindsight history preload question is unknown")
         if self._hindsight_history_preload_in_flight:
