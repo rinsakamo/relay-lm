@@ -73,10 +73,15 @@ def main():
             and "e2d2c0d6-gemma4-kv-request-admission.py" in source
             and "subprocess.Popen" not in source
         ),
+        "request_binding_recovery_is_explicit": (
+            "--request-binding-json" in source
+            and "measured_preflight_binding" in source
+            and "request binding inputs missing" in source
+        ),
         "bounded_rediscovery_is_explicit": (
             "--request-search-root" in source
             and "bounded_artifact_rediscovery" in source
-            and 'require(search_roots, "prior request reconciliation missing and no request search roots supplied")' in source
+            and "prior request reconciliation and request binding missing; no request search roots supplied" in source
         ),
         "no_runtime_execution_helpers": (
             "logical-prefix-resource-guard.py" not in source
