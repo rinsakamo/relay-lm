@@ -28,6 +28,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     HindsightLifecycleSpec,
@@ -113,6 +114,7 @@ def _derive_hindsight_lifecycle(
         "llm_supports_string_pattern",
         "retain_llm_reasoning_effort",
         "consolidation_llm_reasoning_effort",
+        "llm_max_concurrent",
     } & set(raw)
     if forbidden:
         raise CampaignCarriageError(
@@ -128,6 +130,7 @@ def _derive_hindsight_lifecycle(
     raw["consolidation_llm_reasoning_effort"] = (
         HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
     )
+    raw["llm_max_concurrent"] = HINDSIGHT_LLM_MAX_CONCURRENT
     return HindsightLifecycleSpec.from_mapping(raw)
 
 
