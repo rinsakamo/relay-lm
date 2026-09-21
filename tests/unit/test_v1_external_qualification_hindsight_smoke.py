@@ -250,6 +250,238 @@ def test_synthetic_smoke_is_repeatable_engineering_work_not_scientific_spend(
     assert receipt["scientific_spend"] == "NOT_OPENED"
 
 
+def test_current_host_source_runs_without_historical_descriptor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _FakeLifecycle.instances.clear()
+    health = SimpleNamespace(fingerprint="sha256:" + "a" * 64)
+    lifecycle_spec = _FakeLifecycleSpec(database_profile="diagnostic-owner")
+    llama_spec = SimpleNamespace(port=18097)
+    material = smoke.CurrentHostMaterial(
+        llama_cpp_root=(tmp_path / "llama.cpp").resolve(),
+        model_path=(tmp_path / "model.gguf").resolve(),
+        onnx_model_path=(tmp_path / "model.onnx").resolve(),
+        onnx_tokenizer_path=(tmp_path / "tokenizer").resolve(),
+        llama_port=18097,
+        hindsight_port=44367,
+    )
+    observed: dict[str, object] = {}
+
+    def derive(current, *, diagnostic_owner_id):
+        observed["material"] = current
+        observed["owner"] = diagnostic_owner_id
+        return llama_spec, lifecycle_spec, health
+
+    monkeypatch.setattr(smoke, "_derive_current_host_bindings", derive)
+    monkeypatch.setattr(smoke, "HindsightDeploymentSession", _FakeLifecycle)
+    monkeypatch.setattr(
+        smoke,
+        "verify_hindsight_health",
+        lambda expected, lifecycle: expected,
+    )
+    live = _FakeLiveSession()
+    monkeypatch.setattr(
+        smoke,
+        "start_llama_cpp_session",
+        lambda spec, evidence_root: live,
+    )
+    monkeypatch.setattr(
+        smoke,
+        "_llama_cpp_chat_smoke",
+        lambda spec: {
+            "endpoint": "/v1/chat/completions",
+            "status_code": 200,
+            "response_keys": ["choices"],
+            "choice_count": 1,
+        },
+    )
+
+    artifact_root = (tmp_path / "current-host-diagnostic").resolve()
+    result = smoke.run_synthetic_hindsight_smoke(
+        source_descriptor=None,
+        current_host_material=material,
+        diagnostic_owner_id="diagnostic-owner",
+        repo_root=tmp_path.resolve(),
+        artifact_root=artifact_root,
+    )
+
+    assert observed == {
+        "material": material,
+        "owner": "diagnostic-owner",
+    }
+    assert result["status"] == "NON_CITABLE_DIAGNOSTIC_PASS"
+    assert result["scientific_spend"] == "NOT_OPENED"
+    assert result["operational_source"]["mode"] == "current_host_material"
+    assert result["operational_source"]["model_path"] == str(
+        material.model_path
+    )
+    assert result["operational_source"]["model_sha256"] == (
+        smoke._DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256
+    )
+    assert result["operational_source"]["llm_max_concurrent"] == 1
+
+
+def test_synthetic_smoke_requires_exactly_one_operational_source(
+    tmp_path: Path,
+) -> None:
+    material = smoke.CurrentHostMaterial(
+        llama_cpp_root=(tmp_path / "llama.cpp").resolve(),
+        model_path=(tmp_path / "model.gguf").resolve(),
+        onnx_model_path=(tmp_path / "model.onnx").resolve(),
+        onnx_tokenizer_path=(tmp_path / "tokenizer").resolve(),
+        llama_port=18097,
+        hindsight_port=44367,
+    )
+    neither_root = (tmp_path / "neither").resolve()
+    with pytest.raises(
+        CampaignCarriageError,
+        match="requires exactly one operational source",
+    ):
+        smoke.run_synthetic_hindsight_smoke(
+            source_descriptor=None,
+            current_host_material=None,
+            diagnostic_owner_id="diagnostic-owner",
+            repo_root=tmp_path.resolve(),
+            artifact_root=neither_root,
+        )
+    assert not neither_root.exists()
+
+    both_root = (tmp_path / "both").resolve()
+    with pytest.raises(
+        CampaignCarriageError,
+        match="requires exactly one operational source",
+    ):
+        smoke.run_synthetic_hindsight_smoke(
+            source_descriptor={},
+            current_host_material=material,
+            diagnostic_owner_id="diagnostic-owner",
+            repo_root=tmp_path.resolve(),
+            artifact_root=both_root,
+        )
+    assert not both_root.exists()
+
+
+def test_current_host_binding_is_derived_from_repository_pins(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    material = smoke.CurrentHostMaterial(
+        llama_cpp_root=(tmp_path / "llama.cpp").resolve(),
+        model_path=(tmp_path / "model.gguf").resolve(),
+        onnx_model_path=(tmp_path / "model.onnx").resolve(),
+        onnx_tokenizer_path=(tmp_path / "tokenizer").resolve(),
+        llama_port=18097,
+        hindsight_port=44367,
+    )
+    captured: dict[str, dict[str, object]] = {}
+    monkeypatch.setattr(
+        smoke,
+        "_require_current_host_material",
+        lambda value: None,
+    )
+
+    def llama_from_mapping(raw):
+        captured["llama"] = dict(raw)
+        return SimpleNamespace(**raw)
+
+    def lifecycle_from_mapping(raw):
+        captured["lifecycle"] = dict(raw)
+        return SimpleNamespace(**raw)
+
+    def health_from_mapping(raw):
+        captured["health"] = dict(raw)
+        return SimpleNamespace(value=dict(raw))
+
+    monkeypatch.setattr(
+        smoke.LlamaCppLaunchSpec,
+        "from_mapping",
+        llama_from_mapping,
+    )
+    monkeypatch.setattr(
+        smoke.HindsightLifecycleSpec,
+        "from_mapping",
+        lifecycle_from_mapping,
+    )
+    monkeypatch.setattr(
+        smoke.HindsightHealthAttestation,
+        "from_mapping",
+        health_from_mapping,
+    )
+
+    _llama, lifecycle, _health = smoke._derive_current_host_bindings(
+        material,
+        diagnostic_owner_id="diag-owner",
+    )
+
+    assert captured["llama"]["upstream_revision"] == (
+        smoke._DIAGNOSTIC_LLAMA_CPP_REVISION
+    )
+    assert captured["llama"]["artifact_sha256"] == (
+        smoke._DIAGNOSTIC_LLAMA_CPP_MODEL_SHA256
+    )
+    assert captured["llama"]["context"] == 8192
+    assert captured["llama"]["slots"] == 1
+    assert captured["llama"]["gpu_layers"] == 999
+    assert captured["llama"]["expected_model_alias"] == str(
+        material.model_path
+    )
+
+    assert captured["lifecycle"]["runtime_python"] == str(
+        Path(smoke.sys.executable).resolve()
+    )
+    assert captured["lifecycle"]["runtime_version"] == "v0.10.0"
+    assert captured["lifecycle"]["source_revision"] == (
+        smoke._DIAGNOSTIC_HINDSIGHT_SOURCE_REVISION
+    )
+    assert captured["lifecycle"]["source_tree"] == (
+        smoke._DIAGNOSTIC_HINDSIGHT_SOURCE_TREE
+    )
+    assert captured["lifecycle"]["database_profile"] == "diag-owner"
+    assert captured["lifecycle"]["llm_max_concurrent"] == 1
+    assert captured["lifecycle"]["retain_max_completion_tokens"] == 4096
+    assert captured["lifecycle"]["embeddings_onnx_model_sha256"] == (
+        smoke._DIAGNOSTIC_HINDSIGHT_ONNX_SHA256
+    )
+    assert captured["lifecycle"]["embeddings_onnx_tokenizer_tree_sha256"] == (
+        smoke._DIAGNOSTIC_HINDSIGHT_TOKENIZER_TREE_SHA256
+    )
+    assert captured["lifecycle"]["package_wheel_sha256"] == (
+        smoke._DIAGNOSTIC_HINDSIGHT_WHEEL_SHA256
+    )
+    assert lifecycle.deployment_id.startswith(
+        "hindsight-v0.10.0-pg0-owner-"
+    )
+
+
+def test_current_host_cli_is_mutually_exclusive_with_source_descriptor(
+    tmp_path: Path,
+) -> None:
+    base = [
+        "--diagnostic-owner-id",
+        "diag-owner",
+        "--repo-root",
+        str(tmp_path.resolve()),
+        "--artifact-root",
+        str((tmp_path / "artifact").resolve()),
+    ]
+    parsed = smoke._parser().parse_args(
+        ["--current-host-material", *base]
+    )
+    assert parsed.current_host_material is True
+    assert parsed.source_descriptor is None
+
+    with pytest.raises(SystemExit):
+        smoke._parser().parse_args(
+            [
+                "--current-host-material",
+                "--source-descriptor",
+                str((tmp_path / "source.json").resolve()),
+                *base,
+            ]
+        )
+
+
 def test_post2986_stress_profile_reproduces_bounded_pressure_without_scientific_spend(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
