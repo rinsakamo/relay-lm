@@ -4,6 +4,11 @@ import hashlib
 import json
 from pathlib import Path
 
+PROVENANCE_FILES = (
+    "source-corpus.txt",
+    "tokenizer-request.json",
+    "tokenizer-response.json",
+)
 EXPECTED_FILES = (
     "warm.tokens.json",
     "target.tokens.json",
@@ -61,6 +66,65 @@ def main():
         files_meta = manifest.get("files")
         require(isinstance(files_meta, dict), "manifest files block missing")
 
+        provenance_raw = {}
+        for name in PROVENANCE_FILES:
+            path = args.fixture_dir / name
+            require(path.is_file(), f"fixture provenance file missing: {name}")
+            raw = path.read_bytes()
+            meta = files_meta.get(name)
+            require(isinstance(meta, dict), f"manifest entry missing: {name}")
+            observed = sha256_bytes(raw)
+            require(meta.get("sha256") == observed, f"manifest SHA mismatch: {name}")
+            require(meta.get("bytes") == len(raw), f"manifest byte count mismatch: {name}")
+            provenance_raw[name] = raw
+            evidence[name] = {
+                "path": str(path),
+                "sha256": observed,
+                "bytes": len(raw),
+            }
+
+        corpus_text = provenance_raw["source-corpus.txt"].decode("utf-8")
+        tokenizer_request = json.loads(provenance_raw["tokenizer-request.json"])
+        require(
+            tokenizer_request == {
+                "content": corpus_text,
+                "add_special": False,
+                "parse_special": False,
+                "with_pieces": False,
+            },
+            "tokenizer request/corpus/options mismatch",
+        )
+        tokenizer_response = json.loads(provenance_raw["tokenizer-response.json"])
+        response_tokens = tokenizer_response.get("tokens") if isinstance(tokenizer_response, dict) else tokenizer_response
+        require(
+            isinstance(response_tokens, list)
+            and all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in response_tokens),
+            "tokenizer response tokens invalid",
+        )
+
+        tokenizer_provenance = manifest.get("tokenizer_provenance")
+        require(isinstance(tokenizer_provenance, dict), "manifest tokenizer_provenance missing")
+        require(
+            tokenizer_provenance.get("corpus_sha256") == sha256_bytes(provenance_raw["source-corpus.txt"]),
+            "manifest corpus SHA mismatch",
+        )
+        require(
+            tokenizer_provenance.get("tokenizer_request_sha256") == sha256_bytes(provenance_raw["tokenizer-request.json"]),
+            "manifest tokenizer request SHA mismatch",
+        )
+        require(
+            tokenizer_provenance.get("tokenizer_response_sha256") == sha256_bytes(provenance_raw["tokenizer-response.json"]),
+            "manifest tokenizer response SHA mismatch",
+        )
+        require(
+            tokenizer_provenance.get("token_pool_len") == len(response_tokens),
+            "manifest token_pool_len mismatch",
+        )
+        require(tokenizer_provenance.get("endpoint") == "/tokenize", "manifest tokenizer endpoint mismatch")
+        require(tokenizer_provenance.get("add_special") is False, "manifest add_special mismatch")
+        require(tokenizer_provenance.get("parse_special") is False, "manifest parse_special mismatch")
+        require(tokenizer_provenance.get("with_pieces") is False, "manifest with_pieces mismatch")
+
         values = {}
         raw_files = {}
         for name in EXPECTED_FILES:
@@ -115,8 +179,10 @@ def main():
         evidence["manifest"] = {
             "path": str(args.fixture_dir / "manifest.json"),
             "sha256": sha256_bytes(manifest_raw),
-            "tokenizer_response_sha256": manifest.get("tokenizer_response", {}).get("sha256"),
-            "token_pool_len": manifest.get("tokenizer_response", {}).get("token_pool_len"),
+            "corpus_sha256": tokenizer_provenance.get("corpus_sha256"),
+            "tokenizer_request_sha256": tokenizer_provenance.get("tokenizer_request_sha256"),
+            "tokenizer_response_sha256": tokenizer_provenance.get("tokenizer_response_sha256"),
+            "token_pool_len": tokenizer_provenance.get("token_pool_len"),
             "target_suffix_source_offset": geometry.get("target_suffix_source_offset"),
         }
     except Exception as exc:
