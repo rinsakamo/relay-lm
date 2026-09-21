@@ -646,9 +646,7 @@ Must remain zero:
 
 Current repository authority at execution time always wins over snapshots in this document.
 
-## Current fixture-v2 measured route
-
-Historical statements above saying that no current measured execution authority existed describe earlier apparatus states and are not the current route.
+## Current fixture-v2 terminal route
 
 The historical request subject remains terminal:
 
@@ -658,33 +656,47 @@ The historical consumed measured authority remains terminal:
 
 `TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
 
-The current repository-owned request subject is fixture v2:
-
-`e2d2c0d6-gemma4-kv-fixture-v2-authority.md`
-
-with status:
+The repository-owned fixture-v2 subject remains durable:
 
 `FIXTURE_V2_COMMITTED`
 
-A distinct measured-attempt authority now exists:
+Its distinct measured-attempt authority has now been consumed and terminalized as:
 
-`e2d2c0d6-gemma4-kv-fixture-v2-measured-authority.md`
+`TERMINAL_CONSUMED_PREFIX_KV_GENERATION_DIFFERS`
 
-with required status:
+Measured relation:
 
-`QUALIFIED_FOR_ONE_FIXTURE_V2_MEASURED_ATTEMPT`
+```text
+W  = WR-P512
+R  = WR-R512
+W2 = WR2-P512
+C  = C-P512
 
-Authority generation:
+W == W2
+W == R
+W != C
+```
 
-`logical-prefix-kv-fixture-v2-measured-authority-20260922-f6b67141`
+This rules out retained-prefix mutation for the measured fixture-v2 subject, but static source inspection shows that W/W2 and C were produced under different prompt decode segmentation because SWA checkpoint splitting depends on total prompt length.
 
-Attempt identity:
+For warm length 883:
 
-`logical-prefix-kv-fixture-v2-20260922-f6b67141`
+```text
+first prompt decode = 371 tokens
+second prompt decode = 508 tokens
+logical position 511 is captured after the second decode
+```
 
-The only authorized measured entrypoint is:
+For cold target length 2927:
 
-`e2d2c0d6-gemma4-kv-fixture-v2-execute-once.py`
+```text
+first prompt decode = 512 tokens
+logical position 511 is captured after the first decode
+```
 
-No historical request runner/wrapper, historical pre-measured root, or consumed apparatus is authorized by this route.
+Therefore the current terminal result proves KV-generation-history dependence under the observed processing histories, not yet future-suffix dependence.
+
+No prior measured wrapper/runner is authorized for further execution.
+
+The next causal discriminator, if created under a distinct new authority, should equalize physical decode segmentation while preserving the identical logical prefix.
 
