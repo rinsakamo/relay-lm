@@ -44,6 +44,10 @@ def main():
                 direct_runner_runs.append(node.lineno)
 
     checks = {
+        "authority_generation_bound": (
+            wrapper.AUTHORITY_GENERATION
+            == "logical-prefix-kv-replacement-measured-authority-20260921-l0sha64"
+        ),
         "attempt_id_bound": (
             wrapper.ATTEMPT_ID
             == "logical-prefix-kv-replacement-20260921-30d3f94f"
