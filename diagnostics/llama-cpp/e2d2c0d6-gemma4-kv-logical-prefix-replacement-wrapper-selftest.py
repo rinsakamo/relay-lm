@@ -75,7 +75,7 @@ def main():
         "all_request_sha_bound": wrapper.EXPECTED_INPUTS == {
             "warm_tokens": "c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2",
             "target_tokens": "549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e",
-            "L0": "9120aed18e9aac20615cab2de00337eb9bf65edb7249015c97d3c41d881e38d",
+            "L0": "9120aed18e9aac20615cab2de00337eb9bf65edeb7249015c97d3c41d881e38d",
             "L1": "d4deaa365324c5ca3c42eba4e6db9defe957a1cf06bbc08e9d3a01ba94ec0d1f",
             "LC": "284630a2f90e364b5dd336d3d9fadc59ddd0fa072fbac7cc825200bef2e7af52",
         },
