@@ -244,6 +244,99 @@ Therefore even a successful prepare result is **not** authority to send replacem
 
 A pre-measured preparation failure before replacement L0 submission does not consume the replacement measured attempt. A build-stage CUDA discovery/configuration failure is apparatus-only when no model/server/generation boundary has been crossed. After deterministic apparatus repair, any subsequent preparation must use a fresh output root and a fresh preparation transaction; it is not a resume of the failed preparation.
 
+## Observed pre-measured qualification
+
+A fresh pre-measured preparation completed successfully under diagnostic commit:
+
+`a9b69daae1ca6efc641a044db45f93287759dfb8`
+
+with terminal:
+
+`LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY`
+
+Observed qualified artifact identity:
+
+```text
+premeasured evidence root = /tmp/relaylm-logical-prefix-premeasured.4BYIKs/output
+llama.cpp source = e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d
+llama.cpp tree = 6d39fd93dc91fc0a4bc86dffe9782d4f26318004
+CUDA root = /usr/local/cuda-12.8
+nvcc = /usr/local/cuda-12.8/bin/nvcc
+nvcc = CUDA 12.8 / V12.8.93
+CUDA version.json sha256 = 7c875ac3db43717d43da5d97d23c2b6b005f1afedf659f5191338b579fd0c764
+aligned patch sha256 = cef233d776686ea36f03174b0c1d729545e2356f7009d613df726bcaf16a856a
+logical-prefix patch sha256 = caad4731d82659468624e73803b6de6c3b8ac081d44350b8f71ae2d0600e1f36
+combined applied.patch sha256 = d8d251727e5f3aa9a2d38434c124d0feb8748024f78cce5d4ec185bd8266fc7e
+llama-server sha256 = 30d3f94f7335821a74828c243ab1dd315df9dc7a4c6df0cdff2f3ce1629dbaff
+libllama-server-impl.so sha256 = e6003c1e1a1c1c16dc5a09da485517eec6b6010d17f198acd34981075c14a64c
+libllama.so resolved sha256 = 53228c024c04bd4a1acefa03d9ddc602cdfc78b5214d7fb7da13de458d2a2965
+model sha256 = c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed
+canonical startup argv sha256 = 9294cc601e6be0511d92caa7e560b1f9a2843147b6b876a9c8896ae7822ab6fd
+base KV = 8192
+SWA KV = 1536
+```
+
+Binary provenance terminal:
+
+`LOGICAL_PREFIX_BINARY_PREFLIGHT_PASS`
+
+Startup terminal:
+
+`LOGICAL_PREFIX_STARTUP_QUALIFIED`
+
+The canonical diagnostic GPU flock was acquired and released cleanly, with exactly two idle observations and zero campaign queue/receipt/spend mutation.
+
+Counters remained:
+
+```text
+generated_requests = 0
+measured_l0_submitted = false
+measured_attempt_consumed = false
+measured_execution_authorized_by_this_result = false
+```
+
+This observed qualification binds the replacement physical artifact but is still not measured execution authority.
+
+## Request-identity reconciliation gate
+
+Before creating the distinct replacement measured-attempt authority, freeze the exact raw measured request identities.
+
+Already frozen:
+
+```text
+warm token file sha256 = c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2
+target token file sha256 = 549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e
+warm length = 883
+target length = 2927
+LCP = 865
+```
+
+Still required before measured authority:
+
+- exact raw L0 request SHA256;
+- exact raw L1 request SHA256;
+- exact raw LC request SHA256;
+- deterministic proof that L0 is the frozen warm request, L1/LC are the frozen target request, and L1/LC differ only by `cache_prompt`;
+- L0R remains defined as the exact L0 request bytes sent once on the fresh WR2 server.
+
+Use only:
+
+`e2d2c0d6-gemma4-kv-logical-prefix-request-identity-reconcile.py`
+
+for this zero-GPU reconciliation.
+
+Required terminal:
+
+`LOGICAL_PREFIX_REQUEST_IDENTITY_RECONCILED`
+
+That terminal explicitly does not authorize measured execution. If request identity is missing or ambiguous, stop with zero model/server/generation calls.
+
+The static replacement measured runner:
+
+`e2d2c0d6-gemma4-kv-logical-prefix-replacement-measured-run.py`
+
+and its contract self-test are preparation artifacts only until this request-identity gate is reconciled into a fresh measured-attempt authority.
+
 ## Replacement measured attempt boundary
 
 This authority prepares the replacement apparatus but does **not** itself authorize an immediate measured rerun of the consumed attempt.
