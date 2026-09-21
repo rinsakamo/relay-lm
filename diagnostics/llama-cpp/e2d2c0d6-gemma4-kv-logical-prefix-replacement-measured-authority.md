@@ -6,6 +6,18 @@ Diagnostic only. This authority is independent of the RelayLM v1 scientific camp
 
 `QUALIFIED_FOR_ONE_REPLACEMENT_MEASURED_ATTEMPT`
 
+Authority generation:
+
+`logical-prefix-kv-replacement-measured-authority-20260921-l0sha64`
+
+This generation supersedes the prior authority at diagnostic commit `6f180d2ee4f5f2a11a9b05b082e66791c010d045`, which was invalid before execution because its L0 SHA256 constant was malformed at 63 hexadecimal characters. Under that invalid generation: wrapper invocations = 0, measured runner invocations = 0, server lifetimes = 0, requests submitted = 0, L0 submitted = false, measured attempt consumed = false.
+
+The authoritative L0 raw request SHA256 is the 64-character reconciliation identity:
+
+`9120aed18e9aac20615cab2de00337eb9bf65edeb7249015c97d3c41d881e38d`
+
+The superseded generation MUST NOT be executed or retried.
+
 Attempt identity:
 
 `logical-prefix-kv-replacement-20260921-30d3f94f`
