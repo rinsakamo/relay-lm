@@ -484,6 +484,7 @@ def _runtime_identity(plan: dict[str, object], owner_id: str) -> dict[str, objec
         "llm_supports_string_pattern",
         "retain_llm_reasoning_effort",
         "consolidation_llm_reasoning_effort",
+        "llm_max_concurrent",
         "embeddings_provider",
         "reranker_provider",
         "embeddings_onnx_model_sha256",
