@@ -95,7 +95,7 @@ Before any replacement measured generation:
 5. build `llama-server`;
 6. record exact source/tree, patch SHA256 values, compiler/build identity, and new binary SHA256;
 7. run `e2d2c0d6-gemma4-kv-logical-prefix-binary-preflight.py` and require `LOGICAL_PREFIX_BINARY_PREFLIGHT_PASS`;
-8. prove the built binary contains the replacement instrumentation strings and does not retain the old generated-prefix failure marker;
+8. prove the built runtime artifact closure contains the replacement instrumentation strings in their owning components and does not retain the old generated-prefix failure marker anywhere in that closure;
 9. run only non-generative startup qualification first.
 
 Do not rewrite any runner's expected binary SHA until the new binary SHA has been observed and reconciled.
@@ -140,8 +140,13 @@ It records:
 - frozen model SHA256;
 - logical-prefix patch SHA256;
 - aligned-reuse patch SHA256;
-- presence of required replacement instrumentation markers;
-- absence of the old `generated-prefix dump` failure marker.
+- the runtime artifact closure rooted at the built `llama-server`;
+- canonical/resolved paths and SHA256 for the marker-owning sibling libraries;
+- the three `server-context.cpp` replacement markers in `libllama-server-impl.so`;
+- the two `llama-context.cpp` replacement markers in `libllama.so`;
+- absence of the old `generated-prefix dump` failure marker from `llama-server`, `libllama-server-impl.so`, and `libllama.so`.
+
+The executable alone is not the marker owner under the frozen build graph: `llama-server` is a thin entrypoint, `server-context.cpp` is incorporated into `llama-server-impl`, and `llama-context.cpp` is incorporated into `llama`.
 
 This is non-generative and does not consume a measured replacement attempt.
 
@@ -245,7 +250,7 @@ This authority prepares the replacement apparatus but does **not** itself author
 
 A subsequent replacement measured handoff must explicitly bind:
 
-- the new binary SHA256;
+- the new server SHA256 plus the marker-owning runtime-library SHA256 identities;
 - exact applied patch SHA256 values;
 - non-generative startup qualification PASS;
 - frozen model/request/token identities;
