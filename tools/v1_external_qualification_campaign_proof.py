@@ -34,6 +34,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     CampaignCarriageError,
@@ -523,6 +524,10 @@ def prepare_static_proof(
         raise CampaignProofError(
             "fresh owner Hindsight consolidation reasoning policy was not repository-derived"
         )
+    if lifecycle.get("llm_max_concurrent") != HINDSIGHT_LLM_MAX_CONCURRENT:
+        raise CampaignProofError(
+            "fresh owner Hindsight LLM concurrency was not repository-derived"
+        )
     if expected_deployment == stale_deployment or owner_id == stale_profile:
         raise CampaignProofError("fresh owner retained stale owner-local identity")
 
@@ -662,6 +667,7 @@ def _assert_runtime_identity(
         "consolidation_llm_reasoning_effort": lifecycle.get(
             "consolidation_llm_reasoning_effort"
         ),
+        "llm_max_concurrent": lifecycle.get("llm_max_concurrent"),
         "embeddings_provider": lifecycle.get("embeddings_provider"),
         "reranker_provider": lifecycle.get("reranker_provider"),
         "embeddings_onnx_model_sha256": lifecycle.get("embeddings_onnx_model_sha256"),
