@@ -4,7 +4,7 @@ Diagnostic only. This authority prepares a new derived cold-control request. It 
 
 ## Status
 
-`SEGMENTATION_CONTROL_PREPARATION_REQUIRED`
+`SEGMENTATION_CONTROL_COMMITTED`
 
 ## Parent terminal result
 
@@ -218,6 +218,98 @@ Required successful terminal:
 `LOGICAL_PREFIX_SEGMENTATION_CONTROL_COMMITTED`
 
 Success still does not authorize GPU execution.
+
+## Committed control identity
+
+Control commit:
+
+`ccf9e78a89d170ae43e6ccfa6aa0788bd9a6cacc`
+
+Commit tree:
+
+`023e797dc6c7357a8465f919973d6aa10f26772b`
+
+Control subtree:
+
+`ac26ba25c3b88cbd9586ec009eeefe66004e2cb5`
+
+Repository path:
+
+`diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2-segmentation-control/`
+
+Fresh remote read-back confirms exactly three files:
+
+```text
+C883.tokens.json
+C883.request.json
+manifest.json
+```
+
+SHA256 identities:
+
+```text
+C883.tokens.json =
+1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92
+
+C883.request.json =
+1e490f609ac0b844521784cd4603ea79a9c5ab0b199117e4395c4a8cf2efa47c
+
+manifest.json =
+aa23a149d9d54137f8a455034c5048c8b7d8e03a4d12d3f33000c66aece8b86b
+```
+
+Git blob identities:
+
+```text
+C883.tokens.json =
+1d313fa510cb75465380646fc26f63811c3cb683
+
+C883.request.json =
+b2bfbc61558b7158394693c2df29de31af35d794
+
+manifest.json =
+39a230ddaa21e5c13dc80d9707c8f71c1bd8d476
+```
+
+Fresh semantic read-back confirms:
+
+```text
+len(C883) = 883
+LCP(warm, C883) = 865
+cache_prompt = false
+n_predict = 1
+temperature = 0
+stream = false
+n_probs = 20
+expected segmentation = 371 -> 508 -> 4
+logical position 511 decode ordinal = 2
+```
+
+This committed control is now the sole authority for the segmentation-controlled cold request.
+
+The preparation transaction was zero-build, zero-model, zero-server, zero-GPU, zero-generation, zero-L0, and did not mutate v1 or the scientific campaign.
+
+## Next allowed transition
+
+No prior measured attempt may be replayed.
+
+The next experiment requires a distinct fresh measured subject comparing:
+
+```text
+fresh W883 P512
+vs
+fresh C883 P512
+```
+
+under one fresh qualified physical apparatus.
+
+Both arms must use total prompt length 883 and therefore the same expected checkpoint-driven segmentation:
+
+```text
+371 -> 508 -> 4
+```
+
+Before any measured authority is created, management must prepare a new two-point runner/wrapper and obtain a fresh non-generative pre-measured qualification for that apparatus.
 
 ## After durable control commit
 
