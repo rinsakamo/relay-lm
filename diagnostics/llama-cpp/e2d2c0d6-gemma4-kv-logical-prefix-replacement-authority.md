@@ -432,6 +432,79 @@ Only after a new `LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY` result may manag
 
 The frozen request identities may be reused only after fresh read-back/revalidation of their exact raw SHA256 values; they are not regenerated or reconstructed.
 
+## Observed post-repair pre-measured qualification pending exact reconciliation
+
+A fresh post-repair preparation has now reported:
+
+`LOGICAL_PREFIX_REPLACEMENT_PREMEASURED_READY`
+
+from:
+
+`/tmp/relaylm-logical-prefix-premeasured.d3wSLc/output`
+
+The reported run remained generation-free and L0-free, used the repaired logical-prefix dump instrumentation, produced a new server distinct from the consumed `30d3f94f...` apparatus, passed binary provenance, passed non-generative startup qualification, and cleanly acquired/released the canonical diagnostic GPU flock with exactly two idle observations.
+
+During that run the protected v1 lane independently advanced via merged PR #3008 to:
+
+```text
+v1 head = 5461d0c6a134e2491cf4b07a36aa654389f9fe08
+v1 tree = d902268113fe455c971e7a2e3e44259dfbb25178
+```
+
+PR #3008 concerns Hindsight retain acknowledgement durability and single-slot scheduling in the v1 scientific apparatus. It does not itself authorize, invalidate, or mutate this diagnostic llama.cpp apparatus. Current repository authority at execution time still wins.
+
+The handoff report supplied abbreviated hashes for the newly built server/runtime libraries/patch. Therefore the report is not yet sufficient to mint a new measured-attempt authority.
+
+Before any new measured authority is created, perform one zero-GPU exact reconciliation with:
+
+`e2d2c0d6-gemma4-kv-logical-prefix-post-repair-reconcile.py`
+
+and require its contract self-test:
+
+`e2d2c0d6-gemma4-kv-logical-prefix-post-repair-reconcile-selftest.py`
+
+Required self-test terminal:
+
+`LOGICAL_PREFIX_POST_REPAIR_RECONCILE_SELFTEST_PASS`
+
+Required reconciliation terminal:
+
+`LOGICAL_PREFIX_POST_REPAIR_RECONCILED`
+
+The reconciliation must bind, with complete 64-hex identities:
+
+- repaired logical-prefix patch SHA256;
+- aligned-reuse patch SHA256;
+- combined applied.patch SHA256;
+- new llama-server SHA256;
+- new libllama-server-impl.so SHA256;
+- new libllama.so SHA256;
+- frozen model SHA256;
+- exact startup canonical argv SHA256;
+- base/SWA geometry;
+- exact resource-guard evidence;
+- exact two idle observations.
+
+It must also freshly re-read and SHA256-verify the existing raw request artifacts from the prior request-reconciliation root and rerun deterministic request admission, without regenerating or reconstructing any request.
+
+The previously reconciled request identities remain expected:
+
+```text
+warm tokens = c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2
+target tokens = 549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e
+L0 = 9120aed18e9aac20615cab2de00337eb9bf65edeb7249015c97d3c41d881e38d
+L1 = d4deaa365324c5ca3c42eba4e6db9defe957a1cf06bbc08e9d3a01ba94ec0d1f
+LC = 284630a2f90e364b5dd336d3d9fadc59ddd0fa072fbac7cc825200bef2e7af52
+```
+
+The zero-GPU reconciliation result explicitly does not authorize measured execution.
+
+Until that reconciliation is complete:
+
+- no current measured execution authority exists for the repaired apparatus;
+- no L0/L1/L0R/LC may be sent;
+- the consumed measured authority remains terminal and immutable.
+
 ## Campaign separation
 
 This remains independent of the RelayLM v1 scientific campaign.
