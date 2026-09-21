@@ -29,8 +29,8 @@ Fresh repository authority at execution time always wins over snapshots in this 
 ## Fresh repository snapshot at authoring
 
 ```text
-diagnostic branch head = e73f8b5bbccb4574462089ca64604123148cc1fa
-diagnostic tree = 158609a6368fd72bab40fa8736776c8b6330cc06
+diagnostic code head before this authority commit = 6dee1e952afe696a26592446110db22e6ff8543a
+diagnostic code tree = 30bbc36a7dc830d6f18ae4d822ef74d7f42380fa
 v1 head = 959491d0c36dcfc7d6401c3aa8a6fdab39107515
 v1 tree = d36b2fcf6da166578dbcfc64056649ccf97b0c2b
 open PRs targeting v1 = 0
