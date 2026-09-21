@@ -515,7 +515,7 @@ Current measured authority:
 
 Required status:
 
-`QUALIFIED_FOR_ONE_FIXTURE_V2_MEASURED_ATTEMPT`
+`TERMINAL_CONSUMED_PREFIX_KV_GENERATION_DIFFERS`
 
 Authority generation:
 
@@ -547,13 +547,9 @@ base KV = 8192
 SWA KV = 1536
 ```
 
-The only authorized measured entrypoint is:
-
-`e2d2c0d6-gemma4-kv-fixture-v2-execute-once.py`
-
-This fixture authority does not itself authorize direct execution. The measured-attempt authority above is the execution authority.
+The measured attempt has been consumed. `e2d2c0d6-gemma4-kv-fixture-v2-execute-once.py` is no longer authorized under that authority.
 
 The historical request subject remains `REQUEST_PROVENANCE_UNRECOVERABLE`, and the historical consumed measured authority remains terminal.
 
-No other pre-measured qualification, request regeneration, historical runner invocation, or alternate measured path is authorized before this measured authority is resolved.
+The measured authority is resolved and terminal. Any further experiment requires a distinct new authority and must not replay this attempt.
 
