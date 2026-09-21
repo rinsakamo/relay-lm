@@ -131,13 +131,28 @@ def _sha256_file(path: Path) -> str:
 
 
 def _sha256_file_tree(path: Path) -> str:
-    entries = [
-        {
-            "path": child.relative_to(path).as_posix(),
-            "sha256": _sha256_file(child),
-        }
-        for child in sorted(item for item in path.rglob("*") if item.is_file())
-    ]
+    if not path.is_dir():
+        raise CampaignCarriageError(
+            f"diagnostic tokenizer path is not a directory: {path}"
+        )
+    entries: list[dict[str, str]] = []
+    try:
+        children = sorted(item for item in path.rglob("*") if item.is_file())
+    except OSError as exc:
+        raise CampaignCarriageError(
+            f"cannot enumerate diagnostic tokenizer path {path}: {exc}"
+        ) from exc
+    for child in children:
+        if child.is_symlink():
+            raise CampaignCarriageError(
+                f"diagnostic tokenizer path contains a symlink: {child}"
+            )
+        entries.append(
+            {
+                "path": child.relative_to(path).as_posix(),
+                "sha256": _sha256_file(child),
+            }
+        )
     if not entries:
         raise CampaignCarriageError(
             f"diagnostic tokenizer path is empty: {path}"
