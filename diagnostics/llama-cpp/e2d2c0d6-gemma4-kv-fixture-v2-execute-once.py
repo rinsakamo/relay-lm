@@ -10,6 +10,7 @@ AUTHORITY_GENERATION = "logical-prefix-kv-fixture-v2-measured-authority-20260922
 ATTEMPT_ID = "logical-prefix-kv-fixture-v2-20260922-f6b67141"
 PREMEASURED_ROOT = Path("/tmp/relaylm-kv-v2-premeasured.kq8VQ5/output")
 FIXTURE_REPO_PATH = "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2"
+EXPECTED_FIXTURE_COMMIT = "58d3c1e9b8cf973648be1aeb8a8b12429a69d088"
 
 EXPECTED_SOURCE_HEAD = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
 EXPECTED_SOURCE_TREE = "6d39fd93dc91fc0a4bc86dffe9782d4f26318004"
@@ -277,6 +278,28 @@ def validate_fixture_checkout(here: Path, preflight_root: Path):
     fixture_dir = repo_root / FIXTURE_REPO_PATH
     require(fixture_dir.is_dir(), f"fixture directory missing: {fixture_dir}")
 
+    ancestor = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "merge-base",
+            "--is-ancestor",
+            EXPECTED_FIXTURE_COMMIT,
+            "HEAD",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    (preflight_root / "fixture-commit-ancestor.stdout.txt").write_text(
+        ancestor.stdout, encoding="utf-8"
+    )
+    (preflight_root / "fixture-commit-ancestor.stderr.txt").write_text(
+        ancestor.stderr, encoding="utf-8"
+    )
+    require_equal(ancestor.returncode, 0, "fixture commit ancestry")
+
     git = subprocess.run(
         [
             "git",
@@ -319,6 +342,7 @@ def validate_fixture_checkout(here: Path, preflight_root: Path):
     return {
         "repo_root": str(repo_root),
         "fixture_directory": str(fixture_dir),
+        "fixture_commit": EXPECTED_FIXTURE_COMMIT,
         "fixture_subtree": EXPECTED_FIXTURE_SUBTREE,
         "admission": admitted,
     }
