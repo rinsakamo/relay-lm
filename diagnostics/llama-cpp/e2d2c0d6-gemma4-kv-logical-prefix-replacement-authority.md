@@ -543,6 +543,50 @@ This correction does not alter the reconciliation helper or any physical/runtime
 
 A new zero-GPU reconciliation transaction may be attempted only from fresh repository authority and a fresh non-existing reconciliation output root. It is not a retry of a consumed measured attempt because the prior reconciliation helper invocation count was zero.
 
+## Post-repair reconciliation input-location correction
+
+A subsequent zero-GPU reconciliation transaction passed static compile and the corrected reconciliation self-test, then stopped inside the reconciliation helper before any request admission because its supplied pre-measured root was misspelled and the historical request-reconciliation root no longer existed.
+
+Observed supplied pre-measured root:
+
+`/tmp/relaylm-logical-prefix-premeasured.d3wSL6/output`
+
+Correct qualified pre-measured root:
+
+`/tmp/relaylm-logical-prefix-premeasured.d3wSLc/output`
+
+The final character is lowercase `c`, not digit `6`.
+
+The historical request-reconciliation root:
+
+`/tmp/relaylm-logical-prefix-request-id.JWuNTY/reconciliation`
+
+was also absent at the time of that transaction.
+
+The transaction terminalized:
+
+`LOGICAL_PREFIX_POST_REPAIR_NOT_RECONCILED`
+
+with zero model loads, zero server startups, zero GPU runtime, zero generation, zero measured L0, and no measured authority creation. It does not consume the repaired apparatus or authorize any measured retry.
+
+The post-repair reconciliation helper now supports three explicit request-provenance modes, in priority order:
+
+1. an existing prior request-reconciliation root;
+2. an existing measured preflight `bound-identity.json` containing the original raw request paths and SHA256 identities;
+3. explicitly supplied bounded search roots using the repository-owned artifact locator.
+
+The known consumed measured preflight binding is:
+
+`/tmp/relaylm-logical-prefix-preflight.enkGnB/bound-identity.json`
+
+When present, it is preferred over filesystem rediscovery. Its request paths must be treated only as provenance pointers; each pointed raw file must still exist and must fresh-hash to the frozen expected SHA256 before request admission is rerun.
+
+Only if both the prior reconciliation root and measured preflight binding are absent may bounded artifact rediscovery be used. Search roots must be explicitly supplied; the helper does not implicitly scan all of `/tmp`.
+
+All paths converge on the same fixed request SHA identities and require `REQUEST_ADMISSION_PASS`. No request may be regenerated or reconstructed.
+
+Current corrected helper/self-test add only zero-GPU request-provenance recovery. They do not add any model/server/guard/measured runtime transition.
+
 ## Campaign separation
 
 This remains independent of the RelayLM v1 scientific campaign.
