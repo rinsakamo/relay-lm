@@ -80,6 +80,15 @@ def main():
 
     generated_code = without_cpp_line_comments(generated)
 
+    added_code = "\n".join(
+        line[1:]
+        for line in text.splitlines()
+        if line.startswith("+") and not line.startswith("+++")
+    )
+    doubled_tab_escape = "\\\\t"
+    doubled_newline_escape = "\\\\n"
+    doubled_nul_escape = "\\\\0"
+
     checks = {
         "hunk_header_detector_accepts_valid_header": unified_diff_hunk_counts_match(
             "diff --git a/x b/x\n"
@@ -125,6 +134,20 @@ def main():
         "dump_requires_exact_row_count": "rows.size() != (size_t) (p1 - p0)" in text,
         "dump_requires_contiguous_positions": "rows[i].first != p0 + (llama_pos) i" in text,
         "dump_refuses_overwrite": "refusing to overwrite existing diagnostic dump" in text,
+        "metadata_writer_has_no_double_tab_escape": doubled_tab_escape not in added_code,
+        "metadata_writer_has_no_double_newline_escape": doubled_newline_escape not in added_code,
+        "diagnostic_char_literals_have_no_double_nul_escape": doubled_nul_escape not in added_code,
+        "cells_header_uses_real_cxx_escapes": (
+            'out << "cache\\tstream\\thead\\tkv_size\\tv_trans\\tposition\\tcell\\n";'
+            in added_code
+        ),
+        "manifest_header_uses_real_cxx_escapes": (
+            'out << "cache\\tlayer\\tkind\\ttype\\trow_bytes\\trows\\n";'
+            in added_code
+        ),
+        "row_writer_uses_real_cxx_char_escapes": (
+            "<< '\\t'" in added_code and "<< '\\n';" in added_code
+        ),
     }
 
     errors = [name for name, ok in checks.items() if not ok]
