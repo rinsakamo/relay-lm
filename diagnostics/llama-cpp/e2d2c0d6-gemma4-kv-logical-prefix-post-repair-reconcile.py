@@ -276,7 +276,7 @@ def _validate_selected_requests(selected, out_root: Path, here: Path, provenance
     }
 
 
-def revalidate_requests(prior_root, search_roots, out_root: Path, here: Path):
+def revalidate_requests(prior_root, binding_json, search_roots, out_root: Path, here: Path):
     if prior_root is not None and (prior_root / "terminal.json").is_file():
         prior = load_json(prior_root / "terminal.json")
         require_equal(
@@ -294,7 +294,21 @@ def revalidate_requests(prior_root, search_roots, out_root: Path, here: Path):
             },
         )
 
-    require(search_roots, "prior request reconciliation missing and no request search roots supplied")
+    if binding_json is not None and binding_json.is_file():
+        binding = load_json(binding_json)
+        inputs = binding.get("inputs")
+        require(isinstance(inputs, dict), "request binding inputs missing")
+        return _validate_selected_requests(
+            inputs,
+            out_root,
+            here,
+            {
+                "mode": "measured_preflight_binding",
+                "binding_json": str(binding_json),
+            },
+        )
+
+    require(search_roots, "prior request reconciliation and request binding missing; no request search roots supplied")
     locator = here / "e2d2c0d6-gemma4-kv-artifact-locator.py"
     require(locator.is_file(), "artifact locator helper missing")
     locator_out = out_root / "artifact-locator.json"
@@ -329,6 +343,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--premeasured-root", type=Path, required=True)
     ap.add_argument("--prior-request-reconciliation-root", type=Path)
+    ap.add_argument("--request-binding-json", type=Path)
     ap.add_argument("--request-search-root", action="append", type=Path, default=[])
     ap.add_argument("--out-root", type=Path, required=True)
     args = ap.parse_args()
@@ -342,6 +357,7 @@ def main():
         apparatus = validate_premeasured(args.premeasured_root, here)
         requests = revalidate_requests(
             args.prior_request_reconciliation_root,
+            args.request_binding_json,
             args.request_search_root,
             args.out_root,
             here,
