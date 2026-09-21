@@ -274,15 +274,21 @@ exchange carries the frozen harness metadata fields `retained_at`,
 `message_count`, `turn_index`, and `session_date`; Hindsight v0.10.0 includes
 that metadata in fact extraction, so it is semantic input rather than
 provenance-only decoration. The exact materialized retain request is fsynced in
-the repository-owned preload journal before the external sync retain. A
-completed logical exchange is recognized before a later question materializes
-another wall-clock `retained_at`; an unresolved started record remains an
-exact-resume ambiguity barrier.
+the repository-owned preload journal before the external sync retain. After the
+external retain returns successfully, a distinct `acknowledged` event is fsynced
+before any consolidation wait. A completed logical exchange is recognized
+before a later question materializes another wall-clock `retained_at`; an
+unresolved `started` record remains an exact-resume ambiguity barrier, while
+an `acknowledged` record may resume only consolidation observation and must
+never reissue retain.
 
-Consolidation visibility is scoped per newly retained history session: snapshot
-the bank’s pre-existing consolidation work, retain that session’s exchanges,
-wait for the new work to become terminal/visible, durably acknowledge those
-exact requests, then advance to the next session. Recall is observation-only
+Consolidation visibility is scoped per history session: classify any durably
+acknowledged retains first, snapshot the bank's consolidation work, retain only
+new exchanges, fsync their successful acknowledgements, wait for the relevant
+work to become terminal/visible, durably mark those exact requests completed,
+then advance to the next session. On exact resume, acknowledged work is observed
+from the isolated owner/axis bank rather than excluded as pre-existing work.
+Recall is observation-only
 with the frozen budget/max-token/preference/query-time condition before the
 common answer-model call. The bounded LongMemEval knowledge-update axis uses
 the same ordered timestamped append/retrieval boundary but does not inherit
