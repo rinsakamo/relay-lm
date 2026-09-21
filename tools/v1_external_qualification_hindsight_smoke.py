@@ -14,6 +14,7 @@ import argparse
 import json
 from collections.abc import Mapping
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,12 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HindsightHealthAttestation,
     HindsightHistorySession,
     HindsightLifecycleSpec,
+    HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
+    HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
+    HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
+    HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
     LlamaCppLaunchSpec,
     LiveLaunchSession,
     _hindsight_axis_bank_id,
@@ -41,6 +48,9 @@ from tools.v1_external_qualification_synthetic_capture import (
 
 SMOKE_TARGET = "v1:hindsight-comparator-synthetic-smoke"
 SMOKE_FORMAT_VERSION = 1
+_STRESS_PROFILES = {"single", "post2986"}
+_POST2986_WARMUP_EXCHANGES = 40
+_POST2986_STRESS_EXCHANGES = 45
 _SYNTHETIC_SESSION_ID = "synthetic-session-0001"
 _SYNTHETIC_TIMESTAMP = "2025-01-02T00:00:00+00:00"
 _SYNTHETIC_QUERY_TIMESTAMP = "2025-01-02T12:00:00+00:00"
@@ -57,6 +67,79 @@ _SYNTHETIC_ITEMS: tuple[Mapping[str, str | None], ...] = (
         "timestamp": _SYNTHETIC_TIMESTAMP,
     },
 )
+
+
+def _synthetic_stress_session(
+    *,
+    session_id: str,
+    exchange_count: int,
+    offset: int,
+    include_copper_fact: bool,
+) -> HindsightHistorySession:
+    if exchange_count <= 0:
+        raise CampaignCarriageError("synthetic stress exchange_count must be positive")
+    base = datetime(2025, 1, 2, tzinfo=timezone.utc)
+    items: list[Mapping[str, str | None]] = []
+    for index in range(exchange_count):
+        ordinal = offset + index
+        timestamp = (base + timedelta(minutes=ordinal)).isoformat()
+        if include_copper_fact and index == 0:
+            user_content = "The copper token is stored in drawer seven."
+            assistant_content = "Understood; the copper token is in drawer seven."
+        else:
+            user_content = (
+                f"Synthetic memory item {ordinal:03d}: "
+                f"the diagnostic marker is value-{ordinal:03d}."
+            )
+            assistant_content = (
+                f"Recorded synthetic marker value-{ordinal:03d} for diagnostics."
+            )
+        items.extend(
+            (
+                {
+                    "role": "user",
+                    "content": user_content,
+                    "timestamp": timestamp,
+                },
+                {
+                    "role": "assistant",
+                    "content": assistant_content,
+                    "timestamp": timestamp,
+                },
+            )
+        )
+    return HindsightHistorySession(
+        session_id=session_id,
+        order=offset,
+        items=tuple(items),
+    )
+
+
+def _synthetic_sessions(profile: str) -> tuple[HindsightHistorySession, ...]:
+    if profile == "single":
+        return (
+            HindsightHistorySession(
+                session_id=_SYNTHETIC_SESSION_ID,
+                order=0,
+                items=_SYNTHETIC_ITEMS,
+            ),
+        )
+    if profile == "post2986":
+        return (
+            _synthetic_stress_session(
+                session_id="synthetic-warmup-0040",
+                exchange_count=_POST2986_WARMUP_EXCHANGES,
+                offset=0,
+                include_copper_fact=True,
+            ),
+            _synthetic_stress_session(
+                session_id="synthetic-stress-0045",
+                exchange_count=_POST2986_STRESS_EXCHANGES,
+                offset=_POST2986_WARMUP_EXCHANGES,
+                include_copper_fact=False,
+            ),
+        )
+    raise CampaignCarriageError(f"unsupported synthetic stress profile: {profile}")
 
 
 def _mapping(value: object, *, label: str) -> Mapping[str, Any]:
@@ -96,6 +179,18 @@ def _derive_diagnostic_bindings(
         diagnostic_owner_id
     )
     lifecycle_raw["database_profile"] = diagnostic_owner_id
+    # Diagnostic runs are derived from current repository apparatus authority,
+    # not from historical descriptor copies of repairable runtime policy.
+    lifecycle_raw["retain_max_completion_tokens"] = (
+        HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS
+    )
+    lifecycle_raw["fail_on_extraction_errors"] = HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS
+    lifecycle_raw["llm_supports_string_pattern"] = HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN
+    lifecycle_raw["retain_llm_reasoning_effort"] = HINDSIGHT_RETAIN_LLM_REASONING_EFFORT
+    lifecycle_raw["consolidation_llm_reasoning_effort"] = (
+        HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
+    )
+    lifecycle_raw["llm_max_concurrent"] = HINDSIGHT_LLM_MAX_CONCURRENT
     lifecycle = HindsightLifecycleSpec.from_mapping(lifecycle_raw)
 
     source_health = _mapping(
@@ -190,6 +285,7 @@ def run_synthetic_hindsight_smoke(
     diagnostic_owner_id: str,
     repo_root: Path,
     artifact_root: Path,
+    stress_profile: str = "single",
 ) -> Mapping[str, Any]:
     """Run one isolated synthetic live comparator diagnostic.
 
@@ -204,6 +300,10 @@ def run_synthetic_hindsight_smoke(
         raise CampaignCarriageError("artifact_root must be absolute")
     if artifact_root.exists():
         raise CampaignCarriageError("synthetic smoke artifact_root must be fresh")
+    if stress_profile not in _STRESS_PROFILES:
+        raise CampaignCarriageError(
+            f"unsupported synthetic stress profile: {stress_profile}"
+        )
     artifact_root.mkdir(parents=True, exist_ok=False)
 
     llama_spec, lifecycle_spec, expected_health = _derive_diagnostic_bindings(
@@ -214,11 +314,7 @@ def run_synthetic_hindsight_smoke(
         lifecycle_spec.database_profile,
         "synthetic-smoke",
     )
-    history = HindsightHistorySession(
-        session_id=_SYNTHETIC_SESSION_ID,
-        order=0,
-        items=_SYNTHETIC_ITEMS,
-    )
+    histories = _synthetic_sessions(stress_profile)
 
     capture_proxy = SyntheticLlamaCaptureProxy(
         upstream_base_url=f"http://127.0.0.1:{llama_spec.port}/v1",
@@ -234,6 +330,9 @@ def run_synthetic_hindsight_smoke(
     failure: BaseException | None = None
     retain_response: Mapping[str, Any] | None = None
     recall_response_shape: Mapping[str, object] | None = None
+    phase = "startup"
+    retained_exchange_count = 0
+    consolidation_receipts: list[dict[str, object]] = []
 
     try:
         capture_proxy.start()
@@ -251,20 +350,38 @@ def run_synthetic_hindsight_smoke(
         )
         live_attestation = live_session.attest()
 
-        pre_existing_pending = lifecycle.consolidation_pending_ids(
-            bank_id=bank_id,
-            allow_missing_bank=True,
-        )
-        retain_request = history.to_retain_request(
-            bank_id=bank_id,
-            context_label="MemConflict",
-            exchange_index=0,
-        )
-        retain_response = lifecycle.retain(bank_id=bank_id, items=(retain_request,))
-        consolidation = lifecycle.wait_for_consolidation(
-            bank_id=bank_id,
-            pre_existing_pending_ids=pre_existing_pending,
-        )
+        for session_index, history in enumerate(histories):
+            phase = f"retain:{history.session_id}"
+            pre_existing_pending = lifecycle.consolidation_pending_ids(
+                bank_id=bank_id,
+                allow_missing_bank=session_index == 0,
+            )
+            session_retain_count = 0
+            for exchange_index, _exchange in enumerate(history.exchanges()):
+                retain_request = history.to_retain_request(
+                    bank_id=bank_id,
+                    context_label="MemConflict",
+                    exchange_index=exchange_index,
+                )
+                retain_response = lifecycle.retain(
+                    bank_id=bank_id,
+                    items=(retain_request,),
+                )
+                retained_exchange_count += 1
+                session_retain_count += 1
+            phase = f"consolidation:{history.session_id}"
+            consolidation = lifecycle.wait_for_consolidation(
+                bank_id=bank_id,
+                pre_existing_pending_ids=pre_existing_pending,
+            )
+            consolidation_receipts.append(
+                {
+                    "session_id": history.session_id,
+                    "retain_count": session_retain_count,
+                    **dict(consolidation),
+                }
+            )
+        phase = "recall"
         recalled = lifecycle.recall(
             _SYNTHETIC_QUESTION,
             bank_id=bank_id,
@@ -298,9 +415,11 @@ def run_synthetic_hindsight_smoke(
             "hindsight_health_fingerprint": observed_health.fingerprint,
             "hindsight_semantic_operation_count": lifecycle.semantic_operation_count,
             "retain_response": dict(retain_response),
+            "retain_count": retained_exchange_count,
             "recall_response_shape": dict(recall_response_shape),
             "retrieved_memory_count": len(retrieved),
             "consolidation": dict(consolidation),
+            "consolidation_receipts": consolidation_receipts,
             "llama_cpp_launch_count": live_session.launch_count,
             "llama_cpp_live_attestation_fingerprint": live_attestation.fingerprint,
             "llama_cpp_chat": dict(llama_chat),
@@ -309,6 +428,17 @@ def run_synthetic_hindsight_smoke(
                 "question": _SYNTHETIC_QUESTION,
                 "query_timestamp": _SYNTHETIC_QUERY_TIMESTAMP,
                 "retain_context": "MemConflict",
+                "stress_profile": stress_profile,
+                "session_count": len(histories),
+                "exchange_count": sum(len(history.exchanges()) for history in histories),
+                "post2986_shape": (
+                    {
+                        "warmup_completed_shape": _POST2986_WARMUP_EXCHANGES,
+                        "stress_burst_shape": _POST2986_STRESS_EXCHANGES,
+                    }
+                    if stress_profile == "post2986"
+                    else None
+                ),
             },
         }
     except BaseException as exc:
@@ -359,6 +489,10 @@ def run_synthetic_hindsight_smoke(
             "judge_call_count": 0,
             "diagnostic_owner_id": diagnostic_owner_id,
             "bank_id": bank_id,
+            "stress_profile": stress_profile,
+            "phase": phase,
+            "retain_count": retained_exchange_count,
+            "consolidation_receipts": consolidation_receipts,
             "failure": None
             if failure is None
             else {
@@ -414,6 +548,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--diagnostic-owner-id", required=True)
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
+    parser.add_argument(
+        "--stress-profile",
+        choices=tuple(sorted(_STRESS_PROFILES)),
+        default="single",
+    )
     return parser
 
 
@@ -425,6 +564,7 @@ def main() -> int:
         diagnostic_owner_id=args.diagnostic_owner_id,
         repo_root=args.repo_root.resolve(),
         artifact_root=args.artifact_root.resolve(),
+        stress_profile=args.stress_profile,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0
