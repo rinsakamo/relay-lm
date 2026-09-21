@@ -124,6 +124,26 @@ def main():
             "name": "replacement_llama_sha_bound",
             "ok": runner.EXPECTED_LLAMA_SHA == "53228c024c04bd4a1acefa03d9ddc602cdfc78b5214d7fb7da13de458d2a2965",
         },
+        {
+            "name": "warm_token_sha_bound",
+            "ok": runner.EXPECTED_WARM_TOKEN_SHA == "c3fe4b297c5213be586b2e95824aa4fcb7a7305683ae38336a33e7bbf58baca2",
+        },
+        {
+            "name": "target_token_sha_bound",
+            "ok": runner.EXPECTED_TARGET_TOKEN_SHA == "549c108554c7a6613886addcf5a64ed74cc1ee7deeb901d580165b23011ec59e",
+        },
+        {
+            "name": "l0_request_sha_bound",
+            "ok": runner.EXPECTED_L0_REQUEST_SHA == "9120aed18e9aac20615cab2de00337eb9bf65edb7249015c97d3c41d881e38d",
+        },
+        {
+            "name": "l1_request_sha_bound",
+            "ok": runner.EXPECTED_L1_REQUEST_SHA == "d4deaa365324c5ca3c42eba4e6db9defe957a1cf06bbc08e9d3a01ba94ec0d1f",
+        },
+        {
+            "name": "lc_request_sha_bound",
+            "ok": runner.EXPECTED_LC_REQUEST_SHA == "284630a2f90e364b5dd336d3d9fadc59ddd0fa072fbac7cc825200bef2e7af52",
+        },
     ])
 
     static_check = success_path_static_check()
