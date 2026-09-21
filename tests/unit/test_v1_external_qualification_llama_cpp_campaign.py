@@ -34,6 +34,7 @@ from tools.v1_external_qualification_llama_cpp_campaign import (
     HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
     HINDSIGHT_FAIL_ON_EXTRACTION_ERRORS,
     HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
+    HINDSIGHT_LLM_MAX_CONCURRENT,
     HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
     HINDSIGHT_HTTP_TIMEOUT_SECONDS,
     HINDSIGHT_RETAIN_MAX_COMPLETION_TOKENS,
@@ -892,6 +893,7 @@ def _strict_descriptor_mapping(
         "llm_supports_string_pattern": HINDSIGHT_LLM_SUPPORTS_STRING_PATTERN,
         "retain_llm_reasoning_effort": HINDSIGHT_RETAIN_LLM_REASONING_EFFORT,
         "consolidation_llm_reasoning_effort": HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT,
+        "llm_max_concurrent": HINDSIGHT_LLM_MAX_CONCURRENT,
         "embeddings_provider": "onnx",
         "reranker_provider": "rrf",
         "embeddings_onnx_model_path": str(onnx_path),
@@ -2046,6 +2048,18 @@ def test_strict_descriptor_rejects_hindsight_consolidation_reasoning_policy_subs
         CampaignDescriptor.from_mapping(raw)
 
 
+def test_strict_descriptor_rejects_hindsight_llm_concurrency_substitution(
+    tmp_path: Path,
+) -> None:
+    raw = _strict_descriptor_mapping(tmp_path)
+    raw["hindsight_lifecycle"]["llm_max_concurrent"] = 32
+    with pytest.raises(
+        CampaignCarriageError,
+        match="repository-owned single-slot scheduler policy",
+    ):
+        CampaignDescriptor.from_mapping(raw)
+
+
 def test_strict_descriptor_rejects_mutually_stale_health_and_lifecycle_for_new_owner(
     tmp_path: Path,
 ) -> None:
@@ -2155,6 +2169,7 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
         argument("--consolidation-llm-reasoning-effort")
         == HINDSIGHT_CONSOLIDATION_LLM_REASONING_EFFORT
     )
+    assert argument("--llm-max-concurrent") == str(HINDSIGHT_LLM_MAX_CONCURRENT)
     assert argument("--embeddings-provider") == descriptor.hindsight_lifecycle.embeddings_provider
     assert argument("--reranker-provider") == descriptor.hindsight_lifecycle.reranker_provider
     environment = seen["environment"]
@@ -2162,6 +2177,9 @@ def test_hindsight_runtime_launch_arguments_derive_from_admitted_owner_identity(
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_RETAIN"] == "true"
     assert environment["HINDSIGHT_API_LLM_STRICT_SCHEMA_CONSOLIDATION"] == "true"
     assert environment["HINDSIGHT_API_LLM_SUPPORTS_STRING_PATTERN"] == "true"
+    assert environment["HINDSIGHT_API_LLM_MAX_CONCURRENT"] == str(
+        HINDSIGHT_LLM_MAX_CONCURRENT
+    )
     cleanup = lifecycle.cleanup()
     assert cleanup["semantic_operation_count"] == 0
 
