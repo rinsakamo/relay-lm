@@ -66,12 +66,22 @@ def main():
         "consumed_server_rejected": (
             "new server equals consumed server SHA" in source
         ),
-        "only_one_subprocess_transition": len(subprocess_runs) == 1,
-        "only_request_admission_subprocess": (
-            len(subprocess_runs) == 1
-            and subprocess_run_args == ["cmd"]
+        "only_allowed_subprocess_transitions": (
+            len(subprocess_runs) == 2
+            and sorted(subprocess_run_args) == ["admission_cmd", "locator_cmd"]
+            and "e2d2c0d6-gemma4-kv-artifact-locator.py" in source
             and "e2d2c0d6-gemma4-kv-request-admission.py" in source
             and "subprocess.Popen" not in source
+        ),
+        "bounded_rediscovery_is_explicit": (
+            "--request-search-root" in source
+            and "bounded_artifact_rediscovery" in source
+            and 'require(search_roots, "prior request reconciliation missing and no request search roots supplied")' in source
+        ),
+        "no_runtime_execution_helpers": (
+            "logical-prefix-resource-guard.py" not in source
+            and "replacement-measured-run.py" not in source
+            and "replacement-execute-once.py" not in source
         ),
         "success_is_non_authorizing": (
             '"measured_execution_authorized_by_this_result": False' in source
