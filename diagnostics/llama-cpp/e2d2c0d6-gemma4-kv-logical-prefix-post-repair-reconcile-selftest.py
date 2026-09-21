@@ -25,6 +25,7 @@ def main():
     tree = ast.parse(source)
 
     subprocess_runs = []
+    subprocess_run_args = []
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Call)
@@ -34,19 +35,29 @@ def main():
             and node.func.attr == "run"
         ):
             subprocess_runs.append(node.lineno)
+            if node.args and isinstance(node.args[0], ast.Name):
+                subprocess_run_args.append(node.args[0].id)
+            else:
+                subprocess_run_args.append(None)
 
-    frozen = [
+    git_object_ids = [
         module.EXPECTED_SOURCE_HEAD,
         module.EXPECTED_SOURCE_TREE,
+    ]
+    frozen_sha256 = [
         module.EXPECTED_MODEL_SHA,
         module.CONSUMED_SERVER_SHA,
         *module.EXPECTED_REQUESTS.values(),
     ]
 
     checks = {
+        "git_object_ids_are_40_lower_hex": all(
+            re.fullmatch(r"[0-9a-f]{40}", value)
+            for value in git_object_ids
+        ),
         "all_frozen_sha256_are_64_lower_hex": all(
             re.fullmatch(r"[0-9a-f]{64}", value)
-            for value in frozen
+            for value in frozen_sha256
         ),
         "correct_l0_sha_bound": (
             module.EXPECTED_REQUESTS["L0"]
@@ -57,10 +68,10 @@ def main():
         ),
         "only_one_subprocess_transition": len(subprocess_runs) == 1,
         "only_request_admission_subprocess": (
-            "e2d2c0d6-gemma4-kv-request-admission.py" in source
-            and "resource-guard" not in source
-            and "measured-run" not in source
-            and "llama-server" not in source
+            len(subprocess_runs) == 1
+            and subprocess_run_args == ["cmd"]
+            and "e2d2c0d6-gemma4-kv-request-admission.py" in source
+            and "subprocess.Popen" not in source
         ),
         "success_is_non_authorizing": (
             '"measured_execution_authorized_by_this_result": False' in source
@@ -95,6 +106,7 @@ def main():
         ),
         "checks": checks,
         "subprocess_run_lines": subprocess_runs,
+        "subprocess_run_args": subprocess_run_args,
         "errors": errors,
     }
     print(json.dumps(out, indent=2, sort_keys=True))
