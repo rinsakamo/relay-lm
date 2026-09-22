@@ -17,7 +17,7 @@ completed. The tensors are copied to host only after scheduler synchronization.
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -22,1 +22,4 @@
+@@ -23,1 +23,4 @@
  #include <string>
 +#include <cstdlib>
 +#include <fstream>
