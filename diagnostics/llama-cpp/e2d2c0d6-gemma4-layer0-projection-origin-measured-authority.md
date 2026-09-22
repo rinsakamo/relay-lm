@@ -705,3 +705,32 @@ found:
 Therefore layer-0 `Kcur-0 == Vcur-0` cannot be explained by the Gemma4 optional-`v_proj` fallback `Vcur = Kcur`.
 
 The byte-identical Kcur/Vcur dump payloads are now a separate unresolved anomaly requiring zero-GPU weight-identity and instrumentation/runtime reconciliation before any additional physical discriminator is designed.
+
+
+### Static K/V alias-path audit
+
+Further zero-GPU audit of frozen llama.cpp `e2d2c0d6...` narrows the byte-identical raw `Kcur-0` / `Vcur-0` anomaly.
+
+Established from frozen source:
+
+1. Gemma4 layer-0 with present `wv` constructs separate projection nodes:
+   - `Kcur = build_lora_mm(layer.wk, cur, ...)`
+   - `Vcur = build_lora_mm(layer.wv, cur, ...)`
+2. `cb(Kcur, "Kcur", 0)` and `cb(Vcur, "Vcur", 0)` assign distinct graph names.
+3. `ggml_graph_get_tensor()` resolves exact names by string equality.
+4. The model loader only returns an existing tensor for the explicit `TENSOR_DUPLICATED` path. Gemma4 K/V projection weights are not created with that flag, so present `wk` and `wv` are distinct model tensor objects.
+5. Scheduler graph copies preserve tensor flags, names, op params, view metadata, and recursively distinct sources.
+6. GGML allocator semantics keep graph outputs alive and prevent output-parent reuse; output tensors are not freed/recycled during the graph allocation lifetime.
+
+Therefore the consumed `Kcur-0 == Vcur-0` payload identity is not naturally explained by:
+
+- absent V projection;
+- graph-name collision;
+- model-loader duplicated-tensor aliasing;
+- ordinary gallocr output-buffer reuse.
+
+A zero-GPU layer-0 K/V weight-identity audit has been added. It compares frozen GGUF K/V tensor type, shape, raw payload SHA256, and frozen gguf-py dequantized F32 equality.
+
+If that audit classifies `LAYER0_KV_WEIGHTS_DISTINCT`, the remaining anomaly is localized to projection execution / scheduler-backend realization / observation instrumentation rather than model weight identity.
+
+No physical execution is authorized by this refinement.
