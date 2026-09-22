@@ -250,18 +250,31 @@ class CacheOnForwardingProxy(transaction._ForwardingProxy):
         self.thread = None
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the installed transaction with a process-local evaluation proxy swap."""
+def run_cache_on_experiment(
+    argv: Sequence[str] | None = None,
+    *,
+    target_name: str = EXPERIMENT_TARGET_NAME,
+) -> int:
+    """Run the installed cache-on treatment under one explicit target identity."""
+
+    if not isinstance(target_name, str) or not target_name.strip():
+        raise CacheTreatmentError("cache treatment target name must be non-empty")
 
     original_proxy = transaction._ForwardingProxy
     original_target = transaction.TARGET_NAME
     try:
         transaction._ForwardingProxy = CacheOnForwardingProxy
-        transaction.TARGET_NAME = EXPERIMENT_TARGET_NAME
+        transaction.TARGET_NAME = target_name
         return transaction.main(argv)
     finally:
         transaction._ForwardingProxy = original_proxy
         transaction.TARGET_NAME = original_target
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the historical cache-on experiment target."""
+
+    return run_cache_on_experiment(argv)
 
 
 if __name__ == "__main__":
