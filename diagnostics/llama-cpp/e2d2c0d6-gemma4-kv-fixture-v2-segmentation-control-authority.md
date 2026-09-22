@@ -249,7 +249,7 @@ SHA256 identities:
 
 ```text
 C883.tokens.json =
-1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92
+1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92a
 
 C883.request.json =
 1e490f609ac0b844521784cd4603ea79a9c5ab0b199117e4395c4a8cf2efa47c
@@ -289,6 +289,8 @@ This committed control is now the sole authority for the segmentation-controlled
 
 The preparation transaction was zero-build, zero-model, zero-server, zero-GPU, zero-generation, zero-L0, and did not mutate v1 or the scientific campaign.
 
+The prior measured-authority generation without the `-c883sha64` suffix failed its static runner self-test before wrapper invocation because its C883 token SHA binding was 63 hexadecimal characters. It was never exercised and is superseded. The current route below is the corrected generation.
+
 ## Current measured route
 
 A fresh non-generative apparatus qualification has completed and a distinct measured authority now exists:
@@ -301,7 +303,7 @@ Required status:
 
 Authority generation:
 
-`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c`
+`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c-c883sha64`
 
 Attempt identity:
 
