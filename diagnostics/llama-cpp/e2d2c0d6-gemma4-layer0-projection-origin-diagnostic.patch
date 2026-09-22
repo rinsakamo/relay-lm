@@ -28,7 +28,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
  #include <stdexcept>
  #include <string>
 +#include <vector>
-@@ -1330,6 +1332,166 @@ bool llama_context::apply_adapter_cvec(
+@@ -1330,6 +1332,167 @@ bool llama_context::apply_adapter_cvec(
      return res;
  }
  
@@ -137,6 +137,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 +            return false;
 +        }
 +        if (tensor->type != GGML_TYPE_F32 ||
++            !ggml_is_contiguous(tensor) ||
 +            tensor->ne[1] != (int64_t) ubatch.n_tokens ||
 +            tensor->ne[2] != 1 ||
 +            tensor->ne[3] != 1) {
@@ -215,7 +216,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
      ret = GGML_STATUS_SUCCESS;
  
      return res;
-@@ -2522,6 +2697,14 @@ llm_graph_cb llama_context::graph_get_cb() const {
+@@ -2522,6 +2697,16 @@ llm_graph_cb llama_context::graph_get_cb() const {
              ggml_set_name(cur, name);
          }
  
