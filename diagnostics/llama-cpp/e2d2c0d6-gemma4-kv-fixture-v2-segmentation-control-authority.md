@@ -291,51 +291,29 @@ The preparation transaction was zero-build, zero-model, zero-server, zero-GPU, z
 
 The prior measured-authority generation without the `-c883sha64` suffix failed its static runner self-test before wrapper invocation because its C883 token SHA binding was 63 hexadecimal characters. It was never exercised and is superseded. The current route below is the corrected generation.
 
-## Current measured route
+## Current post-hoc route
 
-A fresh non-generative apparatus qualification has completed and a distinct measured authority now exists:
+The segmentation-control measured attempt has been consumed and terminalized:
 
-`e2d2c0d6-gemma4-kv-segmentation-control-measured-authority.md`
+`TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
+
+No measured rerun is authorized.
+
+The current route is zero-GPU forensic reconciliation of the already-produced W/W2/C883 evidence:
+
+`e2d2c0d6-gemma4-kv-segmentation-control-posthoc-authority.md`
 
 Required status:
 
-`QUALIFIED_FOR_ONE_SEGMENTATION_CONTROL_MEASURED_ATTEMPT`
+`SEGMENTATION_CONTROL_POSTHOC_RECONCILIATION_READY`
 
-Authority generation:
-
-`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c-c883sha64`
-
-Attempt identity:
-
-`logical-prefix-kv-segmentation-control-20260922-6802c20c`
-
-Bound fresh physical apparatus:
+Source measured evidence:
 
 ```text
-pre-measured root =
-/tmp/relaylm-segmentation-control-qual.UsVe3A/output
-
-llama-server =
-6802c20c27073fd0ec4640808aa89586d9261b1775c07c0a01761e3a6169f95a
-
-libllama-server-impl.so =
-960a1e8ef9b49ac06898737bef8148d5ab680eb8f2062d35c289d797b631f17b
-
-libllama.so =
-3cb5756febc27493f88b29373ed0274885bdb7a411163d6af24d430e0d57c463
-
-startup canonical argv SHA256 =
-9ee42d8effe614d5ab9827c35c2bde820478ffa0626099b3b0f944e7c51519c8
-
-base KV = 8192
-SWA KV = 1536
+/tmp/relaylm-segmentation-control-attempt.7bkdqi/measured-output
 ```
 
-The only authorized measured entrypoint is:
+The forensic reconciler must not start a server, call HTTP, acquire the GPU guard, invoke subprocesses, mutate measured evidence, or authorize a rerun.
 
-`e2d2c0d6-gemma4-kv-segmentation-control-execute-once.py`
-
-This control authority does not itself authorize direct execution; the measured authority above is the execution authority.
-
-No prior measured attempt, historical four-point runner/wrapper, or alternate apparatus is authorized.
+The original measured terminal remains authoritative as `PROBE_EXERCISED_INCOMPLETE`; any post-hoc derived KV classification is recorded separately.
 
