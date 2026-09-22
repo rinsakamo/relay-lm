@@ -289,37 +289,51 @@ This committed control is now the sole authority for the segmentation-controlled
 
 The preparation transaction was zero-build, zero-model, zero-server, zero-GPU, zero-generation, zero-L0, and did not mutate v1 or the scientific campaign.
 
-## Next allowed transition
+## Current measured route
 
-No prior measured attempt may be replayed.
+A fresh non-generative apparatus qualification has completed and a distinct measured authority now exists:
 
-The next experiment requires a distinct fresh measured subject comparing:
+`e2d2c0d6-gemma4-kv-segmentation-control-measured-authority.md`
+
+Required status:
+
+`QUALIFIED_FOR_ONE_SEGMENTATION_CONTROL_MEASURED_ATTEMPT`
+
+Authority generation:
+
+`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c`
+
+Attempt identity:
+
+`logical-prefix-kv-segmentation-control-20260922-6802c20c`
+
+Bound fresh physical apparatus:
 
 ```text
-fresh W883 P512
-vs
-fresh C883 P512
+pre-measured root =
+/tmp/relaylm-segmentation-control-qual.UsVe3A/output
+
+llama-server =
+6802c20c27073fd0ec4640808aa89586d9261b1775c07c0a01761e3a6169f95a
+
+libllama-server-impl.so =
+960a1e8ef9b49ac06898737bef8148d5ab680eb8f2062d35c289d797b631f17b
+
+libllama.so =
+3cb5756febc27493f88b29373ed0274885bdb7a411163d6af24d430e0d57c463
+
+startup canonical argv SHA256 =
+9ee42d8effe614d5ab9827c35c2bde820478ffa0626099b3b0f944e7c51519c8
+
+base KV = 8192
+SWA KV = 1536
 ```
 
-under one fresh qualified physical apparatus.
+The only authorized measured entrypoint is:
 
-Both arms must use total prompt length 883 and therefore the same expected checkpoint-driven segmentation:
+`e2d2c0d6-gemma4-kv-segmentation-control-execute-once.py`
 
-```text
-371 -> 508 -> 4
-```
+This control authority does not itself authorize direct execution; the measured authority above is the execution authority.
 
-Before any measured authority is created, management must prepare a new two-point runner/wrapper and obtain a fresh non-generative pre-measured qualification for that apparatus.
+No prior measured attempt, historical four-point runner/wrapper, or alternate apparatus is authorized.
 
-## After durable control commit
-
-Management must fresh-read and bind:
-
-- control commit/tree/subtree;
-- C883 tokens SHA256/Git blob;
-- C883 request SHA256/Git blob;
-- control manifest SHA256/Git blob.
-
-Only then may a distinct segmentation-controlled measured authority be created.
-
-That future measurement should compare fresh warm P512 against fresh C883 P512 under an equal physical segmentation contract. It must not reuse or replay the consumed fixture-v2 measured attempt.
