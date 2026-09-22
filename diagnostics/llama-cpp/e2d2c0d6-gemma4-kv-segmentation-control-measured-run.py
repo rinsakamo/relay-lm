@@ -45,7 +45,7 @@ EXPECTED_FIXTURE_BLOBS = {
 CONTROL_RELATIVE = Path("fixtures/e2d2c0d6-gemma4-kv-v2-segmentation-control")
 EXPECTED_CONTROL_SUBTREE = "ac26ba25c3b88cbd9586ec009eeefe66004e2cb5"
 EXPECTED_CONTROL_SHA256 = {
-    "C883.tokens.json": "1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92",
+    "C883.tokens.json": "1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92a",
     "C883.request.json": "1e490f609ac0b844521784cd4603ea79a9c5ab0b199117e4395c4a8cf2efa47c",
     "manifest.json": "aa23a149d9d54137f8a455034c5048c8b7d8e03a4d12d3f33000c66aece8b86b",
 }
