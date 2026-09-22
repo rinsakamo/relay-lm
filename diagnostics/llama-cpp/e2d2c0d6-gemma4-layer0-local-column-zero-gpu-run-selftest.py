@@ -14,27 +14,42 @@ def load():
     spec.loader.exec_module(mod)
     return mod
 
+def tensor(distinct=131, local_beats=131, best_local=90, best_logical=2, token_local=110, token_target=12):
+    return {
+        "distinct_local_vs_logical_token_rows":distinct,
+        "same_local_beats_same_logical_on_distinct_token_rows":local_beats,
+        "best_row_is_same_local_column_on_distinct_token_rows":best_local,
+        "best_row_is_same_logical_position_on_distinct_token_rows":best_logical,
+        "best_row_token_matches_local_token_on_distinct_token_rows":token_local,
+        "best_row_token_matches_warm_logical_token_on_distinct_token_rows":token_target,
+        "best_row_is_same_local_column":best_local,
+        "best_row_is_same_logical_position":best_logical,
+    }
+
 def main():
     m=load()
-    nearest={
-        "tensors":{
-            name:{
-                "distinct_local_vs_logical_token_rows":131,
-                "same_local_beats_same_logical_on_distinct_token_rows":131,
-                "best_row_is_same_local_column":100,
-                "best_row_is_same_logical_position":2,
-                "best_row_token_matches_local_token":120,
-                "best_row_token_matches_warm_logical_token":10,
-            }
-            for name in ("attn_norm-0","Kcur-0","Vcur-0")
-        }
-    }
-    cls,decisions=m.classify(nearest)
-    if cls!="LOCAL_COLUMN_CORRESPONDENCE_PERSISTS_UNDER_DISTINCT_TOKEN_CONTROL":
-        raise RuntimeError("positive classifier mismatch")
 
-    nearest["tensors"]["attn_norm-0"]["same_local_beats_same_logical_on_distinct_token_rows"]=130
-    cls,_=m.classify(nearest)
+    positive={"tensors":{
+        name:tensor()
+        for name in ("attn_norm-0","Kcur-0","Vcur-0")
+    }}
+    cls,_=m.classify(positive)
+    if cls!="LOCAL_COLUMN_NEAREST_MAPPING_SUPPORTED_UNDER_DISTINCT_TOKEN_CONTROL":
+        raise RuntimeError("nearest-mapping classifier mismatch")
+
+    pairwise_only={"tensors":{
+        name:tensor(best_local=1,best_logical=2,token_local=10,token_target=12)
+        for name in ("attn_norm-0","Kcur-0","Vcur-0")
+    }}
+    cls,_=m.classify(pairwise_only)
+    if cls!="LOCAL_COLUMN_PAIRWISE_CORRESPONDENCE_ONLY_UNDER_DISTINCT_TOKEN_CONTROL":
+        raise RuntimeError("pairwise-only classifier mismatch")
+
+    negative={"tensors":{
+        name:tensor(local_beats=130)
+        for name in ("attn_norm-0","Kcur-0","Vcur-0")
+    }}
+    cls,_=m.classify(negative)
     if cls!="LOCAL_COLUMN_CORRESPONDENCE_NOT_UNIFORM_UNDER_DISTINCT_TOKEN_CONTROL":
         raise RuntimeError("negative classifier mismatch")
 
