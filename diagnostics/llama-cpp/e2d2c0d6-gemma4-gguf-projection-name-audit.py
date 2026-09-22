@@ -13,8 +13,24 @@ def sha256_file(path: Path):
             h.update(chunk)
     return h.hexdigest()
 
-def contains_name(blob: bytes, name: str) -> bool:
-    return name.encode("utf-8") in blob
+def scan_names(path: Path, names):
+    encoded = {name: name.encode("utf-8") for name in names}
+    found = {name: False for name in names}
+    max_len = max((len(v) for v in encoded.values()), default=1)
+    tail = b""
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(4 * 1024 * 1024)
+            if not chunk:
+                break
+            data = tail + chunk
+            for name, needle in encoded.items():
+                if not found[name] and needle in data:
+                    found[name] = True
+            if all(found.values()):
+                break
+            tail = data[-(max_len - 1):] if max_len > 1 else b""
+    return found
 
 def main():
     ap=argparse.ArgumentParser()
@@ -31,8 +47,8 @@ def main():
     if model_sha != EXPECTED_MODEL_SHA256:
         raise RuntimeError(f"model SHA mismatch: {model_sha}")
 
-    blob=args.model.read_bytes()
-    layers=[]
+    layer_names=[]
+    flat_names=[]
     for il in range(args.layers):
         names={
             "q":f"blk.{il}.attn_q.weight",
@@ -40,7 +56,13 @@ def main():
             "v":f"blk.{il}.attn_v.weight",
             "qkv":f"blk.{il}.attn_qkv.weight",
         }
-        present={key:contains_name(blob,name) for key,name in names.items()}
+        layer_names.append(names)
+        flat_names.extend(names.values())
+
+    found=scan_names(args.model, flat_names)
+    layers=[]
+    for il, names in enumerate(layer_names):
+        present={key:found[name] for key,name in names.items()}
         layers.append({"layer":il,"names":names,"present":present})
 
     l0=layers[0]
