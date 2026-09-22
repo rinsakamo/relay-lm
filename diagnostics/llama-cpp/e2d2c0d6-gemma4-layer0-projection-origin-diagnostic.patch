@@ -222,7 +222,9 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 +        // RelayLM diagnostic only: preserve the layer-0 projection boundary
 +        // until the complete ubatch graph has finished. No arithmetic node is
 +        // added and no scheduler eval callback is installed.
-+        if (relay_projection_origin_probe_enabled() && il == 0 &&
++        llama_pos relay_probe_p0 = -1;
++        llama_pos relay_probe_p1 = -1;
++        if (relay_projection_origin_target_ubatch(ubatch, relay_probe_p0, relay_probe_p1) && il == 0 &&
 +            (strcmp(name, "attn_norm") == 0 || strcmp(name, "Kcur") == 0 || strcmp(name, "Vcur") == 0)) {
 +            ggml_set_output(cur);
 +        }
