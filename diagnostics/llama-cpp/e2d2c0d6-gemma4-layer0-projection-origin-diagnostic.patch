@@ -17,7 +17,7 @@ completed. The tensors are copied to host only after scheduler synchronization.
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -16,7 +16,10 @@
+@@ -17,7 +17,10 @@
  #include <cinttypes>
  #include <cmath>
  #include <cstring>
@@ -28,7 +28,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
  #include <stdexcept>
  #include <string>
 +#include <vector>
-@@ -1330,6 +1332,167 @@ bool llama_context::apply_adapter_cvec(
+@@ -1333,6 +1336,167 @@ bool llama_context::apply_adapter_cvec(
      return res;
  }
  
@@ -196,7 +196,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
  llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
      if (mctx && !mctx->apply()) {
          LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
-@@ -1394,6 +1556,19 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, l
+@@ -1400,6 +1564,19 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, l
          return nullptr;
      }
  
@@ -216,7 +216,7 @@ diff --git a/src/llama-context.cpp b/src/llama-context.cpp
      ret = GGML_STATUS_SUCCESS;
  
      return res;
-@@ -2522,6 +2697,16 @@ llm_graph_cb llama_context::graph_get_cb() const {
+@@ -2528,6 +2705,16 @@ llm_graph_cb llama_context::graph_get_cb() const {
              ggml_set_name(cur, name);
          }
  
