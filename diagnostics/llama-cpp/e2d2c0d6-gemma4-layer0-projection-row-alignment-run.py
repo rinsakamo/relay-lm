@@ -72,36 +72,49 @@ def find_unique(search_root: Path):
 
 
 def classify(result):
-    # This classifier is deliberately conservative. It only decides whether
-    # Segment-B warm rows correlate more strongly with cold rows by logical
-    # position or by local ubatch column.
+    # Conservative three-way correspondence classifier for Segment B:
+    # same logical position, same cold local column, or same local column from
+    # the immediately preceding warm ubatch.
     decisions = {}
     for name, tensor in result["tensors"].items():
         logical = tensor["segment_B_same_logical"]["mean"]
-        local = tensor["segment_B_same_local_column"]["mean"]
-        local_wins = tensor["segment_B_local_beats_logical_rows"]
-        logical_wins = tensor["segment_B_logical_beats_local_rows"]
+        cold_local = tensor["segment_B_same_cold_local_column"]["mean"]
+        prev_warm = tensor["segment_B_same_previous_warm_local_column"]["mean"]
 
-        if local > logical and local_wins > logical_wins:
-            decision = "LOCAL_COLUMN_CORRESPONDENCE_STRONGER"
-        elif logical > local and logical_wins > local_wins:
-            decision = "LOGICAL_POSITION_CORRESPONDENCE_STRONGER"
-        else:
+        scores = {
+            "LOGICAL_POSITION": logical,
+            "COLD_LOCAL_COLUMN": cold_local,
+            "PREVIOUS_WARM_LOCAL_COLUMN": prev_warm,
+        }
+        ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+        winner, best = ordered[0]
+        runner_up, second = ordered[1]
+
+        if best == second:
             decision = "CORRESPONDENCE_AMBIGUOUS"
+        elif winner == "PREVIOUS_WARM_LOCAL_COLUMN":
+            decision = "PREVIOUS_WARM_LOCAL_COLUMN_STRONGER"
+        elif winner == "COLD_LOCAL_COLUMN":
+            decision = "COLD_LOCAL_COLUMN_STRONGER"
+        else:
+            decision = "LOGICAL_POSITION_STRONGER"
 
         decisions[name] = {
             "decision": decision,
             "segment_B_mean_cosine_same_logical": logical,
-            "segment_B_mean_cosine_same_local_column": local,
-            "local_beats_logical_rows": local_wins,
-            "logical_beats_local_rows": logical_wins,
+            "segment_B_mean_cosine_same_cold_local_column": cold_local,
+            "segment_B_mean_cosine_same_previous_warm_local_column": prev_warm,
+            "margin_vs_runner_up": best - second,
+            "exact_equal_previous_warm_rows": tensor["segment_B_exact_equal_previous_warm_rows"],
         }
 
     ds = {v["decision"] for v in decisions.values()}
-    if ds == {"LOCAL_COLUMN_CORRESPONDENCE_STRONGER"}:
-        primary = "ROW_ALIGNMENT_LOCAL_COLUMN_CORRESPONDENCE_SUPPORTED"
-    elif ds == {"LOGICAL_POSITION_CORRESPONDENCE_STRONGER"}:
-        primary = "ROW_ALIGNMENT_LOGICAL_POSITION_CORRESPONDENCE_SUPPORTED"
+    if ds == {"PREVIOUS_WARM_LOCAL_COLUMN_STRONGER"}:
+        primary = "ROW_ALIGNMENT_PREVIOUS_WARM_LOCAL_COLUMN_SUPPORTED"
+    elif ds == {"COLD_LOCAL_COLUMN_STRONGER"}:
+        primary = "ROW_ALIGNMENT_COLD_LOCAL_COLUMN_SUPPORTED"
+    elif ds == {"LOGICAL_POSITION_STRONGER"}:
+        primary = "ROW_ALIGNMENT_LOGICAL_POSITION_SUPPORTED"
     else:
         primary = "ROW_ALIGNMENT_CORRESPONDENCE_MIXED_OR_AMBIGUOUS"
 
