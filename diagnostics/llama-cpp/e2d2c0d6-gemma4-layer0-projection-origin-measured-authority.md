@@ -659,3 +659,49 @@ It does **not** yet prove:
 - stream-K causal origin.
 
 A follow-on zero-GPU nearest-row analysis is authorized on the existing consumed dump only. No new physical request is authorized.
+
+
+### Distinct-token nearest-row result
+
+A zero-GPU nearest-row analysis over the existing consumed Segment-B dump completed with:
+
+`LOCAL_COLUMN_PAIRWISE_CORRESPONDENCE_ONLY_UNDER_DISTINCT_TOKEN_CONTROL`
+
+Control:
+
+- Segment-B rows analyzed = 141;
+- `token[i] == token[371+i]` = 10;
+- distinct local-vs-logical token rows = 131.
+
+For each of `attn_norm-0`, `Kcur-0`, and `Vcur-0`:
+
+- same-local cosine exceeded same-logical cosine on all 131/131 distinct-token rows;
+- the globally nearest C row was never the exact same local column and never the exact same logical position for those distinct-token controls;
+- nearest-row token identity showed only weak local-token preference and no exact-row mapping.
+
+Observed distinct-token summaries:
+
+- attn_norm-0: best same-local row = 0; best same-logical row = 0; best-row token matches local token = 11; best-row token matches warm-logical token = 4.
+- Kcur-0: best same-local row = 0; best same-logical row = 0; best-row token matches local token = 10; best-row token matches warm-logical token = 10.
+- Vcur-0: same as Kcur-0.
+
+Therefore the evidence supports a **local-column-dependent correspondence/distortion**, but does not support an exact local-row remapping or exact stale previous-ubatch row copy.
+
+The previous raw row-alignment classification must not be upgraded to a stale-buffer mechanism claim.
+
+### GGUF projection-path correction
+
+A zero-GPU GGUF tensor-name audit of the frozen model SHA256
+`c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`
+found:
+
+- layer-0 path = `SEPARATE_Q_K_V`;
+- q tensors = 48;
+- k tensors = 48;
+- v tensors = 40;
+- fused qkv tensors = 0;
+- layer 0 has q=true, k=true, v=true, qkv=false.
+
+Therefore layer-0 `Kcur-0 == Vcur-0` cannot be explained by the Gemma4 optional-`v_proj` fallback `Vcur = Kcur`.
+
+The byte-identical Kcur/Vcur dump payloads are now a separate unresolved anomaly requiring zero-GPU weight-identity and instrumentation/runtime reconciliation before any additional physical discriminator is designed.
