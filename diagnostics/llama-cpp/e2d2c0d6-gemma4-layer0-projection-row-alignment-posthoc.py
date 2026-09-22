@@ -87,38 +87,57 @@ def main():
 
         # Segment B: W local column i corresponds to logical position 371+i.
         logical_cos = []
-        local_cos = []
-        logical_beats_local = 0
-        local_beats_logical = 0
+        cold_local_cos = []
+        prev_warm_local_cos = []
+        logical_beats_cold_local = 0
+        cold_local_beats_logical = 0
+        prev_warm_beats_logical = 0
+        logical_beats_prev_warm = 0
+        exact_prev_warm_rows = 0
         rows = []
         for i in range(141):
             logical_pos = 371 + i
             wrow = wb["tensors"][name]["rows"][logical_pos]
             c_logical = c["tensors"][name]["rows"][logical_pos]
             c_local = c["tensors"][name]["rows"][i]
+            wa_local = wa["tensors"][name]["rows"][i]
             cl = cosine(wrow, c_logical)
             cc = cosine(wrow, c_local)
+            cw = cosine(wrow, wa_local)
             logical_cos.append(cl)
-            local_cos.append(cc)
+            cold_local_cos.append(cc)
+            prev_warm_local_cos.append(cw)
             if cl > cc:
-                logical_beats_local += 1
+                logical_beats_cold_local += 1
             elif cc > cl:
-                local_beats_logical += 1
+                cold_local_beats_logical += 1
+            if cl > cw:
+                logical_beats_prev_warm += 1
+            elif cw > cl:
+                prev_warm_beats_logical += 1
+            if wrow == wa_local:
+                exact_prev_warm_rows += 1
             rows.append({
                 "warm_local_column": i,
                 "warm_logical_position": logical_pos,
                 "cosine_vs_cold_same_logical": cl,
                 "cosine_vs_cold_same_local_column": cc,
-                "delta_local_minus_logical": cc - cl,
+                "cosine_vs_previous_warm_same_local_column": cw,
+                "delta_cold_local_minus_logical": cc - cl,
+                "delta_previous_warm_minus_logical": cw - cl,
+                "exact_equal_previous_warm_same_local_column": wrow == wa_local,
             })
 
         result["tensors"][name] = {
             "segment_A_same_local_and_logical": summarize(a_cos),
             "segment_B_same_logical": summarize(logical_cos),
-            "segment_B_same_local_column": summarize(local_cos),
-            "segment_B_local_beats_logical_rows": local_beats_logical,
-            "segment_B_logical_beats_local_rows": logical_beats_local,
-            "segment_B_ties": 141 - local_beats_logical - logical_beats_local,
+            "segment_B_same_cold_local_column": summarize(cold_local_cos),
+            "segment_B_same_previous_warm_local_column": summarize(prev_warm_local_cos),
+            "segment_B_cold_local_beats_logical_rows": cold_local_beats_logical,
+            "segment_B_logical_beats_cold_local_rows": logical_beats_cold_local,
+            "segment_B_previous_warm_beats_logical_rows": prev_warm_beats_logical,
+            "segment_B_logical_beats_previous_warm_rows": logical_beats_prev_warm,
+            "segment_B_exact_equal_previous_warm_rows": exact_prev_warm_rows,
             "segment_B_rows": rows,
         }
 
