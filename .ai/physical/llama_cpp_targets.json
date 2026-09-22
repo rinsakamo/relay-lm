@@ -35,6 +35,15 @@
         "httpx"
       ]
     },
+    "v1:llama-cpp-cache-correctness-reproducer": {
+      "branch": "v1",
+      "module": "tools.v1_llama_cpp_cache_correctness_reproducer",
+      "description": "Fresh #3006 ordinary Pass1-to-Pass2 cache-on reproduction target; does not reuse the consumed #2947 owner.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
+    },
     "v1:crystallization": {
       "branch": "v1",
       "module": "tools.v1_crystallization_llama_cpp_wsl",
