@@ -17,16 +17,10 @@ completed. The tensors are copied to host only after scheduler synchronization.
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -17,7 +17,10 @@
- #include <cinttypes>
- #include <cmath>
- #include <cstring>
-+#include <cstdlib>
- #include <filesystem>
-+#include <fstream>
- #include <limits>
- #include <stdexcept>
+@@ -22,1 +22,4 @@
  #include <string>
++#include <cstdlib>
++#include <fstream>
 +#include <vector>
 @@ -1333,6 +1336,167 @@ bool llama_context::apply_adapter_cvec(
      return res;
