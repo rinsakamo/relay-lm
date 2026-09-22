@@ -734,3 +734,41 @@ A zero-GPU layer-0 K/V weight-identity audit has been added. It compares frozen 
 If that audit classifies `LAYER0_KV_WEIGHTS_DISTINCT`, the remaining anomaly is localized to projection execution / scheduler-backend realization / observation instrumentation rather than model weight identity.
 
 No physical execution is authorized by this refinement.
+
+
+### K/V weight audit dependency blocker and apparatus repair
+
+The first canonical zero-GPU K/V weight-identity runner invocation did not produce a scientific result.
+
+Observed local execution:
+
+- output root: `/tmp/relaylm-layer0-kv-weight-identity.Tvva0g/result`;
+- canonical runner invoked exactly once;
+- runner rc = 1;
+- failure occurred while importing frozen `gguf-py`;
+- blocker: `ModuleNotFoundError: No module named 'numpy'`;
+- `GGUFReader` was not reached;
+- no K/V metadata, payload SHA, dequantized SHA, or numerical comparison was produced;
+- no `terminal.json` was produced;
+- physical/GPU/model/generation/measured counters remained zero.
+
+Classification of that attempt:
+
+`KV_WEIGHT_IDENTITY_ZERO_GPU_DEPENDENCY_BLOCKED_NO_SCIENTIFIC_RESULT`
+
+This was not a scientific spend and does not consume any physical authority.
+
+The diagnostic apparatus has since been repaired without adding dependencies:
+
+- GGUF header, metadata, tensor table, offsets, and tensor payloads are parsed with Python stdlib only;
+- Q4_K and Q6_K dequantization required by the frozen layer-0 K/V subject is implemented directly from frozen llama.cpp / gguf-py format definitions;
+- float32 rounding is reproduced at the same arithmetic boundaries used by the frozen NumPy implementation before hashing F32 output;
+- raw payload SHA256 and dequantized F32 SHA256 remain part of the audit;
+- no `numpy` import is used or required;
+- synthetic selftests cover GGUF parsing, Q4_K decode, Q6_K decode, tensor offsets, and dependency absence.
+
+The repaired apparatus is a new zero-GPU execution generation. It does not authorize any physical/model/server execution.
+
+Status:
+
+`KV_WEIGHT_IDENTITY_STDLIB_ZERO_GPU_REPAIRED_READY`
