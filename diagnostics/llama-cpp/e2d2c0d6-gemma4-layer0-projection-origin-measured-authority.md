@@ -772,3 +772,86 @@ The repaired apparatus is a new zero-GPU execution generation. It does not autho
 Status:
 
 `KV_WEIGHT_IDENTITY_STDLIB_ZERO_GPU_REPAIRED_READY`
+
+
+### Layer-0 K/V weight distinctness and execution-path narrowing
+
+The repaired stdlib-only zero-GPU K/V weight audit completed successfully under generation:
+
+`kv-weight-identity-stdlib-20260922-a`
+
+Scientific classification:
+
+`LAYER0_KV_WEIGHTS_DISTINCT`
+
+Frozen model:
+
+- SHA256: `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`
+
+Layer-0 K:
+
+- tensor: `blk.0.attn_k.weight`
+- type: Q4_K
+- shape: [3840, 2048]
+- elements: 7,864,320
+- bytes: 4,423,680
+- data offset: 841,595,040
+- raw payload SHA256: distinct from V
+- dequantized F32 SHA256: distinct from V
+
+Layer-0 V:
+
+- tensor: `blk.0.attn_v.weight`
+- type: Q6_K
+- shape: [3840, 2048]
+- elements: 7,864,320
+- bytes: 6,451,200
+- data offset: 863,730,848
+- raw payload SHA256: distinct from K
+- dequantized F32 SHA256: distinct from K
+
+Numerical comparison:
+
+- same type: false
+- same shape: true
+- raw payload identical: false
+- dequantized bit-exact equal: false
+- elements compared: 7,864,320
+- max absolute difference: 0.32143402099609375
+- mean absolute difference: 0.017000692212983875
+
+Therefore the consumed byte-identical raw `Kcur-0` / `Vcur-0` projection dumps cannot be explained by model-level K/V weight identity.
+
+Further frozen-source audit narrows the path:
+
+1. Gemma4 layer-0 constructs separate K/V projections from present `wk` and `wv`.
+2. `build_lora_mm()` creates a fresh `ggml_mul_mat(ctx0, w, cur)` for every call; it does not cache or share results by input.
+3. K/V raw projection nodes receive distinct names `Kcur-0` and `Vcur-0`.
+4. `ggml_graph_get_tensor()` performs exact-name lookup.
+5. K/V weights are distinct loader tensor objects; `TENSOR_DUPLICATED` does not apply.
+6. Scheduler graph copy preserves tensor flags, names, sources, shapes, strides, and source data pointers.
+7. GGML graph outputs are retained and are not ordinarily freed/reused by gallocr.
+8. CUDA backend tensor reads copy from `tensor->data + offset`, so view/data origin is respected by the backend read path.
+9. CUDA MMQ dispatch switches on `src0->type`; Q4_K and Q6_K select distinct template specializations.
+10. CUDA graph update state records each node and each source data pointer/shape/stride by node index; it is not keyed only by output shape.
+11. CUDA graph QKV concurrency reordering is separately opt-in through `GGML_CUDA_GRAPH_OPT=1`.
+12. `build_lora_mm()` itself supplies no projection-result cache or aliasing path.
+
+Conservative residual domain:
+
+- realized projection execution;
+- scheduler/backend tensor realization;
+- CUDA/MMQ runtime state;
+- diagnostic observation instrumentation.
+
+Still unproven:
+
+- MMQ bug;
+- CUDA graph bug;
+- scheduler bug;
+- stale-buffer bug;
+- instrumentation bug.
+
+The next useful physical discriminator, if separately authorized, should not repeat the prior value-only projection probe. It should record **runtime tensor provenance** for Kcur/Vcur: tensor object identity, data pointer, buffer identity, view source/offset, op, source tensor identities/types/data pointers, geometry, and output flags, while preserving the existing historical-KV integrity gate.
+
+No physical execution is authorized by this authority update.
