@@ -855,3 +855,44 @@ Still unproven:
 The next useful physical discriminator, if separately authorized, should not repeat the prior value-only projection probe. It should record **runtime tensor provenance** for Kcur/Vcur: tensor object identity, data pointer, buffer identity, view source/offset, op, source tensor identities/types/data pointers, geometry, and output flags, while preserving the existing historical-KV integrity gate.
 
 No physical execution is authorized by this authority update.
+
+
+### Provenance static selftest false-negative and repair
+
+The first provenance patch static qualification did not reach the temporary
+frozen-source clone or patch application stage.
+
+Observed classification:
+
+`PROVENANCE_PATCH_STATIC_SELFTEST_FAIL_MISSING_MARKERS`
+
+The failure was caused by the selftest requiring each TSV field name to appear
+as its own separately quoted C++ string literal, while the provenance patch
+emits the schema across combined string literals.
+
+No physical/GPU/model/generation activity occurred and no scientific evidence
+was consumed.
+
+The selftest has been repaired to:
+
+- locate the combined provenance TSV header;
+- decode its C++ string literals;
+- compare the exact decoded tab-separated schema;
+- preserve the existing forbidden-arithmetic/execution checks;
+- continue to require clean four-patch application to frozen llama.cpp and
+  `git diff --check`.
+
+A follow-up inspection found and repaired over-escaped `\\t` handling in the
+first repair before any new selftest execution.
+
+New static selftest generation:
+
+`projection-provenance-static-20260923-b`
+
+Current status:
+
+`PROVENANCE_APPARATUS_STATIC_REQUALIFICATION_READY`
+
+This status authorizes only a new zero-GPU/static selftest invocation. It does
+not authorize build, model load, GPU execution, HTTP/generation, or any physical
+probe.
