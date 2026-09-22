@@ -12,11 +12,48 @@ It does not authorize retry, replay, resume, reseed, alternate ports after consu
 
 ## Authority generation
 
-`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c`
+`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c-c883sha64`
 
 ## Attempt identity
 
 `logical-prefix-kv-segmentation-control-20260922-6802c20c`
+
+## Superseded static-gate generation
+
+The immediately preceding authority generation:
+
+`logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c`
+
+is superseded before measured execution.
+
+Its static gate failed because the bound `C883.tokens.json` SHA256 omitted the final hexadecimal character:
+
+```text
+invalid 63-hex binding:
+1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92
+
+correct committed 64-hex SHA256:
+1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92a
+```
+
+Observed execution boundary for the superseded generation:
+
+```text
+py_compile = PASS
+runner self-test invocations = 1
+runner self-test = FAIL
+wrapper self-test invocations = 0
+guard self-test invocations = 0
+execute-once wrapper invocations = 0
+direct measured runner invocations = 0
+guard child invocations = 0
+W/W2/C883 requests = 0
+measured attempt consumed = false
+terminal state = PROBE_NOT_EXERCISED
+retry/replay/resume/reseed/repair/fallback = 0
+```
+
+The old generation MUST NOT be executed. The attempt identity remains unchanged because no measured request was attempted and no consumption boundary was crossed.
 
 ## Scientific question
 
@@ -146,7 +183,7 @@ Committed identities:
 
 ```text
 C883.tokens.json SHA256 =
-1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92
+1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92a
 
 C883.request.json SHA256 =
 1e490f609ac0b844521784cd4603ea79a9c5ab0b199117e4395c4a8cf2efa47c
@@ -241,16 +278,16 @@ Only these new measured files belong to this authority:
 
 ```text
 e2d2c0d6-gemma4-kv-segmentation-control-measured-run.py
-Git blob = 79484596ab7d4e4875bdbb3fe7c9c3f692b2d957
+Git blob = e0c7dc9a775e712b6d9ad1cfa8edb7432679cf5f
 
 e2d2c0d6-gemma4-kv-segmentation-control-measured-runner-selftest.py
 Git blob = 192f75a9a0cfa34308ae21610ee287d65b357f4c
 
 e2d2c0d6-gemma4-kv-segmentation-control-execute-once.py
-Git blob = ad10a8b0e37140335c16a5da309d80aeaa3657a1
+Git blob = 2f1e81411fe95f64aefaab51b68ec0de73560ad1
 
 e2d2c0d6-gemma4-kv-segmentation-control-wrapper-selftest.py
-Git blob = 1de054a14330e1a7ae8a2d70f39d120d76f3c7d5
+Git blob = d734ac13fa8eb7178bda6b426cbe78f6ea0bb3e2
 ```
 
 The historical four-point fixture-v2 runner/wrapper is consumed historical apparatus and is not authorized.
