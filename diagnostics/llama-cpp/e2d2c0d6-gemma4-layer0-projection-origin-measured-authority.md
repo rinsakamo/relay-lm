@@ -613,3 +613,49 @@ Therefore the simple model `W row ~= alpha * C row` is rejected as a global expl
 The abrupt A/B contrast is itself a new zero-GPU clue: Segment B changes local ubatch column origin (W logical 371 starts at local column 0; C logical 371 is local column 371). A dedicated read-only row-alignment posthoc has been added to distinguish same-logical-position correspondence from accidental same-local-column correspondence.
 
 No physical rerun is authorized or required for that analysis.
+
+
+### Row-alignment interpretation refinement
+
+The zero-GPU row-alignment runner emitted the raw classifier:
+
+`ROW_ALIGNMENT_PREVIOUS_WARM_LOCAL_COLUMN_SUPPORTED`
+
+That raw label is preserved as execution output, but its mechanistic interpretation is narrower than the evidence supports.
+
+For Segment B, local column `i` is compared against:
+
+- cold C local column `i`, which is logical position `i`;
+- previous warm W-A local column `i`, which is also logical position `i`.
+
+Because W and C share the same token sequence through logical position 864, those two local-column references carry the same token ID at every `i=0..140`. They are therefore not independent stale-vs-cold hypotheses.
+
+By contrast, W-B local column `i` corresponds to logical position `371+i`. In the committed fixture, only 10/141 pairs satisfy:
+
+`token[i] == token[371+i]`
+
+Thus 131/141 Segment-B rows compare different token IDs between the local-column and same-logical alternatives.
+
+Observed correspondence:
+
+- for all three dumped tensors, local-column references beat same-logical references on all 141 Segment-B rows;
+- previous-warm and cold-local mean cosines are close, as expected because both refer to the same token identity at local column `i`;
+- the small previous-warm advantage is not sufficient to isolate stale previous-ubatch carry-over.
+
+Therefore the conservative scientific interpretation is:
+
+`ROW_ALIGNMENT_LOCAL_COLUMN_TOKEN_CORRESPONDENCE_SUPPORTED`
+
+This supersedes only the mechanistic reading of the raw `PREVIOUS_WARM` label, not the raw zero-GPU result itself.
+
+The result supports a strong local-column / token-correspondence anomaly in the consumed intermediate dumps and weakens the claim that those dumped rows can be interpreted directly as the intended logical positions in Segment B.
+
+It does **not** yet prove:
+
+- previous-ubatch stale-buffer carry-over;
+- scheduler bug;
+- CUDA graph bug;
+- allocator bug;
+- stream-K causal origin.
+
+A follow-on zero-GPU nearest-row analysis is authorized on the existing consumed dump only. No new physical request is authorized.
