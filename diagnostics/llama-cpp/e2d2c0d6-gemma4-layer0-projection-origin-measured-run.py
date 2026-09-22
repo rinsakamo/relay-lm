@@ -26,6 +26,7 @@ EXPECTED_APPLIED_PATCH_SHA = "5073a690590bf22e6b437425f1f6210b2dd239b549eaeb7509
 EXPECTED_ALIGNED_PATCH_SHA = "cef233d776686ea36f03174b0c1d729545e2356f7009d613df726bcaf16a856a"
 EXPECTED_LOGICAL_PATCH_SHA = "d62810fdc645cbb011c52047e9ba9227b1d6c29fafc0bac0e7cf659f6104e4c8"
 EXPECTED_ORIGIN_PATCH_SHA = "61af8dce39b0dceb0ce12b7fef8014dcb8f94ba7564955783c5ff76c9d211674"
+EXPECTED_STARTUP_ARGV_SHA = "031c7df7867ea521e2df37fa3a0a97b60a7eb2303e7c54fee5c92b55aa8b6dea"
 
 EXPECTED_W_HISTORICAL_DIGEST = "492663002bf7f1c37d7df2e346d7eff38ff21d6225040c21e07f8fa4984b7ce6"
 EXPECTED_C_HISTORICAL_DIGEST = "c7a5bfc7ea2176fd26b32ee0d45e644ca8737facd11f00647850001d45f373d2"
@@ -105,6 +106,20 @@ def validate_premeasured(root: Path, model: Path):
     require_equal(qual.get("primary_classification"), "LAYER0_PROJECTION_ORIGIN_PREMEASURED_READY", "qualification classification")
     require_equal(binary.get("status"), "LAYER0_PROJECTION_ORIGIN_BINARY_PREFLIGHT_PASS", "binary preflight")
     require_equal(startup.get("primary_classification"), "LOGICAL_PREFIX_STARTUP_QUALIFIED", "startup classification")
+
+    startup_evidence = startup.get("evidence") or {}
+    for arm_name in ("plain", "probe"):
+        arm = startup_evidence.get(arm_name) or {}
+        require_equal(arm.get("classification"), "READY_NON_GENERATIVE", f"{arm_name} startup arm")
+        require_equal(arm.get("argv_canonical_sha256"), EXPECTED_STARTUP_ARGV_SHA, f"{arm_name} canonical argv")
+        checks = ((arm.get("context") or {}).get("checks") or {})
+        for key in ("n_seq_max_1", "n_ctx_8192", "n_batch_512", "n_ubatch_512", "flash_attn_enabled"):
+            require_equal((checks.get(key) or {}).get("ok"), True, f"{arm_name} {key}")
+        swa = arm.get("compact_swa") or {}
+        require_equal(swa.get("ok"), True, f"{arm_name} compact SWA")
+        require_equal(swa.get("selected_base_size"), 8192, f"{arm_name} base KV")
+        require_equal(swa.get("selected_swa_size"), 1536, f"{arm_name} SWA KV")
+        require_equal(arm.get("unexpected_probe_output"), False, f"{arm_name} unexpected startup probe output")
 
     require_equal(build.get("source_head"), EXPECTED_SOURCE_HEAD, "source HEAD")
     require_equal(build.get("source_tree"), EXPECTED_SOURCE_TREE, "source tree")
