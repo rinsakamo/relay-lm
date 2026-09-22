@@ -4,7 +4,7 @@ Diagnostic only. This authority is separate from the protected `v1` scientific c
 
 ## Status
 
-`LAYER0_PROJECTION_ORIGIN_MEASURED_AUTHORIZED_UNSPENT`
+`TERMINAL_CONSUMED_LAYER0_PREPROJECTION_DIFFERENCE_OBSERVED`
 
 Authority generation:
 
@@ -433,7 +433,7 @@ Interpretation: the earliest observed numerical difference across this boundary 
 
 Historical integrity gate passes, but `attn_norm-0` already differs.
 
-Interpretation: causal origin is earlier than K/V projection.
+Interpretation at classification time: the earliest observed difference on the instrumented boundary is already present at `attn_norm-0`, before raw K/V projection output. Post-terminal source audit below narrows the scientific claim: because `ggml_set_output()` changes fusion eligibility, this classification does **not** by itself prove that the uninstrumented causal origin is earlier than K/V projection.
 
 ### `LAYER0_PROJECTION_OUTPUT_IDENTICAL_ORIGIN_LATER`
 
@@ -506,3 +506,66 @@ After the wrapper returns, read back:
 - posthoc terminal.
 
 Then stop. No follow-on physical test is authorized by this authority.
+
+## Terminal measured execution
+
+This authority was exercised exactly once and is permanently consumed.
+
+Observed terminal classification: **LAYER0_PREPROJECTION_DIFFERENCE_OBSERVED**.
+
+Execution accounting:
+
+- execute-once wrapper invocations = 1
+- direct measured inner-runner invocations = 0
+- required non-measured --preflight-only invocations = 1
+- measured request count = 2
+- request order = W -> C
+- retry/replay/resume/reseed/fallback = 0
+- L1 = 0; L0R = 0; WR2 = 0; FA-OFF = 0
+- scientific campaign interaction = 0
+- rerun_authorized = false
+
+Measured request accounting:
+
+- W: HTTP 200, cache_n=0, prompt_n=883, predicted_n=1
+- C: HTTP 200, cache_n=0, prompt_n=2927, predicted_n=1
+
+Both request SHA256 identities matched the pinned authority.
+
+Historical integrity gate:
+
+- new W-P512 == historical WR-P512: true
+- new C-P512 == historical C-P512: true
+- each canonical directory: 100 files, 96 K/V payloads, base/SWA rows 512/512, base/SWA KV 8192/1536, logical positions 0..511, v_trans=0
+
+Therefore the instrumentation preserved the previously measured cache-visible W/C subject at the canonical 512-token boundary.
+
+Projection-surface result over logical positions 0..511:
+
+- attn_norm-0: bit-exact=false; differing rows=512/512; differing elements=1,966,080/1,966,080; max abs=10.2819712162; max ULP-like=2,168,173,358
+- Kcur-0: bit-exact=false; differing rows=512/512; differing elements=1,048,575/1,048,576; max abs=10.0582499504; max ULP-like=2,168,577,328
+- Vcur-0: bit-exact=false; differing rows=512/512; differing elements=1,048,575/1,048,576; max abs=10.0582499504; max ULP-like=2,168,577,328
+
+The attn_norm-0 difference begins at logical position 0 and occurs in both warm physical-segmentation regions: segment A (0..370) and segment B (371..511).
+
+### Post-terminal frozen-source interpretation
+
+Fresh static read-back of frozen llama.cpp e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d establishes this layer-0 order:
+
+token embedding lookup -> inp_scaled = embedding * sqrt(n_embd) -> layer-0 RMS norm -> attn_norm-0 -> Q/K/V projection -> Kcur-0 / Vcur-0 -> K/V norm / K RoPE -> cache write.
+
+For the committed fixture, W and C share the same token sequence through logical position 864, so logical positions 0..511 have identical token IDs. The immediate mathematical predecessor of layer-0 RMS normalization is therefore the same token-embedding lookup and fixed sqrt(n_embd) scaling for the compared prefix.
+
+However, the observation method marks attn_norm-0, Kcur-0, and Vcur-0 with ggml_set_output(). In the same frozen GGML source, fusion eligibility explicitly rejects any node carrying GGML_TENSOR_FLAG_OUTPUT. Therefore ggml_set_output() is not merely a lifetime-retention annotation; it can alter graph fusion and kernel scheduling around the observed tensors.
+
+Conservative terminal scientific interpretation:
+
+**CACHE-VISIBLE SUBJECT PRESERVED + EARLIEST OBSERVED INSTRUMENTED DIFFERENCE = attn_norm-0 + UNINSTRUMENTED CAUSAL ORIGIN NOT YET PROVEN.**
+
+The measured result rejects the narrower claim that the first observed difference appears only at K/V projection output.
+
+It does not yet distinguish between (1) a genuine width/segmentation-sensitive numerical difference arising at the layer-0 RMS-normalization surface and (2) an observation-induced difference caused by the output/fusion barrier interacting with width-dependent execution.
+
+Accordingly, this terminal must not be upgraded to LAYER0_RMS_NORM_CAUSAL_ORIGIN_PROVEN or STREAM_K_CAUSAL_ORIGIN_PROVEN without a separate non-perturbative discriminator.
+
+No further physical execution is authorized by this terminal authority.
