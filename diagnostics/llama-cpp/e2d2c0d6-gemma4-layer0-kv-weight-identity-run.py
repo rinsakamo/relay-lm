@@ -42,7 +42,7 @@ def main():
 
     gguf_py = args.llama_source / "gguf-py"
     if not gguf_py.is_dir():
-        raise RuntimeError(f"gguf-py not found under llama source: {gguf_py}")
+        raise RuntimeError(f"gguf-py not found under frozen llama source: {gguf_py}")
     if not AUDIT.is_file() or not SELFTEST.is_file():
         raise RuntimeError("required audit/selftest missing")
 
@@ -59,7 +59,7 @@ def main():
         [
             sys.executable, str(AUDIT),
             "--model", str(args.model),
-            "--gguf-py-root", str(gguf_py),
+            "--llama-source", str(args.llama_source),
             "--out", str(audit_out),
         ],
         args.out_root / "audit.stdout.json",
