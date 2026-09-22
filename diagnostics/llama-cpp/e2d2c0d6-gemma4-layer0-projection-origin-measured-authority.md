@@ -585,3 +585,31 @@ Additional zero-GPU source audit narrows the instrumentation concern.
 Consequently, the measured all-element attn_norm-0 W/C difference is not naturally explained by the pure layer-0 mathematical operators alone. The remaining static candidate class moves toward runtime graph/input binding, graph reuse/update, allocator/scheduler placement, or another shape-dependent execution-state effect before or at the realized attn_norm buffer.
 
 This still does not prove a specific runtime mechanism. The next permitted work is zero-GPU analysis of the already-consumed projection dumps; no additional physical request is authorized.
+
+### Zero-GPU row-wise scalar relation result
+
+Existing consumed projection dumps were analyzed without GPU/model/server/HTTP/generation activity.
+
+Classification:
+
+`ROW_WISE_SCALAR_PREPROJECTION_RELATION_MIXED`
+
+Key result:
+
+- Segment A (logical 0..370; W width 371 vs C width 512) remains moderately similar but fails strict scalar/collinearity thresholds for every row.
+- Segment B (logical 371..511; W rows are local columns 0..140 of width-508 ubatch, C rows are local columns 371..511 of width-512 ubatch) is strongly non-collinear.
+- near-pure-scalar rows = 0/512 for attn_norm-0, Kcur-0, and Vcur-0.
+- near-collinear rows = 0/512 for attn_norm-0, Kcur-0, and Vcur-0.
+
+Representative summaries:
+
+- attn_norm-0 segment A: mean cosine 0.987321; mean scalar-fit residual 0.154198.
+- attn_norm-0 segment B: mean cosine 0.178276; mean scalar-fit residual 0.983603.
+- Kcur/Vcur segment A: mean cosine 0.907078; mean scalar-fit residual 0.389956.
+- Kcur/Vcur segment B: mean cosine 0.136602; mean scalar-fit residual 0.990234.
+
+Therefore the simple model `W row ~= alpha * C row` is rejected as a global explanation of the consumed preprojection difference.
+
+The abrupt A/B contrast is itself a new zero-GPU clue: Segment B changes local ubatch column origin (W logical 371 starts at local column 0; C logical 371 is local column 371). A dedicated read-only row-alignment posthoc has been added to distinguish same-logical-position correspondence from accidental same-local-column correspondence.
+
+No physical rerun is authorized or required for that analysis.
