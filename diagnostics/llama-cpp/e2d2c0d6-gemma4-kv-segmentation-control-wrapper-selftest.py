@@ -59,7 +59,7 @@ def main():
     checks = {
         "authority_generation_bound": (
             wrapper.AUTHORITY_GENERATION
-            == "logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c"
+            == "logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c-c883sha64"
         ),
         "attempt_id_bound": (
             wrapper.ATTEMPT_ID
