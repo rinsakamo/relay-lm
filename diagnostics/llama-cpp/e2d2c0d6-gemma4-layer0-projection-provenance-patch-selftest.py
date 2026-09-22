@@ -59,19 +59,19 @@ def main():
     # The TSV header is intentionally emitted as multiple adjacent/streamed C++
     # string literals. Validate the decoded header schema instead of requiring
     # every field name to appear as its own separately quoted literal.
-    header_start = provenance_text.find('<< "name\\\\ttensor_ptr')
+    header_start = provenance_text.find('<< "name\\ttensor_ptr')
     if header_start < 0:
         raise RuntimeError("provenance TSV header start missing")
     header_end = provenance_text.find(";", header_start)
     if header_end < 0:
         raise RuntimeError("provenance TSV header terminator missing")
     header_region = provenance_text[header_start:header_end]
-    string_tokens = re.findall(r'"(?:\\\\.|[^"\\\\])*"', header_region)
+    string_tokens = re.findall(r'"(?:\\.|[^"\\])*"', header_region)
     try:
         decoded_header = "".join(ast.literal_eval(token) for token in string_tokens)
     except (SyntaxError, ValueError) as exc:
         raise RuntimeError(f"unable to decode provenance TSV header literals: {exc}") from exc
-    header_fields = decoded_header.rstrip("\\n").split("\\t")
+    header_fields = decoded_header.rstrip("\n").split("\t")
 
     expected_header_fields = [
         "name", "tensor_ptr", "data_ptr", "buffer_ptr", "view_src_ptr",
