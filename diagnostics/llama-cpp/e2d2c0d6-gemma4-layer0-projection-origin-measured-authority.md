@@ -896,3 +896,56 @@ Current status:
 This status authorizes only a new zero-GPU/static selftest invocation. It does
 not authorize build, model load, GPU execution, HTTP/generation, or any physical
 probe.
+
+
+### Provenance posthoc classifier apparatus
+
+A zero-GPU posthoc classifier has been added for any future provenance-enabled
+projection dump.
+
+Files:
+
+- `e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py`
+- `e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py`
+
+The classifier requires the exact provenance TSV schema and evaluates K/V per
+dump using:
+
+- tensor object pointers;
+- output data pointers;
+- output buffer pointers;
+- view source / view offset;
+- op / flags / geometry;
+- immediate source object/name/type/data/buffer/op;
+- raw Kcur/Vcur payload SHA256.
+
+Strong classification
+`K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL` requires:
+
+- distinct K/V tensor objects;
+- distinct K/V output data pointers;
+- distinct K/V src0(weight) objects and data pointers;
+- K src0 name/type = `blk.0.attn_k.weight` / Q4_K;
+- V src0 name/type = `blk.0.attn_v.weight` / Q6_K;
+- both ops = MUL_MAT;
+- K/V src1 object and data pointer are the same shared activation;
+- raw Kcur/Vcur payload remains byte-identical.
+
+Other explicit classifications cover tensor-object alias, output-data alias,
+weight-source alias, unexpected source semantics, value-distinct outputs, and
+mixed behavior across W371/W508/C512 dumps.
+
+Aggregate strong result across all three dumps is:
+
+`K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED`
+
+This would still not by itself identify MMQ, CUDA graph, scheduler, or another
+specific mechanism. It would establish only that distinct runtime graph/source
+provenance produced identical observed values.
+
+Current zero-GPU gate order:
+
+1. `projection-provenance-static-20260923-b` patch static requalification;
+2. provenance posthoc classifier selftest.
+
+No physical execution is authorized by either gate.
