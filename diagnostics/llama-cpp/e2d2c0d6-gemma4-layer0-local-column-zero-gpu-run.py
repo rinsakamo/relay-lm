@@ -34,24 +34,37 @@ def run_json(cmd, stdout_path: Path, stderr_path: Path, expected_key=None, expec
 
 def classify(nearest):
     decisions={}
-    all_local_distinct=True
+    all_pairwise_local=True
+    all_nearest_local_dominant=True
     for name,t in nearest["tensors"].items():
         distinct=t["distinct_local_vs_logical_token_rows"]
         local_beats=t["same_local_beats_same_logical_on_distinct_token_rows"]
-        best_local=t["best_row_is_same_local_column"]
-        best_logical=t["best_row_is_same_logical_position"]
+        best_local_distinct=t["best_row_is_same_local_column_on_distinct_token_rows"]
+        best_logical_distinct=t["best_row_is_same_logical_position_on_distinct_token_rows"]
+        best_token_local_distinct=t["best_row_token_matches_local_token_on_distinct_token_rows"]
+        best_token_target_distinct=t["best_row_token_matches_warm_logical_token_on_distinct_token_rows"]
         decisions[name]={
             "distinct_token_rows":distinct,
             "same_local_beats_same_logical_on_distinct_token_rows":local_beats,
-            "best_row_is_same_local_column":best_local,
-            "best_row_is_same_logical_position":best_logical,
-            "best_row_token_matches_local_token":t["best_row_token_matches_local_token"],
-            "best_row_token_matches_warm_logical_token":t["best_row_token_matches_warm_logical_token"],
+            "best_row_is_same_local_column_on_distinct_token_rows":best_local_distinct,
+            "best_row_is_same_logical_position_on_distinct_token_rows":best_logical_distinct,
+            "best_row_token_matches_local_token_on_distinct_token_rows":best_token_local_distinct,
+            "best_row_token_matches_warm_logical_token_on_distinct_token_rows":best_token_target_distinct,
+            "best_row_is_same_local_column_all_rows":t["best_row_is_same_local_column"],
+            "best_row_is_same_logical_position_all_rows":t["best_row_is_same_logical_position"],
         }
-        all_local_distinct = all_local_distinct and distinct > 0 and local_beats == distinct
+        pairwise = distinct > 0 and local_beats == distinct
+        nearest = (
+            best_local_distinct > best_logical_distinct
+            and best_token_local_distinct > best_token_target_distinct
+        )
+        all_pairwise_local = all_pairwise_local and pairwise
+        all_nearest_local_dominant = all_nearest_local_dominant and nearest
 
-    if all_local_distinct:
-        primary="LOCAL_COLUMN_CORRESPONDENCE_PERSISTS_UNDER_DISTINCT_TOKEN_CONTROL"
+    if all_pairwise_local and all_nearest_local_dominant:
+        primary="LOCAL_COLUMN_NEAREST_MAPPING_SUPPORTED_UNDER_DISTINCT_TOKEN_CONTROL"
+    elif all_pairwise_local:
+        primary="LOCAL_COLUMN_PAIRWISE_CORRESPONDENCE_ONLY_UNDER_DISTINCT_TOKEN_CONTROL"
     else:
         primary="LOCAL_COLUMN_CORRESPONDENCE_NOT_UNIFORM_UNDER_DISTINCT_TOKEN_CONTROL"
     return primary,decisions
