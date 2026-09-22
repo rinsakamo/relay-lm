@@ -70,6 +70,14 @@ def classify_dump(dump: Path):
         "src1_same_object":bool(k["src1_ptr"] and k["src1_ptr"]==v["src1_ptr"]),
         "src1_same_data":bool(k["src1_data_ptr"] and k["src1_data_ptr"]==v["src1_data_ptr"]),
         "op_equal":bool(k["op"] and k["op"]==v["op"]),
+        "expected_projection_semantics":(
+            k["op"]=="MUL_MAT" and v["op"]=="MUL_MAT"
+            and k["src0_type"]=="Q4_K" and v["src0_type"]=="Q6_K"
+            and k["src0_name"]=="blk.0.attn_k.weight"
+            and v["src0_name"]=="blk.0.attn_v.weight"
+            and bool(k["src1_ptr"]) and k["src1_ptr"]==v["src1_ptr"]
+            and bool(k["src1_data_ptr"]) and k["src1_data_ptr"]==v["src1_data_ptr"]
+        ),
         "value_identical":value_identical,
     }
 
@@ -79,8 +87,10 @@ def classify_dump(dump: Path):
         primary="K_V_RUNTIME_OUTPUT_DATA_ALIAS"
     elif not checks["src0_ptr_distinct"] or not checks["src0_data_ptr_distinct"]:
         primary="K_V_RUNTIME_WEIGHT_SOURCE_ALIAS"
-    elif value_identical:
+    elif value_identical and checks["expected_projection_semantics"]:
         primary="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL"
+    elif value_identical:
+        primary="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED"
     else:
         primary="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_DISTINCT"
 
