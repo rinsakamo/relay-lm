@@ -291,29 +291,36 @@ The preparation transaction was zero-build, zero-model, zero-server, zero-GPU, z
 
 The prior measured-authority generation without the `-c883sha64` suffix failed its static runner self-test before wrapper invocation because its C883 token SHA binding was 63 hexadecimal characters. It was never exercised and is superseded. The current route below is the corrected generation.
 
-## Current post-hoc route
+## Current terminal route
 
-The segmentation-control measured attempt has been consumed and terminalized:
+The segmentation-control measured attempt remains consumed and incomplete:
 
 `TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
 
-No measured rerun is authorized.
+A zero-GPU forensic reconciliation over that immutable measured evidence completed successfully.
 
-The current route is zero-GPU forensic reconciliation of the already-produced W/W2/C883 evidence:
+Post-hoc authority:
 
 `e2d2c0d6-gemma4-kv-segmentation-control-posthoc-authority.md`
 
-Required status:
+Terminal post-hoc status:
 
-`SEGMENTATION_CONTROL_POSTHOC_RECONCILIATION_READY`
+`TERMINAL_SEGMENTATION_CONTROL_POSTHOC_RECONCILED_KV_IDENTICAL`
 
-Source measured evidence:
+Derived measured classification:
+
+`SEGMENTATION_CONTROL_KV_IDENTICAL`
+
+Observed relation:
 
 ```text
-/tmp/relaylm-segmentation-control-attempt.7bkdqi/measured-output
+W == W2
+W == C883
 ```
 
-The forensic reconciler must not start a server, call HTTP, acquire the GPU guard, invoke subprocesses, mutate measured evidence, or authorize a rerun.
+with zero differing/missing KV payload files and equal layout metadata across all three validated P512 dumps.
 
-The original measured terminal remains authoritative as `PROBE_EXERCISED_INCOMPLETE`; any post-hoc derived KV classification is recorded separately.
+The original measured terminal remains `PROBE_EXERCISED_INCOMPLETE`; it is not rewritten or replayed.
+
+No further physical execution is authorized by this control authority.
 
