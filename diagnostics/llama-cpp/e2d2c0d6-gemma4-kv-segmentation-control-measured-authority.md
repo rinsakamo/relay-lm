@@ -4,7 +4,7 @@ Diagnostic only.
 
 ## Status
 
-`QUALIFIED_FOR_ONE_SEGMENTATION_CONTROL_MEASURED_ATTEMPT`
+`TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
 
 This authority permits exactly one measured segmentation-control attempt.
 
@@ -396,6 +396,91 @@ rerun_authorized = false
 if a complete terminal classification is not produced.
 
 A complete classification is also terminal and consumed.
+
+## Terminal measured execution
+
+The corrected authority generation was invoked exactly once and crossed the W consumption boundary.
+
+Observed terminal:
+
+`PROBE_EXERCISED_INCOMPLETE`
+
+The attempt is permanently consumed and MUST NOT be retried, replayed, resumed, repaired in place, reseeded, or rerun.
+
+Measured evidence:
+
+```text
+preflight =
+/tmp/relaylm-segmentation-control-attempt.7bkdqi/preflight
+
+measured output =
+/tmp/relaylm-segmentation-control-attempt.7bkdqi/measured-output
+
+request order =
+W -> W2 -> C883
+
+request count = 3
+
+W    : HTTP 200, cache_n=0, prompt_n=883, predicted_n=1
+W2   : HTTP 200, cache_n=0, prompt_n=883, predicted_n=1
+C883 : HTTP 200, cache_n=0, prompt_n=883, predicted_n=1
+```
+
+All three individual logical-prefix dump validations completed successfully:
+
+```text
+W-P512    = PASS
+W2-P512   = PASS
+C883-P512 = PASS
+```
+
+Each dump proved logical positions 0..511, v_trans=0, base KV 8192, SWA KV 1536, complete K/V payload sets, valid manifest geometry, and exact payload sizes.
+
+The first failure occurred only after the third dump, in cross-observation geometry consistency. The inherited helper still required the historical four-point names:
+
+```text
+WR-P512
+WR-R512
+WR2-P512
+C-P512
+```
+
+while the current experiment had correctly produced:
+
+```text
+W-P512
+W2-P512
+C883-P512
+```
+
+The exact failure was:
+
+`missing dump geometry records: ['WR-P512', 'WR-R512', 'WR2-P512', 'C-P512']`
+
+Therefore the measurement data were produced, but the runner stopped before emitting:
+
+```text
+kv-dump-geometry.json
+kv-segmentation-control-comparison.json
+api-W-vs-C883.json
+```
+
+The measured authority is consumed. No complete `SEGMENTATION_CONTROL_*` classification was emitted by the measured runner.
+
+Exactly-once/separation accounting:
+
+```text
+execute-once wrapper = 1
+direct measured runner = 0
+guard child runner = 1
+fresh idle observations = 2
+retry/replay/resume/reseed/repair/fallback = 0
+FA-OFF = 0
+scientific campaign interaction/mutation = 0
+campaign queue/receipt/spend mutation = 0
+```
+
+A distinct zero-GPU forensic reconciliation may inspect the immutable consumed evidence and derive post-hoc comparisons. Such reconciliation MUST NOT modify the measured terminal, start a server, call the model, or authorize a rerun.
 
 ## Hard prohibitions
 
