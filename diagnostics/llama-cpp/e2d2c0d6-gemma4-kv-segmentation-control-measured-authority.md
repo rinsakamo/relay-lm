@@ -509,3 +509,34 @@ Must remain zero:
 Once the execute-once wrapper has been invoked, stop regardless of outcome.
 
 No result from this authority authorizes its own rerun or a follow-on physical measurement.
+
+## Post-hoc terminal derivation
+
+The consumed measured attempt remains terminal as:
+
+`TERMINAL_CONSUMED_PROBE_EXERCISED_INCOMPLETE`
+
+A distinct zero-GPU read-only forensic reconciliation over the already-produced W/W2/C883 evidence completed successfully under:
+
+`e2d2c0d6-gemma4-kv-segmentation-control-posthoc-authority.md`
+
+Post-hoc authority terminal:
+
+`TERMINAL_SEGMENTATION_CONTROL_POSTHOC_RECONCILED_KV_IDENTICAL`
+
+Derived measured classification:
+
+`SEGMENTATION_CONTROL_KV_IDENTICAL`
+
+Derived byte relation:
+
+```text
+W == W2 == C883
+```
+
+with zero differing/missing KV payload files and equal layout metadata across all three validated P512 observations.
+
+This derived forensic classification does not replace or rewrite the original measured terminal. The physical attempt remains consumed and incomplete because its in-run analyzer failed after evidence generation.
+
+No measured rerun is authorized.
+
