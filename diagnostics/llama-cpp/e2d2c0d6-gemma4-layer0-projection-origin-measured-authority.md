@@ -569,3 +569,19 @@ It does not yet distinguish between (1) a genuine width/segmentation-sensitive n
 Accordingly, this terminal must not be upgraded to LAYER0_RMS_NORM_CAUSAL_ORIGIN_PROVEN or STREAM_K_CAUSAL_ORIGIN_PROVEN without a separate non-perturbative discriminator.
 
 No further physical execution is authorized by this terminal authority.
+
+### Frozen-source audit refinement after terminal reconciliation
+
+Additional zero-GPU source audit narrows the instrumentation concern.
+
+1. GGML allocator semantics: tensors carrying GGML_TENSOR_FLAG_OUTPUT are never freed by the graph allocator and are not eligible for in-place parent-buffer reuse. Therefore the post-graph host dumps of attn_norm-0, Kcur-0, and Vcur-0 are not explained by their buffers being recycled and overwritten by later tensors.
+
+2. CUDA fusion semantics: Gemma4 layer-0 build_norm produces an RMS_NORM followed by the learned-weight MUL. The named attn_norm-0 tensor is the final MUL node. The generic sequential fusion predicate rejects GGML_TENSOR_FLAG_OUTPUT only on intermediate nodes, not on the final node. Therefore marking attn_norm-0 as an output does not by itself disable the RMS_NORM->MUL fusion that produces attn_norm-0.
+
+3. Immediate predecessor semantics: the layer-0 input is token embedding lookup followed by elementwise multiplication by the fixed sqrt(n_embd) factor. Frozen CUDA get-rows selects/dequantizes each token row independently, and the scale kernel performs an elementwise fixed multiply. Neither operation reduces across token rows.
+
+4. RMS normalization semantics: the frozen CUDA RMS-norm kernel launches one block per row and reduces only across that row's hidden dimension ncols. Token batch width changes grid extent but not another row's reduction domain. With identical token IDs at logical positions 0..511, the ordinary mathematical path embedding -> fixed scale -> row-local RMS norm is therefore expected to be width-invariant for those rows.
+
+Consequently, the measured all-element attn_norm-0 W/C difference is not naturally explained by the pure layer-0 mathematical operators alone. The remaining static candidate class moves toward runtime graph/input binding, graph reuse/update, allocator/scheduler placement, or another shape-dependent execution-state effect before or at the realized attn_norm buffer.
+
+This still does not prove a specific runtime mechanism. The next permitted work is zero-GPU analysis of the already-consumed projection dumps; no additional physical request is authorized.
