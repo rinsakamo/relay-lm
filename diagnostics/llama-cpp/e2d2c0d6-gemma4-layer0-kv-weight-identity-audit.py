@@ -78,6 +78,9 @@ def skip_value(f, typ):
     if typ == 9: # ARRAY
         elem=u32(f)
         n=u64(f)
+        if elem in VALUE_SIZES:
+            f.seek(VALUE_SIZES[elem]*n,1)
+            return None
         for _ in range(n):
             skip_value(f,elem)
         return None
@@ -166,6 +169,9 @@ def sha256_slice(path: Path, offset: int, size: int):
 def f16(raw2):
     return struct.unpack("<e",raw2)[0]
 
+def f32(x):
+    return struct.unpack("<f", struct.pack("<f", float(x)))[0]
+
 def decode_q4_k(block):
     if len(block)!=144:
         raise RuntimeError("Q4_K block size mismatch")
@@ -189,12 +195,12 @@ def decode_q4_k(block):
         q32=qs[chunk*32:(chunk+1)*32]
         for high in (False,True):
             g=chunk*2+(1 if high else 0)
-            dd=d*sc[g]
-            dm=dmin*mn[g]
+            dd=f32(d*sc[g])
+            dm=f32(dmin*mn[g])
             shift=4 if high else 0
             for b in q32:
                 q=(b>>shift)&0x0F
-                out.append(dd*q-dm)
+                out.append(f32(f32(dd*q)-dm))
     if len(out)!=256:
         raise RuntimeError("Q4_K decode length mismatch")
     return out
@@ -228,7 +234,8 @@ def decode_q6_k(block):
     out=[]
     for i,(l,h) in enumerate(zip(lo,hi)):
         q=(l | (h<<4))-32
-        out.append(d*scales[i//16]*q)
+        ds=f32(d*scales[i//16])
+        out.append(f32(ds*q))
     return out
 
 def decoder_for(qtype):
