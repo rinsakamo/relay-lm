@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import ast
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -44,31 +46,45 @@ def main():
             raise RuntimeError(f"required patch missing: {patch}")
 
     provenance_text = patches[-1].read_text(encoding="utf-8")
+
     required_patch_markers = (
         '"provenance.tsv"',
-        '"tensor_ptr"',
-        '"data_ptr"',
-        '"buffer_ptr"',
-        '"view_src_ptr"',
-        '"view_offs"',
-        '"src0_ptr"',
-        '"src0_name"',
-        '"src0_type"',
-        '"src0_data_ptr"',
-        '"src0_buffer_ptr"',
-        '"src0_op"',
-        '"src1_ptr"',
-        '"src1_name"',
-        '"src1_type"',
-        '"src1_data_ptr"',
-        '"src1_buffer_ptr"',
-        '"src1_op"',
         'ggml_graph_get_tensor(gf, name)',
         'ggml_op_name(tensor->op)',
     )
     missing = [x for x in required_patch_markers if x not in provenance_text]
     if missing:
         raise RuntimeError(f"provenance patch markers missing: {missing}")
+
+    # The TSV header is intentionally emitted as multiple adjacent/streamed C++
+    # string literals. Validate the decoded header schema instead of requiring
+    # every field name to appear as its own separately quoted literal.
+    header_start = provenance_text.find('<< "name\\\\ttensor_ptr')
+    if header_start < 0:
+        raise RuntimeError("provenance TSV header start missing")
+    header_end = provenance_text.find(";", header_start)
+    if header_end < 0:
+        raise RuntimeError("provenance TSV header terminator missing")
+    header_region = provenance_text[header_start:header_end]
+    string_tokens = re.findall(r'"(?:\\\\.|[^"\\\\])*"', header_region)
+    try:
+        decoded_header = "".join(ast.literal_eval(token) for token in string_tokens)
+    except (SyntaxError, ValueError) as exc:
+        raise RuntimeError(f"unable to decode provenance TSV header literals: {exc}") from exc
+    header_fields = decoded_header.rstrip("\\n").split("\\t")
+
+    expected_header_fields = [
+        "name", "tensor_ptr", "data_ptr", "buffer_ptr", "view_src_ptr",
+        "view_src_data_ptr", "view_offs", "op", "flags", "type", "ne0",
+        "ne1", "nb0", "nb1", "src0_ptr", "src0_name", "src0_type",
+        "src0_data_ptr", "src0_buffer_ptr", "src0_op", "src1_ptr",
+        "src1_name", "src1_type", "src1_data_ptr", "src1_buffer_ptr",
+        "src1_op",
+    ]
+    if header_fields != expected_header_fields:
+        raise RuntimeError(
+            f"provenance TSV header schema mismatch: {header_fields!r}"
+        )
 
     forbidden = (
         "ggml_mul_mat(",
@@ -124,6 +140,8 @@ def main():
 
         result = {
             "primary_classification": "LAYER0_PROJECTION_PROVENANCE_PATCH_STATIC_PASS",
+            "selftest_generation": "projection-provenance-static-20260923-b",
+            "provenance_header_fields": expected_header_fields,
             "frozen_source_head": REV,
             "patches": [p.name for p in patches],
             "changed_paths": sorted(line[3:] for line in status if len(line) >= 4),
