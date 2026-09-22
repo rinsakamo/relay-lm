@@ -1,0 +1,91 @@
+From: RelayLM cache diagnostic
+Subject: [DIAGNOSTIC ONLY] record Gemma4 layer-0 K/V runtime tensor provenance
+
+Target: ggml-org/llama.cpp @ e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d
+Prerequisites:
+  e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch
+  e2d2c0d6-gemma4-layer0-projection-origin-diagnostic.patch
+
+This patch adds no arithmetic and performs no extra graph execution. It augments
+the existing projection-origin dump with runtime tensor provenance for the
+already-preserved layer-0 attn_norm/Kcur/Vcur outputs.
+
+The purpose is to distinguish:
+- tensor object aliasing,
+- data/buffer aliasing,
+- model-weight source aliasing,
+- versus distinct runtime objects producing byte-identical values.
+
+The patch is apparatus only. It does not authorize execution.
+
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -1435,6 +1435,63 @@ static bool relay_projection_origin_dump(
+         return false;
+     }
+ 
++    {
++        std::ofstream provenance(root / "provenance.tsv", std::ios::out | std::ios::trunc);
++        if (!provenance) {
++            return false;
++        }
++        provenance
++            << "name\ttensor_ptr\tdata_ptr\tbuffer_ptr\tview_src_ptr\tview_src_data_ptr\tview_offs"
++            << "\top\tflags\ttype\tne0\tne1\tnb0\tnb1"
++            << "\tsrc0_ptr\tsrc0_name\tsrc0_type\tsrc0_data_ptr\tsrc0_buffer_ptr\tsrc0_op"
++            << "\tsrc1_ptr\tsrc1_name\tsrc1_type\tsrc1_data_ptr\tsrc1_buffer_ptr\tsrc1_op\n";
++
++        static const char * provenance_names[] = {
++            "attn_norm-0",
++            "Kcur-0",
++            "Vcur-0",
++        };
++
++        auto emit_src = [&](ggml_tensor * src) {
++            if (src == nullptr) {
++                provenance << "\t\t\t\t\t";
++                return;
++            }
++            provenance
++                << src
++                << '\t' << ggml_get_name(src)
++                << '\t' << ggml_type_name(src->type)
++                << '\t' << src->data
++                << '\t' << src->buffer
++                << '\t' << ggml_op_name(src->op);
++        };
++
++        for (const char * name : provenance_names) {
++            ggml_tensor * tensor = ggml_graph_get_tensor(gf, name);
++            if (tensor == nullptr) {
++                LLAMA_LOG_ERROR("%s: provenance tensor missing: %s\n", __func__, name);
++                return false;
++            }
++
++            provenance
++                << name
++                << '\t' << tensor
++                << '\t' << tensor->data
++                << '\t' << tensor->buffer
++                << '\t' << tensor->view_src
++                << '\t' << (tensor->view_src ? tensor->view_src->data : nullptr)
++                << '\t' << tensor->view_offs
++                << '\t' << ggml_op_name(tensor->op)
++                << '\t' << tensor->flags
++                << '\t' << ggml_type_name(tensor->type)
++                << '\t' << tensor->ne[0]
++                << '\t' << tensor->ne[1]
++                << '\t' << tensor->nb[0]
++                << '\t' << tensor->nb[1]
++                << '\t';
++            emit_src(tensor->src[0]);
++            provenance << '\t';
++            emit_src(tensor->src[1]);
++            provenance << '\n';
++        }
++    }
++
+     std::ofstream manifest(root / "manifest.tsv", std::ios::out | std::ios::trunc);
+     if (!manifest) {
+         return false;
