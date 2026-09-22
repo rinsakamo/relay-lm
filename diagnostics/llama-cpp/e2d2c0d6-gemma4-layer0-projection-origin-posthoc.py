@@ -243,6 +243,11 @@ def kv_integrity_compare(new_dir: Path, historical_dir: Path):
         for row in rows:
             expected_bins.add(f"{cache}.layer-{int(row['layer'])}.{row['kind']}.bin")
 
+    if len(expected_bins) != 96:
+        raise RuntimeError(
+            f"KV manifest payload count={len(expected_bins)}, expected 96"
+        )
+
     new_bins = {p.name for p in new_dir.glob("*.bin") if p.is_file()}
     hist_bins = {p.name for p in historical_dir.glob("*.bin") if p.is_file()}
     file_set_equal = new_bins == hist_bins == expected_bins
