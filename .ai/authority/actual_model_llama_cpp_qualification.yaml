@@ -31,6 +31,7 @@ implementation:
 - tools/v1_installed_llama_cpp_wsl.py
 - tools/v1_installed_llama_cpp_transaction.py
 - tools/v1_installed_llama_cpp_cache_on_experiment.py
+- tools/v1_llama_cpp_cache_correctness_reproducer.py
 - src/relaylm/actual_model_llama_cpp_thinking.py
 - src/relaylm/actual_model_stage_r_llama_cpp.py
 - src/relaylm/actual_model_stage_r_llama_cpp_transaction.py
@@ -42,6 +43,7 @@ tests:
 - tests/unit/test_v1_stage_r_llama_cpp_wsl.py
 - tests/unit/test_v1_installed_llama_cpp_transaction.py
 - tests/unit/test_v1_installed_llama_cpp_cache_on_experiment.py
+- tests/unit/test_v1_llama_cpp_cache_correctness_reproducer.py
 - tests/unit/test_actual_model_llama_cpp_thinking.py
 - tests/unit/test_actual_model_stage_r_llama_cpp.py
 - tests/unit/test_actual_model_stage_r_llama_cpp_transaction.py
