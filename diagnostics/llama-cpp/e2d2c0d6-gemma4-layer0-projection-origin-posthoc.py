@@ -189,8 +189,14 @@ def parse_cells(path: Path):
     required = {"cache", "stream", "head", "kv_size", "v_trans", "position", "cell"}
     if not rows or set(rows[0]) != required:
         raise RuntimeError(f"unexpected cells schema: {path}")
+    mapping = [(int(r["position"]), int(r["cell"])) for r in rows]
+    positions = [p for p, _ in mapping]
+    if positions != list(range(512)):
+        raise RuntimeError(f"{path}: logical positions are not exactly 0..511")
+    if len({cell for _, cell in mapping}) != 512:
+        raise RuntimeError(f"{path}: physical cells are not unique across 512 rows")
     return {
-        "mapping": [(int(r["position"]), int(r["cell"])) for r in rows],
+        "mapping": mapping,
         "kv_size": sorted({int(r["kv_size"]) for r in rows}),
         "v_trans": sorted({int(r["v_trans"]) for r in rows}),
         "heads": sorted({int(r["head"]) for r in rows}),
@@ -240,8 +246,43 @@ def kv_integrity_compare(new_dir: Path, historical_dir: Path):
             "r", encoding="utf-8", newline=""
         ) as f:
             rows = list(csv.DictReader(f, delimiter="\t"))
+        expected_manifest_rows = 16 if cache == "base" else 80
+        if len(rows) != expected_manifest_rows:
+            raise RuntimeError(
+                f"{new_dir}/{cache}.manifest.tsv rows={len(rows)}, "
+                f"expected {expected_manifest_rows}"
+            )
+        seen = set()
         for row in rows:
-            expected_bins.add(f"{cache}.layer-{int(row['layer'])}.{row['kind']}.bin")
+            if row["cache"] != cache or row["kind"] not in {"K", "V"}:
+                raise RuntimeError(f"invalid KV manifest row in {new_dir}: {row}")
+            layer = int(row["layer"])
+            kind = row["kind"]
+            row_bytes = int(row["row_bytes"])
+            nrows = int(row["rows"])
+            if nrows != 512 or row_bytes <= 0:
+                raise RuntimeError(f"invalid KV payload geometry in {new_dir}: {row}")
+            key = (layer, kind)
+            if key in seen:
+                raise RuntimeError(f"duplicate KV manifest layer/kind in {new_dir}: {key}")
+            seen.add(key)
+            name = f"{cache}.layer-{layer}.{kind}.bin"
+            expected_bins.add(name)
+            for root in (new_dir, historical_dir):
+                payload = root / name
+                if not payload.is_file():
+                    raise RuntimeError(f"required KV payload missing: {payload}")
+                expected_size = row_bytes * nrows
+                if payload.stat().st_size != expected_size:
+                    raise RuntimeError(
+                        f"KV payload size mismatch {payload}: "
+                        f"{payload.stat().st_size} != {expected_size}"
+                    )
+        layer_kinds = {}
+        for layer, kind in seen:
+            layer_kinds.setdefault(layer, set()).add(kind)
+        if any(kinds != {"K", "V"} for kinds in layer_kinds.values()):
+            raise RuntimeError(f"incomplete K/V layer pair in {new_dir}/{cache}.manifest.tsv")
 
     if len(expected_bins) != 96:
         raise RuntimeError(
