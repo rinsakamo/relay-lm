@@ -32,47 +32,47 @@ def make_candidate(root: Path, attempt_id: str, classification: str):
     for name in ("W-p0-370-w371", "W-p371-878-w508", "C-p0-511-w512"):
         (p / name).mkdir(parents=True)
 
+def tensor(logical, cold_local, prev_warm, exact=0):
+    return {
+        "segment_B_same_logical": {"mean": logical},
+        "segment_B_same_cold_local_column": {"mean": cold_local},
+        "segment_B_same_previous_warm_local_column": {"mean": prev_warm},
+        "segment_B_exact_equal_previous_warm_rows": exact,
+    }
+
 def main():
     m = load()
 
-    local = {
-        "tensors": {
-            name: {
-                "segment_B_same_logical": {"mean": 0.2},
-                "segment_B_same_local_column": {"mean": 0.9},
-                "segment_B_local_beats_logical_rows": 140,
-                "segment_B_logical_beats_local_rows": 1,
-            }
-            for name in ("attn_norm-0", "Kcur-0", "Vcur-0")
-        }
-    }
-    cls, decisions = m.classify(local)
-    if cls != "ROW_ALIGNMENT_LOCAL_COLUMN_CORRESPONDENCE_SUPPORTED":
-        raise RuntimeError("local-column classifier mismatch")
+    previous = {"tensors": {
+        name: tensor(0.2, 0.4, 0.95, 3)
+        for name in ("attn_norm-0", "Kcur-0", "Vcur-0")
+    }}
+    cls, _ = m.classify(previous)
+    if cls != "ROW_ALIGNMENT_PREVIOUS_WARM_LOCAL_COLUMN_SUPPORTED":
+        raise RuntimeError("previous-warm classifier mismatch")
 
-    logical = {
-        "tensors": {
-            name: {
-                "segment_B_same_logical": {"mean": 0.9},
-                "segment_B_same_local_column": {"mean": 0.2},
-                "segment_B_local_beats_logical_rows": 1,
-                "segment_B_logical_beats_local_rows": 140,
-            }
-            for name in ("attn_norm-0", "Kcur-0", "Vcur-0")
-        }
-    }
-    cls, decisions = m.classify(logical)
-    if cls != "ROW_ALIGNMENT_LOGICAL_POSITION_CORRESPONDENCE_SUPPORTED":
+    cold_local = {"tensors": {
+        name: tensor(0.2, 0.95, 0.4)
+        for name in ("attn_norm-0", "Kcur-0", "Vcur-0")
+    }}
+    cls, _ = m.classify(cold_local)
+    if cls != "ROW_ALIGNMENT_COLD_LOCAL_COLUMN_SUPPORTED":
+        raise RuntimeError("cold-local classifier mismatch")
+
+    logical = {"tensors": {
+        name: tensor(0.95, 0.2, 0.4)
+        for name in ("attn_norm-0", "Kcur-0", "Vcur-0")
+    }}
+    cls, _ = m.classify(logical)
+    if cls != "ROW_ALIGNMENT_LOGICAL_POSITION_SUPPORTED":
         raise RuntimeError("logical-position classifier mismatch")
 
-    mixed = {
-        "tensors": {
-            "attn_norm-0": logical["tensors"]["attn_norm-0"],
-            "Kcur-0": local["tensors"]["Kcur-0"],
-            "Vcur-0": local["tensors"]["Vcur-0"],
-        }
-    }
-    cls, decisions = m.classify(mixed)
+    mixed = {"tensors": {
+        "attn_norm-0": tensor(0.95, 0.2, 0.4),
+        "Kcur-0": tensor(0.2, 0.95, 0.4),
+        "Vcur-0": tensor(0.2, 0.4, 0.95),
+    }}
+    cls, _ = m.classify(mixed)
     if cls != "ROW_ALIGNMENT_CORRESPONDENCE_MIXED_OR_AMBIGUOUS":
         raise RuntimeError("mixed classifier mismatch")
 
