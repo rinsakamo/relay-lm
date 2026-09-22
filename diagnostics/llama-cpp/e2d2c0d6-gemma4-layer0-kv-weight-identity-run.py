@@ -8,6 +8,8 @@ import sys
 HERE = Path(__file__).resolve().parent
 AUDIT = HERE / "e2d2c0d6-gemma4-layer0-kv-weight-identity-audit.py"
 SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-kv-weight-identity-audit-selftest.py"
+EXPECTED_LLAMA_HEAD = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
+APPARATUS_GENERATION = "kv-weight-identity-stdlib-20260922-a"
 
 def run_json(cmd, out, err, expected_key=None, expected_value=None):
     cp = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
@@ -43,6 +45,16 @@ def main():
     gguf_py = args.llama_source / "gguf-py"
     if not gguf_py.is_dir():
         raise RuntimeError(f"gguf-py not found under frozen llama source: {gguf_py}")
+
+    git_head = subprocess.run(
+        ["git", "-C", str(args.llama_source), "rev-parse", "HEAD"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
+    )
+    if git_head.returncode != 0:
+        raise RuntimeError(f"unable to read frozen llama.cpp HEAD: {git_head.stderr.strip()}")
+    llama_head = git_head.stdout.strip()
+    if llama_head != EXPECTED_LLAMA_HEAD:
+        raise RuntimeError(f"llama.cpp HEAD mismatch: {llama_head}")
     if not AUDIT.is_file() or not SELFTEST.is_file():
         raise RuntimeError("required audit/selftest missing")
 
@@ -72,6 +84,8 @@ def main():
     terminal = {
         "classification": "LAYER0_KV_WEIGHT_IDENTITY_ZERO_GPU_COMPLETE",
         "scientific_classification": scientific,
+        "apparatus_generation": APPARATUS_GENERATION,
+        "llama_cpp_head": llama_head,
         "model_sha256": audit["model_sha256"],
         "K": audit["K"],
         "V": audit["V"],
