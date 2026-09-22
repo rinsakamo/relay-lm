@@ -1,0 +1,231 @@
+From: RelayLM cache diagnostic
+Subject: [DIAGNOSTIC ONLY] preserve and dump Gemma4 layer-0 pre/post projection rows
+
+Target: ggml-org/llama.cpp @ e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d
+Prerequisite patch:
+  e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch
+
+This patch is diagnostic instrumentation only. It does not insert arithmetic
+nodes and deliberately does not use cb_eval, because the frozen scheduler's
+eval callback changes graph execution grouping at observed nodes.
+
+When LLAMA_PROJECTION_ORIGIN_PROBE_DIR and LLAMA_PROJECTION_ORIGIN_PROBE_LABEL
+are set, the existing layer-0 attn_norm, Kcur, and Vcur tensors are marked as
+graph outputs so their buffers survive until the full ubatch graph has
+completed. The tensors are copied to host only after scheduler synchronization.
+
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -16,8 +16,10 @@
+ #include <cinttypes>
+ #include <cmath>
+ #include <cstring>
++#include <cstdlib>
+ #include <filesystem>
++#include <fstream>
+ #include <limits>
+ #include <stdexcept>
+ #include <string>
+@@ -1330,6 +1332,176 @@ bool llama_context::apply_adapter_cvec(
+     return res;
+ }
+ 
++static bool relay_projection_origin_probe_enabled() {
++    const char * dir   = std::getenv("LLAMA_PROJECTION_ORIGIN_PROBE_DIR");
++    const char * label = std::getenv("LLAMA_PROJECTION_ORIGIN_PROBE_LABEL");
++    if (dir == nullptr || dir[0] == '\0' || label == nullptr || label[0] == '\0') {
++        return false;
++    }
++    if (std::strcmp(label, "W") != 0 && std::strcmp(label, "C") != 0) {
++        return false;
++    }
++    return true;
++}
++
++static bool relay_projection_origin_target_ubatch(
++        const llama_ubatch & ubatch,
++        llama_pos & p0,
++        llama_pos & p1) {
++    if (!relay_projection_origin_probe_enabled()) {
++        return false;
++    }
++    if (ubatch.pos == nullptr || ubatch.n_pos != 1 || ubatch.n_seqs != 1 || ubatch.n_seqs_unq != 1 || ubatch.n_tokens == 0) {
++        return false;
++    }
++
++    p0 = ubatch.pos[0];
++    p1 = ubatch.pos[ubatch.n_tokens - 1] + 1;
++
++    for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
++        if (ubatch.pos[i] != p0 + (llama_pos) i) {
++            return false;
++        }
++    }
++
++    const char * label = std::getenv("LLAMA_PROJECTION_ORIGIN_PROBE_LABEL");
++    if (std::strcmp(label, "W") == 0) {
++        return (ubatch.n_tokens == 371 && p0 == 0   && p1 == 371) ||
++               (ubatch.n_tokens == 508 && p0 == 371 && p1 == 879);
++    }
++    if (std::strcmp(label, "C") == 0) {
++        return ubatch.n_tokens == 512 && p0 == 0 && p1 == 512;
++    }
++    return false;
++}
++
++static bool relay_projection_origin_dump(
++        ggml_cgraph * gf,
++        const llama_ubatch & ubatch,
++        llama_pos p0,
++        llama_pos p1) {
++    const char * dir   = std::getenv("LLAMA_PROJECTION_ORIGIN_PROBE_DIR");
++    const char * label = std::getenv("LLAMA_PROJECTION_ORIGIN_PROBE_LABEL");
++    if (dir == nullptr || label == nullptr) {
++        return false;
++    }
++
++    const std::string tag =
++        std::string(label) +
++        "-p" + std::to_string(p0) +
++        "-" + std::to_string(p1 - 1) +
++        "-w" + std::to_string(ubatch.n_tokens);
++    const std::filesystem::path root = std::filesystem::path(dir) / tag;
++
++    if (std::filesystem::exists(root)) {
++        LLAMA_LOG_ERROR("%s: refusing to overwrite existing projection-origin dump: %s\n",
++                __func__, root.string().c_str());
++        return false;
++    }
++
++    std::error_code ec;
++    std::filesystem::create_directories(root, ec);
++    if (ec) {
++        LLAMA_LOG_ERROR("%s: failed to create projection-origin dump root %s: %s\n",
++                __func__, root.string().c_str(), ec.message().c_str());
++        return false;
++    }
++
++    {
++        std::ofstream out(root / "positions.tsv", std::ios::out | std::ios::trunc);
++        if (!out) {
++            return false;
++        }
++        out << "column\tposition\n";
++        for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
++            out << i << '\t' << ubatch.pos[i] << '\n';
++        }
++    }
++
++    std::ofstream manifest(root / "manifest.tsv", std::ios::out | std::ios::trunc);
++    if (!manifest) {
++        return false;
++    }
++    manifest << "name\ttype\tne0\tne1\tne2\tne3\tnb0\tnb1\tnb2\tnb3\trow_bytes\trows\n";
++
++    static const char * tensor_names[] = {
++        "attn_norm-0",
++        "Kcur-0",
++        "Vcur-0",
++    };
++
++    for (const char * name : tensor_names) {
++        ggml_tensor * tensor = ggml_graph_get_tensor(gf, name);
++        if (tensor == nullptr) {
++            LLAMA_LOG_ERROR("%s: required graph tensor missing: %s\n", __func__, name);
++            return false;
++        }
++        if (tensor->type != GGML_TYPE_F32 ||
++            tensor->ne[1] != (int64_t) ubatch.n_tokens ||
++            tensor->ne[2] != 1 ||
++            tensor->ne[3] != 1) {
++            LLAMA_LOG_ERROR(
++                    "%s: unexpected tensor geometry/type for %s: type=%s ne=[%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 "] expected rows=%u\n",
++                    __func__, name, ggml_type_name(tensor->type),
++                    tensor->ne[0], tensor->ne[1], tensor->ne[2], tensor->ne[3],
++                    ubatch.n_tokens);
++            return false;
++        }
++
++        const size_t row_bytes = ggml_row_size(tensor->type, tensor->ne[0]);
++        if (row_bytes == 0 || tensor->nb[1] < row_bytes) {
++            LLAMA_LOG_ERROR("%s: invalid row geometry for %s\n", __func__, name);
++            return false;
++        }
++
++        manifest
++            << name << '\t' << ggml_type_name(tensor->type)
++            << '\t' << tensor->ne[0]
++            << '\t' << tensor->ne[1]
++            << '\t' << tensor->ne[2]
++            << '\t' << tensor->ne[3]
++            << '\t' << tensor->nb[0]
++            << '\t' << tensor->nb[1]
++            << '\t' << tensor->nb[2]
++            << '\t' << tensor->nb[3]
++            << '\t' << row_bytes
++            << '\t' << ubatch.n_tokens
++            << '\n';
++
++        const std::filesystem::path path = root / (std::string(name) + ".bin");
++        std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
++        if (!out) {
++            return false;
++        }
++
++        std::vector<uint8_t> buf(row_bytes);
++        for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
++            const size_t offset = (size_t) i * tensor->nb[1];
++            if (offset + row_bytes > ggml_nbytes(tensor)) {
++                LLAMA_LOG_ERROR("%s: row out of bounds for %s column %u\n", __func__, name, i);
++                return false;
++            }
++            ggml_backend_tensor_get(tensor, buf.data(), offset, row_bytes);
++            out.write(reinterpret_cast<const char *>(buf.data()), (std::streamsize) buf.size());
++            if (!out) {
++                return false;
++            }
++        }
++    }
++
++    return true;
++}
++
+ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
+     if (mctx && !mctx->apply()) {
+         LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
+@@ -1394,6 +1566,19 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, l
+         return nullptr;
+     }
+ 
++    llama_pos relay_probe_p0 = -1;
++    llama_pos relay_probe_p1 = -1;
++    if (relay_projection_origin_target_ubatch(ubatch, relay_probe_p0, relay_probe_p1)) {
++        // Observation happens only after the complete ubatch graph has run.
++        // No eval callback or graph execution split is introduced.
++        ggml_backend_sched_synchronize(sched.get());
++        if (!relay_projection_origin_dump(res->get_gf(), ubatch, relay_probe_p0, relay_probe_p1)) {
++            LLAMA_LOG_ERROR("%s: projection-origin diagnostic dump failed\n", __func__);
++            ret = GGML_STATUS_FAILED;
++            return nullptr;
++        }
++    }
++
+     ret = GGML_STATUS_SUCCESS;
+ 
+     return res;
+@@ -2522,6 +2707,14 @@ llm_graph_cb llama_context::graph_get_cb() const {
+             ggml_set_name(cur, name);
+         }
+ 
++        // RelayLM diagnostic only: preserve the layer-0 projection boundary
++        // until the complete ubatch graph has finished. No arithmetic node is
++        // added and no scheduler eval callback is installed.
++        if (relay_projection_origin_probe_enabled() && il == 0 &&
++            (strcmp(name, "attn_norm") == 0 || strcmp(name, "Kcur") == 0 || strcmp(name, "Vcur") == 0)) {
++            ggml_set_output(cur);
++        }
++
+         // - norm may be automatically assigned to the backend of the previous layer, increasing data transfer between backends
+         // - force the last op of the layer on the specified backend to avoid running it on the backend of the next layer due to scheduling
+         // FIXME: fix in ggml_backend_sched
