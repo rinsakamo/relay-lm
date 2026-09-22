@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-AUTHORITY_GENERATION = "logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c"
+AUTHORITY_GENERATION = "logical-prefix-kv-segmentation-control-measured-authority-20260922-6802c20c-c883sha64"
 ATTEMPT_ID = "logical-prefix-kv-segmentation-control-20260922-6802c20c"
 PREMEASURED_ROOT = Path("/tmp/relaylm-segmentation-control-qual.UsVe3A/output")
 FIXTURE_REPO_PATH = "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2"
@@ -19,7 +19,7 @@ CONTROL_REPO_PATH = "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2-segmen
 EXPECTED_CONTROL_COMMIT = "ccf9e78a89d170ae43e6ccfa6aa0788bd9a6cacc"
 EXPECTED_CONTROL_SUBTREE = "ac26ba25c3b88cbd9586ec009eeefe66004e2cb5"
 EXPECTED_CONTROL_SHA256 = {
-    "C883.tokens.json": "1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92",
+    "C883.tokens.json": "1b3796b5dbec09d1fe2188d0bce1a9a9e8be316943d0e415582dde0a0ff3a92a",
     "C883.request.json": "1e490f609ac0b844521784cd4603ea79a9c5ab0b199117e4395c4a8cf2efa47c",
     "manifest.json": "aa23a149d9d54137f8a455034c5048c8b7d8e03a4d12d3f33000c66aece8b86b",
 }
