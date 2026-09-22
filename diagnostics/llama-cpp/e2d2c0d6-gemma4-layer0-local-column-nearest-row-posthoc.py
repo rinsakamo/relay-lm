@@ -66,6 +66,10 @@ def main():
         best_token_matches_target=0
         local_beats_logical_distinct_token=0
         distinct_token_rows=0
+        best_local_distinct_token=0
+        best_logical_distinct_token=0
+        best_token_match_local_distinct_token=0
+        best_token_match_target_distinct_token=0
 
         for i in range(141):
             logical=371+i
@@ -83,6 +87,14 @@ def main():
                 distinct_token_rows+=1
                 if local_sim>logical_sim:
                     local_beats_logical_distinct_token+=1
+                if best==i:
+                    best_local_distinct_token+=1
+                if best==logical:
+                    best_logical_distinct_token+=1
+                if tokens[best]==tokens[i]:
+                    best_token_match_local_distinct_token+=1
+                if tokens[best]==tokens[logical]:
+                    best_token_match_target_distinct_token+=1
             rows.append({
                 "local_column":i,
                 "warm_logical_position":logical,
@@ -107,6 +119,10 @@ def main():
             "best_row_token_matches_warm_logical_token":best_token_matches_target,
             "distinct_local_vs_logical_token_rows":distinct_token_rows,
             "same_local_beats_same_logical_on_distinct_token_rows":local_beats_logical_distinct_token,
+            "best_row_is_same_local_column_on_distinct_token_rows":best_local_distinct_token,
+            "best_row_is_same_logical_position_on_distinct_token_rows":best_logical_distinct_token,
+            "best_row_token_matches_local_token_on_distinct_token_rows":best_token_match_local_distinct_token,
+            "best_row_token_matches_warm_logical_token_on_distinct_token_rows":best_token_match_target_distinct_token,
             "rows":rows,
         }
 
