@@ -175,6 +175,7 @@ def first(path):
     return (root / path).read_text(encoding="utf-8").strip().split()[0]
 
 out = {
+    "preparation_generation": "provenance-preparation-20260923-b",
     "primary_classification": "LAYER0_PROJECTION_PROVENANCE_BUILD_READY",
     "source_head": (root / "source.head.txt").read_text(encoding="utf-8").strip(),
     "source_tree": (root / "source.tree.txt").read_text(encoding="utf-8").strip(),
