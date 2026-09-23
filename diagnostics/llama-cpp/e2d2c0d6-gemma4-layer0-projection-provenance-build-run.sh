@@ -92,6 +92,14 @@ fi
 printf "%s\n" "$CUDA_TOOLKIT_ROOT" >"$out_root/cuda-toolkit-root.txt"
 printf "%s\n" "$CUDA_NVCC" >"$out_root/cuda-nvcc.txt"
 printf "%s\n" "$CUDA_NATIVE_PATH" >"$out_root/cuda-native-path.txt"
+cat >"$out_root/build-environment.txt" <<EOF
+HOME=${HOME:-/tmp}
+PATH=$CUDA_NATIVE_PATH
+LANG=C.UTF-8
+LC_ALL=C.UTF-8
+CUDAToolkit_ROOT=$CUDA_TOOLKIT_ROOT
+CUDACXX=$CUDA_NVCC
+EOF
 if [[ -f "$CUDA_TOOLKIT_ROOT/version.json" ]]; then
   sha256sum "$CUDA_TOOLKIT_ROOT/version.json" >"$out_root/cuda-version-json.sha256"
 fi
@@ -138,7 +146,10 @@ git -C "$src" diff --binary >"$out_root/applied.patch"
 sha256sum "$out_root/applied.patch" >"$out_root/applied.patch.sha256"
 git -C "$src" status --porcelain --untracked-files=all >"$out_root/source.status-after-patches.txt"
 
+env -i \
+HOME="${HOME:-/tmp}" \
 PATH="$CUDA_NATIVE_PATH" \
+LANG=C.UTF-8 LC_ALL=C.UTF-8 \
 CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
 CUDACXX="$CUDA_NVCC" \
 cmake -S "$src" -B "$build" \
@@ -148,7 +159,10 @@ cmake -S "$src" -B "$build" \
   -DCMAKE_CUDA_COMPILER="$CUDA_NVCC" \
   >"$out_root/cmake-configure.stdout.txt" 2>"$out_root/cmake-configure.stderr.txt"
 
+env -i \
+HOME="${HOME:-/tmp}" \
 PATH="$CUDA_NATIVE_PATH" \
+LANG=C.UTF-8 LC_ALL=C.UTF-8 \
 CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
 CUDACXX="$CUDA_NVCC" \
 cmake --build "$build" --target llama-server --parallel "$jobs" \
@@ -175,7 +189,7 @@ def first(path):
     return (root / path).read_text(encoding="utf-8").strip().split()[0]
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-c",
+    "preparation_generation": "provenance-preparation-20260923-d",
     "primary_classification": "LAYER0_PROJECTION_PROVENANCE_BUILD_READY",
     "source_head": (root / "source.head.txt").read_text(encoding="utf-8").strip(),
     "source_tree": (root / "source.tree.txt").read_text(encoding="utf-8").strip(),
