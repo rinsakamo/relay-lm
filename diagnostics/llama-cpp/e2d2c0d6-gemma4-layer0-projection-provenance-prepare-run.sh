@@ -112,7 +112,7 @@ if qual is not None and qual.get("primary_classification") != "LAYER0_PROJECTION
     errors.append("unexpected qualification terminal classification")
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-b",
+    "preparation_generation": "provenance-preparation-20260923-c",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
