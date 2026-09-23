@@ -66,6 +66,19 @@ fi
 
 sha256sum "$server_bin" >"$out_dir/server-binary.sha256"
 sha256sum "$model_path" >"$out_dir/model.sha256"
+
+server_dir=$(cd -- "$(dirname -- "$server_bin")" && pwd)
+runtime_env=(
+  "HOME=\${HOME:-/tmp}"
+  "PATH=/usr/local/cuda-12.8/bin:/usr/bin:/bin"
+  "LANG=C.UTF-8"
+  "LC_ALL=C.UTF-8"
+  "LD_LIBRARY_PATH=$server_dir:/usr/local/cuda-12.8/lib64"
+  "CUDA_VISIBLE_DEVICES=0"
+  "GGML_CUDA_GRAPH_OPT=0"
+  "GGML_CUDA_DISABLE_FUSION=0"
+)
+printf '%s\n' "\${runtime_env[@]}" >"$out_dir/runtime-environment.canonical.txt"
 command -v file >/dev/null 2>&1 && file "$server_bin" >"$out_dir/server-binary.file.txt" 2>&1 || true
 command -v ldd >/dev/null 2>&1 && ldd "$server_bin" >"$out_dir/server-binary.ldd.txt" 2>&1 || true
 command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >"$out_dir/nvidia-smi.before.txt" 2>&1 || true
