@@ -226,8 +226,10 @@ else:
         errors.append(f"unexpected physical GPU identity: {gpu0!r}")
     if not gpu0.get("uuid"):
         errors.append(f"GPU UUID missing: {gpu0!r}")
-    if not gpu0.get("driver_version"):
-        errors.append(f"GPU driver version missing: {gpu0!r}")
+    if gpu0.get("driver_version") != "591.44":
+        errors.append(f"unexpected GPU driver version: {gpu0!r}")
+    if gpu0.get("memory_total_mib") != 12288:
+        errors.append(f"unexpected GPU total memory: {gpu0!r}")
 
 for arm_name in ("plain", "probe"):
     arm = (startup.get("evidence") or {}).get(arm_name) or {}
