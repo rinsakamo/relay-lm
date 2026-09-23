@@ -1310,3 +1310,41 @@ is superseded by:
 
 No preparation run is currently authorized. Measured provenance execution
 remains unauthorized.
+
+
+### Provenance preparation generation-d review repair complete
+
+The adversarial review blockers have been addressed in the current preparation
+apparatus. The detailed resolution matrix is recorded in:
+
+`e2d2c0d6-gemma4-layer0-projection-provenance-preparation-review.md`
+
+Generation-d now includes:
+
+- fresh canonical remote authority fetch and exact clean-checkout binding;
+- hermetic build/runtime environments;
+- active CUDA compute-process quiescence checks;
+- exact RTX 3060 / driver 591.44 / 12288 MiB identity;
+- full prepared runtime-library hash closure;
+- live loaded-library path verification;
+- exact frozen startup geometry and SWA=1536;
+- hardened null-safe provenance source binding;
+- duplicate-row and payload-geometry validation;
+- internal preparation static gate;
+- fail-closed resource-guard release semantics;
+- persistent non-/tmp evidence and read-only sealing;
+- non-generative startup coverage for both KV and projection probe environments.
+
+No generation-d preparation build/startup has been consumed.
+
+The previous review-blocked status is superseded by:
+
+`PROVENANCE_PREPARATION_GENERATION_D_STATIC_REQUALIFICATION_READY`
+
+Only the generation-d static qualification is authorized next.
+
+A preparation run becomes authorized only if that exact static gate passes.
+
+Measured provenance execution remains:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
