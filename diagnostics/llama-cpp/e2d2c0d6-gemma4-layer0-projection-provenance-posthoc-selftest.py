@@ -15,7 +15,7 @@ def load():
     spec.loader.exec_module(mod)
     return mod
 
-def row(m,name, tensor_ptr, data_ptr, src0_ptr, src0_name, src0_type, src0_data, src1_ptr="0xa0", src1_data="0xb0"):
+def row(m,name, tensor_ptr, data_ptr, src0_ptr, src0_name, src0_type, src0_data, width, src1_ptr="0xa0", src1_data="0xb0"):
     vals={
         "name":name,
         "tensor_ptr":tensor_ptr,
@@ -28,7 +28,7 @@ def row(m,name, tensor_ptr, data_ptr, src0_ptr, src0_name, src0_type, src0_data,
         "flags":"2",
         "type":"f32",
         "ne0":"2048" if name!="attn_norm-0" else "3840",
-        "ne1":"512",
+        "ne1":str(width),
         "nb0":"4",
         "nb1":"8192" if name!="attn_norm-0" else "15360",
         "src0_ptr":src0_ptr,
@@ -48,12 +48,13 @@ def row(m,name, tensor_ptr, data_ptr, src0_ptr, src0_name, src0_type, src0_data,
 
 def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=False,identical_values=True,
                null_src1=False, wrong_attn_binding=False, duplicate_k=False):
+    width=m.EXPECTED_WIDTHS[name]
     d=root/name
     d.mkdir(parents=True)
     rows=[
-        row(m,"attn_norm-0","0x10","0x20","0x01","norm","f32","0x02",src1_ptr="0x03",src1_data="0x04"),
+        row(m,"attn_norm-0","0x10","0x20","0x01","norm","f32","0x02",width,src1_ptr="0x03",src1_data="0x04"),
         row(
-            m,"Kcur-0","0x30","0x40","0x50","blk.0.attn_k.weight","Q4_K","0x60",
+            m,"Kcur-0","0x30","0x40","0x50","blk.0.attn_k.weight","Q4_K","0x60",width,
             src1_ptr="0" if null_src1 else ("0xa1" if wrong_attn_binding else "0x10"),
             src1_data="0" if null_src1 else ("0xb1" if wrong_attn_binding else "0x20"),
         ),
@@ -65,6 +66,7 @@ def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=Fa
             "blk.0.attn_k.weight" if alias_weight else "blk.0.attn_v.weight",
             "Q4_K" if alias_weight else "Q6_K",
             "0x60" if alias_weight else "0x61",
+            width,
             src1_ptr="0" if null_src1 else ("0xa1" if wrong_attn_binding else "0x10"),
             src1_data="0" if null_src1 else ("0xb1" if wrong_attn_binding else "0x20"),
         ),
@@ -75,9 +77,10 @@ def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=Fa
         f.write("\t".join(m.EXPECTED_FIELDS)+"\n")
         for r in rows:
             f.write("\t".join(r)+"\n")
-    payload=b"same-payload"
+    payload=bytes(2048 * width * 4)
+    other=payload if identical_values else (b"\x01" + payload[1:])
     (d/"Kcur-0.bin").write_bytes(payload)
-    (d/"Vcur-0.bin").write_bytes(payload if identical_values else b"different---")
+    (d/"Vcur-0.bin").write_bytes(other)
     return d
 
 def main():
@@ -85,42 +88,47 @@ def main():
     with tempfile.TemporaryDirectory(prefix="relaylm-prov-posthoc-selftest-") as td:
         root=Path(td)
 
-        d=write_dump(m,root,"strong")
+        def one(case, **kwargs):
+            case_root=root/case
+            case_root.mkdir()
+            return write_dump(m,case_root,"C-p0-511-w512",**kwargs)
+
+        d=one("strong")
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL":
             raise RuntimeError(f"strong classifier mismatch: {got}")
 
-        d=write_dump(m,root,"tensor-alias",alias_tensor=True)
+        d=one("tensor-alias",alias_tensor=True)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_TENSOR_OBJECT_ALIAS":
             raise RuntimeError(f"tensor alias classifier mismatch: {got}")
 
-        d=write_dump(m,root,"data-alias",alias_data=True)
+        d=one("data-alias",alias_data=True)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_OUTPUT_DATA_ALIAS":
             raise RuntimeError(f"data alias classifier mismatch: {got}")
 
-        d=write_dump(m,root,"weight-alias",alias_weight=True)
+        d=one("weight-alias",alias_weight=True)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_WEIGHT_SOURCE_ALIAS":
             raise RuntimeError(f"weight alias classifier mismatch: {got}")
 
-        d=write_dump(m,root,"value-distinct",identical_values=False)
+        d=one("value-distinct",identical_values=False)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_DISTINCT":
             raise RuntimeError(f"value distinct classifier mismatch: {got}")
 
-        d=write_dump(m,root,"null-src1",null_src1=True)
+        d=one("null-src1",null_src1=True)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED":
             raise RuntimeError(f"null src1 incorrectly passed strong classification: {got}")
 
-        d=write_dump(m,root,"wrong-attn-binding",wrong_attn_binding=True)
+        d=one("wrong-attn-binding",wrong_attn_binding=True)
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED":
             raise RuntimeError(f"wrong attn binding incorrectly passed strong classification: {got}")
 
-        d=write_dump(m,root,"duplicate-k",duplicate_k=True)
+        d=one("duplicate-k",duplicate_k=True)
         try:
             m.classify_dump(d)
         except RuntimeError:
@@ -128,7 +136,12 @@ def main():
         else:
             raise RuntimeError("duplicate provenance row was not rejected")
 
-        strong=[m.classify_dump(write_dump(m,root,f"all-{i}")) for i in range(3)]
+        aggregate_root=root/"aggregate"
+        aggregate_root.mkdir()
+        strong=[
+            m.classify_dump(write_dump(m,aggregate_root,name))
+            for name in m.EXPECTED_DUMPS
+        ]
         got=m.classify_all(strong)
         if got!="K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED":
             raise RuntimeError(f"aggregate classifier mismatch: {got}")
