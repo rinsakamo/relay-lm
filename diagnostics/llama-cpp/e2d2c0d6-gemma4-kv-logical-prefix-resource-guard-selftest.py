@@ -46,10 +46,10 @@ def main():
         g.shutil.which = lambda name: "/usr/bin/nvidia-smi" if name == "nvidia-smi" else None
         def fake_run(cmd, **kwargs):
             joined = " ".join(cmd)
-            if "--query-gpu=index,uuid,name,driver_version" in joined:
+            if "--query-gpu=index,uuid,name,driver_version,memory.total" in joined:
                 return SimpleNamespace(
                     returncode=0,
-                    stdout="0, GPU-test, NVIDIA GeForce RTX 3060, 591.44\n",
+                    stdout="0, GPU-test, NVIDIA GeForce RTX 3060, 591.44, 12288\n",
                     stderr="",
                 )
             if "--query-compute-apps=pid,process_name" in joined:
@@ -64,6 +64,7 @@ def main():
                 "uuid": "GPU-test",
                 "name": "NVIDIA GeForce RTX 3060",
                 "driver_version": "591.44",
+                "memory_total_mib": 12288,
             }],
         })
         results.append({
