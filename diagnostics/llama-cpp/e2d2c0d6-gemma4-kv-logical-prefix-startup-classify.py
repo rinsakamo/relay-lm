@@ -155,6 +155,70 @@ def canonical_argv_contract(root: Path):
         "reason": None if static == EXPECTED_CANONICAL_STATIC_ARGV else "canonical static argv mismatch",
     }
 
+def parse_env_file(path: Path):
+    lines = [x for x in read_text(path).splitlines() if x]
+    env = {}
+    for line in lines:
+        if "=" not in line:
+            raise RuntimeError(f"malformed environment line in {path}: {line!r}")
+        key, value = line.split("=", 1)
+        if key in env:
+            raise RuntimeError(f"duplicate environment key in {path}: {key}")
+        env[key] = value
+    return env
+
+
+def environment_contract(name: str, root: Path):
+    intended = parse_env_file(root / "runtime-environment.effective.txt")
+    actual = parse_env_file(root / "proc-environ.health-ready.txt")
+    base_keys = {
+        "HOME", "PATH", "LANG", "LC_ALL", "LD_LIBRARY_PATH",
+        "CUDA_VISIBLE_DEVICES", "GGML_CUDA_GRAPH_OPT", "GGML_CUDA_DISABLE_FUSION",
+    }
+    expected_keys = set(base_keys)
+    if name == "probe":
+        expected_keys |= {"LLAMA_KV_PROBE_DIR", "LLAMA_KV_PROBE_LABEL"}
+    checks = {
+        "key_set_exact": set(intended) == expected_keys and set(actual) == expected_keys,
+        "actual_matches_intended": actual == intended,
+        "path_exact": intended.get("PATH") == "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
+        "cuda_visible_devices_exact": intended.get("CUDA_VISIBLE_DEVICES") == "0",
+        "cuda_graph_opt_disabled": intended.get("GGML_CUDA_GRAPH_OPT") == "0",
+        "cuda_fusion_not_disabled": intended.get("GGML_CUDA_DISABLE_FUSION") == "0",
+        "probe_label_exact": (
+            name != "probe" or intended.get("LLAMA_KV_PROBE_LABEL") == "PRE"
+        ),
+    }
+    return {
+        "ok": all(checks.values()),
+        "checks": checks,
+        "intended": intended,
+        "actual": actual,
+    }
+
+
+def runtime_library_contract(root: Path):
+    server_impl = read_stripped(root / "server-impl.resolved.txt")
+    llama_lib = read_stripped(root / "llama-lib.resolved.txt")
+    maps = read_text(root / "proc-maps.health-ready.txt").splitlines()
+    impl_lines = [line for line in maps if "libllama-server-impl.so" in line]
+    llama_lines = [line for line in maps if "libllama.so" in line]
+    impl_paths = sorted({line.split()[-1] for line in impl_lines if line.split()})
+    llama_paths = sorted({line.split()[-1] for line in llama_lines if line.split()})
+    checks = {
+        "server_impl_loaded_exact": impl_paths == [server_impl],
+        "llama_loaded_exact": llama_paths == [llama_lib],
+    }
+    return {
+        "ok": all(checks.values()),
+        "checks": checks,
+        "server_impl_expected": server_impl,
+        "llama_lib_expected": llama_lib,
+        "server_impl_loaded_paths": impl_paths,
+        "llama_loaded_paths": llama_paths,
+    }
+
+
 def inspect_arm(name: str, root: Path):
     log = combined_log(root)
     context = final_context_evidence(log)
@@ -167,9 +231,13 @@ def inspect_arm(name: str, root: Path):
         "name": name,
         "classification": read_stripped(root / "classification.txt"),
         "server_sha256": read_sha_line(root / "server-binary.sha256"),
+        "server_impl_sha256": read_sha_line(root / "server-impl.sha256"),
+        "llama_lib_sha256": read_sha_line(root / "llama-lib.sha256"),
         "model_sha256": read_sha_line(root / "model.sha256"),
         "argv_canonical_sha256": sha256(root / "server.argv.canonical.txt"),
         "argv_contract": canonical_argv_contract(root),
+        "environment_contract": environment_contract(name, root),
+        "runtime_library_contract": runtime_library_contract(root),
         "context": context,
         "compact_swa": swa,
         "unexpected_probe_output": unexpected_probe_output,
@@ -203,6 +271,10 @@ def main():
                 errors.append(f"{arm['name']}: classification={arm['classification']}")
             if not arm["argv_contract"]["ok"]:
                 errors.append(f"{arm['name']}: canonical argv contract mismatch: {arm['argv_contract']['reason']}")
+            if not arm["environment_contract"]["ok"]:
+                errors.append(f"{arm['name']}: runtime environment contract mismatch")
+            if not arm["runtime_library_contract"]["ok"]:
+                errors.append(f"{arm['name']}: loaded runtime library closure mismatch")
             missing = [
                 key for key, value in arm["context"]["checks"].items()
                 if not value["ok"]
@@ -220,6 +292,10 @@ def main():
             errors.append("server SHA differs between plain/probe")
         if plain["model_sha256"] != probe["model_sha256"]:
             errors.append("model SHA differs between plain/probe")
+        if plain["server_impl_sha256"] != probe["server_impl_sha256"]:
+            errors.append("server implementation library SHA differs between plain/probe")
+        if plain["llama_lib_sha256"] != probe["llama_lib_sha256"]:
+            errors.append("llama library SHA differs between plain/probe")
         if plain["argv_canonical_sha256"] != probe["argv_canonical_sha256"]:
             errors.append("canonical argv differs between plain/probe")
         if plain["model_sha256"] != EXPECTED_MODEL_SHA:
