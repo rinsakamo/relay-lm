@@ -80,6 +80,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="relaylm-startup-argv-selftest-") as td:
         root = Path(td)
+        (root / "server-binary.resolved.txt").write_text("/tmp/llama-server\n", encoding="utf-8")
+        (root / "model.resolved.txt").write_text("/tmp/model.gguf\n", encoding="utf-8")
         good = [
             "server_bin=/tmp/llama-server",
             "model_path=/tmp/model.gguf",
@@ -96,6 +98,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="relaylm-startup-env-selftest-") as td:
         root = Path(td)
+        (root / "server-impl.resolved.txt").write_text("/evidence/bin/libllama-server-impl.so\n", encoding="utf-8")
+        (root / "llama-lib.resolved.txt").write_text("/evidence/bin/libllama.so\n", encoding="utf-8")
         base_env = {
             "HOME": "/home/test",
             "PATH": "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
@@ -128,8 +132,6 @@ def main():
         if not c.environment_contract("probe", root)["ok"]:
             errors.append("exact probe runtime environment did not pass")
 
-        (root / "server-impl.resolved.txt").write_text("/evidence/bin/libllama-server-impl.so\n", encoding="utf-8")
-        (root / "llama-lib.resolved.txt").write_text("/evidence/bin/libllama.so\n", encoding="utf-8")
         (root / "proc-maps.health-ready.txt").write_text(
             "7f00-7f10 r-xp 0 00:00 0 /evidence/bin/libllama-server-impl.so\n"
             "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n",
