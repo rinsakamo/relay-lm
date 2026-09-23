@@ -70,7 +70,11 @@ sha256sum "$model_path" >"$out_dir/model.sha256"
 server_dir=$(cd -- "$(dirname -- "$server_bin")" && pwd)
 server_impl="$server_dir/libllama-server-impl.so"
 llama_lib="$server_dir/libllama.so"
-for artifact in "$server_impl" "$llama_lib"; do
+ggml_lib="$server_dir/libggml.so"
+ggml_base="$server_dir/libggml-base.so"
+ggml_cpu="$server_dir/libggml-cpu.so"
+ggml_cuda="$server_dir/libggml-cuda.so"
+for artifact in "$server_impl" "$llama_lib" "$ggml_lib" "$ggml_base" "$ggml_cpu" "$ggml_cuda"; do
   if [[ ! -f "$artifact" ]]; then
     printf 'RUNTIME_LIBRARY_MISSING\n' >"$out_dir/classification.txt"
     exit 31
@@ -78,9 +82,17 @@ for artifact in "$server_impl" "$llama_lib"; do
 done
 sha256sum "$server_impl" >"$out_dir/server-impl.sha256"
 sha256sum "$llama_lib" >"$out_dir/llama-lib.sha256"
+sha256sum "$ggml_lib" >"$out_dir/ggml-lib.sha256"
+sha256sum "$ggml_base" >"$out_dir/ggml-base.sha256"
+sha256sum "$ggml_cpu" >"$out_dir/ggml-cpu.sha256"
+sha256sum "$ggml_cuda" >"$out_dir/ggml-cuda.sha256"
 readlink -f "$server_bin" >"$out_dir/server-binary.resolved.txt"
 readlink -f "$server_impl" >"$out_dir/server-impl.resolved.txt"
 readlink -f "$llama_lib" >"$out_dir/llama-lib.resolved.txt"
+readlink -f "$ggml_lib" >"$out_dir/ggml-lib.resolved.txt"
+readlink -f "$ggml_base" >"$out_dir/ggml-base.resolved.txt"
+readlink -f "$ggml_cpu" >"$out_dir/ggml-cpu.resolved.txt"
+readlink -f "$ggml_cuda" >"$out_dir/ggml-cuda.resolved.txt"
 readlink -f "$model_path" >"$out_dir/model.resolved.txt"
 runtime_env=(
   "HOME=${HOME:-/tmp}"
