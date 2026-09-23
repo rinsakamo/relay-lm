@@ -192,9 +192,9 @@ if build is not None and build.get("primary_classification") != "LAYER0_PROJECTI
 if qual is not None and qual.get("primary_classification") != "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY":
     errors.append("unexpected qualification terminal classification")
 
-if build is not None and build.get("preparation_generation") != "provenance-preparation-20260923-e":
+if build is not None and build.get("preparation_generation") != "provenance-preparation-20260924-f":
     errors.append("unexpected build preparation generation")
-if qual is not None and qual.get("preparation_generation") != "provenance-preparation-20260923-e":
+if qual is not None and qual.get("preparation_generation") != "provenance-preparation-20260924-f":
     errors.append("unexpected qualification preparation generation")
 
 if build is not None and qual is not None:
@@ -224,7 +224,7 @@ if build is not None and qual is not None:
             errors.append(f"build/qualification patch SHA mismatch: {bkey}")
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-e",
+    "preparation_generation": "provenance-preparation-20260924-f",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
