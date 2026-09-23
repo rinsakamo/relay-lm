@@ -28,6 +28,8 @@ def validate_unified_diff_counts(path: Path):
         new_count = 0
         i += 1
         while i < len(lines):
+            if (old_count, new_count) == (expected_old, expected_new):
+                break
             body = lines[i]
             if body.startswith("@@ ") or body.startswith("diff --git "):
                 break
@@ -42,9 +44,14 @@ def validate_unified_diff_counts(path: Path):
                 old_count += 1
                 new_count += 1
             else:
-                # Mail-style preamble/footer is only valid outside hunks.
                 raise RuntimeError(
                     f"{path.name}: invalid hunk body line {i + 1}: {body!r}"
+                )
+            if old_count > expected_old or new_count > expected_new:
+                raise RuntimeError(
+                    f"{path.name}: hunk body exceeds declared count at line {i + 1}: "
+                    f"declared old/new={expected_old}/{expected_new}, "
+                    f"observed={old_count}/{new_count}"
                 )
             i += 1
         if (old_count, new_count) != (expected_old, expected_new):
