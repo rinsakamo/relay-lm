@@ -113,7 +113,6 @@ def main():
             "LD_LIBRARY_PATH": "/evidence/bin:/usr/local/cuda-12.8/lib64",
             "CUDA_VISIBLE_DEVICES": "0",
             "GGML_CUDA_GRAPH_OPT": "0",
-            "GGML_CUDA_DISABLE_FUSION": "0",
         }
         def write_env(path, env):
             path.write_text("\n".join(f"{k}={v}" for k, v in env.items()) + "\n", encoding="utf-8")
