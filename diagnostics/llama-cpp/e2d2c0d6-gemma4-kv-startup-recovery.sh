@@ -68,6 +68,19 @@ sha256sum "$server_bin" >"$out_dir/server-binary.sha256"
 sha256sum "$model_path" >"$out_dir/model.sha256"
 
 server_dir=$(cd -- "$(dirname -- "$server_bin")" && pwd)
+server_impl="$server_dir/libllama-server-impl.so"
+llama_lib="$server_dir/libllama.so"
+for artifact in "$server_impl" "$llama_lib"; do
+  if [[ ! -f "$artifact" ]]; then
+    printf 'RUNTIME_LIBRARY_MISSING\n' >"$out_dir/classification.txt"
+    exit 31
+  fi
+done
+sha256sum "$server_impl" >"$out_dir/server-impl.sha256"
+sha256sum "$llama_lib" >"$out_dir/llama-lib.sha256"
+readlink -f "$server_bin" >"$out_dir/server-binary.resolved.txt"
+readlink -f "$server_impl" >"$out_dir/server-impl.resolved.txt"
+readlink -f "$llama_lib" >"$out_dir/llama-lib.resolved.txt"
 runtime_env=(
   "HOME=${HOME:-/tmp}"
   "PATH=/usr/local/cuda-12.8/bin:/usr/bin:/bin"
@@ -237,6 +250,13 @@ if (( health_ok == 0 )); then
 fi
 
 event "health ready"
+
+if [[ -r "/proc/$pid/environ" ]]; then
+  tr '\0' '\n' <"/proc/$pid/environ" | LC_ALL=C sort >"$out_dir/proc-environ.health-ready.txt" 2>/dev/null || true
+fi
+if [[ -r "/proc/$pid/maps" ]]; then
+  cat "/proc/$pid/maps" >"$out_dir/proc-maps.health-ready.txt" 2>/dev/null || true
+fi
 
 # Strictly non-generative. Clean shutdown immediately after readiness.
 kill "$pid" 2>/dev/null || true
