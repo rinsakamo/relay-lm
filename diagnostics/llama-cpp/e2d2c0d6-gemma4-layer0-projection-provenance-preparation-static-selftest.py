@@ -186,6 +186,8 @@ def main():
         'RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD',
         'refs/remotes/origin/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916',
         'remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")',
+        'git -C "$repo_root" fetch --quiet origin',
+        '+$authority_branch_ref:$authority_ref',
         'https://github.com/rinsakamo/relay-lm.git',
         'status --porcelain --untracked-files=all',
         'preparation-static-selftest.json',
@@ -195,6 +197,8 @@ def main():
         'build/qualification libllama SHA mismatch',
         '("ggml_cuda_sha256", "ggml_cuda", "libggml-cuda")',
         'build/qualification {label} SHA mismatch',
+        'gpu0.get("driver_version") != "591.44"',
+        'gpu0.get("memory_total_mib") != 12288',
         'chmod -R a-w "$out_root"',
         '/tmp/*|/var/tmp/*',
     ):
@@ -217,6 +221,8 @@ def main():
         'gpu_compute_processes',
         '--query-compute-apps=pid,process_name',
         'gpu-inventory.json',
+        '--query-gpu=index,uuid,name,driver_version,memory.total',
+        'memory_total_mib',
         'RELEASE_FAILED_CANONICAL_DIAGNOSTIC_FLOCK',
         'RELEASED_WITH_FAILURE_CANONICAL_DIAGNOSTIC_FLOCK',
     ):
