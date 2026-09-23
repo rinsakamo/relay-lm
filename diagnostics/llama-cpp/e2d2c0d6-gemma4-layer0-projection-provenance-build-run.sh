@@ -7,7 +7,8 @@ usage:
   layer0-projection-provenance-build-run.sh OUT_ROOT LLAMA_SOURCE_REPO [JOBS]
 
 Creates a disposable local clone of an existing llama.cpp repository, checks out
-the exact frozen source revision, applies the aligned-reuse, logical-prefix, projection-origin, and projection-provenance\ndiagnostic patches, and builds only llama-server with CUDA enabled.
+the exact frozen source revision, applies the aligned-reuse, logical-prefix, projection-origin, and projection-provenance
+diagnostic patches, and builds only llama-server with CUDA enabled.
 
 This helper performs no model load and no generation.
 EOF
