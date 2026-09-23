@@ -8,6 +8,10 @@ import sys
 
 
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+FORBIDDEN_HISTORICAL_SERVER_SHA256 = {
+    "0a9160015c31d11b607b1bd7559e69fe90c02d1079ad7517ccb24ea75c71b08e",
+    "a5d767da8006aaf0537594ae308fc427cdb92154f48c5a3a325be3908352c5bb",
+}
 
 HERE = Path(__file__).resolve().parent
 LOGICAL_PATCH = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch"
@@ -80,6 +84,8 @@ def main():
 
     if model_sha is not None and model_sha != EXPECTED_MODEL_SHA:
         errors.append("model SHA256 mismatch")
+    if server_sha in FORBIDDEN_HISTORICAL_SERVER_SHA256:
+        errors.append(f"server binary matches forbidden historical consumed SHA256: {server_sha}")
 
     artifact_specs = {
         "llama_server": {
