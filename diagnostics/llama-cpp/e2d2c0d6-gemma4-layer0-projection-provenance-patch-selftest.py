@@ -9,6 +9,55 @@ import tempfile
 
 REV = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
 
+
+def validate_unified_diff_counts(path: Path):
+    lines = path.read_text(encoding="utf-8").splitlines()
+    seen = 0
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.startswith("@@ "):
+            i += 1
+            continue
+        m = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
+        if not m:
+            raise RuntimeError(f"{path.name}: malformed hunk header: {line}")
+        expected_old = int(m.group(2) or "1")
+        expected_new = int(m.group(4) or "1")
+        old_count = 0
+        new_count = 0
+        i += 1
+        while i < len(lines):
+            body = lines[i]
+            if body.startswith("@@ ") or body.startswith("diff --git "):
+                break
+            if body.startswith("\\ No newline at end of file"):
+                i += 1
+                continue
+            if body.startswith("+") and not body.startswith("+++"):
+                new_count += 1
+            elif body.startswith("-") and not body.startswith("---"):
+                old_count += 1
+            elif body.startswith(" "):
+                old_count += 1
+                new_count += 1
+            else:
+                # Mail-style preamble/footer is only valid outside hunks.
+                raise RuntimeError(
+                    f"{path.name}: invalid hunk body line {i + 1}: {body!r}"
+                )
+            i += 1
+        if (old_count, new_count) != (expected_old, expected_new):
+            raise RuntimeError(
+                f"{path.name}: hunk count mismatch: "
+                f"declared old/new={expected_old}/{expected_new}, "
+                f"observed={old_count}/{new_count}"
+            )
+        seen += 1
+    if seen == 0:
+        raise RuntimeError(f"{path.name}: no unified-diff hunks found")
+    return seen
+
 def run(cmd, *, cwd=None):
     cp = subprocess.run(
         cmd,
@@ -44,6 +93,11 @@ def main():
     for patch in patches:
         if not patch.is_file():
             raise RuntimeError(f"required patch missing: {patch}")
+
+    patch_hunk_counts = {
+        patch.name: validate_unified_diff_counts(patch)
+        for patch in patches
+    }
 
     provenance_text = patches[-1].read_text(encoding="utf-8")
 
@@ -140,8 +194,9 @@ def main():
 
         result = {
             "primary_classification": "LAYER0_PROJECTION_PROVENANCE_PATCH_STATIC_PASS",
-            "selftest_generation": "projection-provenance-static-20260923-b",
+            "selftest_generation": "projection-provenance-static-20260923-c",
             "provenance_header_fields": expected_header_fields,
+            "patch_hunk_counts": patch_hunk_counts,
             "frozen_source_head": REV,
             "patches": [p.name for p in patches],
             "changed_paths": sorted(line[3:] for line in status if len(line) >= 4),
