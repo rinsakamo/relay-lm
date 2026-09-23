@@ -7,6 +7,17 @@ import re
 import sys
 
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+EXPECTED_CANONICAL_STATIC_ARGV = [
+    "--host=127.0.0.1",
+    "--ctx-size=8192",
+    "--parallel=1",
+    "--gpu-layers=999",
+    "--no-context-shift",
+    "--batch-size=512",
+    "--ubatch-size=512",
+    "--flash-attn=on",
+    "--log-verbosity=4",
+]
 
 STARTUP_PATTERNS = {
     "n_seq_max_1": r"^.*\bllama_context\s*:\s*n_seq_max\s*=\s*1\b.*$",
@@ -109,16 +120,40 @@ def compact_swa_evidence(text: str):
 
     base = bases[-1]
     swa = swas[-1]
-    ok = base == 8192 and 0 < swa < base
+    ok = base == 8192 and swa == 1536
     return {
         "ok": ok,
         "base_sizes": bases,
         "swa_sizes": swas,
         "selected_base_size": base,
         "selected_swa_size": swa,
-        "reason": None if ok else "expected base=8192 and 0<swa<base",
+        "reason": None if ok else "expected exact base=8192 and SWA=1536",
     }
 
+
+def canonical_argv_contract(root: Path):
+    path = root / "server.argv.canonical.txt"
+    lines = read_text(path).splitlines()
+    if len(lines) != 2 + len(EXPECTED_CANONICAL_STATIC_ARGV):
+        return {
+            "ok": False,
+            "lines": lines,
+            "reason": f"unexpected canonical argv line count: {len(lines)}",
+        }
+    if not lines[0].startswith("server_bin=") or not lines[1].startswith("model_path="):
+        return {
+            "ok": False,
+            "lines": lines,
+            "reason": "canonical argv missing server/model identity lines",
+        }
+    static = lines[2:]
+    return {
+        "ok": static == EXPECTED_CANONICAL_STATIC_ARGV,
+        "lines": lines,
+        "static": static,
+        "expected_static": EXPECTED_CANONICAL_STATIC_ARGV,
+        "reason": None if static == EXPECTED_CANONICAL_STATIC_ARGV else "canonical static argv mismatch",
+    }
 
 def inspect_arm(name: str, root: Path):
     log = combined_log(root)
@@ -134,6 +169,7 @@ def inspect_arm(name: str, root: Path):
         "server_sha256": read_sha_line(root / "server-binary.sha256"),
         "model_sha256": read_sha_line(root / "model.sha256"),
         "argv_canonical_sha256": sha256(root / "server.argv.canonical.txt"),
+        "argv_contract": canonical_argv_contract(root),
         "context": context,
         "compact_swa": swa,
         "unexpected_probe_output": unexpected_probe_output,
@@ -165,6 +201,8 @@ def main():
         for arm in (plain, probe):
             if arm["classification"] != "READY_NON_GENERATIVE":
                 errors.append(f"{arm['name']}: classification={arm['classification']}")
+            if not arm["argv_contract"]["ok"]:
+                errors.append(f"{arm['name']}: canonical argv contract mismatch: {arm['argv_contract']['reason']}")
             missing = [
                 key for key, value in arm["context"]["checks"].items()
                 if not value["ok"]
