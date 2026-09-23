@@ -235,3 +235,123 @@ Current review classification:
 
 A replacement preparation generation should address R1-R8 before a new
 preparation-only authority is granted.
+
+
+## Generation-d repair resolution
+
+The generation-c review blockers above have now been addressed in the current
+generation-d preparation apparatus.
+
+### R1 — authority/local apparatus binding
+
+Resolved by requiring a clean authority checkout whose local HEAD, freshly
+fetched canonical remote-tracking diagnostic ref, and explicit
+`RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD` all match exactly.
+
+The preparation runner now refreshes the diagnostic ref from the canonical
+RelayLM origin itself before accepting authority.
+
+### R2 — hermetic runtime environment
+
+Resolved by launching the server through `env -i` with an exact allowlist.
+The runtime contract records and verifies the live process environment.
+
+Notably:
+
+- `CUDA_VISIBLE_DEVICES=0`;
+- `GGML_CUDA_GRAPH_OPT=0`;
+- no inherited `GGML_CUDA_DISABLE_FUSION`;
+- fixed PATH / LD_LIBRARY_PATH;
+- isolated HOME / TMPDIR.
+
+### R3 — GPU quiescence
+
+Resolved by extending the canonical resource guard with:
+
+- two-sample active CUDA compute-process inspection;
+- GPU inventory capture;
+- exact single-GPU identity gate;
+- frozen NVIDIA GeForce RTX 3060;
+- frozen driver `591.44`;
+- frozen total memory `12288 MiB`.
+
+### R4 — build/preflight/startup artifact closure
+
+Resolved by hashing and cross-checking:
+
+- llama-server;
+- libllama-server-impl;
+- libllama;
+- libggml;
+- libggml-base;
+- libggml-cpu;
+- libggml-cuda;
+- all four diagnostic patches.
+
+Startup captures live `/proc/<pid>/maps`; the classifier requires the loaded
+runtime library paths to equal the resolved prepared artifacts exactly.
+
+### R5 — exact frozen runtime contract
+
+Resolved by exact normalized startup argv validation plus log evidence.
+
+The contract now requires:
+
+- ctx 8192;
+- parallel 1;
+- gpu-layers 999;
+- no-context-shift;
+- batch 512;
+- ubatch 512;
+- Flash Attention on;
+- base KV 8192;
+- SWA KV exactly 1536.
+
+### R6 — provenance strong-classification hardening
+
+Resolved by:
+
+- normalized null-pointer parsing;
+- explicit rejection of null shared src1;
+- K/V src1 object and data binding to the attn_norm-0 provenance row;
+- expected src1 name/type/op checks;
+- duplicate provenance-row rejection;
+- exact dump geometry and K/V payload-size checks.
+
+### R7 — internal static gate
+
+Resolved by making the preparation orchestrator execute the preparation static
+selftest internally before build/startup and record the result in the top-level
+terminal.
+
+### R8 — resource-guard finalization semantics
+
+Resolved by distinct release-failure states and qualification checks requiring:
+
+- released canonical flock state;
+- `failure == null`;
+- child return code zero.
+
+### Additional hardening
+
+The generation-d apparatus also:
+
+- fails closed between plain and probe startup arms;
+- makes startup-recovery classification return nonzero unless recovered;
+- refuses volatile /tmp and /var/tmp preparation evidence roots;
+- seals successful preparation evidence read-only;
+- emits a prepared-artifact SHA256 manifest;
+- requires a clean immutable authority checkout throughout preparation;
+- exercises both KV and projection probe environments during non-generative
+  startup and rejects any unexpected dump;
+- records build/toolchain contract and runtime GPU identity.
+
+No generation-d preparation build/startup has been executed by this review.
+Measured provenance execution remains unauthorized.
+
+Current disposition:
+
+`PROVENANCE_PREPARATION_GENERATION_D_STATIC_REQUALIFICATION_READY`
+
+This status authorizes only the generation-d static qualification step. A
+preparation run is allowed only after that static gate passes.
