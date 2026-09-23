@@ -180,6 +180,12 @@ fi
 if [[ -r "/proc/$pid/status" ]]; then
   cat "/proc/$pid/status" >"$out_dir/proc-status.initial.txt" 2>/dev/null || true
 fi
+if [[ -r "/proc/$pid/environ" ]]; then
+  tr "\\0" "\\n" <"/proc/$pid/environ" | LC_ALL=C sort >"$out_dir/proc-environ.initial.txt" 2>/dev/null || true
+fi
+if [[ -r "/proc/$pid/maps" ]]; then
+  cat "/proc/$pid/maps" >"$out_dir/proc-maps.initial.txt" 2>/dev/null || true
+fi
 
 timeout_s=${STARTUP_TIMEOUT_S:-180}
 deadline=$((SECONDS + timeout_s))
