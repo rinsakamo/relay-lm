@@ -94,6 +94,57 @@ def main():
         if c.canonical_argv_contract(root)["ok"]:
             errors.append("drifted canonical argv incorrectly passed")
 
+    with tempfile.TemporaryDirectory(prefix="relaylm-startup-env-selftest-") as td:
+        root = Path(td)
+        base_env = {
+            "HOME": "/home/test",
+            "PATH": "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "LD_LIBRARY_PATH": "/evidence/bin:/usr/local/cuda-12.8/lib64",
+            "CUDA_VISIBLE_DEVICES": "0",
+            "GGML_CUDA_GRAPH_OPT": "0",
+            "GGML_CUDA_DISABLE_FUSION": "0",
+        }
+        def write_env(path, env):
+            path.write_text("\n".join(f"{k}={v}" for k, v in env.items()) + "\n", encoding="utf-8")
+
+        write_env(root / "runtime-environment.effective.txt", base_env)
+        write_env(root / "proc-environ.health-ready.txt", base_env)
+        if not c.environment_contract("plain", root)["ok"]:
+            errors.append("exact plain runtime environment did not pass")
+
+        drift = dict(base_env)
+        drift["GGML_CUDA_GRAPH_OPT"] = "1"
+        write_env(root / "proc-environ.health-ready.txt", drift)
+        if c.environment_contract("plain", root)["ok"]:
+            errors.append("runtime environment drift incorrectly passed")
+
+        probe_env = dict(base_env)
+        probe_env["LLAMA_KV_PROBE_DIR"] = "/evidence/probe"
+        probe_env["LLAMA_KV_PROBE_LABEL"] = "PRE"
+        write_env(root / "runtime-environment.effective.txt", probe_env)
+        write_env(root / "proc-environ.health-ready.txt", probe_env)
+        if not c.environment_contract("probe", root)["ok"]:
+            errors.append("exact probe runtime environment did not pass")
+
+        (root / "server-impl.resolved.txt").write_text("/evidence/bin/libllama-server-impl.so\n", encoding="utf-8")
+        (root / "llama-lib.resolved.txt").write_text("/evidence/bin/libllama.so\n", encoding="utf-8")
+        (root / "proc-maps.health-ready.txt").write_text(
+            "7f00-7f10 r-xp 0 00:00 0 /evidence/bin/libllama-server-impl.so\n"
+            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n",
+            encoding="utf-8",
+        )
+        if not c.runtime_library_contract(root)["ok"]:
+            errors.append("exact runtime library closure did not pass")
+        (root / "proc-maps.health-ready.txt").write_text(
+            "7f00-7f10 r-xp 0 00:00 0 /other/libllama-server-impl.so\n"
+            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n",
+            encoding="utf-8",
+        )
+        if c.runtime_library_contract(root)["ok"]:
+            errors.append("wrong runtime library path incorrectly passed")
+
     status = (
         "LOGICAL_PREFIX_STARTUP_CLASSIFIER_SELFTEST_PASS"
         if not errors
