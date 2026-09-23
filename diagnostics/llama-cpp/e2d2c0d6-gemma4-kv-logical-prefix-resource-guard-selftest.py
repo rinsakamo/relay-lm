@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import sys
+from types import SimpleNamespace
 
 
 def load_guard():
@@ -38,6 +39,40 @@ def main():
     results.append({"name": "connection_refused_is_idle", "ok": g.interpret_connect_ex(errno.ECONNREFUSED) is False})
     for name, code in (("eperm", errno.EPERM), ("eacces", errno.EACCES), ("timeout", errno.ETIMEDOUT)):
         results.append({"name": f"{name}_is_inconclusive", "ok": expect_runtime_error(lambda code=code: g.interpret_connect_ex(code))})
+
+    original_which = g.shutil.which
+    original_run = g.subprocess.run
+    try:
+        g.shutil.which = lambda name: "/usr/bin/nvidia-smi" if name == "nvidia-smi" else None
+        def fake_run(cmd, **kwargs):
+            joined = " ".join(cmd)
+            if "--query-gpu=index,uuid,name,driver_version" in joined:
+                return SimpleNamespace(
+                    returncode=0,
+                    stdout="0, GPU-test, NVIDIA GeForce RTX 3060, 591.44\n",
+                    stderr="",
+                )
+            if "--query-compute-apps=pid,process_name" in joined:
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+            raise RuntimeError(f"unexpected fake nvidia-smi command: {cmd!r}")
+        g.subprocess.run = fake_run
+        inventory = g.gpu_inventory()
+        results.append({
+            "name": "gpu_inventory_parser",
+            "ok": inventory == [{
+                "index": 0,
+                "uuid": "GPU-test",
+                "name": "NVIDIA GeForce RTX 3060",
+                "driver_version": "591.44",
+            }],
+        })
+        results.append({
+            "name": "empty_gpu_compute_parser",
+            "ok": g.gpu_compute_processes() == [],
+        })
+    finally:
+        g.shutil.which = original_which
+        g.subprocess.run = original_run
 
     original_names = g.process_executable_names
     original_listener = g.listener_busy
