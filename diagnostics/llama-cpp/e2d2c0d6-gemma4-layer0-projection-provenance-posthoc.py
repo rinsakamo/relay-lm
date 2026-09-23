@@ -23,6 +23,12 @@ def sha256(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+NULL_POINTERS = {"", "0", "0x0", "(nil)", "nullptr", "NULL", "null"}
+
+def pointer_value(value: str):
+    v = value.strip()
+    return None if v in NULL_POINTERS else v
+
 def load_provenance(dump: Path):
     p=dump/"provenance.tsv"
     if not p.is_file():
@@ -33,17 +39,22 @@ def load_provenance(dump: Path):
         raise RuntimeError(f"empty provenance: {p}")
     if list(rows[0].keys()) != EXPECTED_FIELDS:
         raise RuntimeError(f"provenance schema mismatch: {p}: {list(rows[0].keys())}")
+    names=[r["name"] for r in rows]
+    if len(names) != len(set(names)):
+        raise RuntimeError(f"duplicate provenance tensor row: {p}: {names}")
     by_name={r["name"]:r for r in rows}
     if set(by_name) != set(EXPECTED_TENSORS):
         raise RuntimeError(f"provenance tensor set mismatch: {p}: {sorted(by_name)}")
     return by_name
 
 def nonempty_distinct(a,b,key):
-    av=a[key]; bv=b[key]
-    return bool(av and bv and av != bv)
+    av=pointer_value(a[key]) if key.endswith("_ptr") else a[key]
+    bv=pointer_value(b[key]) if key.endswith("_ptr") else b[key]
+    return av is not None and bv is not None and av != bv
 
 def classify_dump(dump: Path):
     prov=load_provenance(dump)
+    n=prov["attn_norm-0"]
     k=prov["Kcur-0"]
     v=prov["Vcur-0"]
 
@@ -67,16 +78,35 @@ def classify_dump(dump: Path):
         "src0_buffer_ptr_distinct":nonempty_distinct(k,v,"src0_buffer_ptr"),
         "src0_type_distinct":nonempty_distinct(k,v,"src0_type"),
         "src0_name_distinct":nonempty_distinct(k,v,"src0_name"),
-        "src1_same_object":bool(k["src1_ptr"] and k["src1_ptr"]==v["src1_ptr"]),
-        "src1_same_data":bool(k["src1_data_ptr"] and k["src1_data_ptr"]==v["src1_data_ptr"]),
+        "src1_same_object":(
+            pointer_value(k["src1_ptr"]) is not None
+            and pointer_value(k["src1_ptr"]) == pointer_value(v["src1_ptr"])
+        ),
+        "src1_same_data":(
+            pointer_value(k["src1_data_ptr"]) is not None
+            and pointer_value(k["src1_data_ptr"]) == pointer_value(v["src1_data_ptr"])
+        ),
+        "src1_is_attn_norm_object":(
+            pointer_value(k["src1_ptr"]) is not None
+            and pointer_value(k["src1_ptr"]) == pointer_value(v["src1_ptr"])
+            and pointer_value(k["src1_ptr"]) == pointer_value(n["tensor_ptr"])
+        ),
+        "src1_is_attn_norm_data":(
+            pointer_value(k["src1_data_ptr"]) is not None
+            and pointer_value(k["src1_data_ptr"]) == pointer_value(v["src1_data_ptr"])
+            and pointer_value(k["src1_data_ptr"]) == pointer_value(n["data_ptr"])
+        ),
         "op_equal":bool(k["op"] and k["op"]==v["op"]),
         "expected_projection_semantics":(
             k["op"]=="MUL_MAT" and v["op"]=="MUL_MAT"
             and k["src0_type"]=="Q4_K" and v["src0_type"]=="Q6_K"
             and k["src0_name"]=="blk.0.attn_k.weight"
             and v["src0_name"]=="blk.0.attn_v.weight"
-            and bool(k["src1_ptr"]) and k["src1_ptr"]==v["src1_ptr"]
-            and bool(k["src1_data_ptr"]) and k["src1_data_ptr"]==v["src1_data_ptr"]
+            and checks["src1_is_attn_norm_object"]
+            and checks["src1_is_attn_norm_data"]
+            and k["src1_name"]=="attn_norm-0" and v["src1_name"]=="attn_norm-0"
+            and k["src1_type"]=="f32" and v["src1_type"]=="f32"
+            and k["src1_op"]=="MUL" and v["src1_op"]=="MUL"
         ),
         "value_identical":value_identical,
     }
