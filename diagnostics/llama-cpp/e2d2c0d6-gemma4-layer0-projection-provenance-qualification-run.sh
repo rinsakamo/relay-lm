@@ -211,6 +211,10 @@ server_sha = binary.get("server_sha256")
 runtime_artifacts = binary.get("runtime_artifacts") or {}
 impl_sha = (runtime_artifacts.get("llama_server_impl") or {}).get("sha256")
 llama_sha = (runtime_artifacts.get("llama") or {}).get("sha256")
+ggml_sha = (runtime_artifacts.get("ggml") or {}).get("sha256")
+ggml_base_sha = (runtime_artifacts.get("ggml_base") or {}).get("sha256")
+ggml_cpu_sha = (runtime_artifacts.get("ggml_cpu") or {}).get("sha256")
+ggml_cuda_sha = (runtime_artifacts.get("ggml_cuda") or {}).get("sha256")
 
 if not isinstance(gpu_inventory, list) or len(gpu_inventory) != 1:
     errors.append(f"expected exactly one GPU in inventory, got: {gpu_inventory!r}")
@@ -231,6 +235,14 @@ for arm_name in ("plain", "probe"):
         errors.append(f"{arm_name}: startup libllama SHA differs from binary preflight")
     if arm.get("model_sha256") != binary.get("model_sha256"):
         errors.append(f"{arm_name}: startup model SHA differs from binary preflight")
+    if arm.get("ggml_lib_sha256") != ggml_sha:
+        errors.append(f"{arm_name}: startup libggml SHA differs from binary preflight")
+    if arm.get("ggml_base_sha256") != ggml_base_sha:
+        errors.append(f"{arm_name}: startup libggml-base SHA differs from binary preflight")
+    if arm.get("ggml_cpu_sha256") != ggml_cpu_sha:
+        errors.append(f"{arm_name}: startup libggml-cpu SHA differs from binary preflight")
+    if arm.get("ggml_cuda_sha256") != ggml_cuda_sha:
+        errors.append(f"{arm_name}: startup libggml-cuda SHA differs from binary preflight")
 
 out = {
     "preparation_generation": "provenance-preparation-20260923-d",
