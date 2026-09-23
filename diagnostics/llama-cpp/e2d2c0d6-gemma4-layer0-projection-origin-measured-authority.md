@@ -949,3 +949,49 @@ Current zero-GPU gate order:
 2. provenance posthoc classifier selftest.
 
 No physical execution is authorized by either gate.
+
+
+### Provenance patch hunk corruption and generation-c repair
+
+The first execution of static generation
+`projection-provenance-static-20260923-b` passed schema decoding and the first
+three prerequisite patch applications, then failed on the fourth provenance
+patch with:
+
+`error: corrupt patch at line 92`
+
+No Stage-B posthoc selftest was run. No physical/GPU/model/generation activity
+occurred.
+
+Root cause was deterministic patch syntax:
+
+- provenance patch declared hunk: old/new = 6/63;
+- actual hunk body: old/new = 6/67;
+- added lines = 61;
+- unchanged context lines = 6.
+
+The patch header has been corrected to:
+
+`@@ -1435,6 +1435,67 @@`
+
+Repository-side static recount confirms declared old/new 6/67 equals observed
+old/new 6/67.
+
+The static selftest has also been hardened with an independent unified-diff
+hunk-count validator so future declared/body count drift fails explicitly before
+temporary clone/apply.
+
+New static generation:
+
+`projection-provenance-static-20260923-c`
+
+Allowed next gate order remains:
+
+1. one Stage-A static provenance patch selftest for generation c;
+2. only if Stage A passes, one provenance posthoc classifier selftest.
+
+Status:
+
+`PROVENANCE_PATCH_GENERATION_C_STATIC_REQUALIFICATION_READY`
+
+No build or physical/model execution is authorized.
