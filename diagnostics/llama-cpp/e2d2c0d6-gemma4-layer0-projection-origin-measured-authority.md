@@ -1226,3 +1226,51 @@ Existing boundary remains unchanged:
 
 - preparation-only execution may be attempted after the repaired static gate;
 - provenance measured physical execution remains unauthorized.
+
+
+### Provenance preparation transitive non-generation audit and generation-c repair
+
+Before running preparation generation b, the static apparatus audit was extended
+to cover the transitive startup path:
+
+- provenance build runner;
+- provenance qualification runner;
+- provenance prepare orchestrator;
+- provenance binary preflight;
+- startup recovery runner;
+- startup recovery helper;
+- canonical resource guard.
+
+The extended gate requires:
+
+- shell syntax for all shell helpers;
+- Python compile for binary preflight and resource guard;
+- no concrete completion/chat/measured/execute-once path in the transitive
+  preparation closure;
+- startup helper contains only the expected `/health` readiness probe and
+  explicit `READY_NON_GENERATIVE` / unexpected-dump guards;
+- qualification invokes startup through the canonical resource guard;
+- qualification retains the negative campaign queue/spend assertions.
+
+During this read-only audit, one additional static false-negative was found
+before any local preparation execution: the selftest expected the literal
+`"--evidence-root" "$guard_root" --`, while the real qualified invocation is
+`--evidence-root "$guard_root" --`.
+
+That marker has been corrected. Build, qualification, prepare, and static
+selftest generation stamps have all been advanced consistently to:
+
+`provenance-preparation-20260923-c`
+
+Repository-side read-back confirms:
+
+- generation c is consistent across all four apparatus surfaces;
+- resource-guard invocation marker matches the actual qualification script;
+- guarded child is exactly the startup recovery runner;
+- no generation request has been executed.
+
+Status:
+
+`PROVENANCE_PREPARATION_GENERATION_C_STATIC_REQUALIFICATION_READY`
+
+Measured provenance execution remains unauthorized.
