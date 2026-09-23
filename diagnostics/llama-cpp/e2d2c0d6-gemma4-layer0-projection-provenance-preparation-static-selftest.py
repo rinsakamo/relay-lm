@@ -39,11 +39,11 @@ def main():
     startup = STARTUP.read_text(encoding="utf-8")
     resource_guard = RESOURCE_GUARD.read_text(encoding="utf-8")
 
-    require('"preparation_generation": "provenance-preparation-20260923-b"' in build,
+    require('"preparation_generation": "provenance-preparation-20260923-c"' in build,
             "build missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-b"' in qual,
+    require('"preparation_generation": "provenance-preparation-20260923-c"' in qual,
             "qualification missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-b"' in prep,
+    require('"preparation_generation": "provenance-preparation-20260923-c"' in prep,
             "prepare missing preparation generation stamp")
 
     for marker in (
@@ -128,7 +128,7 @@ def main():
         "startup-run does not invoke the qualified startup helper",
     )
     require(
-        '"--evidence-root" "$guard_root" --' in qual,
+        '--evidence-root "$guard_root" --' in qual,
         "qualification does not route startup through resource guard",
     )
     require(
@@ -154,7 +154,7 @@ def main():
         "transitive_non_generation_gate":True,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
-        "preparation_generation":"provenance-preparation-20260923-b",
+        "preparation_generation":"provenance-preparation-20260923-c",
     }
     print(json.dumps(result,indent=2,sort_keys=True))
     return 0
