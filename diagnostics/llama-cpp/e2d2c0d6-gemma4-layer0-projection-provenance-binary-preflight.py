@@ -32,7 +32,7 @@ LLAMA_LIBRARY_MARKERS = [
     b"projection-origin diagnostic dump failed",
     b"LLAMA_PROJECTION_ORIGIN_PROBE_DIR",
     b"LLAMA_PROJECTION_ORIGIN_PROBE_LABEL",
-    b"provenance.tsv",
+    b"provenance tensor missing: %s",
     b"tensor_ptr",
     b"src0_ptr",
     b"src1_ptr",
