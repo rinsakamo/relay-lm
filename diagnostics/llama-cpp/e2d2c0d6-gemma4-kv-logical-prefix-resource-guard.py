@@ -102,7 +102,7 @@ def gpu_inventory():
     if exe is None:
         raise RuntimeError("nvidia-smi unavailable for GPU inventory")
     cp = subprocess.run(
-        [exe, "--query-gpu=index,uuid,name,driver_version", "--format=csv,noheader"],
+        [exe, "--query-gpu=index,uuid,name,driver_version,memory.total", "--format=csv,noheader,nounits"],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -112,14 +112,15 @@ def gpu_inventory():
         raise RuntimeError(f"nvidia-smi inventory query failed rc={cp.returncode}: {cp.stderr.strip()}")
     rows = []
     for line in cp.stdout.splitlines():
-        parts = [x.strip() for x in line.split(",", 3)]
-        if len(parts) != 4 or not parts[0].isdigit():
+        parts = [x.strip() for x in line.split(",", 4)]
+        if len(parts) != 5 or not parts[0].isdigit() or not parts[4].isdigit():
             raise RuntimeError(f"unparseable nvidia-smi inventory row: {line!r}")
         rows.append({
             "index": int(parts[0]),
             "uuid": parts[1],
             "name": parts[2],
             "driver_version": parts[3],
+            "memory_total_mib": int(parts[4]),
         })
     if not rows:
         raise RuntimeError("nvidia-smi returned no GPU inventory")
