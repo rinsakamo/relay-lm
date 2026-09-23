@@ -32,6 +32,13 @@ def main():
     prep = PREP.read_text(encoding="utf-8")
     preflight = PREFLIGHT.read_text(encoding="utf-8")
 
+    require('"preparation_generation": "provenance-preparation-20260923-b"' in build,
+            "build missing preparation generation stamp")
+    require('"preparation_generation": "provenance-preparation-20260923-b"' in qual,
+            "qualification missing preparation generation stamp")
+    require('"preparation_generation": "provenance-preparation-20260923-b"' in prep,
+            "prepare missing preparation generation stamp")
+
     for marker in (
         "e2d2c0d6-gemma4-swa-ubatch-aligned-reuse-diagnostic.patch",
         "e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch",
