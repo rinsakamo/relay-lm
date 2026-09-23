@@ -157,6 +157,7 @@ def load(name):
 
 patch = load("logical-prefix-patch-selftest.json")
 binary = load("logical-prefix-binary-preflight.json")
+provenance_posthoc = load("projection-provenance-posthoc-selftest.json")
 startup = load("logical-prefix-startup-classification.json")
 guard_selftest = load("logical-prefix-resource-guard-selftest.json")
 guard = load("shared-resource-guard/guard.json")
@@ -167,6 +168,8 @@ if patch.get("status") != "LOGICAL_PREFIX_PATCH_SELFTEST_PASS":
     errors.append("patch self-test did not pass")
 if binary.get("status") != "LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS":
     errors.append("projection-provenance binary provenance preflight did not pass")
+if provenance_posthoc.get("status") != "LAYER0_PROJECTION_PROVENANCE_POSTHOC_SELFTEST_PASS":
+    errors.append("projection provenance posthoc self-test did not pass")
 if startup.get("primary_classification") != "LOGICAL_PREFIX_STARTUP_QUALIFIED":
     errors.append("strict startup qualification did not pass")
 if guard_selftest.get("status") != "LOGICAL_PREFIX_RESOURCE_GUARD_SELFTEST_PASS":
@@ -199,9 +202,12 @@ else:
             errors.append(f"external quiescence observation {index} saw/inferred busy default listener")
 
 server_sha = binary.get("server_sha256")
-old_sha = "0a9160015c31d11b607b1bd7559e69fe90c02d1079ad7517ccb24ea75c71b08e"
-if server_sha == old_sha:
-    errors.append("replacement binary unexpectedly equals consumed apparatus binary SHA")
+for old_sha in (
+    "0a9160015c31d11b607b1bd7559e69fe90c02d1079ad7517ccb24ea75c71b08e",
+    "a5d767da8006aaf0537594ae308fc427cdb92154f48c5a3a325be3908352c5bb",
+):
+    if server_sha == old_sha:
+        errors.append(f"provenance binary unexpectedly equals historical consumed apparatus SHA: {old_sha}")
 
 out = {
     "primary_classification": (
@@ -222,6 +228,7 @@ out = {
     "resource_guard": guard,
     "external_quiescence": quiescence,
     "startup": startup,
+    "provenance_posthoc_selftest": provenance_posthoc,
     "generated_requests": 0,
     "measured_l0_submitted": False,
     "measured_attempt_consumed": False,
