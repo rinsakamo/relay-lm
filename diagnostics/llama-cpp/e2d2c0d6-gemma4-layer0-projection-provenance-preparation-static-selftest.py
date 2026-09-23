@@ -192,7 +192,8 @@ def main():
         'build/qualification server SHA mismatch',
         'build/qualification server-impl SHA mismatch',
         'build/qualification libllama SHA mismatch',
-        'build/qualification libggml-cuda SHA mismatch',
+        '("ggml_cuda_sha256", "ggml_cuda", "libggml-cuda")',
+        'build/qualification {label} SHA mismatch',
         'chmod -R a-w "$out_root"',
         '/tmp/*|/var/tmp/*',
     ):
