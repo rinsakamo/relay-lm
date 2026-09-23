@@ -355,3 +355,33 @@ Current disposition:
 
 This status authorizes only the generation-d static qualification step. A
 preparation run is allowed only after that static gate passes.
+
+
+## Generation-d static ownership false positive
+
+The first canonical static requalification of generation d failed before any
+build/startup because the static selftest required the exact GPU driver/memory
+qualification markers to appear in `prepare-run.sh`.
+
+That ownership was incorrect.
+
+The actual execution architecture intentionally places exact GPU identity
+validation in the qualification layer, where the resource-guard inventory is
+consumed. The prepare layer owns orchestration, authority binding, cross-stage
+artifact closure, persistence, and sealing.
+
+The generation-e repair therefore:
+
+- removes the driver/memory marker requirement from the prepare marker set;
+- requires those markers in the qualification marker set;
+- preserves the exact runtime checks:
+  - driver `591.44`;
+  - total memory `12288 MiB`;
+- advances all preparation surfaces consistently to
+  `provenance-preparation-20260923-e`.
+
+No R1-R8 implementation was weakened by this repair.
+
+Disposition:
+
+`PROVENANCE_PREPARATION_GENERATION_E_STATIC_REQUALIFICATION_READY`
