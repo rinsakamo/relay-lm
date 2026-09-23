@@ -1400,3 +1400,76 @@ passes.
 Measured provenance execution remains:
 
 `PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
+
+
+### Provenance preparation generation-e failed at binary-marker preflight; generation-f repair
+
+Generation-e preparation orchestrator was invoked exactly once and failed closed
+after a successful build but before resource-guard acquisition or model startup.
+
+Observed terminal:
+
+- build rc: 0;
+- qualification rc: 1;
+- top-level:
+  `LAYER0_PROJECTION_PROVENANCE_PREPARATION_FAILED`;
+- generation requests: 0;
+- measured requests: 0;
+- measured attempt consumed: false;
+- scientific spend consumed: false.
+
+Failure:
+
+`libllama.so` did not contain the raw contiguous byte substring
+`provenance.tsv` required by the binary preflight.
+
+The provenance patch is applied to `src/llama-context.cpp`, which frozen
+llama.cpp CMake compiles into the `llama` shared library. The ownership was
+therefore correct. The defect was the proof predicate: a Release optimizer may
+constant-fold/in-line filesystem path construction such that the source filename
+literal need not survive as one contiguous ELF byte substring.
+
+The binary preflight has been repaired to use a provenance-patch-specific stable
+runtime failure marker instead:
+
+`provenance tensor missing: %s`
+
+while retaining the schema markers:
+
+- `tensor_ptr`;
+- `src0_ptr`;
+- `src1_ptr`.
+
+The actual runtime output filename `provenance.tsv` remains required by the
+patch source and will be proven by the later measured artifact/posthoc path,
+rather than by brittle raw binary string scanning.
+
+Static regression coverage now requires:
+
+- the provenance patch still writes `provenance.tsv`;
+- the stable runtime failure marker remains in the provenance patch;
+- binary preflight must not regress to requiring raw
+  `b"provenance.tsv"`.
+
+The failed generation-e preparation is immutable and is not authorized for
+retry.
+
+All preparation generation stamps have advanced to:
+
+`provenance-preparation-20260924-f`
+
+Current next-step authority:
+
+`PROVENANCE_PREPARATION_GENERATION_F_STATIC_AND_POSTHOC_RECONCILIATION_READY`
+
+Only these zero-GPU actions are authorized next:
+
+1. one canonical generation-f static requalification;
+2. zero-GPU/read-only reconciliation of the preserved failed generation-e
+   binary artifact against the repaired stable-marker predicate.
+
+A generation-f preparation build/startup is not yet authorized.
+
+Measured provenance execution remains:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
