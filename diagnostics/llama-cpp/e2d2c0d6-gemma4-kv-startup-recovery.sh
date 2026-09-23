@@ -69,7 +69,7 @@ sha256sum "$model_path" >"$out_dir/model.sha256"
 
 server_dir=$(cd -- "$(dirname -- "$server_bin")" && pwd)
 runtime_env=(
-  "HOME=\${HOME:-/tmp}"
+  "HOME=${HOME:-/tmp}"
   "PATH=/usr/local/cuda-12.8/bin:/usr/bin:/bin"
   "LANG=C.UTF-8"
   "LC_ALL=C.UTF-8"
@@ -181,7 +181,7 @@ if [[ -r "/proc/$pid/status" ]]; then
   cat "/proc/$pid/status" >"$out_dir/proc-status.initial.txt" 2>/dev/null || true
 fi
 if [[ -r "/proc/$pid/environ" ]]; then
-  tr "\\0" "\\n" <"/proc/$pid/environ" | LC_ALL=C sort >"$out_dir/proc-environ.initial.txt" 2>/dev/null || true
+  tr '\\0' '\\n' <"/proc/$pid/environ" | LC_ALL=C sort >"$out_dir/proc-environ.initial.txt" 2>/dev/null || true
 fi
 if [[ -r "/proc/$pid/maps" ]]; then
   cat "/proc/$pid/maps" >"$out_dir/proc-maps.initial.txt" 2>/dev/null || true
