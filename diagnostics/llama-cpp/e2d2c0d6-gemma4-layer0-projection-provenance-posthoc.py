@@ -6,6 +6,11 @@ import json
 from pathlib import Path
 
 EXPECTED_DUMPS = ("W-p0-370-w371", "W-p371-878-w508", "C-p0-511-w512")
+EXPECTED_WIDTHS = {
+    "W-p0-370-w371": 371,
+    "W-p371-878-w508": 508,
+    "C-p0-511-w512": 512,
+}
 EXPECTED_TENSORS = ("attn_norm-0", "Kcur-0", "Vcur-0")
 EXPECTED_FIELDS = [
     "name", "tensor_ptr", "data_ptr", "buffer_ptr", "view_src_ptr",
@@ -65,10 +70,35 @@ def classify_dump(dump: Path):
     k=prov["Kcur-0"]
     v=prov["Vcur-0"]
 
+    if dump.name not in EXPECTED_WIDTHS:
+        raise RuntimeError(f"unexpected provenance dump name: {dump.name}")
+    width = EXPECTED_WIDTHS[dump.name]
+    expected_geometry = {
+        "attn_norm-0": (3840, width, 4, 3840 * 4),
+        "Kcur-0": (2048, width, 4, 2048 * 4),
+        "Vcur-0": (2048, width, 4, 2048 * 4),
+    }
+    for tensor_name, row in prov.items():
+        ne0, ne1, nb0, nb1 = expected_geometry[tensor_name]
+        if row["type"] != "f32":
+            raise RuntimeError(f"{dump}/{tensor_name}: expected f32, got {row['type']!r}")
+        actual = (int(row["ne0"]), int(row["ne1"]), int(row["nb0"]), int(row["nb1"]))
+        expected = (ne0, ne1, nb0, nb1)
+        if actual != expected:
+            raise RuntimeError(
+                f"{dump}/{tensor_name}: geometry mismatch: {actual} != {expected}"
+            )
+
     kp=dump/"Kcur-0.bin"
     vp=dump/"Vcur-0.bin"
     if not kp.is_file() or not vp.is_file():
         raise RuntimeError(f"K/V payload missing under {dump}")
+    expected_kv_bytes = 2048 * width * 4
+    if kp.stat().st_size != expected_kv_bytes or vp.stat().st_size != expected_kv_bytes:
+        raise RuntimeError(
+            f"K/V payload geometry mismatch under {dump}: "
+            f"K={kp.stat().st_size} V={vp.stat().st_size} expected={expected_kv_bytes}"
+        )
     ksha=sha256(kp); vsha=sha256(vp)
     value_identical=(kp.stat().st_size==vp.stat().st_size and ksha==vsha)
 
@@ -111,6 +141,9 @@ def classify_dump(dump: Path):
         and k["src0_type"]=="Q4_K" and v["src0_type"]=="Q6_K"
         and k["src0_name"]=="blk.0.attn_k.weight"
         and v["src0_name"]=="blk.0.attn_v.weight"
+        and k["src0_op"]=="NONE" and v["src0_op"]=="NONE"
+        and k["type"]=="f32" and v["type"]=="f32" and n["type"]=="f32"
+        and k["ne0"]=="2048" and v["ne0"]=="2048" and n["ne0"]=="3840"
         and checks["src1_is_attn_norm_object"]
         and checks["src1_is_attn_norm_data"]
         and k["src1_name"]=="attn_norm-0" and v["src1_name"]=="attn_norm-0"
