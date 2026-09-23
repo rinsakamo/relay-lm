@@ -186,6 +186,7 @@ def main():
         'RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD',
         'refs/remotes/origin/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916',
         'remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")',
+        'https://github.com/rinsakamo/relay-lm.git',
         'status --porcelain --untracked-files=all',
         'preparation-static-selftest.json',
         'prepared-artifact-manifest.sha256',
