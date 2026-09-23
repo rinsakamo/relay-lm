@@ -56,6 +56,7 @@ fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || true)
 authority_head=${RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD:-}
+authority_branch_ref="refs/heads/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916"
 authority_ref="refs/remotes/origin/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916"
 build_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh"
 qual_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh"
@@ -71,10 +72,6 @@ case "$out_root" in
     exit 70
     ;;
 esac
-if ! git -C "$repo_root" show-ref --verify --quiet "$authority_ref"; then
-  echo "fresh diagnostic remote-tracking ref missing: $authority_ref" >&2
-  exit 71
-fi
 origin_url=$(git -C "$repo_root" remote get-url origin)
 case "$origin_url" in
   https://github.com/rinsakamo/relay-lm|https://github.com/rinsakamo/relay-lm.git|git@github.com:rinsakamo/relay-lm.git) ;;
@@ -83,6 +80,14 @@ case "$origin_url" in
     exit 72
     ;;
 esac
+if ! git -C "$repo_root" fetch --quiet origin "+$authority_branch_ref:$authority_ref"; then
+  echo "failed to refresh diagnostic authority ref from canonical origin" >&2
+  exit 71
+fi
+if ! git -C "$repo_root" show-ref --verify --quiet "$authority_ref"; then
+  echo "fresh diagnostic remote-tracking ref missing after fetch: $authority_ref" >&2
+  exit 71
+fi
 remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")
 local_head=$(git -C "$repo_root" rev-parse HEAD)
 if [[ "$remote_head" != "$authority_head" || "$local_head" != "$authority_head" ]]; then
