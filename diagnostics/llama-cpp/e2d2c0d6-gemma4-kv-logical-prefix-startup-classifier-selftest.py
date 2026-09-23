@@ -100,6 +100,10 @@ def main():
         root = Path(td)
         (root / "server-impl.resolved.txt").write_text("/evidence/bin/libllama-server-impl.so\n", encoding="utf-8")
         (root / "llama-lib.resolved.txt").write_text("/evidence/bin/libllama.so\n", encoding="utf-8")
+        (root / "ggml-lib.resolved.txt").write_text("/evidence/bin/libggml.so\n", encoding="utf-8")
+        (root / "ggml-base.resolved.txt").write_text("/evidence/bin/libggml-base.so\n", encoding="utf-8")
+        (root / "ggml-cpu.resolved.txt").write_text("/evidence/bin/libggml-cpu.so\n", encoding="utf-8")
+        (root / "ggml-cuda.resolved.txt").write_text("/evidence/bin/libggml-cuda.so\n", encoding="utf-8")
         base_env = {
             "HOME": "/home/test",
             "PATH": "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
@@ -134,14 +138,22 @@ def main():
 
         (root / "proc-maps.health-ready.txt").write_text(
             "7f00-7f10 r-xp 0 00:00 0 /evidence/bin/libllama-server-impl.so\n"
-            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n",
+            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n"
+            "7f20-7f30 r-xp 0 00:00 0 /evidence/bin/libggml.so\n"
+            "7f30-7f40 r-xp 0 00:00 0 /evidence/bin/libggml-base.so\n"
+            "7f40-7f50 r-xp 0 00:00 0 /evidence/bin/libggml-cpu.so\n"
+            "7f50-7f60 r-xp 0 00:00 0 /evidence/bin/libggml-cuda.so\n",
             encoding="utf-8",
         )
         if not c.runtime_library_contract(root)["ok"]:
             errors.append("exact runtime library closure did not pass")
         (root / "proc-maps.health-ready.txt").write_text(
-            "7f00-7f10 r-xp 0 00:00 0 /other/libllama-server-impl.so\n"
-            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n",
+            "7f00-7f10 r-xp 0 00:00 0 /evidence/bin/libllama-server-impl.so\n"
+            "7f10-7f20 r-xp 0 00:00 0 /evidence/bin/libllama.so\n"
+            "7f20-7f30 r-xp 0 00:00 0 /evidence/bin/libggml.so\n"
+            "7f30-7f40 r-xp 0 00:00 0 /evidence/bin/libggml-base.so\n"
+            "7f40-7f50 r-xp 0 00:00 0 /evidence/bin/libggml-cpu.so\n"
+            "7f50-7f60 r-xp 0 00:00 0 /other/libggml-cuda.so\n",
             encoding="utf-8",
         )
         if c.runtime_library_contract(root)["ok"]:
