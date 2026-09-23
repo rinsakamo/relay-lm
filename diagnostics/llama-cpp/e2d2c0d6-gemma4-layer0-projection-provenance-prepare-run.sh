@@ -48,6 +48,10 @@ case "$out_root" in
     exit 68
     ;;
 esac
+if [[ "$out_root" =~ [[:space:]] ]]; then
+  echo "preparation evidence path must not contain whitespace: $out_root" >&2
+  exit 68
+fi
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || true)
