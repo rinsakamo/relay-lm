@@ -43,6 +43,32 @@ def main():
         if cp.returncode != 0:
             raise RuntimeError(f"py_compile failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
 
+    synthetic = {}
+    for name, path, expected in (
+        ("resource_guard", RESOURCE_GUARD_SELFTEST, "LOGICAL_PREFIX_RESOURCE_GUARD_SELFTEST_PASS"),
+        ("startup_classifier", STARTUP_CLASSIFIER_SELFTEST, "LOGICAL_PREFIX_STARTUP_CLASSIFIER_SELFTEST_PASS"),
+        ("provenance_posthoc", PROVENANCE_POSTHOC_SELFTEST, "LAYER0_PROJECTION_PROVENANCE_POSTHOC_SELFTEST_PASS"),
+    ):
+        cp = subprocess.run(
+            [sys.executable, str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if cp.returncode != 0:
+            raise RuntimeError(
+                f"synthetic selftest failed for {name}: rc={cp.returncode}\n"
+                f"stdout:\n{cp.stdout}\nstderr:\n{cp.stderr}"
+            )
+        try:
+            parsed = json.loads(cp.stdout)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"synthetic selftest output is not JSON for {name}: {cp.stdout!r}") from exc
+        if parsed.get("status") != expected:
+            raise RuntimeError(f"synthetic selftest classification mismatch for {name}: {parsed!r}")
+        synthetic[name] = parsed
+
     build = BUILD.read_text(encoding="utf-8")
     qual = QUAL.read_text(encoding="utf-8")
     prep = PREP.read_text(encoding="utf-8")
@@ -154,9 +180,14 @@ def main():
 
     for marker in (
         'RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD',
+        'refs/remotes/origin/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916',
+        'remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")',
         'status --porcelain --untracked-files=all',
         'preparation-static-selftest.json',
         'prepared-artifact-manifest.sha256',
+        'build/qualification server SHA mismatch',
+        'build/qualification server-impl SHA mismatch',
+        'build/qualification libllama SHA mismatch',
         'chmod -R a-w "$out_root"',
         '/tmp/*|/var/tmp/*',
     ):
@@ -221,6 +252,7 @@ def main():
         "runtime_library_closure_gate":True,
         "provenance_pointer_identity_gate":True,
         "persistent_evidence_sealing_gate":True,
+        "synthetic_selftests":synthetic,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
         "preparation_generation":"provenance-preparation-20260923-d",
