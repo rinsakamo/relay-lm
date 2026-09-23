@@ -93,12 +93,16 @@ printf '%s\n' "$remote_head" >"$out_root/relaylm-authority.remote-head.txt"
 git -C "$repo_root" remote get-url origin >"$out_root/relaylm-authority.origin-url.txt"
 git -C "$repo_root" rev-parse "HEAD^{tree}" >"$out_root/relaylm-authority.tree.txt"
 
-python3 "$static_selftest" >"$out_root/preparation-static-selftest.json"
+PYTHONPYCACHEPREFIX="$out_root/pycache" python3 "$static_selftest" >"$out_root/preparation-static-selftest.json"
 static_rc=$?
 printf '%d\n' "$static_rc" >"$out_root/preparation-static-selftest.exit-code.txt"
 if (( static_rc != 0 )); then
   echo "internal preparation static gate failed" >&2
   exit 72
+fi
+if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]]; then
+  echo "authority apparatus checkout changed during static gate" >&2
+  exit 75
 fi
 
 bash -n "$build_runner" || exit 73
@@ -108,7 +112,7 @@ build_root="$out_root/build-stage"
 qual_root="$out_root/qualification-stage"
 
 set +e
-bash "$build_runner" "$build_root" "$llama_repo" "$jobs" \
+PYTHONPYCACHEPREFIX="$out_root/pycache" bash "$build_runner" "$build_root" "$llama_repo" "$jobs" \
   >"$out_root/build-stage.stdout.txt" 2>"$out_root/build-stage.stderr.txt"
 build_rc=$?
 set -e
@@ -122,7 +126,7 @@ PY
   )
 
   set +e
-  bash "$qual_runner" "$qual_root" "$server_bin" "$model_path" "$port_plain" "$port_probe" \
+  PYTHONPYCACHEPREFIX="$out_root/pycache" bash "$qual_runner" "$qual_root" "$server_bin" "$model_path" "$port_plain" "$port_probe" \
     >"$out_root/qualification-stage.stdout.txt" 2>"$out_root/qualification-stage.stderr.txt"
   qual_rc=$?
   set -e
@@ -131,6 +135,11 @@ else
   qual_rc=125
 fi
 printf "%d\n" "$qual_rc" >"$out_root/qualification-stage.exit-code.txt"
+
+if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]]; then
+  echo "authority apparatus checkout changed during preparation stages" >&2
+  exit 76
+fi
 
 python3 - "$out_root" "$build_rc" "$qual_rc" <<'PY'
 import json
