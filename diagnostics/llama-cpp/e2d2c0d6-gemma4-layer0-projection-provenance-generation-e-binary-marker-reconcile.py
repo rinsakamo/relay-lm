@@ -44,16 +44,8 @@ def require(cond, errors, message):
     if not cond:
         errors.append(message)
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--prep-root", type=Path, required=True)
-    ap.add_argument("--out", type=Path, required=True)
-    args = ap.parse_args()
-
-    if args.out.exists():
-        raise SystemExit(f"refusing to overwrite output: {args.out}")
-
-    root = args.prep_root.resolve()
+def reconcile(root: Path):
+    root = root.resolve()
     errors = []
 
     terminal_path = root / "terminal.json"
@@ -64,7 +56,7 @@ def main():
         require(path.is_file(), errors, f"required evidence missing: {path}")
 
     if errors:
-        out = {
+        return {
             "classification": "GENERATION_E_BINARY_MARKER_RECONCILIATION_INCOMPLETE",
             "errors": errors,
             "physical_calls": 0,
@@ -72,11 +64,9 @@ def main():
             "model_loads": 0,
             "generation_requests": 0,
             "measured_requests": 0,
+            "measured_attempt_consumed": False,
+            "scientific_spend_consumed": False,
         }
-        args.out.mkdir(parents=True)
-        (args.out / "terminal.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(json.dumps(out, indent=2, sort_keys=True))
-        return 1
 
     terminal = load_json(terminal_path)
     build = load_json(build_terminal_path)
@@ -137,7 +127,7 @@ def main():
         if not errors
         else "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
     )
-    out = {
+    return {
         "classification": classification,
         "source_preparation_generation": EXPECTED_GENERATION,
         "prep_root": str(root),
@@ -156,10 +146,21 @@ def main():
         "measured_attempt_consumed": False,
         "scientific_spend_consumed": False,
     }
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prep-root", type=Path, required=True)
+    ap.add_argument("--out", type=Path, required=True)
+    args = ap.parse_args()
+
+    if args.out.exists():
+        raise SystemExit(f"refusing to overwrite output: {args.out}")
+
+    out = reconcile(args.prep_root)
     args.out.mkdir(parents=True)
     (args.out / "terminal.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(out, indent=2, sort_keys=True))
-    return 0 if not errors else 1
+    return 0 if out["classification"] == "GENERATION_E_BINARY_MARKER_FALSE_NEGATIVE_RECONCILED" else 1
 
 if __name__ == "__main__":
     sys.exit(main())
