@@ -75,6 +75,14 @@ if ! git -C "$repo_root" show-ref --verify --quiet "$authority_ref"; then
   echo "fresh diagnostic remote-tracking ref missing: $authority_ref" >&2
   exit 71
 fi
+origin_url=$(git -C "$repo_root" remote get-url origin)
+case "$origin_url" in
+  https://github.com/rinsakamo/relay-lm|https://github.com/rinsakamo/relay-lm.git|git@github.com:rinsakamo/relay-lm.git) ;;
+  *)
+    echo "unexpected RelayLM authority origin: $origin_url" >&2
+    exit 72
+    ;;
+esac
 remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")
 local_head=$(git -C "$repo_root" rev-parse HEAD)
 if [[ "$remote_head" != "$authority_head" || "$local_head" != "$authority_head" ]]; then
@@ -94,7 +102,7 @@ fi
 mkdir -p "$out_root"
 printf '%s\n' "$authority_head" >"$out_root/relaylm-authority.head.txt"
 printf '%s\n' "$remote_head" >"$out_root/relaylm-authority.remote-head.txt"
-git -C "$repo_root" remote get-url origin >"$out_root/relaylm-authority.origin-url.txt"
+printf '%s\n' "$origin_url" >"$out_root/relaylm-authority.origin-url.txt"
 git -C "$repo_root" rev-parse "HEAD^{tree}" >"$out_root/relaylm-authority.tree.txt"
 
 PYTHONPYCACHEPREFIX="$out_root/pycache" python3 "$static_selftest" >"$out_root/preparation-static-selftest.json"
