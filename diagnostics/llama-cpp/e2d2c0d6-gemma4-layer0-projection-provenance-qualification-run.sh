@@ -125,7 +125,7 @@ def maybe_json(path):
         return None
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-b",
+    "preparation_generation": "provenance-preparation-20260923-c",
     "primary_classification": "LAYER0_PROJECTION_PROVENANCE_NOT_READY",
     "errors": [f"guarded startup recovery failed: rc={startup_rc}"],
     "resource_guard": maybe_json(root / "shared-resource-guard" / "guard.json"),
@@ -211,7 +211,7 @@ for old_sha in (
         errors.append(f"provenance binary unexpectedly equals historical consumed apparatus SHA: {old_sha}")
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-b",
+    "preparation_generation": "provenance-preparation-20260923-c",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
