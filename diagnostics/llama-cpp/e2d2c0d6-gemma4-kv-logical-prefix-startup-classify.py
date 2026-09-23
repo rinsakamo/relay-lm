@@ -183,7 +183,7 @@ def environment_contract(name: str, root: Path):
     actual = parse_env_file(root / "proc-environ.health-ready.txt")
     base_keys = {
         "HOME", "TMPDIR", "PATH", "LANG", "LC_ALL", "LD_LIBRARY_PATH",
-        "CUDA_VISIBLE_DEVICES", "GGML_CUDA_GRAPH_OPT", "GGML_CUDA_DISABLE_FUSION",
+        "CUDA_VISIBLE_DEVICES", "GGML_CUDA_GRAPH_OPT",
     }
     expected_keys = set(base_keys)
     if name == "probe":
@@ -200,7 +200,7 @@ def environment_contract(name: str, root: Path):
         "ld_library_path_exact": intended.get("LD_LIBRARY_PATH") == f"{expected_lib_dir}:/usr/local/cuda-12.8/lib64",
         "cuda_visible_devices_exact": intended.get("CUDA_VISIBLE_DEVICES") == "0",
         "cuda_graph_opt_disabled": intended.get("GGML_CUDA_GRAPH_OPT") == "0",
-        "cuda_fusion_not_disabled": intended.get("GGML_CUDA_DISABLE_FUSION") == "0",
+        "cuda_disable_fusion_absent": "GGML_CUDA_DISABLE_FUSION" not in intended and "GGML_CUDA_DISABLE_FUSION" not in actual,
         "probe_label_exact": (
             name != "probe" or intended.get("LLAMA_KV_PROBE_LABEL") == "PRE"
         ),
