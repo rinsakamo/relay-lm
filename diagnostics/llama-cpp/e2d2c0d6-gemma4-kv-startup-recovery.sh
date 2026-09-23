@@ -78,13 +78,13 @@ runtime_env=(
   "GGML_CUDA_GRAPH_OPT=0"
   "GGML_CUDA_DISABLE_FUSION=0"
 )
-printf '%s\n' "\${runtime_env[@]}" >"$out_dir/runtime-environment.canonical.txt"
+printf '%s\n' "${runtime_env[@]}" >"$out_dir/runtime-environment.canonical.txt"
 command -v file >/dev/null 2>&1 && file "$server_bin" >"$out_dir/server-binary.file.txt" 2>&1 || true
 command -v ldd >/dev/null 2>&1 && ldd "$server_bin" >"$out_dir/server-binary.ldd.txt" 2>&1 || true
 command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >"$out_dir/nvidia-smi.before.txt" 2>&1 || true
 
 set +e
-env -i "\${runtime_env[@]}" "$server_bin" --version >"$out_dir/server-version.stdout.txt" 2>"$out_dir/server-version.stderr.txt"
+env -i "${runtime_env[@]}" "$server_bin" --version >"$out_dir/server-version.stdout.txt" 2>"$out_dir/server-version.stderr.txt"
 version_rc=$?
 set -e
 printf '%d\n' "$version_rc" >"$out_dir/server-version.exit-code.txt"
@@ -161,7 +161,15 @@ else
 fi
 
 event "launching server"
-"${cmd[@]}" >"$out_dir/server.stdout.txt" 2>"$out_dir/server.stderr.txt" &
+if [[ "$mode" == "probe" ]]; then
+  runtime_env+=(
+    "LLAMA_KV_PROBE_DIR=$LLAMA_KV_PROBE_DIR"
+    "LLAMA_KV_PROBE_LABEL=$LLAMA_KV_PROBE_LABEL"
+  )
+fi
+printf "%s\n" "${runtime_env[@]}" >"$out_dir/runtime-environment.effective.txt"
+
+env -i "${runtime_env[@]}" "${cmd[@]}" >"$out_dir/server.stdout.txt" 2>"$out_dir/server.stderr.txt" &
 pid=$!
 cleanup_pid=$pid
 printf '%d\n' "$pid" >"$out_dir/server.pid.txt"
