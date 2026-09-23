@@ -182,7 +182,7 @@ def environment_contract(name: str, root: Path):
     intended = parse_env_file(root / "runtime-environment.effective.txt")
     actual = parse_env_file(root / "proc-environ.health-ready.txt")
     base_keys = {
-        "HOME", "PATH", "LANG", "LC_ALL", "LD_LIBRARY_PATH",
+        "HOME", "TMPDIR", "PATH", "LANG", "LC_ALL", "LD_LIBRARY_PATH",
         "CUDA_VISIBLE_DEVICES", "GGML_CUDA_GRAPH_OPT", "GGML_CUDA_DISABLE_FUSION",
     }
     expected_keys = set(base_keys)
@@ -192,6 +192,8 @@ def environment_contract(name: str, root: Path):
     checks = {
         "key_set_exact": set(intended) == expected_keys and set(actual) == expected_keys,
         "actual_matches_intended": actual == intended,
+        "home_exact": intended.get("HOME") == str(root / "hermetic-home"),
+        "tmpdir_exact": intended.get("TMPDIR") == str(root / "hermetic-tmp"),
         "path_exact": intended.get("PATH") == "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
         "lang_exact": intended.get("LANG") == "C.UTF-8",
         "lc_all_exact": intended.get("LC_ALL") == "C.UTF-8",
