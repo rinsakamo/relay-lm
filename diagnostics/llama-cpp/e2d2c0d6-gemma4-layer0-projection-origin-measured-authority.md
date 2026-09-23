@@ -1184,3 +1184,45 @@ The next allowed local action is exactly one fresh provenance preparation run.
 After its immutable binary/runtime hashes and startup evidence are reported,
 the measured provenance authority and execute-once runner can be pinned to that
 specific prepared apparatus.
+
+
+### Provenance preparation static gate false-positive and generation-b repair
+
+The first preparation static selftest stopped before build/startup with:
+
+`qualification unexpectedly contains forbidden measured/generation token: campaign queue`
+
+No build, model startup, generation, measured request, or scientific spend
+occurred.
+
+The failure was a static-selftest false positive. The qualification runner
+contains fail-closed assertions that explicitly reject:
+
+- `campaign_queue_receipt_created != false`;
+- `campaign_queue_or_spend_artifact_touched != false`.
+
+The old selftest treated the descriptive phrase `campaign queue` itself as an
+execution marker.
+
+The repaired gate now:
+
+- rejects concrete generation/measured execution paths such as
+  `/completion`, `/v1/chat/completions`, `scientific --execute`, and
+  measured/execute-once runner names;
+- explicitly requires the two negative campaign/spend assertions to remain in
+  the qualification runner;
+- stamps build, qualification, and top-level preparation terminals with the
+  same preparation generation.
+
+New preparation generation:
+
+`provenance-preparation-20260923-b`
+
+Status:
+
+`PROVENANCE_PREPARATION_GENERATION_B_STATIC_REQUALIFICATION_READY`
+
+Existing boundary remains unchanged:
+
+- preparation-only execution may be attempted after the repaired static gate;
+- provenance measured physical execution remains unauthorized.
