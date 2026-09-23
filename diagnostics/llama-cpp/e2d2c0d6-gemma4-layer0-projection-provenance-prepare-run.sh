@@ -37,17 +37,45 @@ if [[ -e "$out_root" ]]; then
 fi
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || true)
+authority_head=${RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD:-}
 build_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh"
 qual_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh"
+static_selftest="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-preparation-static-selftest.py"
 
-if [[ ! -f "$build_runner" || ! -f "$qual_runner" ]]; then
-  echo "required replacement runners missing" >&2
+if [[ -z "$repo_root" || -z "$authority_head" ]]; then
+  echo "isolated authority-bound RelayLM checkout and RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD are required" >&2
   exit 67
+fi
+local_head=$(git -C "$repo_root" rev-parse HEAD)
+if [[ "$local_head" != "$authority_head" ]]; then
+  echo "local apparatus HEAD does not match fresh diagnostic authority: $local_head != $authority_head" >&2
+  exit 68
+fi
+if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]]; then
+  echo "authority-bound RelayLM apparatus checkout is not clean" >&2
+  exit 69
+fi
+
+if [[ ! -f "$build_runner" || ! -f "$qual_runner" || ! -f "$static_selftest" ]]; then
+  echo "required replacement runners missing" >&2
+  exit 70
 fi
 
 mkdir -p "$out_root"
-bash -n "$build_runner" || exit 68
-bash -n "$qual_runner" || exit 68
+printf '%s\n' "$authority_head" >"$out_root/relaylm-authority.head.txt"
+git -C "$repo_root" rev-parse "HEAD^{tree}" >"$out_root/relaylm-authority.tree.txt"
+
+python3 "$static_selftest" >"$out_root/preparation-static-selftest.json"
+static_rc=$?
+printf '%d\n' "$static_rc" >"$out_root/preparation-static-selftest.exit-code.txt"
+if (( static_rc != 0 )); then
+  echo "internal preparation static gate failed" >&2
+  exit 71
+fi
+
+bash -n "$build_runner" || exit 72
+bash -n "$qual_runner" || exit 72
 
 build_root="$out_root/build-stage"
 qual_root="$out_root/qualification-stage"
@@ -112,13 +140,16 @@ if qual is not None and qual.get("primary_classification") != "LAYER0_PROJECTION
     errors.append("unexpected qualification terminal classification")
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-c",
+    "preparation_generation": "provenance-preparation-20260923-d",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
         else "LAYER0_PROJECTION_PROVENANCE_PREPARATION_FAILED"
     ),
     "errors": errors,
+    "relaylm_authority_head": (root / "relaylm-authority.head.txt").read_text(encoding="utf-8").strip(),
+    "relaylm_authority_tree": (root / "relaylm-authority.tree.txt").read_text(encoding="utf-8").strip(),
+    "preparation_static_selftest": json.loads((root / "preparation-static-selftest.json").read_text(encoding="utf-8")),
     "build_returncode": build_rc,
     "qualification_returncode": qual_rc,
     "build": build,
