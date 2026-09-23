@@ -224,6 +224,10 @@ else:
         errors.append(f"expected GPU index 0, got: {gpu0!r}")
     if gpu0.get("name") != "NVIDIA GeForce RTX 3060":
         errors.append(f"unexpected physical GPU identity: {gpu0!r}")
+    if not gpu0.get("uuid"):
+        errors.append(f"GPU UUID missing: {gpu0!r}")
+    if not gpu0.get("driver_version"):
+        errors.append(f"GPU driver version missing: {gpu0!r}")
 
 for arm_name in ("plain", "probe"):
     arm = (startup.get("evidence") or {}).get(arm_name) or {}
