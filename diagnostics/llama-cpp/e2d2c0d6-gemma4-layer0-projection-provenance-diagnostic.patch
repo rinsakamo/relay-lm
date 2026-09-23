@@ -21,10 +21,7 @@ The patch is apparatus only. It does not authorize execution.
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -1435,6 +1435,67 @@ static bool relay_projection_origin_dump(
-         return false;
-     }
- 
+@@ -1438,3 +1438,64 @@ static bool relay_projection_origin_dump(
 +    {
 +        std::ofstream provenance(root / "provenance.tsv", std::ios::out | std::ios::trunc);
 +        if (!provenance) {
