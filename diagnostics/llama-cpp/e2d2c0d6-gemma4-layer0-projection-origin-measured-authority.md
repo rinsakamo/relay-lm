@@ -1042,3 +1042,78 @@ Allowed next order:
 2. only if Stage A passes, one provenance posthoc classifier selftest.
 
 No build or physical/model execution is authorized.
+
+
+### Provenance apparatus and posthoc classifier statically qualified
+
+Static generation:
+
+`projection-provenance-static-20260923-d`
+
+Stage A completed successfully:
+
+- `py_compile`: PASS;
+- canonical static selftest invocation count: 1;
+- classification:
+  `LAYER0_PROJECTION_PROVENANCE_PATCH_STATIC_PASS`;
+- all unified-diff hunk-count checks: PASS;
+- provenance patch hunk declared/observed old/new: 3/64 == 3/64;
+- exact 26-field provenance schema: PASS;
+- all four diagnostic patches `git apply --check`: PASS;
+- all four diagnostic patches applied in the temporary frozen-source clone: PASS;
+- `git diff --check`: PASS;
+- provenance markers and existing projection-origin markers: PASS;
+- no arithmetic or graph-execution path added.
+
+Stage B completed successfully:
+
+- `py_compile`: PASS;
+- canonical posthoc selftest invocation count: 1;
+- classification:
+  `LAYER0_PROJECTION_PROVENANCE_POSTHOC_SELFTEST_PASS`.
+
+Synthetic classifier coverage includes:
+
+- `K_V_RUNTIME_TENSOR_OBJECT_ALIAS`;
+- `K_V_RUNTIME_OUTPUT_DATA_ALIAS`;
+- `K_V_RUNTIME_WEIGHT_SOURCE_ALIAS`;
+- `K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL`;
+- `K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_DISTINCT`.
+
+Aggregate strong synthetic result:
+
+`K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED`
+
+The strong case requires:
+
+- distinct K/V tensor objects;
+- distinct K/V output data pointers;
+- distinct K/V source-weight objects and data pointers;
+- K/V ops both `MUL_MAT`;
+- K source `blk.0.attn_k.weight` / Q4_K;
+- V source `blk.0.attn_v.weight` / Q6_K;
+- shared K/V src1 activation object and data pointer;
+- byte-identical observed Kcur/Vcur payloads.
+
+Safety counters for both static stages:
+
+- physical_calls = 0;
+- gpu_calls = 0;
+- model_loads = 0;
+- generation_requests = 0;
+- measured_requests = 0.
+
+Final static qualification:
+
+`PROVENANCE_APPARATUS_AND_POSTHOC_STATICALLY_QUALIFIED`
+
+This does not constitute runtime provenance evidence and does not authorize
+replay of the consumed layer-0 projection-origin transaction.
+
+Any future physical discriminator should be a separately authorized
+provenance-enabled execution that preserves the existing historical-KV
+integrity gate and uses the prequalified posthoc classifier.
+
+Status:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
