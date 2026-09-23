@@ -173,18 +173,26 @@ cmd=(
 } >"$out_dir/server.argv.canonical.txt"
 
 probe_root=""
+projection_probe_root=""
 if [[ "$mode" == "probe" ]]; then
   probe_root="$out_dir/probe-root"
-  mkdir -p "$probe_root"
+  projection_probe_root="$out_dir/projection-probe-root"
+  mkdir -p "$probe_root" "$projection_probe_root"
   export LLAMA_KV_PROBE_DIR="$probe_root"
   export LLAMA_KV_PROBE_LABEL="PRE"
+  export LLAMA_PROJECTION_ORIGIN_PROBE_DIR="$projection_probe_root"
+  export LLAMA_PROJECTION_ORIGIN_PROBE_LABEL="W"
   {
     printf 'LLAMA_KV_PROBE_DIR=%q\n' "$LLAMA_KV_PROBE_DIR"
     printf 'LLAMA_KV_PROBE_LABEL=%q\n' "$LLAMA_KV_PROBE_LABEL"
+    printf 'LLAMA_PROJECTION_ORIGIN_PROBE_DIR=%q\n' "$LLAMA_PROJECTION_ORIGIN_PROBE_DIR"
+    printf 'LLAMA_PROJECTION_ORIGIN_PROBE_LABEL=%q\n' "$LLAMA_PROJECTION_ORIGIN_PROBE_LABEL"
   } >"$out_dir/probe-env.txt"
 else
   unset LLAMA_KV_PROBE_DIR || true
   unset LLAMA_KV_PROBE_LABEL || true
+  unset LLAMA_PROJECTION_ORIGIN_PROBE_DIR || true
+  unset LLAMA_PROJECTION_ORIGIN_PROBE_LABEL || true
 fi
 
 event "launching server"
@@ -192,6 +200,8 @@ if [[ "$mode" == "probe" ]]; then
   runtime_env+=(
     "LLAMA_KV_PROBE_DIR=$LLAMA_KV_PROBE_DIR"
     "LLAMA_KV_PROBE_LABEL=$LLAMA_KV_PROBE_LABEL"
+    "LLAMA_PROJECTION_ORIGIN_PROBE_DIR=$LLAMA_PROJECTION_ORIGIN_PROBE_DIR"
+    "LLAMA_PROJECTION_ORIGIN_PROBE_LABEL=$LLAMA_PROJECTION_ORIGIN_PROBE_LABEL"
   )
 fi
 printf "%s\n" "${runtime_env[@]}" >"$out_dir/runtime-environment.effective.txt"
@@ -299,6 +309,10 @@ fi
 if [[ "$mode" == "probe" ]] && find "$probe_root" -mindepth 1 -print -quit | grep -q .; then
   printf 'UNEXPECTED_DUMP_DURING_NON_GENERATIVE_PREFLIGHT\n' >"$out_dir/classification.txt"
   exit 30
+fi
+if [[ "$mode" == "probe" ]] && find "$projection_probe_root" -mindepth 1 -print -quit | grep -q .; then
+  printf 'UNEXPECTED_PROJECTION_DUMP_DURING_NON_GENERATIVE_PREFLIGHT\n' >"$out_dir/classification.txt"
+  exit 32
 fi
 
 printf 'READY_NON_GENERATIVE\n' >"$out_dir/classification.txt"
