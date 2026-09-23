@@ -175,7 +175,20 @@ if [[ ! -x "$server_bin" ]]; then
 fi
 
 sha256sum "$server_bin" >"$out_root/server-binary.sha256"
-"$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
+server_impl="$build/bin/libllama-server-impl.so"
+llama_lib="$build/bin/libllama.so"
+for artifact in "$server_impl" "$llama_lib"; do
+  if [[ ! -f "$artifact" ]]; then
+    echo "required runtime library missing: $artifact" >&2
+    exit 77
+  fi
+done
+sha256sum "$server_impl" >"$out_root/server-impl.sha256"
+sha256sum "$llama_lib" >"$out_root/llama-lib.sha256"
+readlink -f "$server_bin" >"$out_root/server-binary.resolved.txt"
+readlink -f "$server_impl" >"$out_root/server-impl.resolved.txt"
+readlink -f "$llama_lib" >"$out_root/llama-lib.resolved.txt"
+LD_LIBRARY_PATH="$build/bin:/usr/local/cuda-12.8/lib64" "$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
 
 python3 - "$out_root" "$server_bin" <<'PY'
 import json
@@ -203,7 +216,12 @@ out = {
     "cuda_nvcc_version": (root / "cuda-nvcc-version.txt").read_text(encoding="utf-8").strip(),
     "cuda_native_path": (root / "cuda-native-path.txt").read_text(encoding="utf-8").strip(),
     "server_binary": str(server),
+    "server_binary_resolved": (root / "server-binary.resolved.txt").read_text(encoding="utf-8").strip(),
     "server_sha256": first("server-binary.sha256"),
+    "server_impl_resolved": (root / "server-impl.resolved.txt").read_text(encoding="utf-8").strip(),
+    "server_impl_sha256": first("server-impl.sha256"),
+    "llama_lib_resolved": (root / "llama-lib.resolved.txt").read_text(encoding="utf-8").strip(),
+    "llama_lib_sha256": first("llama-lib.sha256"),
     "generated_requests": 0,
     "measured_attempt_consumed": False,
 }
