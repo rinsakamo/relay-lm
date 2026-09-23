@@ -58,6 +58,7 @@ for required in "$aligned_patch" "$logical_patch" "$origin_patch" "$provenance_p
 done
 
 mkdir -p "$out_root"
+mkdir -p "$out_root/hermetic-home" "$out_root/hermetic-tmp"
 
 # Host binding is intentionally explicit. WSL may inherit a Windows CUDA path;
 # using it can make FindCUDAToolkit select nvcc.exe while Linux cudart remains
@@ -96,7 +97,8 @@ printf "%s\n" "$CUDA_TOOLKIT_ROOT" >"$out_root/cuda-toolkit-root.txt"
 printf "%s\n" "$CUDA_NVCC" >"$out_root/cuda-nvcc.txt"
 printf "%s\n" "$CUDA_NATIVE_PATH" >"$out_root/cuda-native-path.txt"
 cat >"$out_root/build-environment.txt" <<EOF
-HOME=${HOME:-/tmp}
+HOME=$out_root/hermetic-home
+TMPDIR=$out_root/hermetic-tmp
 PATH=$CUDA_NATIVE_PATH
 LANG=C.UTF-8
 LC_ALL=C.UTF-8
@@ -161,7 +163,8 @@ CMAKE_BUILD_TYPE=Release
 EOF
 
 env -i \
-HOME="${HOME:-/tmp}" \
+HOME="$out_root/hermetic-home" \
+TMPDIR="$out_root/hermetic-tmp" \
 PATH="$CUDA_NATIVE_PATH" \
 LANG=C.UTF-8 LC_ALL=C.UTF-8 \
 CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
@@ -180,7 +183,8 @@ cmake -S "$src" -B "$build" \
   >"$out_root/cmake-configure.stdout.txt" 2>"$out_root/cmake-configure.stderr.txt"
 
 env -i \
-HOME="${HOME:-/tmp}" \
+HOME="$out_root/hermetic-home" \
+TMPDIR="$out_root/hermetic-tmp" \
 PATH="$CUDA_NATIVE_PATH" \
 LANG=C.UTF-8 LC_ALL=C.UTF-8 \
 CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
