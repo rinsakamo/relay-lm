@@ -93,6 +93,8 @@ def main():
         "e2d2c0d6-gemma4-layer0-projection-provenance-diagnostic.patch",
         'git -C "$src" apply --check "$provenance_patch"',
         '"primary_classification": "LAYER0_PROJECTION_PROVENANCE_BUILD_READY"',
+        'libggml-cuda.so',
+        '"ggml_cuda_sha256"',
     ):
         require(marker in build, f"build marker missing: {marker}")
 
@@ -126,6 +128,8 @@ def main():
         'b"src1_ptr"',
         '"LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS"',
         '"projection_provenance_patch_sha256"',
+        '"ggml_cuda"',
+        'b"GGML_CUDA_GRAPH_OPT"',
     ):
         require(marker in preflight, f"preflight marker missing: {marker}")
 
@@ -188,6 +192,7 @@ def main():
         'build/qualification server SHA mismatch',
         'build/qualification server-impl SHA mismatch',
         'build/qualification libllama SHA mismatch',
+        'build/qualification libggml-cuda SHA mismatch',
         'chmod -R a-w "$out_root"',
         '/tmp/*|/var/tmp/*',
     ):
@@ -217,6 +222,7 @@ def main():
         'EXPECTED_CANONICAL_STATIC_ARGV',
         'environment_contract',
         'runtime_library_contract',
+        'ggml_cuda_sha256',
     ):
         require(marker in startup_classifier, f"startup classifier missing exact runtime marker: {marker}")
 
