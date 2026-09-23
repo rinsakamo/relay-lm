@@ -192,6 +192,14 @@ if build is not None and qual is not None:
         errors.append("build/qualification server-impl SHA mismatch")
     if build.get("llama_lib_sha256") != (runtime.get("llama") or {}).get("sha256"):
         errors.append("build/qualification libllama SHA mismatch")
+    for bkey, rkey, label in (
+        ("ggml_lib_sha256", "ggml", "libggml"),
+        ("ggml_base_sha256", "ggml_base", "libggml-base"),
+        ("ggml_cpu_sha256", "ggml_cpu", "libggml-cpu"),
+        ("ggml_cuda_sha256", "ggml_cuda", "libggml-cuda"),
+    ):
+        if build.get(bkey) != (runtime.get(rkey) or {}).get("sha256"):
+            errors.append(f"build/qualification {label} SHA mismatch")
     patch_pairs = (
         ("aligned_reuse_patch_sha256", "aligned_reuse_patch_sha256"),
         ("logical_prefix_patch_sha256", "logical_prefix_patch_sha256"),
@@ -233,6 +241,10 @@ if (( terminal_rc == 0 )); then
     sha256sum "$out_root/build-stage/build/bin/llama-server"
     sha256sum "$out_root/build-stage/build/bin/libllama-server-impl.so"
     sha256sum "$out_root/build-stage/build/bin/libllama.so"
+    sha256sum "$out_root/build-stage/build/bin/libggml.so"
+    sha256sum "$out_root/build-stage/build/bin/libggml-base.so"
+    sha256sum "$out_root/build-stage/build/bin/libggml-cpu.so"
+    sha256sum "$out_root/build-stage/build/bin/libggml-cuda.so"
     sha256sum "$out_root/build-stage/applied.patch"
     sha256sum "$out_root/terminal.json"
   } >"$out_root/prepared-artifact-manifest.sha256"
