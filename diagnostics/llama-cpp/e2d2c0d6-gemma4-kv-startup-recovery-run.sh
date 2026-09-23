@@ -52,13 +52,21 @@ mkdir -p "$plain" "$probe"
 set +e
 bash "$startup" "$plain" "$server_bin" "$model_path" "$port_plain" plain
 plain_rc=$?
+set -e
+printf '%d\n' "$plain_rc" >"$out_root/plain.runner-exit-code.txt"
+if (( plain_rc != 0 )); then
+  printf 'NOT_INVOKED_AFTER_PLAIN_FAILURE\n' >"$out_root/probe.runner-state.txt"
+  exit "$plain_rc"
+fi
+
+set +e
 bash "$startup" "$probe" "$server_bin" "$model_path" "$port_probe" probe
 probe_rc=$?
 set -e
-
-printf '%d\n' "$plain_rc" >"$out_root/plain.runner-exit-code.txt"
 printf '%d\n' "$probe_rc" >"$out_root/probe.runner-exit-code.txt"
+if (( probe_rc != 0 )); then
+  exit "$probe_rc"
+fi
 
 python3 "$classifier" "$plain" "$probe" >"$out_root/startup-recovery-terminal.json"
-
 cat "$out_root/startup-recovery-terminal.json"
