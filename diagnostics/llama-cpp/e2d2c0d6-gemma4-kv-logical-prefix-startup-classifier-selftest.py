@@ -105,7 +105,8 @@ def main():
         (root / "ggml-cpu.resolved.txt").write_text("/evidence/bin/libggml-cpu.so\n", encoding="utf-8")
         (root / "ggml-cuda.resolved.txt").write_text("/evidence/bin/libggml-cuda.so\n", encoding="utf-8")
         base_env = {
-            "HOME": "/home/test",
+            "HOME": str(root / "hermetic-home"),
+            "TMPDIR": str(root / "hermetic-tmp"),
             "PATH": "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
