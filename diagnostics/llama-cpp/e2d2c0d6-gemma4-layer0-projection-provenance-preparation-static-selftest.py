@@ -207,6 +207,9 @@ def main():
         'runtime-environment.effective.txt',
         'proc-environ.health-ready.txt',
         'proc-maps.health-ready.txt',
+        'LLAMA_PROJECTION_ORIGIN_PROBE_DIR',
+        'LLAMA_PROJECTION_ORIGIN_PROBE_LABEL',
+        'UNEXPECTED_PROJECTION_DUMP_DURING_NON_GENERATIVE_PREFLIGHT',
     ):
         require(marker in startup, f"startup missing hermetic runtime marker: {marker}")
 
