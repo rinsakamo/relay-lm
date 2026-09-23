@@ -17,6 +17,7 @@ STARTUP_CLASSIFIER = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-startup-classify.
 STARTUP_CLASSIFIER_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-startup-classifier-selftest.py"
 PROVENANCE_POSTHOC = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py"
 PROVENANCE_POSTHOC_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py"
+PROVENANCE_PATCH = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-diagnostic.patch"
 
 def require(cond, msg):
     if not cond:
@@ -26,7 +27,7 @@ def main():
     for path in (
         BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD,
         RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER, STARTUP_CLASSIFIER_SELFTEST,
-        PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST,
+        PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST, PROVENANCE_PATCH,
     ):
         require(path.is_file(), f"missing apparatus file: {path}")
 
@@ -78,6 +79,7 @@ def main():
     resource_guard = RESOURCE_GUARD.read_text(encoding="utf-8")
     startup_classifier = STARTUP_CLASSIFIER.read_text(encoding="utf-8")
     provenance_posthoc = PROVENANCE_POSTHOC.read_text(encoding="utf-8")
+    provenance_patch = PROVENANCE_PATCH.read_text(encoding="utf-8")
 
     require('"preparation_generation": "provenance-preparation-20260924-f"' in build,
             "build missing preparation generation stamp")
@@ -122,6 +124,13 @@ def main():
         '"measured_execution_authorized_by_this_result": False',
     ):
         require(marker in prep, f"prepare marker missing: {marker}")
+
+    require('"provenance.tsv"' in provenance_patch,
+            "provenance patch no longer writes provenance.tsv")
+    require('provenance tensor missing: %s' in provenance_patch,
+            "provenance patch missing stable runtime failure marker")
+    require('b"provenance.tsv"' not in preflight,
+            "binary preflight regressed to brittle provenance.tsv filename marker")
 
     for marker in (
         'b"provenance tensor missing: %s"',
