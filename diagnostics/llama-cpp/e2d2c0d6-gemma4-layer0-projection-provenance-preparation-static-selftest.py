@@ -9,28 +9,35 @@ BUILD = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh"
 QUAL = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh"
 PREP = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-prepare-run.sh"
 PREFLIGHT = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-binary-preflight.py"
+STARTUP_RUN = HERE / "e2d2c0d6-gemma4-kv-startup-recovery-run.sh"
+STARTUP = HERE / "e2d2c0d6-gemma4-kv-startup-recovery.sh"
+RESOURCE_GUARD = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py"
 
 def require(cond, msg):
     if not cond:
         raise RuntimeError(msg)
 
 def main():
-    for path in (BUILD, QUAL, PREP, PREFLIGHT):
+    for path in (BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD):
         require(path.is_file(), f"missing apparatus file: {path}")
 
-    for path in (BUILD, QUAL, PREP):
+    for path in (BUILD, QUAL, PREP, STARTUP_RUN, STARTUP):
         cp = subprocess.run(["bash","-n",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if cp.returncode != 0:
             raise RuntimeError(f"bash -n failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
 
-    cp = subprocess.run([sys.executable,"-m","py_compile",str(PREFLIGHT)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if cp.returncode != 0:
-        raise RuntimeError(f"py_compile failed for binary preflight: {cp.stderr.decode('utf-8','replace')}")
+    for path in (PREFLIGHT, RESOURCE_GUARD):
+        cp = subprocess.run([sys.executable,"-m","py_compile",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if cp.returncode != 0:
+            raise RuntimeError(f"py_compile failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
 
     build = BUILD.read_text(encoding="utf-8")
     qual = QUAL.read_text(encoding="utf-8")
     prep = PREP.read_text(encoding="utf-8")
     preflight = PREFLIGHT.read_text(encoding="utf-8")
+    startup_run = STARTUP_RUN.read_text(encoding="utf-8")
+    startup = STARTUP.read_text(encoding="utf-8")
+    resource_guard = RESOURCE_GUARD.read_text(encoding="utf-8")
 
     require('"preparation_generation": "provenance-preparation-20260923-b"' in build,
             "build missing preparation generation stamp")
@@ -93,12 +100,41 @@ def main():
         "layer0-projection-provenance-measured-run.py",
         "layer0-projection-provenance-execute-once.py",
     )
-    for name,text in (("build",build),("qualification",qual),("prepare",prep),("preflight",preflight)):
+    for name,text in (
+        ("build",build),
+        ("qualification",qual),
+        ("prepare",prep),
+        ("preflight",preflight),
+        ("startup-run",startup_run),
+        ("startup",startup),
+        ("resource-guard",resource_guard),
+    ):
         for token in forbidden_execution_markers:
             require(
                 token not in text,
                 f"{name} unexpectedly contains forbidden measured/generation execution marker: {token}",
             )
+
+    for marker in (
+        'curl --silent --show-error --max-time 2',
+        '/health',
+        'READY_NON_GENERATIVE',
+        'UNEXPECTED_DUMP_DURING_NON_GENERATIVE_PREFLIGHT',
+    ):
+        require(marker in startup, f"startup helper missing non-generative marker: {marker}")
+
+    require(
+        'bash "$startup"' in startup_run,
+        "startup-run does not invoke the qualified startup helper",
+    )
+    require(
+        '"--evidence-root" "$guard_root" --' in qual,
+        "qualification does not route startup through resource guard",
+    )
+    require(
+        'bash "$startup_run"' in qual,
+        "qualification does not invoke startup-run as guarded child",
+    )
 
     for marker in (
         'guard.get("campaign_queue_receipt_created") is not False',
@@ -112,6 +148,10 @@ def main():
         "qualification_shell_syntax":True,
         "prepare_shell_syntax":True,
         "binary_preflight_compile":True,
+        "startup_shell_syntax":True,
+        "startup_run_shell_syntax":True,
+        "resource_guard_compile":True,
+        "transitive_non_generation_gate":True,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
         "preparation_generation":"provenance-preparation-20260923-b",
