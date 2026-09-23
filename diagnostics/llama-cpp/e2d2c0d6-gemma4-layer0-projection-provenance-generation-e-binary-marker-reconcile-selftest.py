@@ -166,6 +166,30 @@ def main():
                     and any("brittle provenance.tsv marker unexpectedly present" in x for x in out["errors"]),
             })
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
+            root = Path(td) / "redirected-runtime"
+            artifacts, applied_patch = make_fixture(mod, root)
+            build_path = root / "build-stage" / "terminal.json"
+            build = json.loads(build_path.read_text(encoding="utf-8"))
+            redirected = root / "outside-copy" / "libllama.so"
+            redirected.parent.mkdir(parents=True, exist_ok=True)
+            redirected.write_bytes(artifacts["llama_lib_sha256"].read_bytes())
+            build["llama_lib_resolved"] = str(redirected.resolve())
+            write_json(build_path, build)
+            expected_by_path = {
+                p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
+                for k, p in artifacts.items()
+            }
+            expected_by_path[redirected.resolve()] = mod.EXPECTED_BUILD_HASHES["llama_lib_sha256"]
+            expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
+            mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
+            out = mod.reconcile(root)
+            results.append({
+                "name": "redirected_artifact_path_fails",
+                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
+                    and any("preserved artifact path mismatch: llama_lib_sha256" in x for x in out["errors"]),
+            })
+
+        with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "tampered-runtime"
             artifacts, applied_patch = make_fixture(mod, root)
             expected_by_path = {
