@@ -212,24 +212,27 @@ def environment_contract(name: str, root: Path):
 
 
 def runtime_library_contract(root: Path):
-    server_impl = read_stripped(root / "server-impl.resolved.txt")
-    llama_lib = read_stripped(root / "llama-lib.resolved.txt")
-    maps = read_text(root / "proc-maps.health-ready.txt").splitlines()
-    impl_lines = [line for line in maps if "libllama-server-impl.so" in line]
-    llama_lines = [line for line in maps if "libllama.so" in line]
-    impl_paths = sorted({line.split()[-1] for line in impl_lines if line.split()})
-    llama_paths = sorted({line.split()[-1] for line in llama_lines if line.split()})
-    checks = {
-        "server_impl_loaded_exact": impl_paths == [server_impl],
-        "llama_loaded_exact": llama_paths == [llama_lib],
+    specs = {
+        "server_impl": ("server-impl.resolved.txt", "libllama-server-impl.so"),
+        "llama": ("llama-lib.resolved.txt", "libllama.so"),
+        "ggml": ("ggml-lib.resolved.txt", "libggml.so"),
+        "ggml_base": ("ggml-base.resolved.txt", "libggml-base.so"),
+        "ggml_cpu": ("ggml-cpu.resolved.txt", "libggml-cpu.so"),
+        "ggml_cuda": ("ggml-cuda.resolved.txt", "libggml-cuda.so"),
     }
+    maps = read_text(root / "proc-maps.health-ready.txt").splitlines()
+    checks = {}
+    evidence = {}
+    for key, (resolved_name, soname) in specs.items():
+        expected = read_stripped(root / resolved_name)
+        lines = [line for line in maps if soname in line]
+        paths = sorted({line.split()[-1] for line in lines if line.split()})
+        checks[f"{key}_loaded_exact"] = paths == [expected]
+        evidence[key] = {"expected": expected, "loaded_paths": paths}
     return {
         "ok": all(checks.values()),
         "checks": checks,
-        "server_impl_expected": server_impl,
-        "llama_lib_expected": llama_lib,
-        "server_impl_loaded_paths": impl_paths,
-        "llama_loaded_paths": llama_paths,
+        "libraries": evidence,
     }
 
 
@@ -247,6 +250,10 @@ def inspect_arm(name: str, root: Path):
         "server_sha256": read_sha_line(root / "server-binary.sha256"),
         "server_impl_sha256": read_sha_line(root / "server-impl.sha256"),
         "llama_lib_sha256": read_sha_line(root / "llama-lib.sha256"),
+        "ggml_lib_sha256": read_sha_line(root / "ggml-lib.sha256"),
+        "ggml_base_sha256": read_sha_line(root / "ggml-base.sha256"),
+        "ggml_cpu_sha256": read_sha_line(root / "ggml-cpu.sha256"),
+        "ggml_cuda_sha256": read_sha_line(root / "ggml-cuda.sha256"),
         "model_sha256": read_sha_line(root / "model.sha256"),
         "argv_canonical_sha256": sha256(root / "server.argv.canonical.txt"),
         "argv_contract": canonical_argv_contract(root),
@@ -310,6 +317,14 @@ def main():
             errors.append("server implementation library SHA differs between plain/probe")
         if plain["llama_lib_sha256"] != probe["llama_lib_sha256"]:
             errors.append("llama library SHA differs between plain/probe")
+        for key, label in (
+            ("ggml_lib_sha256", "ggml"),
+            ("ggml_base_sha256", "ggml-base"),
+            ("ggml_cpu_sha256", "ggml-cpu"),
+            ("ggml_cuda_sha256", "ggml-cuda"),
+        ):
+            if plain[key] != probe[key]:
+                errors.append(f"{label} library SHA differs between plain/probe")
         if plain["argv_canonical_sha256"] != probe["argv_canonical_sha256"]:
             errors.append("canonical argv differs between plain/probe")
         if plain["model_sha256"] != EXPECTED_MODEL_SHA:
