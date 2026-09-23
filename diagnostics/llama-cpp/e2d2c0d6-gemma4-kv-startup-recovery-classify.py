@@ -89,7 +89,8 @@ def main():
         "evidence": evidence,
     }
     print(json.dumps(out, indent=2, sort_keys=True))
+    return 0 if primary == "STARTUP_RECOVERED" else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
