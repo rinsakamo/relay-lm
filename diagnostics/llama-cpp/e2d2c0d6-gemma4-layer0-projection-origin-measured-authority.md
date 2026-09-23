@@ -1117,3 +1117,70 @@ integrity gate and uses the prequalified posthoc classifier.
 Status:
 
 `PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
+
+
+### Provenance-enabled preparation apparatus
+
+A new preparation-only apparatus has been added for the future
+provenance-enabled physical discriminator.
+
+Files:
+
+- `e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh`
+- `e2d2c0d6-gemma4-layer0-projection-provenance-binary-preflight.py`
+- `e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh`
+- `e2d2c0d6-gemma4-layer0-projection-provenance-prepare-run.sh`
+- `e2d2c0d6-gemma4-layer0-projection-provenance-preparation-static-selftest.py`
+
+Purpose:
+
+1. build a fresh isolated llama.cpp binary from frozen
+   `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`;
+2. apply the exact four-patch chain:
+   aligned-reuse -> logical-prefix -> projection-origin -> projection-provenance;
+3. bind binary provenance to the four patch SHA256 values and the complete
+   applied patch;
+4. verify runtime binary markers for projection-origin and provenance output;
+5. run only non-generative plain/probe startup qualification under the canonical
+   local-GPU resource guard;
+6. emit a premeasured terminal suitable for a later, separately authorized
+   provenance-enabled measured runner.
+
+The qualification stage includes the already qualified provenance posthoc
+classifier selftest.
+
+The binary preflight requires runtime markers including:
+
+- `provenance.tsv`;
+- `tensor_ptr`;
+- `src0_ptr`;
+- `src1_ptr`.
+
+It rejects historical consumed server binary hashes, including
+`a5d767da8006aaf0537594ae308fc427cdb92154f48c5a3a325be3908352c5bb`.
+
+Preparation classification on success:
+
+`LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY`
+
+Important boundary:
+
+- preparation may build CUDA code and perform guarded non-generative model/GPU
+  startup qualification;
+- it sends no completion/chat/generation request;
+- it creates no measured W/C request record;
+- it does not consume the future scientific measured attempt;
+- it does not authorize measured execution by its own result.
+
+Preparation-only status:
+
+`PROVENANCE_PREPARATION_ONLY_AUTHORIZED_UNSPENT`
+
+Measured provenance-enabled physical execution remains:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
+
+The next allowed local action is exactly one fresh provenance preparation run.
+After its immutable binary/runtime hashes and startup evidence are reported,
+the measured provenance authority and execute-once runner can be pinned to that
+specific prepared apparatus.
