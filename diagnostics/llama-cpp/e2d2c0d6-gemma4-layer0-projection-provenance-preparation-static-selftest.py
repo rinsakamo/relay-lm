@@ -263,6 +263,18 @@ def main():
         require(marker in provenance_posthoc, f"provenance posthoc missing hardening marker: {marker}")
 
     for marker in (
+        'expected_bin_dir = (root / "build-stage" / "build" / "bin").resolve()',
+        '"server_sha256": "llama-server"',
+        '"llama_lib_sha256": "libllama.so"',
+        '"ggml_cuda_sha256": "libggml-cuda.so"',
+        'preserved artifact path mismatch',
+        'preserved artifact SHA mismatch',
+        'preserved applied.patch SHA mismatch',
+        'GENERATION_E_BINARY_MARKER_FALSE_NEGATIVE_RECONCILED',
+    ):
+        require(marker in e_reconcile, f"generation-e reconciliation missing closure marker: {marker}")
+
+    for marker in (
         'guard.get("campaign_queue_receipt_created") is not False',
         'guard.get("campaign_queue_or_spend_artifact_touched") is not False',
     ):
