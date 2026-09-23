@@ -12,13 +12,22 @@ PREFLIGHT = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-binary-prefligh
 STARTUP_RUN = HERE / "e2d2c0d6-gemma4-kv-startup-recovery-run.sh"
 STARTUP = HERE / "e2d2c0d6-gemma4-kv-startup-recovery.sh"
 RESOURCE_GUARD = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py"
+RESOURCE_GUARD_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard-selftest.py"
+STARTUP_CLASSIFIER = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-startup-classify.py"
+STARTUP_CLASSIFIER_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-startup-classifier-selftest.py"
+PROVENANCE_POSTHOC = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py"
+PROVENANCE_POSTHOC_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py"
 
 def require(cond, msg):
     if not cond:
         raise RuntimeError(msg)
 
 def main():
-    for path in (BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD):
+    for path in (
+        BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD,
+        RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER, STARTUP_CLASSIFIER_SELFTEST,
+        PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST,
+    ):
         require(path.is_file(), f"missing apparatus file: {path}")
 
     for path in (BUILD, QUAL, PREP, STARTUP_RUN, STARTUP):
@@ -26,7 +35,10 @@ def main():
         if cp.returncode != 0:
             raise RuntimeError(f"bash -n failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
 
-    for path in (PREFLIGHT, RESOURCE_GUARD):
+    for path in (
+        PREFLIGHT, RESOURCE_GUARD, RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER,
+        STARTUP_CLASSIFIER_SELFTEST, PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST,
+    ):
         cp = subprocess.run([sys.executable,"-m","py_compile",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if cp.returncode != 0:
             raise RuntimeError(f"py_compile failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
@@ -38,12 +50,14 @@ def main():
     startup_run = STARTUP_RUN.read_text(encoding="utf-8")
     startup = STARTUP.read_text(encoding="utf-8")
     resource_guard = RESOURCE_GUARD.read_text(encoding="utf-8")
+    startup_classifier = STARTUP_CLASSIFIER.read_text(encoding="utf-8")
+    provenance_posthoc = PROVENANCE_POSTHOC.read_text(encoding="utf-8")
 
-    require('"preparation_generation": "provenance-preparation-20260923-c"' in build,
+    require('"preparation_generation": "provenance-preparation-20260923-d"' in build,
             "build missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-c"' in qual,
+    require('"preparation_generation": "provenance-preparation-20260923-d"' in qual,
             "qualification missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-c"' in prep,
+    require('"preparation_generation": "provenance-preparation-20260923-d"' in prep,
             "prepare missing preparation generation stamp")
 
     for marker in (
@@ -108,6 +122,8 @@ def main():
         ("startup-run",startup_run),
         ("startup",startup),
         ("resource-guard",resource_guard),
+        ("startup-classifier",startup_classifier),
+        ("provenance-posthoc",provenance_posthoc),
     ):
         for token in forbidden_execution_markers:
             require(
@@ -137,6 +153,52 @@ def main():
     )
 
     for marker in (
+        'RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD',
+        'status --porcelain --untracked-files=all',
+        'preparation-static-selftest.json',
+        'prepared-artifact-manifest.sha256',
+        'chmod -R a-w "$out_root"',
+        '/tmp/*|/var/tmp/*',
+    ):
+        require(marker in prep, f"prepare missing authority/sealing marker: {marker}")
+
+    for marker in (
+        'env -i',
+        'GGML_CUDA_GRAPH_OPT=0',
+        'CUDA_VISIBLE_DEVICES=0',
+        'runtime-environment.effective.txt',
+        'proc-environ.health-ready.txt',
+        'proc-maps.health-ready.txt',
+    ):
+        require(marker in startup, f"startup missing hermetic runtime marker: {marker}")
+
+    for marker in (
+        'gpu_compute_processes',
+        '--query-compute-apps=pid,process_name',
+        'gpu-inventory.json',
+        'RELEASE_FAILED_CANONICAL_DIAGNOSTIC_FLOCK',
+        'RELEASED_WITH_FAILURE_CANONICAL_DIAGNOSTIC_FLOCK',
+    ):
+        require(marker in resource_guard, f"resource guard missing GPU/finalization marker: {marker}")
+
+    for marker in (
+        'swa == 1536',
+        'EXPECTED_CANONICAL_STATIC_ARGV',
+        'environment_contract',
+        'runtime_library_contract',
+    ):
+        require(marker in startup_classifier, f"startup classifier missing exact runtime marker: {marker}")
+
+    for marker in (
+        'NULL_POINTERS',
+        'pointer_value',
+        'duplicate provenance tensor row',
+        'src1_is_attn_norm_object',
+        'src1_is_attn_norm_data',
+    ):
+        require(marker in provenance_posthoc, f"provenance posthoc missing hardening marker: {marker}")
+
+    for marker in (
         'guard.get("campaign_queue_receipt_created") is not False',
         'guard.get("campaign_queue_or_spend_artifact_touched") is not False',
     ):
@@ -152,9 +214,16 @@ def main():
         "startup_run_shell_syntax":True,
         "resource_guard_compile":True,
         "transitive_non_generation_gate":True,
+        "authority_binding_gate":True,
+        "hermetic_runtime_gate":True,
+        "gpu_quiescence_gate":True,
+        "exact_runtime_contract_gate":True,
+        "runtime_library_closure_gate":True,
+        "provenance_pointer_identity_gate":True,
+        "persistent_evidence_sealing_gate":True,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
-        "preparation_generation":"provenance-preparation-20260923-c",
+        "preparation_generation":"provenance-preparation-20260923-d",
     }
     print(json.dumps(result,indent=2,sort_keys=True))
     return 0
