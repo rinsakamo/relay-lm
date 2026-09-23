@@ -98,6 +98,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="relaylm-startup-env-selftest-") as td:
         root = Path(td)
+        (root / "hermetic-home").mkdir()
+        (root / "hermetic-tmp").mkdir()
         (root / "server-impl.resolved.txt").write_text("/evidence/bin/libllama-server-impl.so\n", encoding="utf-8")
         (root / "llama-lib.resolved.txt").write_text("/evidence/bin/libllama.so\n", encoding="utf-8")
         (root / "ggml-lib.resolved.txt").write_text("/evidence/bin/libggml.so\n", encoding="utf-8")
