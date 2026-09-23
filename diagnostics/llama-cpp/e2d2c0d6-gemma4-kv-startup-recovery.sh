@@ -84,7 +84,7 @@ command -v ldd >/dev/null 2>&1 && ldd "$server_bin" >"$out_dir/server-binary.ldd
 command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >"$out_dir/nvidia-smi.before.txt" 2>&1 || true
 
 set +e
-"$server_bin" --version >"$out_dir/server-version.stdout.txt" 2>"$out_dir/server-version.stderr.txt"
+env -i "\${runtime_env[@]}" "$server_bin" --version >"$out_dir/server-version.stdout.txt" 2>"$out_dir/server-version.stderr.txt"
 version_rc=$?
 set -e
 printf '%d\n' "$version_rc" >"$out_dir/server-version.exit-code.txt"
