@@ -79,11 +79,11 @@ def main():
     startup_classifier = STARTUP_CLASSIFIER.read_text(encoding="utf-8")
     provenance_posthoc = PROVENANCE_POSTHOC.read_text(encoding="utf-8")
 
-    require('"preparation_generation": "provenance-preparation-20260923-d"' in build,
+    require('"preparation_generation": "provenance-preparation-20260923-e"' in build,
             "build missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-d"' in qual,
+    require('"preparation_generation": "provenance-preparation-20260923-e"' in qual,
             "qualification missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-d"' in prep,
+    require('"preparation_generation": "provenance-preparation-20260923-e"' in prep,
             "prepare missing preparation generation stamp")
 
     for marker in (
@@ -103,6 +103,8 @@ def main():
         "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py",
         "LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS",
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY",
+        'gpu0.get("driver_version") != "591.44"',
+        'gpu0.get("memory_total_mib") != 12288',
         '"generated_requests": 0',
         '"measured_l0_submitted": False',
         '"measured_attempt_consumed": False',
@@ -197,8 +199,6 @@ def main():
         'build/qualification libllama SHA mismatch',
         '("ggml_cuda_sha256", "ggml_cuda", "libggml-cuda")',
         'build/qualification {label} SHA mismatch',
-        'gpu0.get("driver_version") != "591.44"',
-        'gpu0.get("memory_total_mib") != 12288',
         'chmod -R a-w "$out_root"',
         '/tmp/*|/var/tmp/*',
     ):
@@ -272,7 +272,7 @@ def main():
         "synthetic_selftests":synthetic,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
-        "preparation_generation":"provenance-preparation-20260923-d",
+        "preparation_generation":"provenance-preparation-20260923-e",
     }
     print(json.dumps(result,indent=2,sort_keys=True))
     return 0
