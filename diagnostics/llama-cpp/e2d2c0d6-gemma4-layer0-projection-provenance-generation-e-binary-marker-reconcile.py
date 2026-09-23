@@ -104,11 +104,23 @@ def reconcile(root: Path):
         "ggml_cpu_sha256": "ggml_cpu_resolved",
         "ggml_cuda_sha256": "ggml_cuda_resolved",
     }
+    expected_bin_dir = (root / "build-stage" / "build" / "bin").resolve()
+    expected_names = {
+        "server_sha256": "llama-server",
+        "server_impl_sha256": "libllama-server-impl.so",
+        "llama_lib_sha256": "libllama.so",
+        "ggml_lib_sha256": "libggml.so",
+        "ggml_base_sha256": "libggml-base.so",
+        "ggml_cpu_sha256": "libggml-cpu.so",
+        "ggml_cuda_sha256": "libggml-cuda.so",
+    }
     preserved_artifacts = {}
     for hash_key, path_key in artifact_fields.items():
         path_text = build.get(path_key)
         require(isinstance(path_text, str) and path_text, errors, f"build terminal missing resolved artifact path: {path_key}")
-        path = Path(path_text) if path_text else None
+        path = Path(path_text).resolve() if path_text else None
+        expected_path = (expected_bin_dir / expected_names[hash_key]).resolve()
+        require(path == expected_path, errors, f"preserved artifact path mismatch: {hash_key}")
         if path is not None:
             require(path.is_file(), errors, f"preserved artifact missing: {path}")
         actual_sha = sha256(path) if path is not None and path.is_file() else None
@@ -116,6 +128,7 @@ def reconcile(root: Path):
         require(actual_sha == expected_sha, errors, f"preserved artifact SHA mismatch: {hash_key}")
         preserved_artifacts[hash_key] = {
             "path": str(path) if path else None,
+            "expected_path": str(expected_path),
             "sha256": actual_sha,
             "expected_sha256": expected_sha,
         }
