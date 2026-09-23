@@ -67,6 +67,7 @@ fi
 sha256sum "$server_bin" >"$out_dir/server-binary.sha256"
 sha256sum "$model_path" >"$out_dir/model.sha256"
 
+mkdir -p "$out_dir/hermetic-home" "$out_dir/hermetic-tmp"
 server_dir=$(cd -- "$(dirname -- "$server_bin")" && pwd)
 server_impl="$server_dir/libllama-server-impl.so"
 llama_lib="$server_dir/libllama.so"
@@ -95,7 +96,8 @@ readlink -f "$ggml_cpu" >"$out_dir/ggml-cpu.resolved.txt"
 readlink -f "$ggml_cuda" >"$out_dir/ggml-cuda.resolved.txt"
 readlink -f "$model_path" >"$out_dir/model.resolved.txt"
 runtime_env=(
-  "HOME=${HOME:-/tmp}"
+  "HOME=$out_dir/hermetic-home"
+  "TMPDIR=$out_dir/hermetic-tmp"
   "PATH=/usr/local/cuda-12.8/bin:/usr/bin:/bin"
   "LANG=C.UTF-8"
   "LC_ALL=C.UTF-8"
