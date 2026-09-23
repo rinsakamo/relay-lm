@@ -220,6 +220,7 @@ readlink -f "$ggml_lib" >"$out_root/ggml-lib.resolved.txt"
 readlink -f "$ggml_base" >"$out_root/ggml-base.resolved.txt"
 readlink -f "$ggml_cpu" >"$out_root/ggml-cpu.resolved.txt"
 readlink -f "$ggml_cuda" >"$out_root/ggml-cuda.resolved.txt"
+chmod a-w "$server_bin" "$server_impl" "$llama_lib" "$ggml_lib" "$ggml_base" "$ggml_cpu" "$ggml_cuda" "$out_root/applied.patch"
 LD_LIBRARY_PATH="$build/bin:/usr/local/cuda-12.8/lib64" "$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
 
 python3 - "$out_root" "$server_bin" <<'PY'
