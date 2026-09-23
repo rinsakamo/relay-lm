@@ -187,7 +187,10 @@ def environment_contract(name: str, root: Path):
     }
     expected_keys = set(base_keys)
     if name == "probe":
-        expected_keys |= {"LLAMA_KV_PROBE_DIR", "LLAMA_KV_PROBE_LABEL"}
+        expected_keys |= {
+            "LLAMA_KV_PROBE_DIR", "LLAMA_KV_PROBE_LABEL",
+            "LLAMA_PROJECTION_ORIGIN_PROBE_DIR", "LLAMA_PROJECTION_ORIGIN_PROBE_LABEL",
+        }
     expected_lib_dir = str(Path(read_stripped(root / "server-impl.resolved.txt")).parent)
     checks = {
         "key_set_exact": set(intended) == expected_keys and set(actual) == expected_keys,
@@ -205,6 +208,12 @@ def environment_contract(name: str, root: Path):
         "cuda_disable_fusion_absent": "GGML_CUDA_DISABLE_FUSION" not in intended and "GGML_CUDA_DISABLE_FUSION" not in actual,
         "probe_label_exact": (
             name != "probe" or intended.get("LLAMA_KV_PROBE_LABEL") == "PRE"
+        ),
+        "projection_probe_label_exact": (
+            name != "probe" or intended.get("LLAMA_PROJECTION_ORIGIN_PROBE_LABEL") == "W"
+        ),
+        "projection_probe_dir_exact": (
+            name != "probe" or intended.get("LLAMA_PROJECTION_ORIGIN_PROBE_DIR") == str(root / "projection-probe-root")
         ),
     }
     return {
@@ -248,6 +257,10 @@ def inspect_arm(name: str, root: Path):
     unexpected_probe_output = (
         probe_root.exists() and any(probe_root.iterdir())
     )
+    projection_probe_root = root / "projection-probe-root"
+    unexpected_projection_probe_output = (
+        projection_probe_root.exists() and any(projection_probe_root.iterdir())
+    )
     return {
         "name": name,
         "classification": read_stripped(root / "classification.txt"),
@@ -266,6 +279,7 @@ def inspect_arm(name: str, root: Path):
         "context": context,
         "compact_swa": swa,
         "unexpected_probe_output": unexpected_probe_output,
+        "unexpected_projection_probe_output": unexpected_projection_probe_output,
     }
 
 
@@ -311,7 +325,9 @@ def main():
             if not arm["compact_swa"]["ok"]:
                 errors.append(f"{arm['name']}: compact SWA not proven")
             if arm["unexpected_probe_output"]:
-                errors.append(f"{arm['name']}: unexpected probe output during non-generative startup")
+                errors.append(f"{arm['name']}: unexpected KV probe output during non-generative startup")
+            if arm["unexpected_projection_probe_output"]:
+                errors.append(f"{arm['name']}: unexpected projection probe output during non-generative startup")
 
         if plain["server_sha256"] != probe["server_sha256"]:
             errors.append("server SHA differs between plain/probe")
