@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+HERE = Path(__file__).resolve().parent
+BUILD = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh"
+QUAL = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh"
+PREP = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-prepare-run.sh"
+PREFLIGHT = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-binary-preflight.py"
+
+def require(cond, msg):
+    if not cond:
+        raise RuntimeError(msg)
+
+def main():
+    for path in (BUILD, QUAL, PREP, PREFLIGHT):
+        require(path.is_file(), f"missing apparatus file: {path}")
+
+    for path in (BUILD, QUAL, PREP):
+        cp = subprocess.run(["bash","-n",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if cp.returncode != 0:
+            raise RuntimeError(f"bash -n failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
+
+    cp = subprocess.run([sys.executable,"-m","py_compile",str(PREFLIGHT)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if cp.returncode != 0:
+        raise RuntimeError(f"py_compile failed for binary preflight: {cp.stderr.decode('utf-8','replace')}")
+
+    build = BUILD.read_text(encoding="utf-8")
+    qual = QUAL.read_text(encoding="utf-8")
+    prep = PREP.read_text(encoding="utf-8")
+    preflight = PREFLIGHT.read_text(encoding="utf-8")
+
+    for marker in (
+        "e2d2c0d6-gemma4-swa-ubatch-aligned-reuse-diagnostic.patch",
+        "e2d2c0d6-gemma4-kv-logical-prefix-dump-diagnostic.patch",
+        "e2d2c0d6-gemma4-layer0-projection-origin-diagnostic.patch",
+        "e2d2c0d6-gemma4-layer0-projection-provenance-diagnostic.patch",
+        'git -C "$src" apply --check "$provenance_patch"',
+        '"primary_classification": "LAYER0_PROJECTION_PROVENANCE_BUILD_READY"',
+    ):
+        require(marker in build, f"build marker missing: {marker}")
+
+    for marker in (
+        "e2d2c0d6-gemma4-layer0-projection-provenance-binary-preflight.py",
+        "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py",
+        "LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS",
+        "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY",
+        '"generated_requests": 0',
+        '"measured_l0_submitted": False',
+        '"measured_attempt_consumed": False',
+        '"measured_execution_authorized_by_this_result": False',
+    ):
+        require(marker in qual, f"qualification marker missing: {marker}")
+
+    for marker in (
+        "LAYER0_PROJECTION_PROVENANCE_BUILD_READY",
+        "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY",
+        "LAYER0_PROJECTION_PROVENANCE_PREPARATION_FAILED",
+        '"generated_requests": 0',
+        '"measured_l0_submitted": False',
+        '"measured_attempt_consumed": False',
+        '"measured_execution_authorized_by_this_result": False',
+    ):
+        require(marker in prep, f"prepare marker missing: {marker}")
+
+    for marker in (
+        'b"provenance.tsv"',
+        'b"tensor_ptr"',
+        'b"src0_ptr"',
+        'b"src1_ptr"',
+        '"LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS"',
+        '"projection_provenance_patch_sha256"',
+    ):
+        require(marker in preflight, f"preflight marker missing: {marker}")
+
+    forbidden = (
+        "/completion",
+        "/v1/chat/completions",
+        "scientific --execute",
+        "campaign queue",
+    )
+    for name,text in (("build",build),("qualification",qual),("prepare",prep),("preflight",preflight)):
+        for token in forbidden:
+            require(token not in text, f"{name} unexpectedly contains forbidden measured/generation token: {token}")
+
+    result={
+        "status":"LAYER0_PROJECTION_PROVENANCE_PREPARATION_APPARATUS_STATIC_PASS",
+        "build_shell_syntax":True,
+        "qualification_shell_syntax":True,
+        "prepare_shell_syntax":True,
+        "binary_preflight_compile":True,
+        "completion_or_chat_generation_paths_present":False,
+        "measured_execution_authorized":False,
+    }
+    print(json.dumps(result,indent=2,sort_keys=True))
+    return 0
+
+if __name__=="__main__":
+    raise SystemExit(main())
