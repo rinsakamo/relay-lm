@@ -177,7 +177,11 @@ fi
 sha256sum "$server_bin" >"$out_root/server-binary.sha256"
 server_impl="$build/bin/libllama-server-impl.so"
 llama_lib="$build/bin/libllama.so"
-for artifact in "$server_impl" "$llama_lib"; do
+ggml_lib="$build/bin/libggml.so"
+ggml_base="$build/bin/libggml-base.so"
+ggml_cpu="$build/bin/libggml-cpu.so"
+ggml_cuda="$build/bin/libggml-cuda.so"
+for artifact in "$server_impl" "$llama_lib" "$ggml_lib" "$ggml_base" "$ggml_cpu" "$ggml_cuda"; do
   if [[ ! -f "$artifact" ]]; then
     echo "required runtime library missing: $artifact" >&2
     exit 77
@@ -185,9 +189,17 @@ for artifact in "$server_impl" "$llama_lib"; do
 done
 sha256sum "$server_impl" >"$out_root/server-impl.sha256"
 sha256sum "$llama_lib" >"$out_root/llama-lib.sha256"
+sha256sum "$ggml_lib" >"$out_root/ggml-lib.sha256"
+sha256sum "$ggml_base" >"$out_root/ggml-base.sha256"
+sha256sum "$ggml_cpu" >"$out_root/ggml-cpu.sha256"
+sha256sum "$ggml_cuda" >"$out_root/ggml-cuda.sha256"
 readlink -f "$server_bin" >"$out_root/server-binary.resolved.txt"
 readlink -f "$server_impl" >"$out_root/server-impl.resolved.txt"
 readlink -f "$llama_lib" >"$out_root/llama-lib.resolved.txt"
+readlink -f "$ggml_lib" >"$out_root/ggml-lib.resolved.txt"
+readlink -f "$ggml_base" >"$out_root/ggml-base.resolved.txt"
+readlink -f "$ggml_cpu" >"$out_root/ggml-cpu.resolved.txt"
+readlink -f "$ggml_cuda" >"$out_root/ggml-cuda.resolved.txt"
 LD_LIBRARY_PATH="$build/bin:/usr/local/cuda-12.8/lib64" "$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
 
 python3 - "$out_root" "$server_bin" <<'PY'
@@ -222,6 +234,14 @@ out = {
     "server_impl_sha256": first("server-impl.sha256"),
     "llama_lib_resolved": (root / "llama-lib.resolved.txt").read_text(encoding="utf-8").strip(),
     "llama_lib_sha256": first("llama-lib.sha256"),
+    "ggml_lib_resolved": (root / "ggml-lib.resolved.txt").read_text(encoding="utf-8").strip(),
+    "ggml_lib_sha256": first("ggml-lib.sha256"),
+    "ggml_base_resolved": (root / "ggml-base.resolved.txt").read_text(encoding="utf-8").strip(),
+    "ggml_base_sha256": first("ggml-base.sha256"),
+    "ggml_cpu_resolved": (root / "ggml-cpu.resolved.txt").read_text(encoding="utf-8").strip(),
+    "ggml_cpu_sha256": first("ggml-cpu.sha256"),
+    "ggml_cuda_resolved": (root / "ggml-cuda.resolved.txt").read_text(encoding="utf-8").strip(),
+    "ggml_cuda_sha256": first("ggml-cuda.sha256"),
     "generated_requests": 0,
     "measured_attempt_consumed": False,
 }
