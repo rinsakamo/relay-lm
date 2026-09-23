@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 from pathlib import Path
+import tempfile
 import sys
 
 
@@ -49,6 +50,10 @@ def main():
     if c.compact_swa_evidence(full)["ok"]:
         errors.append("full-size SWA incorrectly passed")
 
+    wrong_compact = valid_block(swa=1024)
+    if c.compact_swa_evidence(wrong_compact)["ok"]:
+        errors.append("non-frozen compact SWA incorrectly passed")
+
     wrong_base = valid_block(base=4096)
     if c.compact_swa_evidence(wrong_base)["ok"]:
         errors.append("wrong base KV size incorrectly passed")
@@ -72,6 +77,22 @@ def main():
     wrong_flash = valid_block(flash="disabled")
     if c.final_context_evidence(wrong_flash)["checks"]["flash_attn_enabled"]["ok"]:
         errors.append("disabled flash attention incorrectly passed")
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-startup-argv-selftest-") as td:
+        root = Path(td)
+        good = [
+            "server_bin=/tmp/llama-server",
+            "model_path=/tmp/model.gguf",
+            *c.EXPECTED_CANONICAL_STATIC_ARGV,
+        ]
+        (root / "server.argv.canonical.txt").write_text("\n".join(good) + "\n", encoding="utf-8")
+        if not c.canonical_argv_contract(root)["ok"]:
+            errors.append("exact canonical argv contract did not pass")
+        bad = good.copy()
+        bad[5] = "--gpu-layers=998"
+        (root / "server.argv.canonical.txt").write_text("\n".join(bad) + "\n", encoding="utf-8")
+        if c.canonical_argv_contract(root)["ok"]:
+            errors.append("drifted canonical argv incorrectly passed")
 
     status = (
         "LOGICAL_PREFIX_STARTUP_CLASSIFIER_SELFTEST_PASS"
