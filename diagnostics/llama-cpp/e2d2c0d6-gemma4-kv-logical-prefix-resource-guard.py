@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import shutil
 import sys
 import time
 
@@ -71,22 +72,75 @@ def listener_busy(host: str, port: int) -> bool:
     return interpret_connect_ex(code)
 
 
+def gpu_compute_processes():
+    exe = shutil.which("nvidia-smi")
+    if exe is None:
+        raise RuntimeError("nvidia-smi unavailable for GPU quiescence check")
+    cp = subprocess.run(
+        [exe, "--query-compute-apps=pid,process_name", "--format=csv,noheader,nounits"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if cp.returncode != 0:
+        raise RuntimeError(f"nvidia-smi compute query failed rc={cp.returncode}: {cp.stderr.strip()}")
+    rows = []
+    for line in cp.stdout.splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("no running"):
+            continue
+        parts = [x.strip() for x in line.split(",", 1)]
+        if len(parts) != 2 or not parts[0].isdigit():
+            raise RuntimeError(f"unparseable nvidia-smi compute row: {line!r}")
+        rows.append({"pid": int(parts[0]), "process_name": parts[1]})
+    return rows
+
+
+def gpu_inventory():
+    exe = shutil.which("nvidia-smi")
+    if exe is None:
+        raise RuntimeError("nvidia-smi unavailable for GPU inventory")
+    cp = subprocess.run(
+        [exe, "--query-gpu=index,uuid,name", "--format=csv,noheader"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if cp.returncode != 0:
+        raise RuntimeError(f"nvidia-smi inventory query failed rc={cp.returncode}: {cp.stderr.strip()}")
+    rows = []
+    for line in cp.stdout.splitlines():
+        parts = [x.strip() for x in line.split(",", 2)]
+        if len(parts) != 3 or not parts[0].isdigit():
+            raise RuntimeError(f"unparseable nvidia-smi inventory row: {line!r}")
+        rows.append({"index": int(parts[0]), "uuid": parts[1], "name": parts[2]})
+    if not rows:
+        raise RuntimeError("nvidia-smi returned no GPU inventory")
+    return rows
+
+
 def require_external_quiescence(evidence_root: Path):
     observations = []
     for index in range(2):
         names = process_executable_names()
         busy = sorted(BUSY_NAMES.intersection(names))
         default_listener_busy = listener_busy("127.0.0.1", 1234)
+        compute = gpu_compute_processes()
         observation = {
             "observation": index + 1,
             "busy_processes": busy,
             "listener_127_0_0_1_1234": default_listener_busy,
+            "gpu_compute_processes": compute,
         }
         observations.append(observation)
         write_json(evidence_root / "external-quiescence.json", observations)
         reasons = list(busy)
         if default_listener_busy:
             reasons.append("listener:127.0.0.1:1234")
+        if compute:
+            reasons.extend(f"gpu:{x['pid']}:{x['process_name']}" for x in compute)
         if reasons:
             raise RuntimeError(f"external local-GPU runtime busy: {','.join(reasons)}")
         if index == 0:
@@ -109,6 +163,7 @@ def main():
         raise SystemExit(f"evidence root must not exist: {args.evidence_root}")
 
     args.evidence_root.mkdir(parents=True)
+    write_json(args.evidence_root / "gpu-inventory.json", gpu_inventory())
     LOCK_ROOT.mkdir(parents=True, exist_ok=True)
     lock_path = LOCK_ROOT / safe_resource_id(RESOURCE_KEY)
     guard_path = args.evidence_root / "guard.json"
@@ -166,7 +221,12 @@ def main():
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
             except OSError as exc:
                 guard["failure"] = guard.get("failure") or f"unlock failed: {exc}"
-            guard["guard_state"] = "RELEASED_CANONICAL_DIAGNOSTIC_FLOCK"
+                guard["guard_state"] = "RELEASE_FAILED_CANONICAL_DIAGNOSTIC_FLOCK"
+            else:
+                if guard.get("failure") is None:
+                    guard["guard_state"] = "RELEASED_CANONICAL_DIAGNOSTIC_FLOCK"
+                else:
+                    guard["guard_state"] = "RELEASED_WITH_FAILURE_CANONICAL_DIAGNOSTIC_FLOCK"
             write_json(guard_path, guard)
         lock_file.close()
 
