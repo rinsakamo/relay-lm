@@ -385,3 +385,38 @@ No R1-R8 implementation was weakened by this repair.
 Disposition:
 
 `PROVENANCE_PREPARATION_GENERATION_E_STATIC_REQUALIFICATION_READY`
+
+
+## Generation-e binary-marker false negative and generation-f proof repair
+
+Generation-e preparation built successfully but failed before startup because the
+binary preflight required the literal byte substring `provenance.tsv` inside
+`libllama.so`.
+
+Frozen CMake confirms `src/llama-context.cpp` is part of the `llama` target,
+so artifact ownership was not the defect.
+
+The defect was evidence design: a source filename literal used only in optimized
+filesystem-path construction is not a reliable Release-binary byte marker.
+
+Generation-f changes only the preflight proof predicate:
+
+- remove raw `b"provenance.tsv"` as a required ELF marker;
+- require the provenance-patch-specific runtime error string
+  `provenance tensor missing: %s`;
+- retain `tensor_ptr`, `src0_ptr`, and `src1_ptr` schema markers.
+
+Static regression coverage separately proves that the source patch still emits
+the runtime file `provenance.tsv`.
+
+This repair does not weaken the measured artifact requirement: a future
+provenance measurement must still produce the expected `provenance.tsv`
+files, which the posthoc classifier consumes directly.
+
+Generation-e remains failed/consumed as a preparation attempt. Generation-f is
+a new apparatus generation and currently permits only static and zero-GPU
+reconciliation.
+
+Status:
+
+`PROVENANCE_PREPARATION_GENERATION_F_STATIC_AND_POSTHOC_RECONCILIATION_READY`
