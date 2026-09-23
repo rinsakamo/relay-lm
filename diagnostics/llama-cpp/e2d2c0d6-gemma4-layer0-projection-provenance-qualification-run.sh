@@ -125,7 +125,7 @@ def maybe_json(path):
         return None
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-c",
+    "preparation_generation": "provenance-preparation-20260923-d",
     "primary_classification": "LAYER0_PROJECTION_PROVENANCE_NOT_READY",
     "errors": [f"guarded startup recovery failed: rc={startup_rc}"],
     "resource_guard": maybe_json(root / "shared-resource-guard" / "guard.json"),
@@ -163,6 +163,7 @@ startup = load("logical-prefix-startup-classification.json")
 guard_selftest = load("logical-prefix-resource-guard-selftest.json")
 guard = load("shared-resource-guard/guard.json")
 quiescence = load("shared-resource-guard/external-quiescence.json")
+gpu_inventory = load("shared-resource-guard/gpu-inventory.json")
 
 errors = []
 if patch.get("status") != "LOGICAL_PREFIX_PATCH_SELFTEST_PASS":
@@ -180,6 +181,8 @@ if guard.get("resource_key") != "llama-cpp:local-gpu":
     errors.append("resource guard used unexpected resource key")
 if guard.get("guard_state") != "RELEASED_CANONICAL_DIAGNOSTIC_FLOCK":
     errors.append("canonical diagnostic GPU flock was not released cleanly")
+if guard.get("failure") is not None:
+    errors.append(f"resource guard recorded failure: {guard.get('failure')}")
 if guard.get("lock_acquired") is not True:
     errors.append("canonical diagnostic GPU flock was not acquired")
 if guard.get("child_invoked") is not True:
@@ -201,17 +204,36 @@ else:
             errors.append(f"external quiescence observation {index} saw busy process")
         if observation.get("listener_127_0_0_1_1234") is not False:
             errors.append(f"external quiescence observation {index} saw/inferred busy default listener")
+        if observation.get("gpu_compute_processes") != []:
+            errors.append(f"external quiescence observation {index} saw GPU compute process")
 
 server_sha = binary.get("server_sha256")
-for old_sha in (
-    "0a9160015c31d11b607b1bd7559e69fe90c02d1079ad7517ccb24ea75c71b08e",
-    "a5d767da8006aaf0537594ae308fc427cdb92154f48c5a3a325be3908352c5bb",
-):
-    if server_sha == old_sha:
-        errors.append(f"provenance binary unexpectedly equals historical consumed apparatus SHA: {old_sha}")
+runtime_artifacts = binary.get("runtime_artifacts") or {}
+impl_sha = (runtime_artifacts.get("llama_server_impl") or {}).get("sha256")
+llama_sha = (runtime_artifacts.get("llama") or {}).get("sha256")
+
+if not isinstance(gpu_inventory, list) or len(gpu_inventory) != 1:
+    errors.append(f"expected exactly one GPU in inventory, got: {gpu_inventory!r}")
+else:
+    gpu0 = gpu_inventory[0]
+    if gpu0.get("index") != 0:
+        errors.append(f"expected GPU index 0, got: {gpu0!r}")
+    if gpu0.get("name") != "NVIDIA GeForce RTX 3060":
+        errors.append(f"unexpected physical GPU identity: {gpu0!r}")
+
+for arm_name in ("plain", "probe"):
+    arm = (startup.get("evidence") or {}).get(arm_name) or {}
+    if arm.get("server_sha256") != server_sha:
+        errors.append(f"{arm_name}: startup server SHA differs from binary preflight")
+    if arm.get("server_impl_sha256") != impl_sha:
+        errors.append(f"{arm_name}: startup server-impl SHA differs from binary preflight")
+    if arm.get("llama_lib_sha256") != llama_sha:
+        errors.append(f"{arm_name}: startup libllama SHA differs from binary preflight")
+    if arm.get("model_sha256") != binary.get("model_sha256"):
+        errors.append(f"{arm_name}: startup model SHA differs from binary preflight")
 
 out = {
-    "preparation_generation": "provenance-preparation-20260923-c",
+    "preparation_generation": "provenance-preparation-20260923-d",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
@@ -224,7 +246,8 @@ out = {
     "aligned_reuse_patch_sha256": binary.get("aligned_reuse_patch_sha256"),
     "projection_origin_patch_sha256": binary.get("projection_origin_patch_sha256"),
     "projection_provenance_patch_sha256": binary.get("projection_provenance_patch_sha256"),
-    "runtime_artifacts": binary.get("runtime_artifacts"),
+    "runtime_artifacts": runtime_artifacts,
+    "gpu_inventory": gpu_inventory,
     "required_runtime_markers": binary.get("required_runtime_markers"),
     "forbidden_old_marker_present": binary.get("forbidden_old_marker_present"),
     "resource_guard": guard,
