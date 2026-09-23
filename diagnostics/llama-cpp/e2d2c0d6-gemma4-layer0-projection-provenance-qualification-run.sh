@@ -125,6 +125,7 @@ def maybe_json(path):
         return None
 
 out = {
+    "preparation_generation": "provenance-preparation-20260923-b",
     "primary_classification": "LAYER0_PROJECTION_PROVENANCE_NOT_READY",
     "errors": [f"guarded startup recovery failed: rc={startup_rc}"],
     "resource_guard": maybe_json(root / "shared-resource-guard" / "guard.json"),
