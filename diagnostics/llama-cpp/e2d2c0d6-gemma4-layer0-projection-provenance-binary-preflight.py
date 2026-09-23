@@ -100,6 +100,25 @@ def main():
             "path": args.server_bin.parent / "libllama.so",
             "required_markers": LLAMA_LIBRARY_MARKERS,
         },
+        "ggml": {
+            "path": args.server_bin.parent / "libggml.so",
+            "required_markers": [],
+        },
+        "ggml_base": {
+            "path": args.server_bin.parent / "libggml-base.so",
+            "required_markers": [],
+        },
+        "ggml_cpu": {
+            "path": args.server_bin.parent / "libggml-cpu.so",
+            "required_markers": [],
+        },
+        "ggml_cuda": {
+            "path": args.server_bin.parent / "libggml-cuda.so",
+            "required_markers": [
+                b"GGML_CUDA_GRAPH_OPT",
+                b"GGML_CUDA_DISABLE_FUSION",
+            ],
+        },
     }
 
     runtime_artifacts = {}
