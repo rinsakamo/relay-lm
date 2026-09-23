@@ -41,11 +41,13 @@ def main():
 
     original_names = g.process_executable_names
     original_listener = g.listener_busy
+    original_gpu_compute = g.gpu_compute_processes
     original_sleep = g.time.sleep
     try:
-        calls = {"names": 0, "listener": 0, "sleep": []}
+        calls = {"names": 0, "listener": 0, "gpu": 0, "sleep": []}
         g.process_executable_names = lambda: calls.__setitem__("names", calls["names"] + 1) or set()
         g.listener_busy = lambda host, port: calls.__setitem__("listener", calls["listener"] + 1) or False
+        g.gpu_compute_processes = lambda: calls.__setitem__("gpu", calls["gpu"] + 1) or []
         g.time.sleep = lambda seconds: calls["sleep"].append(seconds)
         with tempfile.TemporaryDirectory(prefix="relaylm-logical-prefix-guard-selftest-") as td:
             root = Path(td)
@@ -53,18 +55,28 @@ def main():
             saved = json.loads((root / "external-quiescence.json").read_text(encoding="utf-8"))
         results.append({
             "name": "two_idle_observations_five_seconds_apart",
-            "ok": len(obs) == 2 and len(saved) == 2 and calls == {"names": 2, "listener": 2, "sleep": [5]},
+            "ok": len(obs) == 2 and len(saved) == 2 and calls == {"names": 2, "listener": 2, "gpu": 2, "sleep": [5]}
+                and all(x.get("gpu_compute_processes") == [] for x in obs),
         })
 
         g.process_executable_names = lambda: {"llama-server"}
         g.listener_busy = lambda host, port: False
+        g.gpu_compute_processes = lambda: []
         g.time.sleep = lambda seconds: None
         with tempfile.TemporaryDirectory(prefix="relaylm-logical-prefix-guard-busy-") as td:
             busy_failed = expect_runtime_error(lambda: g.require_external_quiescence(Path(td)))
         results.append({"name": "busy_process_fails_closed", "ok": busy_failed})
+
+        g.process_executable_names = lambda: set()
+        g.listener_busy = lambda host, port: False
+        g.gpu_compute_processes = lambda: [{"pid": 123, "process_name": "python3"}]
+        with tempfile.TemporaryDirectory(prefix="relaylm-logical-prefix-guard-gpu-busy-") as td:
+            gpu_busy_failed = expect_runtime_error(lambda: g.require_external_quiescence(Path(td)))
+        results.append({"name": "gpu_compute_process_fails_closed", "ok": gpu_busy_failed})
     finally:
         g.process_executable_names = original_names
         g.listener_busy = original_listener
+        g.gpu_compute_processes = original_gpu_compute
         g.time.sleep = original_sleep
 
     errors = [r["name"] for r in results if not r["ok"]]
