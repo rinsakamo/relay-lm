@@ -21,7 +21,7 @@ The patch is apparatus only. It does not authorize execution.
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -1435,6 +1435,63 @@ static bool relay_projection_origin_dump(
+@@ -1435,6 +1435,67 @@ static bool relay_projection_origin_dump(
          return false;
      }
  
