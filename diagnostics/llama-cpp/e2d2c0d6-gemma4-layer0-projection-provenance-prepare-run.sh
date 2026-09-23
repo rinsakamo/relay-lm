@@ -35,6 +35,12 @@ if [[ -e "$out_root" ]]; then
   echo "output root must not exist: $out_root" >&2
   exit 66
 fi
+case "$out_root" in
+  /tmp/*|/var/tmp/*)
+    echo "persistent preparation evidence root required; refusing volatile path: $out_root" >&2
+    exit 67
+    ;;
+esac
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || true)
@@ -45,21 +51,21 @@ static_selftest="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-prepar
 
 if [[ -z "$repo_root" || -z "$authority_head" ]]; then
   echo "isolated authority-bound RelayLM checkout and RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD are required" >&2
-  exit 67
+  exit 68
 fi
 local_head=$(git -C "$repo_root" rev-parse HEAD)
 if [[ "$local_head" != "$authority_head" ]]; then
   echo "local apparatus HEAD does not match fresh diagnostic authority: $local_head != $authority_head" >&2
-  exit 68
+  exit 69
 fi
 if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]]; then
   echo "authority-bound RelayLM apparatus checkout is not clean" >&2
-  exit 69
+  exit 70
 fi
 
 if [[ ! -f "$build_runner" || ! -f "$qual_runner" || ! -f "$static_selftest" ]]; then
   echo "required replacement runners missing" >&2
-  exit 70
+  exit 71
 fi
 
 mkdir -p "$out_root"
@@ -71,11 +77,11 @@ static_rc=$?
 printf '%d\n' "$static_rc" >"$out_root/preparation-static-selftest.exit-code.txt"
 if (( static_rc != 0 )); then
   echo "internal preparation static gate failed" >&2
-  exit 71
+  exit 72
 fi
 
-bash -n "$build_runner" || exit 72
-bash -n "$qual_runner" || exit 72
+bash -n "$build_runner" || exit 73
+bash -n "$qual_runner" || exit 73
 
 build_root="$out_root/build-stage"
 qual_root="$out_root/qualification-stage"
@@ -139,6 +145,29 @@ if build is not None and build.get("primary_classification") != "LAYER0_PROJECTI
 if qual is not None and qual.get("primary_classification") != "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY":
     errors.append("unexpected qualification terminal classification")
 
+if build is not None and build.get("preparation_generation") != "provenance-preparation-20260923-d":
+    errors.append("unexpected build preparation generation")
+if qual is not None and qual.get("preparation_generation") != "provenance-preparation-20260923-d":
+    errors.append("unexpected qualification preparation generation")
+
+if build is not None and qual is not None:
+    if build.get("server_sha256") != qual.get("server_sha256"):
+        errors.append("build/qualification server SHA mismatch")
+    runtime = qual.get("runtime_artifacts") or {}
+    if build.get("server_impl_sha256") != (runtime.get("llama_server_impl") or {}).get("sha256"):
+        errors.append("build/qualification server-impl SHA mismatch")
+    if build.get("llama_lib_sha256") != (runtime.get("llama") or {}).get("sha256"):
+        errors.append("build/qualification libllama SHA mismatch")
+    patch_pairs = (
+        ("aligned_reuse_patch_sha256", "aligned_reuse_patch_sha256"),
+        ("logical_prefix_patch_sha256", "logical_prefix_patch_sha256"),
+        ("projection_origin_patch_sha256", "projection_origin_patch_sha256"),
+        ("projection_provenance_patch_sha256", "projection_provenance_patch_sha256"),
+    )
+    for bkey, qkey in patch_pairs:
+        if build.get(bkey) != qual.get(qkey):
+            errors.append(f"build/qualification patch SHA mismatch: {bkey}")
+
 out = {
     "preparation_generation": "provenance-preparation-20260923-d",
     "primary_classification": (
@@ -163,3 +192,17 @@ out = {
 print(json.dumps(out, indent=2, sort_keys=True))
 raise SystemExit(0 if not errors else 1)
 PY
+terminal_rc=$?
+
+if (( terminal_rc == 0 )); then
+  {
+    sha256sum "$out_root/build-stage/build/bin/llama-server"
+    sha256sum "$out_root/build-stage/build/bin/libllama-server-impl.so"
+    sha256sum "$out_root/build-stage/build/bin/libllama.so"
+    sha256sum "$out_root/build-stage/applied.patch"
+    sha256sum "$out_root/terminal.json"
+  } >"$out_root/prepared-artifact-manifest.sha256"
+  chmod -R a-w "$out_root"
+fi
+
+exit "$terminal_rc"
