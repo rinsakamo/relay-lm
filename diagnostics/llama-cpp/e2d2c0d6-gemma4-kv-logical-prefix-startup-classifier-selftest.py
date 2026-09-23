@@ -131,8 +131,12 @@ def main():
             errors.append("runtime environment drift incorrectly passed")
 
         probe_env = dict(base_env)
-        probe_env["LLAMA_KV_PROBE_DIR"] = "/evidence/probe"
+        probe_env["LLAMA_KV_PROBE_DIR"] = str(root / "probe-root")
         probe_env["LLAMA_KV_PROBE_LABEL"] = "PRE"
+        probe_env["LLAMA_PROJECTION_ORIGIN_PROBE_DIR"] = str(root / "projection-probe-root")
+        probe_env["LLAMA_PROJECTION_ORIGIN_PROBE_LABEL"] = "W"
+        (root / "probe-root").mkdir()
+        (root / "projection-probe-root").mkdir()
         write_env(root / "runtime-environment.effective.txt", probe_env)
         write_env(root / "proc-environ.health-ready.txt", probe_env)
         if not c.environment_contract("probe", root)["ok"]:
