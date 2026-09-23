@@ -79,11 +79,11 @@ def main():
     startup_classifier = STARTUP_CLASSIFIER.read_text(encoding="utf-8")
     provenance_posthoc = PROVENANCE_POSTHOC.read_text(encoding="utf-8")
 
-    require('"preparation_generation": "provenance-preparation-20260923-e"' in build,
+    require('"preparation_generation": "provenance-preparation-20260924-f"' in build,
             "build missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-e"' in qual,
+    require('"preparation_generation": "provenance-preparation-20260924-f"' in qual,
             "qualification missing preparation generation stamp")
-    require('"preparation_generation": "provenance-preparation-20260923-e"' in prep,
+    require('"preparation_generation": "provenance-preparation-20260924-f"' in prep,
             "prepare missing preparation generation stamp")
 
     for marker in (
@@ -124,7 +124,7 @@ def main():
         require(marker in prep, f"prepare marker missing: {marker}")
 
     for marker in (
-        'b"provenance.tsv"',
+        'b"provenance tensor missing: %s"',
         'b"tensor_ptr"',
         'b"src0_ptr"',
         'b"src1_ptr"',
@@ -272,7 +272,7 @@ def main():
         "synthetic_selftests":synthetic,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
-        "preparation_generation":"provenance-preparation-20260923-e",
+        "preparation_generation":"provenance-preparation-20260924-f",
     }
     print(json.dumps(result,indent=2,sort_keys=True))
     return 0
