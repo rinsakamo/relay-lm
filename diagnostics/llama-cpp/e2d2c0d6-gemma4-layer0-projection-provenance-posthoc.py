@@ -70,7 +70,7 @@ def classify_dump(dump: Path):
         "data_ptr_distinct":nonempty_distinct(k,v,"data_ptr"),
         "buffer_ptr_distinct":nonempty_distinct(k,v,"buffer_ptr"),
         "view_src_ptr_distinct":(
-            (not k["view_src_ptr"] and not v["view_src_ptr"]) or
+            (pointer_value(k["view_src_ptr"]) is None and pointer_value(v["view_src_ptr"]) is None) or
             nonempty_distinct(k,v,"view_src_ptr")
         ),
         "src0_ptr_distinct":nonempty_distinct(k,v,"src0_ptr"),
@@ -97,19 +97,19 @@ def classify_dump(dump: Path):
             and pointer_value(k["src1_data_ptr"]) == pointer_value(n["data_ptr"])
         ),
         "op_equal":bool(k["op"] and k["op"]==v["op"]),
-        "expected_projection_semantics":(
-            k["op"]=="MUL_MAT" and v["op"]=="MUL_MAT"
-            and k["src0_type"]=="Q4_K" and v["src0_type"]=="Q6_K"
-            and k["src0_name"]=="blk.0.attn_k.weight"
-            and v["src0_name"]=="blk.0.attn_v.weight"
-            and checks["src1_is_attn_norm_object"]
-            and checks["src1_is_attn_norm_data"]
-            and k["src1_name"]=="attn_norm-0" and v["src1_name"]=="attn_norm-0"
-            and k["src1_type"]=="f32" and v["src1_type"]=="f32"
-            and k["src1_op"]=="MUL" and v["src1_op"]=="MUL"
-        ),
         "value_identical":value_identical,
     }
+    checks["expected_projection_semantics"]=(
+        k["op"]=="MUL_MAT" and v["op"]=="MUL_MAT"
+        and k["src0_type"]=="Q4_K" and v["src0_type"]=="Q6_K"
+        and k["src0_name"]=="blk.0.attn_k.weight"
+        and v["src0_name"]=="blk.0.attn_v.weight"
+        and checks["src1_is_attn_norm_object"]
+        and checks["src1_is_attn_norm_data"]
+        and k["src1_name"]=="attn_norm-0" and v["src1_name"]=="attn_norm-0"
+        and k["src1_type"]=="f32" and v["src1_type"]=="f32"
+        and k["src1_op"]=="MUL" and v["src1_op"]=="MUL"
+    )
 
     if not checks["tensor_ptr_distinct"]:
         primary="K_V_RUNTIME_TENSOR_OBJECT_ALIAS"
