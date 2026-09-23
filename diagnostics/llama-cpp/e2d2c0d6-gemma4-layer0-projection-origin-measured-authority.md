@@ -1348,3 +1348,55 @@ A preparation run becomes authorized only if that exact static gate passes.
 Measured provenance execution remains:
 
 `PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
+
+
+### Provenance preparation generation-d static gate failure and generation-e repair
+
+Generation-d canonical static requalification was invoked exactly once from an
+isolated clean authority checkout and failed before build/model startup.
+
+Observed failure:
+
+`prepare missing authority/sealing marker: gpu0.get("driver_version") != "591.44"`
+
+Safety at failure:
+
+- build invocations: 0;
+- model startups: 0;
+- GPU runtime calls: 0;
+- generation requests: 0;
+- measured requests: 0;
+- measured attempt consumed: false;
+- scientific spend consumed: false.
+
+The exact GPU identity checks were not missing from the apparatus. They were
+already present in
+`e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh`:
+
+- driver version must equal `591.44`;
+- total GPU memory must equal `12288 MiB`.
+
+The static selftest incorrectly required those qualification-owned markers to
+appear in `prepare-run.sh`.
+
+The repair moves the marker assertions to the qualification-run static marker
+set while keeping the prepare-run checks limited to orchestration/authority/
+sealing responsibilities.
+
+The failed generation-d record is immutable. All preparation generation stamps
+have been advanced to:
+
+`provenance-preparation-20260923-e`
+
+Current status:
+
+`PROVENANCE_PREPARATION_GENERATION_E_STATIC_REQUALIFICATION_READY`
+
+Only one generation-e canonical static requalification is authorized next.
+
+A preparation build/startup remains unauthorized until that exact static gate
+passes.
+
+Measured provenance execution remains:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
