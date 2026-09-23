@@ -225,7 +225,7 @@ readlink -f "$ggml_base" >"$out_root/ggml-base.resolved.txt"
 readlink -f "$ggml_cpu" >"$out_root/ggml-cpu.resolved.txt"
 readlink -f "$ggml_cuda" >"$out_root/ggml-cuda.resolved.txt"
 chmod a-w "$server_bin" "$server_impl" "$llama_lib" "$ggml_lib" "$ggml_base" "$ggml_cpu" "$ggml_cuda" "$out_root/applied.patch"
-LD_LIBRARY_PATH="$build/bin:/usr/local/cuda-12.8/lib64" "$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
+env -i HOME="$out_root/hermetic-home" TMPDIR="$out_root/hermetic-tmp" PATH="$CUDA_NATIVE_PATH" LANG=C.UTF-8 LC_ALL=C.UTF-8 LD_LIBRARY_PATH="$build/bin:/usr/local/cuda-12.8/lib64" CUDA_VISIBLE_DEVICES=0 GGML_CUDA_GRAPH_OPT=0 "$server_bin" --version >"$out_root/server-version.stdout.txt" 2>"$out_root/server-version.stderr.txt"
 
 python3 - "$out_root" "$server_bin" <<'PY'
 import json
