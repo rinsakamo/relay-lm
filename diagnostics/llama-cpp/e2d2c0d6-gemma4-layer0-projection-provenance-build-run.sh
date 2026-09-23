@@ -84,6 +84,9 @@ if [[ "$cuda_nvcc_real" != "$CUDA_NVCC" ]]; then
 fi
 
 PATH="$CUDA_NATIVE_PATH" "$CUDA_NVCC" --version >"$out_root/cuda-nvcc-version.txt" 2>&1
+PATH="$CUDA_NATIVE_PATH" cmake --version >"$out_root/cmake-version.txt" 2>&1
+PATH="$CUDA_NATIVE_PATH" cc --version >"$out_root/cc-version.txt" 2>&1
+PATH="$CUDA_NATIVE_PATH" c++ --version >"$out_root/cxx-version.txt" 2>&1
 if ! grep -Fq "release 12.8" "$out_root/cuda-nvcc-version.txt"; then
   echo "qualified CUDA nvcc is not release 12.8" >&2
   exit 76
@@ -146,6 +149,17 @@ git -C "$src" diff --binary >"$out_root/applied.patch"
 sha256sum "$out_root/applied.patch" >"$out_root/applied.patch.sha256"
 git -C "$src" status --porcelain --untracked-files=all >"$out_root/source.status-after-patches.txt"
 
+cat >"$out_root/cmake-contract.txt" <<'EOF'
+GGML_CUDA=ON
+GGML_CUDA_GRAPHS=ON
+GGML_CUDA_FA=ON
+GGML_NATIVE=ON
+GGML_CCACHE=OFF
+BUILD_SHARED_LIBS=ON
+GGML_BACKEND_DL=OFF
+CMAKE_BUILD_TYPE=Release
+EOF
+
 env -i \
 HOME="${HOME:-/tmp}" \
 PATH="$CUDA_NATIVE_PATH" \
@@ -154,6 +168,12 @@ CUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
 CUDACXX="$CUDA_NVCC" \
 cmake -S "$src" -B "$build" \
   -DGGML_CUDA=ON \
+  -DGGML_CUDA_GRAPHS=ON \
+  -DGGML_CUDA_FA=ON \
+  -DGGML_NATIVE=ON \
+  -DGGML_CCACHE=OFF \
+  -DBUILD_SHARED_LIBS=ON \
+  -DGGML_BACKEND_DL=OFF \
   -DCMAKE_BUILD_TYPE=Release \
   -DCUDAToolkit_ROOT="$CUDA_TOOLKIT_ROOT" \
   -DCMAKE_CUDA_COMPILER="$CUDA_NVCC" \
