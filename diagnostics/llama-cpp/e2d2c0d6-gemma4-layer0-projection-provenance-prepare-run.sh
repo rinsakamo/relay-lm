@@ -36,40 +36,61 @@ if [[ -e "$out_root" ]]; then
   exit 66
 fi
 case "$out_root" in
+  /*) ;;
+  *)
+    echo "absolute persistent preparation evidence path required: $out_root" >&2
+    exit 67
+    ;;
+esac
+case "$out_root" in
   /tmp/*|/var/tmp/*)
     echo "persistent preparation evidence root required; refusing volatile path: $out_root" >&2
-    exit 67
+    exit 68
     ;;
 esac
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || true)
 authority_head=${RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD:-}
+authority_ref="refs/remotes/origin/diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916"
 build_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-build-run.sh"
 qual_runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-qualification-run.sh"
 static_selftest="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-preparation-static-selftest.py"
 
 if [[ -z "$repo_root" || -z "$authority_head" ]]; then
   echo "isolated authority-bound RelayLM checkout and RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD are required" >&2
-  exit 68
-fi
-local_head=$(git -C "$repo_root" rev-parse HEAD)
-if [[ "$local_head" != "$authority_head" ]]; then
-  echo "local apparatus HEAD does not match fresh diagnostic authority: $local_head != $authority_head" >&2
   exit 69
+fi
+case "$out_root" in
+  "$repo_root"|"$repo_root"/*)
+    echo "preparation evidence root must be outside the authority apparatus checkout" >&2
+    exit 70
+    ;;
+esac
+if ! git -C "$repo_root" show-ref --verify --quiet "$authority_ref"; then
+  echo "fresh diagnostic remote-tracking ref missing: $authority_ref" >&2
+  exit 71
+fi
+remote_head=$(git -C "$repo_root" rev-parse "$authority_ref")
+local_head=$(git -C "$repo_root" rev-parse HEAD)
+if [[ "$remote_head" != "$authority_head" || "$local_head" != "$authority_head" ]]; then
+  echo "authority mismatch: remote=$remote_head local=$local_head expected=$authority_head" >&2
+  exit 72
 fi
 if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]]; then
   echo "authority-bound RelayLM apparatus checkout is not clean" >&2
-  exit 70
+  exit 73
 fi
 
 if [[ ! -f "$build_runner" || ! -f "$qual_runner" || ! -f "$static_selftest" ]]; then
   echo "required replacement runners missing" >&2
-  exit 71
+  exit 74
 fi
 
 mkdir -p "$out_root"
 printf '%s\n' "$authority_head" >"$out_root/relaylm-authority.head.txt"
+printf '%s\n' "$remote_head" >"$out_root/relaylm-authority.remote-head.txt"
+git -C "$repo_root" remote get-url origin >"$out_root/relaylm-authority.origin-url.txt"
 git -C "$repo_root" rev-parse "HEAD^{tree}" >"$out_root/relaylm-authority.tree.txt"
 
 python3 "$static_selftest" >"$out_root/preparation-static-selftest.json"
