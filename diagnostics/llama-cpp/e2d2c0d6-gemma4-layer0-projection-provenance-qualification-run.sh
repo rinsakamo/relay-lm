@@ -211,6 +211,7 @@ for old_sha in (
         errors.append(f"provenance binary unexpectedly equals historical consumed apparatus SHA: {old_sha}")
 
 out = {
+    "preparation_generation": "provenance-preparation-20260923-b",
     "primary_classification": (
         "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY"
         if not errors
