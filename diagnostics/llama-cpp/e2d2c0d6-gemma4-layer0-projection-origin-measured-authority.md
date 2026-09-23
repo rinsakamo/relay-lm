@@ -995,3 +995,50 @@ Status:
 `PROVENANCE_PATCH_GENERATION_C_STATIC_REQUALIFICATION_READY`
 
 No build or physical/model execution is authorized.
+
+
+### Provenance patch generation-c context failure and generation-d repair
+
+Static generation `projection-provenance-static-20260923-c` passed:
+
+- Python compile;
+- unified-diff hunk-count validation;
+- exact 26-field provenance schema decoding;
+- frozen source verification;
+- temporary clone;
+- prerequisite patches 1-3 apply/check.
+
+It then failed at provenance patch 4 with:
+
+`src/llama-context.cpp:1435: patch does not apply`
+
+No Stage-B selftest was run. No physical/GPU/model/generation activity occurred.
+
+The remaining defect was stale/over-specific hunk context, not hunk syntax.
+
+Generation d rewrites the provenance patch hunk to anchor directly on the unique
+existing projection-origin declaration:
+
+`std::ofstream manifest(root / "manifest.tsv", ...)`
+
+The new hunk removes preceding context that could drift after patches 1-3.
+
+Generation-d hunk:
+
+- declared old/new = 3/64;
+- repository-side observed old/new = 3/64.
+
+New static generation:
+
+`projection-provenance-static-20260923-d`
+
+Status:
+
+`PROVENANCE_PATCH_GENERATION_D_STATIC_REQUALIFICATION_READY`
+
+Allowed next order:
+
+1. one generation-d Stage-A static selftest;
+2. only if Stage A passes, one provenance posthoc classifier selftest.
+
+No build or physical/model execution is authorized.
