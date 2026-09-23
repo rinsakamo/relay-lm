@@ -75,15 +75,29 @@ def main():
     ):
         require(marker in preflight, f"preflight marker missing: {marker}")
 
-    forbidden = (
+    # Reject concrete measured/generation execution paths, not descriptive
+    # fail-closed assertions such as "campaign queue receipt was not created".
+    forbidden_execution_markers = (
         "/completion",
         "/v1/chat/completions",
         "scientific --execute",
-        "campaign queue",
+        "layer0-projection-origin-measured-run.py",
+        "layer0-projection-origin-execute-once.py",
+        "layer0-projection-provenance-measured-run.py",
+        "layer0-projection-provenance-execute-once.py",
     )
     for name,text in (("build",build),("qualification",qual),("prepare",prep),("preflight",preflight)):
-        for token in forbidden:
-            require(token not in text, f"{name} unexpectedly contains forbidden measured/generation token: {token}")
+        for token in forbidden_execution_markers:
+            require(
+                token not in text,
+                f"{name} unexpectedly contains forbidden measured/generation execution marker: {token}",
+            )
+
+    for marker in (
+        'guard.get("campaign_queue_receipt_created") is not False',
+        'guard.get("campaign_queue_or_spend_artifact_touched") is not False',
+    ):
+        require(marker in qual, f"qualification missing fail-closed spend assertion: {marker}")
 
     result={
         "status":"LAYER0_PROJECTION_PROVENANCE_PREPARATION_APPARATUS_STATIC_PASS",
@@ -93,6 +107,7 @@ def main():
         "binary_preflight_compile":True,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
+        "preparation_generation":"provenance-preparation-20260923-b",
     }
     print(json.dumps(result,indent=2,sort_keys=True))
     return 0
