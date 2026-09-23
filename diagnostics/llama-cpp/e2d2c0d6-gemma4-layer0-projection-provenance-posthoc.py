@@ -27,7 +27,14 @@ NULL_POINTERS = {"", "0", "0x0", "(nil)", "nullptr", "NULL", "null"}
 
 def pointer_value(value: str):
     v = value.strip()
-    return None if v in NULL_POINTERS else v
+    if v in NULL_POINTERS:
+        return None
+    try:
+        if int(v, 0) == 0:
+            return None
+    except ValueError:
+        pass
+    return v
 
 def load_provenance(dump: Path):
     p=dump/"provenance.tsv"
