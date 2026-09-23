@@ -18,6 +18,8 @@ STARTUP_CLASSIFIER_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-startup-
 PROVENANCE_POSTHOC = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py"
 PROVENANCE_POSTHOC_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py"
 PROVENANCE_PATCH = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-diagnostic.patch"
+E_RECONCILE = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-e-binary-marker-reconcile.py"
+E_RECONCILE_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-e-binary-marker-reconcile-selftest.py"
 
 def require(cond, msg):
     if not cond:
@@ -28,6 +30,7 @@ def main():
         BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD,
         RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER, STARTUP_CLASSIFIER_SELFTEST,
         PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST, PROVENANCE_PATCH,
+        E_RECONCILE, E_RECONCILE_SELFTEST,
     ):
         require(path.is_file(), f"missing apparatus file: {path}")
 
@@ -39,6 +42,7 @@ def main():
     for path in (
         PREFLIGHT, RESOURCE_GUARD, RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER,
         STARTUP_CLASSIFIER_SELFTEST, PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST,
+        E_RECONCILE, E_RECONCILE_SELFTEST,
     ):
         cp = subprocess.run([sys.executable,"-m","py_compile",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if cp.returncode != 0:
@@ -49,6 +53,7 @@ def main():
         ("resource_guard", RESOURCE_GUARD_SELFTEST, "LOGICAL_PREFIX_RESOURCE_GUARD_SELFTEST_PASS"),
         ("startup_classifier", STARTUP_CLASSIFIER_SELFTEST, "LOGICAL_PREFIX_STARTUP_CLASSIFIER_SELFTEST_PASS"),
         ("provenance_posthoc", PROVENANCE_POSTHOC_SELFTEST, "LAYER0_PROJECTION_PROVENANCE_POSTHOC_SELFTEST_PASS"),
+        ("generation_e_reconcile", E_RECONCILE_SELFTEST, "GENERATION_E_BINARY_MARKER_RECONCILIATION_SELFTEST_PASS"),
     ):
         cp = subprocess.run(
             [sys.executable, str(path)],
@@ -80,6 +85,7 @@ def main():
     startup_classifier = STARTUP_CLASSIFIER.read_text(encoding="utf-8")
     provenance_posthoc = PROVENANCE_POSTHOC.read_text(encoding="utf-8")
     provenance_patch = PROVENANCE_PATCH.read_text(encoding="utf-8")
+    e_reconcile = E_RECONCILE.read_text(encoding="utf-8")
 
     require('"preparation_generation": "provenance-preparation-20260924-f"' in build,
             "build missing preparation generation stamp")
@@ -165,6 +171,7 @@ def main():
         ("resource-guard",resource_guard),
         ("startup-classifier",startup_classifier),
         ("provenance-posthoc",provenance_posthoc),
+        ("generation-e-reconcile",e_reconcile),
     ):
         for token in forbidden_execution_markers:
             require(
@@ -278,6 +285,7 @@ def main():
         "runtime_library_closure_gate":True,
         "provenance_pointer_identity_gate":True,
         "persistent_evidence_sealing_gate":True,
+        "generation_e_binary_marker_reconciliation_gate":True,
         "synthetic_selftests":synthetic,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
