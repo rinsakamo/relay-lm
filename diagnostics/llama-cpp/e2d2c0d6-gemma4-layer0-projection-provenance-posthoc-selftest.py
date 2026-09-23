@@ -46,12 +46,17 @@ def row(m,name, tensor_ptr, data_ptr, src0_ptr, src0_name, src0_type, src0_data,
     }
     return [vals[f] for f in m.EXPECTED_FIELDS]
 
-def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=False,identical_values=True):
+def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=False,identical_values=True,
+               null_src1=False, wrong_attn_binding=False, duplicate_k=False):
     d=root/name
     d.mkdir(parents=True)
     rows=[
         row(m,"attn_norm-0","0x10","0x20","0x01","norm","f32","0x02",src1_ptr="0x03",src1_data="0x04"),
-        row(m,"Kcur-0","0x30","0x40","0x50","blk.0.attn_k.weight","Q4_K","0x60"),
+        row(
+            m,"Kcur-0","0x30","0x40","0x50","blk.0.attn_k.weight","Q4_K","0x60",
+            src1_ptr="0" if null_src1 else ("0xa1" if wrong_attn_binding else "0x10"),
+            src1_data="0" if null_src1 else ("0xb1" if wrong_attn_binding else "0x20"),
+        ),
         row(
             m,"Vcur-0",
             "0x30" if alias_tensor else "0x31",
@@ -60,8 +65,12 @@ def write_dump(m,root,name,*,alias_tensor=False,alias_data=False,alias_weight=Fa
             "blk.0.attn_k.weight" if alias_weight else "blk.0.attn_v.weight",
             "Q4_K" if alias_weight else "Q6_K",
             "0x60" if alias_weight else "0x61",
+            src1_ptr="0" if null_src1 else ("0xa1" if wrong_attn_binding else "0x10"),
+            src1_data="0" if null_src1 else ("0xb1" if wrong_attn_binding else "0x20"),
         ),
     ]
+    if duplicate_k:
+        rows.append(rows[1])
     with (d/"provenance.tsv").open("w",encoding="utf-8",newline="") as f:
         f.write("\t".join(m.EXPECTED_FIELDS)+"\n")
         for r in rows:
@@ -100,6 +109,24 @@ def main():
         got=m.classify_dump(d)["classification"]
         if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_DISTINCT":
             raise RuntimeError(f"value distinct classifier mismatch: {got}")
+
+        d=write_dump(m,root,"null-src1",null_src1=True)
+        got=m.classify_dump(d)["classification"]
+        if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED":
+            raise RuntimeError(f"null src1 incorrectly passed strong classification: {got}")
+
+        d=write_dump(m,root,"wrong-attn-binding",wrong_attn_binding=True)
+        got=m.classify_dump(d)["classification"]
+        if got!="K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED":
+            raise RuntimeError(f"wrong attn binding incorrectly passed strong classification: {got}")
+
+        d=write_dump(m,root,"duplicate-k",duplicate_k=True)
+        try:
+            m.classify_dump(d)
+        except RuntimeError:
+            pass
+        else:
+            raise RuntimeError("duplicate provenance row was not rejected")
 
         strong=[m.classify_dump(write_dump(m,root,f"all-{i}")) for i in range(3)]
         got=m.classify_all(strong)
