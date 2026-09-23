@@ -95,11 +95,42 @@ def reconcile(root: Path):
     other_errors = [x for x in preflight_errors if x != expected_old_error]
     require(other_errors == [], errors, f"historical preflight had additional errors: {other_errors!r}")
 
+    artifact_fields = {
+        "server_sha256": "server_binary_resolved",
+        "server_impl_sha256": "server_impl_resolved",
+        "llama_lib_sha256": "llama_lib_resolved",
+        "ggml_lib_sha256": "ggml_lib_resolved",
+        "ggml_base_sha256": "ggml_base_resolved",
+        "ggml_cpu_sha256": "ggml_cpu_resolved",
+        "ggml_cuda_sha256": "ggml_cuda_resolved",
+    }
+    preserved_artifacts = {}
+    for hash_key, path_key in artifact_fields.items():
+        path_text = build.get(path_key)
+        require(isinstance(path_text, str) and path_text, errors, f"build terminal missing resolved artifact path: {path_key}")
+        path = Path(path_text) if path_text else None
+        if path is not None:
+            require(path.is_file(), errors, f"preserved artifact missing: {path}")
+        actual_sha = sha256(path) if path is not None and path.is_file() else None
+        expected_sha = EXPECTED_BUILD_HASHES[hash_key]
+        require(actual_sha == expected_sha, errors, f"preserved artifact SHA mismatch: {hash_key}")
+        preserved_artifacts[hash_key] = {
+            "path": str(path) if path else None,
+            "sha256": actual_sha,
+            "expected_sha256": expected_sha,
+        }
+
+    applied_patch = root / "build-stage" / "applied.patch"
+    require(applied_patch.is_file(), errors, f"preserved applied.patch missing: {applied_patch}")
+    applied_patch_sha = sha256(applied_patch) if applied_patch.is_file() else None
+    require(
+        applied_patch_sha == EXPECTED_BUILD_HASHES["applied_patch_sha256"],
+        errors,
+        "preserved applied.patch SHA mismatch",
+    )
+
     llama_path_text = build.get("llama_lib_resolved")
-    require(isinstance(llama_path_text, str) and llama_path_text, errors, "build terminal missing resolved libllama path")
-    llama_path = Path(llama_path_text) if llama_path_text else None
-    if llama_path is not None:
-        require(llama_path.is_file(), errors, f"preserved libllama missing: {llama_path}")
+    llama_path = Path(llama_path_text) if isinstance(llama_path_text, str) and llama_path_text else None
 
     marker_evidence = {}
     if llama_path is not None and llama_path.is_file():
@@ -135,6 +166,12 @@ def reconcile(root: Path):
         "historical_preflight_errors": preflight_errors,
         "libllama_path": str(llama_path) if llama_path else None,
         "libllama_sha256": sha256(llama_path) if llama_path is not None and llama_path.is_file() else None,
+        "preserved_artifacts": preserved_artifacts,
+        "applied_patch": {
+            "path": str(applied_patch),
+            "sha256": applied_patch_sha,
+            "expected_sha256": EXPECTED_BUILD_HASHES["applied_patch_sha256"],
+        },
         "marker_evidence": marker_evidence,
         "expected_stable_markers": [x.decode("utf-8") for x in STABLE_MARKERS],
         "errors": errors,
