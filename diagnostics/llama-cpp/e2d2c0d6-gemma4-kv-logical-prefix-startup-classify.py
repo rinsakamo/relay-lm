@@ -146,13 +146,23 @@ def canonical_argv_contract(root: Path):
             "lines": lines,
             "reason": "canonical argv missing server/model identity lines",
         }
+    server_value = lines[0].split("=", 1)[1]
+    model_value = lines[1].split("=", 1)[1]
+    expected_server = read_stripped(root / "server-binary.resolved.txt")
+    expected_model = read_stripped(root / "model.resolved.txt")
     static = lines[2:]
+    checks = {
+        "server_path_exact": server_value == expected_server,
+        "model_path_exact": model_value == expected_model,
+        "static_exact": static == EXPECTED_CANONICAL_STATIC_ARGV,
+    }
     return {
-        "ok": static == EXPECTED_CANONICAL_STATIC_ARGV,
+        "ok": all(checks.values()),
+        "checks": checks,
         "lines": lines,
         "static": static,
         "expected_static": EXPECTED_CANONICAL_STATIC_ARGV,
-        "reason": None if static == EXPECTED_CANONICAL_STATIC_ARGV else "canonical static argv mismatch",
+        "reason": None if all(checks.values()) else "canonical argv identity/static mismatch",
     }
 
 def parse_env_file(path: Path):
@@ -178,10 +188,14 @@ def environment_contract(name: str, root: Path):
     expected_keys = set(base_keys)
     if name == "probe":
         expected_keys |= {"LLAMA_KV_PROBE_DIR", "LLAMA_KV_PROBE_LABEL"}
+    expected_lib_dir = str(Path(read_stripped(root / "server-impl.resolved.txt")).parent)
     checks = {
         "key_set_exact": set(intended) == expected_keys and set(actual) == expected_keys,
         "actual_matches_intended": actual == intended,
         "path_exact": intended.get("PATH") == "/usr/local/cuda-12.8/bin:/usr/bin:/bin",
+        "lang_exact": intended.get("LANG") == "C.UTF-8",
+        "lc_all_exact": intended.get("LC_ALL") == "C.UTF-8",
+        "ld_library_path_exact": intended.get("LD_LIBRARY_PATH") == f"{expected_lib_dir}:/usr/local/cuda-12.8/lib64",
         "cuda_visible_devices_exact": intended.get("CUDA_VISIBLE_DEVICES") == "0",
         "cuda_graph_opt_disabled": intended.get("GGML_CUDA_GRAPH_OPT") == "0",
         "cuda_fusion_not_disabled": intended.get("GGML_CUDA_DISABLE_FUSION") == "0",
