@@ -201,7 +201,7 @@ def main():
 
         result = {
             "primary_classification": "LAYER0_PROJECTION_PROVENANCE_PATCH_STATIC_PASS",
-            "selftest_generation": "projection-provenance-static-20260923-c",
+            "selftest_generation": "projection-provenance-static-20260923-d",
             "provenance_header_fields": expected_header_fields,
             "patch_hunk_counts": patch_hunk_counts,
             "frozen_source_head": REV,
