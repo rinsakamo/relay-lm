@@ -81,6 +81,7 @@ sha256sum "$llama_lib" >"$out_dir/llama-lib.sha256"
 readlink -f "$server_bin" >"$out_dir/server-binary.resolved.txt"
 readlink -f "$server_impl" >"$out_dir/server-impl.resolved.txt"
 readlink -f "$llama_lib" >"$out_dir/llama-lib.resolved.txt"
+readlink -f "$model_path" >"$out_dir/model.resolved.txt"
 runtime_env=(
   "HOME=${HOME:-/tmp}"
   "PATH=/usr/local/cuda-12.8/bin:/usr/bin:/bin"
