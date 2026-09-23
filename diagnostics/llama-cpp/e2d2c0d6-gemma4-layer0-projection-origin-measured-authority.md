@@ -1274,3 +1274,39 @@ Status:
 `PROVENANCE_PREPARATION_GENERATION_C_STATIC_REQUALIFICATION_READY`
 
 Measured provenance execution remains unauthorized.
+
+
+### Adversarial review blocks provenance preparation generation c
+
+A full preparation-apparatus review is recorded in:
+
+`e2d2c0d6-gemma4-layer0-projection-provenance-preparation-review.md`
+
+The review found blocking gaps in:
+
+- remote-authority to local-apparatus byte binding;
+- hermetic runtime environment control;
+- general GPU quiescence detection;
+- build/preflight/startup artifact identity closure;
+- exact frozen startup/runtime contract enforcement;
+- strong posthoc pointer/null/src1 validation;
+- internal enforcement of the preparation static gate;
+- resource-guard release/failure semantics.
+
+Additional hardening findings cover historical-binary rejection timing,
+startup-run exit semantics, duplicate provenance rows, /tmp persistence, and
+post-preparation artifact mutation.
+
+Preparation generation c has not been executed. No build/model startup,
+generation, measured request, or scientific spend was consumed by this review.
+
+Previous readiness:
+
+`PROVENANCE_PREPARATION_GENERATION_C_STATIC_REQUALIFICATION_READY`
+
+is superseded by:
+
+`PROVENANCE_PREPARATION_REVIEW_BLOCKED`
+
+No preparation run is currently authorized. Measured provenance execution
+remains unauthorized.
