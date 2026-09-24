@@ -95,6 +95,34 @@ def make_fixture(mod, root: Path, *, stable=True, brittle=False, extra_error=Fal
     write_json(root / "qualification-stage" / "logical-prefix-binary-preflight.json", preflight)
     return artifacts, applied_patch
 
+def make_current_preflight(mod, path: Path, *, status="LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS", missing_marker=None):
+    markers = {
+        "provenance tensor missing: %s": {"present": True},
+        "tensor_ptr": {"present": True},
+        "src0_ptr": {"present": True},
+        "src1_ptr": {"present": True},
+    }
+    if missing_marker in markers:
+        markers[missing_marker]["present"] = False
+    out = {
+        "status": status,
+        "errors": [] if status == "LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS" else ["synthetic repaired preflight failure"],
+        "forbidden_old_marker_present": False,
+        "server_sha256": mod.EXPECTED_BUILD_HASHES["server_sha256"],
+        "model_sha256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+        "runtime_artifacts": {
+            "llama_server_impl": {"sha256": mod.EXPECTED_BUILD_HASHES["server_impl_sha256"]},
+            "llama": {"sha256": mod.EXPECTED_BUILD_HASHES["llama_lib_sha256"]},
+            "ggml": {"sha256": mod.EXPECTED_BUILD_HASHES["ggml_lib_sha256"]},
+            "ggml_base": {"sha256": mod.EXPECTED_BUILD_HASHES["ggml_base_sha256"]},
+            "ggml_cpu": {"sha256": mod.EXPECTED_BUILD_HASHES["ggml_cpu_sha256"]},
+            "ggml_cuda": {"sha256": mod.EXPECTED_BUILD_HASHES["ggml_cuda_sha256"]},
+        },
+        "required_runtime_markers": markers,
+    }
+    write_json(path, out)
+    return path
+
 def main():
     mod = load_module()
     original_sha = mod.sha256
@@ -111,7 +139,8 @@ def main():
             }
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "strong_false_negative_reconciles",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_FALSE_NEGATIVE_RECONCILED"
@@ -130,7 +159,8 @@ def main():
             }
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "missing_stable_marker_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
@@ -147,7 +177,8 @@ def main():
             }
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "additional_historical_error_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
@@ -164,7 +195,8 @@ def main():
             }
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "brittle_marker_present_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
@@ -188,7 +220,8 @@ def main():
             expected_by_path[redirected.resolve()] = mod.EXPECTED_BUILD_HASHES["llama_lib_sha256"]
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "redirected_artifact_path_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
@@ -207,11 +240,56 @@ def main():
             tampered = artifacts["ggml_cuda_sha256"].resolve()
             expected_by_path[tampered] = "0" * 64
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "tampered_runtime_artifact_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
                     and any("preserved artifact SHA mismatch: ggml_cuda_sha256" in x for x in out["errors"]),
+            })
+
+        with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
+            root = Path(td) / "repaired-preflight-fail"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
+            artifacts, applied_patch = make_fixture(mod, root)
+            expected_by_path = {
+                p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
+                for k, p in artifacts.items()
+            }
+            expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
+            mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
+            current_preflight = make_current_preflight(
+                mod,
+                root.parent / "repaired-preflight-fail-current.json",
+                status="LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_FAIL",
+            )
+            out = mod.reconcile(root, current_preflight)
+            results.append({
+                "name": "repaired_preflight_failure_fails",
+                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
+                    and any("current repaired binary preflight did not pass" in x for x in out["errors"]),
+            })
+
+        with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
+            root = Path(td) / "repaired-preflight-marker-missing"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
+            artifacts, applied_patch = make_fixture(mod, root)
+            expected_by_path = {
+                p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
+                for k, p in artifacts.items()
+            }
+            expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
+            mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
+            current_preflight = make_current_preflight(
+                mod,
+                root.parent / "repaired-preflight-marker-missing-current.json",
+                missing_marker="provenance tensor missing: %s",
+            )
+            out = mod.reconcile(root, current_preflight)
+            results.append({
+                "name": "repaired_preflight_stable_marker_missing_fails",
+                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
+                    and any("current repaired preflight stable marker missing" in x for x in out["errors"]),
             })
 
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
@@ -224,7 +302,8 @@ def main():
             }
             expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
             mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
-            out = mod.reconcile(root)
+            current_preflight = make_current_preflight(mod, root.parent / f"{root.name}-current-preflight.json")
+            out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "unexpected_prep_root_fails",
                 "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
