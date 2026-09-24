@@ -45,7 +45,7 @@ def require(cond, errors, message):
     if not cond:
         errors.append(message)
 
-def reconcile(root: Path):
+def reconcile(root: Path, current_preflight_path: Path):
     root = root.resolve()
     errors = []
     require(root == EXPECTED_PREP_ROOT, errors, f"unexpected preserved preparation root: {root}")
@@ -53,8 +53,9 @@ def reconcile(root: Path):
     terminal_path = root / "terminal.json"
     build_terminal_path = root / "build-stage" / "terminal.json"
     preflight_path = root / "qualification-stage" / "logical-prefix-binary-preflight.json"
+    current_preflight_path = current_preflight_path.resolve()
 
-    for path in (terminal_path, build_terminal_path, preflight_path):
+    for path in (terminal_path, build_terminal_path, preflight_path, current_preflight_path):
         require(path.is_file(), errors, f"required evidence missing: {path}")
 
     if errors:
@@ -73,6 +74,7 @@ def reconcile(root: Path):
     terminal = load_json(terminal_path)
     build = load_json(build_terminal_path)
     preflight = load_json(preflight_path)
+    current_preflight = load_json(current_preflight_path)
 
     require(terminal.get("preparation_generation") == EXPECTED_GENERATION, errors, "unexpected failed preparation generation")
     require(terminal.get("primary_classification") == "LAYER0_PROJECTION_PROVENANCE_PREPARATION_FAILED", errors, "unexpected failed preparation terminal classification")
@@ -160,6 +162,37 @@ def reconcile(root: Path):
         for marker in STABLE_MARKERS:
             require(marker in data, errors, f"stable provenance marker missing: {marker!r}")
 
+    require(
+        current_preflight.get("status") == "LAYER0_PROJECTION_PROVENANCE_BINARY_PREFLIGHT_PASS",
+        errors,
+        "current repaired binary preflight did not pass",
+    )
+    require(current_preflight.get("errors") == [], errors, "current repaired binary preflight reported errors")
+    require(current_preflight.get("forbidden_old_marker_present") is False, errors, "current repaired binary preflight saw forbidden old marker")
+    require(current_preflight.get("server_sha256") == EXPECTED_BUILD_HASHES["server_sha256"], errors, "current preflight server SHA mismatch")
+    require(current_preflight.get("model_sha256") == "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed", errors, "current preflight model SHA mismatch")
+    current_runtime = current_preflight.get("runtime_artifacts") or {}
+    for hash_key, runtime_key in (
+        ("server_impl_sha256", "llama_server_impl"),
+        ("llama_lib_sha256", "llama"),
+        ("ggml_lib_sha256", "ggml"),
+        ("ggml_base_sha256", "ggml_base"),
+        ("ggml_cpu_sha256", "ggml_cpu"),
+        ("ggml_cuda_sha256", "ggml_cuda"),
+    ):
+        require(
+            (current_runtime.get(runtime_key) or {}).get("sha256") == EXPECTED_BUILD_HASHES[hash_key],
+            errors,
+            f"current repaired preflight runtime SHA mismatch: {runtime_key}",
+        )
+    current_markers = current_preflight.get("required_runtime_markers") or {}
+    for marker in ("provenance tensor missing: %s", "tensor_ptr", "src0_ptr", "src1_ptr"):
+        require(
+            (current_markers.get(marker) or {}).get("present") is True,
+            errors,
+            f"current repaired preflight stable marker missing: {marker}",
+        )
+
     runtime = preflight.get("runtime_artifacts") or {}
     llama_entry = runtime.get("llama") or {}
     require(llama_entry.get("sha256") == EXPECTED_BUILD_HASHES["llama_lib_sha256"], errors, "historical preflight libllama SHA mismatch")
@@ -179,6 +212,8 @@ def reconcile(root: Path):
         "prep_root": str(root),
         "historical_preflight_status": preflight.get("status"),
         "historical_preflight_errors": preflight_errors,
+        "current_repaired_preflight_path": str(current_preflight_path),
+        "current_repaired_preflight_status": current_preflight.get("status"),
         "libllama_path": str(llama_path) if llama_path else None,
         "libllama_sha256": sha256(llama_path) if llama_path is not None and llama_path.is_file() else None,
         "preserved_artifacts": preserved_artifacts,
@@ -203,6 +238,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prep-root", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--current-preflight", type=Path, required=True)
     args = ap.parse_args()
 
     if args.out.exists():
@@ -212,7 +248,11 @@ def main():
     if out_root == prep_root or prep_root in out_root.parents:
         raise SystemExit(f"reconciliation output must be outside preserved preparation root: {args.out}")
 
-    out = reconcile(prep_root)
+    current_preflight = args.current_preflight.resolve()
+    if current_preflight == prep_root or prep_root in current_preflight.parents:
+        raise SystemExit(f"current repaired preflight evidence must be outside preserved preparation root: {args.current_preflight}")
+
+    out = reconcile(prep_root, current_preflight)
     args.out.mkdir(parents=True)
     (args.out / "terminal.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(out, indent=2, sort_keys=True))
