@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 EXPECTED_GENERATION = "provenance-preparation-20260923-e"
+EXPECTED_PREP_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-20260924-e-20260924T002328-107161").resolve()
 EXPECTED_BUILD_HASHES = {
     "server_sha256": "f97fa468e6a5c4ce7d72701bb90f991f04dc48d335aaefdfbc4f07231a975418",
     "server_impl_sha256": "8379cca997d51bdf117eba98f635b86111b24b59153d87724ff2889a44e7f423",
@@ -47,6 +48,7 @@ def require(cond, errors, message):
 def reconcile(root: Path):
     root = root.resolve()
     errors = []
+    require(root == EXPECTED_PREP_ROOT, errors, f"unexpected preserved preparation root: {root}")
 
     terminal_path = root / "terminal.json"
     build_terminal_path = root / "build-stage" / "terminal.json"
@@ -205,8 +207,12 @@ def main():
 
     if args.out.exists():
         raise SystemExit(f"refusing to overwrite output: {args.out}")
+    prep_root = args.prep_root.resolve()
+    out_root = args.out.resolve()
+    if out_root == prep_root or prep_root in out_root.parents:
+        raise SystemExit(f"reconciliation output must be outside preserved preparation root: {args.out}")
 
-    out = reconcile(args.prep_root)
+    out = reconcile(prep_root)
     args.out.mkdir(parents=True)
     (args.out / "terminal.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(out, indent=2, sort_keys=True))
