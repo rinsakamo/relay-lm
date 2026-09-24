@@ -263,6 +263,9 @@ def main():
         require(marker in provenance_posthoc, f"provenance posthoc missing hardening marker: {marker}")
 
     for marker in (
+        'EXPECTED_PREP_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-20260924-e-20260924T002328-107161").resolve()',
+        'unexpected preserved preparation root',
+        'reconciliation output must be outside preserved preparation root',
         'expected_bin_dir = (root / "build-stage" / "build" / "bin").resolve()',
         '"server_sha256": "llama-server"',
         '"llama_lib_sha256": "libllama.so"',
