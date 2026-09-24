@@ -1473,3 +1473,58 @@ A generation-f preparation build/startup is not yet authorized.
 Measured provenance execution remains:
 
 `PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
+
+
+### Generation-f zero-GPU transaction launch-contract failure
+
+The first authorized generation-f zero-GPU transaction was invoked exactly once
+at diagnostic HEAD
+`ce1a2b3066e39d06a2b4c6e2baf78d68392851f9` and failed before stage 1.
+
+Failure mechanism:
+
+- the external invocation set
+  `PYTHONPYCACHEPREFIX="$ZERO_GPU_ROOT/pycache"`;
+- Python created the output-root path before the orchestrator's own fresh-root
+  guard executed;
+- the orchestrator therefore stopped at
+  `output root must not exist`.
+
+Observed safety:
+
+- stage 1 not entered;
+- canonical static gate not consumed inside the orchestrator;
+- repaired preflight not invoked;
+- reconciliation not invoked;
+- build invocations: 0;
+- model startups: 0;
+- GPU runtime calls: 0;
+- generation requests: 0;
+- measured requests: 0;
+- measured attempt consumed: false;
+- scientific spend consumed: false.
+
+The failed output root is preserved and is not reused.
+
+The prior exactly-once zero-GPU transaction authority is consumed by this
+failed launcher invocation and is not retryable.
+
+A canonical shell launcher now performs the fresh-root check **before** starting
+Python and then executes the orchestrator using:
+
+`env -u PYTHONPYCACHEPREFIX PYTHONDONTWRITEBYTECODE=1`
+
+This prevents interpreter bytecode configuration from pre-creating the
+orchestrator output root.
+
+The underlying preparation apparatus remains generation:
+
+`provenance-preparation-20260924-f`
+
+Current next-step state:
+
+`PROVENANCE_PREPARATION_GENERATION_F_ZERO_GPU_LAUNCHER_REQUALIFICATION_READY`
+
+Measured provenance execution remains:
+
+`PROVENANCE_ENABLED_PHYSICAL_AUTHORITY_NOT_YET_GRANTED`
