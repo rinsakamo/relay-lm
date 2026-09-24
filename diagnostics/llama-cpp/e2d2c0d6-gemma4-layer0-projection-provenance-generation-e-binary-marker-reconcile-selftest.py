@@ -98,10 +98,12 @@ def make_fixture(mod, root: Path, *, stable=True, brittle=False, extra_error=Fal
 def main():
     mod = load_module()
     original_sha = mod.sha256
+    original_root = mod.EXPECTED_PREP_ROOT
     results = []
     try:
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "strong"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root)
             expected_by_path = {
                 p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
@@ -120,6 +122,7 @@ def main():
 
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "missing-stable"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root, stable=False)
             expected_by_path = {
                 p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
@@ -136,6 +139,7 @@ def main():
 
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "extra-error"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root, extra_error=True)
             expected_by_path = {
                 p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
@@ -152,6 +156,7 @@ def main():
 
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "brittle-present"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root, brittle=True)
             expected_by_path = {
                 p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
@@ -167,6 +172,7 @@ def main():
             })
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "redirected-runtime"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root)
             build_path = root / "build-stage" / "terminal.json"
             build = json.loads(build_path.read_text(encoding="utf-8"))
@@ -191,6 +197,7 @@ def main():
 
         with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
             root = Path(td) / "tampered-runtime"
+            mod.EXPECTED_PREP_ROOT = root.resolve()
             artifacts, applied_patch = make_fixture(mod, root)
             expected_by_path = {
                 p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
@@ -207,8 +214,25 @@ def main():
                     and any("preserved artifact SHA mismatch: ggml_cuda_sha256" in x for x in out["errors"]),
             })
 
+        with tempfile.TemporaryDirectory(prefix="relaylm-prov-reconcile-selftest-") as td:
+            root = Path(td) / "wrong-root"
+            artifacts, applied_patch = make_fixture(mod, root)
+            mod.EXPECTED_PREP_ROOT = (Path(td) / "authorized-other-root").resolve()
+            expected_by_path = {
+                p.resolve(): mod.EXPECTED_BUILD_HASHES[k]
+                for k, p in artifacts.items()
+            }
+            expected_by_path[applied_patch.resolve()] = mod.EXPECTED_BUILD_HASHES["applied_patch_sha256"]
+            mod.sha256 = lambda path: expected_by_path.get(Path(path).resolve(), original_sha(path))
+            out = mod.reconcile(root)
+            results.append({
+                "name": "unexpected_prep_root_fails",
+                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
+                    and any("unexpected preserved preparation root" in x for x in out["errors"]),
+            })
     finally:
         mod.sha256 = original_sha
+        mod.EXPECTED_PREP_ROOT = original_root
 
     errors = [r["name"] for r in results if not r["ok"]]
     status = (
