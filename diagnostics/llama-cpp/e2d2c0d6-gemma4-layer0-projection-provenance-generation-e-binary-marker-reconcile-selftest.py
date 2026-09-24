@@ -306,7 +306,7 @@ def main():
             out = mod.reconcile(root, current_preflight)
             results.append({
                 "name": "unexpected_prep_root_fails",
-                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_FAILED"
+                "ok": out["classification"] == "GENERATION_E_BINARY_MARKER_RECONCILIATION_INCOMPLETE"
                     and any("unexpected preserved preparation root" in x for x in out["errors"]),
             })
     finally:
