@@ -21,6 +21,7 @@ PROVENANCE_PATCH = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-diagnost
 E_RECONCILE = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-e-binary-marker-reconcile.py"
 E_RECONCILE_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-e-binary-marker-reconcile-selftest.py"
 F_ZERO_GPU = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-f-zero-gpu-qualify.py"
+F_ZERO_GPU_LAUNCHER = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-generation-f-zero-gpu-qualify-run.sh"
 
 def require(cond, msg):
     if not cond:
@@ -31,11 +32,11 @@ def main():
         BUILD, QUAL, PREP, PREFLIGHT, STARTUP_RUN, STARTUP, RESOURCE_GUARD,
         RESOURCE_GUARD_SELFTEST, STARTUP_CLASSIFIER, STARTUP_CLASSIFIER_SELFTEST,
         PROVENANCE_POSTHOC, PROVENANCE_POSTHOC_SELFTEST, PROVENANCE_PATCH,
-        E_RECONCILE, E_RECONCILE_SELFTEST, F_ZERO_GPU,
+        E_RECONCILE, E_RECONCILE_SELFTEST, F_ZERO_GPU, F_ZERO_GPU_LAUNCHER,
     ):
         require(path.is_file(), f"missing apparatus file: {path}")
 
-    for path in (BUILD, QUAL, PREP, STARTUP_RUN, STARTUP):
+    for path in (BUILD, QUAL, PREP, STARTUP_RUN, STARTUP, F_ZERO_GPU_LAUNCHER):
         cp = subprocess.run(["bash","-n",str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if cp.returncode != 0:
             raise RuntimeError(f"bash -n failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
@@ -88,6 +89,7 @@ def main():
     provenance_patch = PROVENANCE_PATCH.read_text(encoding="utf-8")
     e_reconcile = E_RECONCILE.read_text(encoding="utf-8")
     f_zero_gpu = F_ZERO_GPU.read_text(encoding="utf-8")
+    f_zero_gpu_launcher = F_ZERO_GPU_LAUNCHER.read_text(encoding="utf-8")
 
     require('"preparation_generation": "provenance-preparation-20260924-f"' in build,
             "build missing preparation generation stamp")
@@ -266,6 +268,19 @@ def main():
         require(marker in provenance_posthoc, f"provenance posthoc missing hardening marker: {marker}")
 
     for marker in (
+        'output root must not exist before canonical launcher',
+        'exec env -u PYTHONPYCACHEPREFIX',
+        'PYTHONDONTWRITEBYTECODE=1',
+        'e2d2c0d6-gemma4-layer0-projection-provenance-generation-f-zero-gpu-qualify.py',
+    ):
+        require(marker in f_zero_gpu_launcher, f"generation-f zero-GPU launcher missing marker: {marker}")
+
+    require(
+        'PYTHONPYCACHEPREFIX="$ZERO_GPU_ROOT/pycache"' not in f_zero_gpu_launcher,
+        "generation-f zero-GPU launcher regressed to output-root pycache prefix",
+    )
+
+    for marker in (
         'EXPECTED_GENERATION = "provenance-preparation-20260924-f"',
         'STATIC_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-preparation-static-selftest.py"',
         'PREFLIGHT = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-binary-preflight.py"',
@@ -339,6 +354,7 @@ def main():
         "persistent_evidence_sealing_gate":True,
         "generation_e_binary_marker_reconciliation_gate":True,
         "generation_f_zero_gpu_orchestrator_gate":True,
+        "generation_f_zero_gpu_launcher_gate":True,
         "synthetic_selftests":synthetic,
         "completion_or_chat_generation_paths_present":False,
         "measured_execution_authorized":False,
