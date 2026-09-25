@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import fcntl
 import importlib.util
 import json
 import os
 import sys
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -47,6 +49,29 @@ def main():
     ):
         raise RuntimeError("loaded measured wrapper descriptor generation mismatch")
     checks.append("real_wrapper_import")
+
+    original_lock_path = target.CANONICAL_LOCK_PATH
+    try:
+        with tempfile.TemporaryDirectory(prefix="relaylm-target-lease-selftest-") as td:
+            target.CANONICAL_LOCK_PATH = Path(td) / "queue.lock"
+            held = target.CANONICAL_LOCK_PATH.open("a+", encoding="utf-8")
+            try:
+                fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                detected = target._require_inherited_queue_lease_fd()
+                if detected != held.fileno():
+                    raise RuntimeError("target did not identify the inherited held queue fd")
+                fcntl.flock(held.fileno(), fcntl.LOCK_UN)
+                try:
+                    target._require_inherited_queue_lease_fd()
+                except target.ProjectionProvenanceTargetError:
+                    pass
+                else:
+                    raise RuntimeError("target accepted an unlocked inherited queue fd")
+            finally:
+                held.close()
+    finally:
+        target.CANONICAL_LOCK_PATH = original_lock_path
+    checks.append("real_flock_lease_validation")
 
     calls = []
     original_load = target._load_target
