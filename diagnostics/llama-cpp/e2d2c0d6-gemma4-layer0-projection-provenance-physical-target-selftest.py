@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,6 +34,8 @@ def main():
         != "provenance-measured-descriptor-20260925-b"
     ):
         raise RuntimeError("physical target descriptor generation drift")
+    if target.QUEUE_LEASE_FD_ENV != "RELAYLM_PHYSICAL_QUEUE_LEASE_FD":
+        raise RuntimeError("physical target queue lease environment drift")
     checks.append("identity")
 
     loaded = target._load_target()
@@ -46,18 +49,37 @@ def main():
     checks.append("real_wrapper_import")
 
     calls = []
-    original = target._load_target
+    original_load = target._load_target
+    original_lease = target._require_inherited_queue_lease_fd
     try:
         def fake_main():
-            calls.append(tuple(sys.argv[1:]))
+            calls.append((
+                tuple(sys.argv[1:]),
+                os.environ.get(target.QUEUE_LEASE_FD_ENV),
+            ))
             return 7
         target._load_target = lambda: SimpleNamespace(main=fake_main)
+        target._require_inherited_queue_lease_fd = lambda: 9
         rc = target.main(["--descriptor", "example.json"])
     finally:
-        target._load_target = original
-    if rc != 7 or calls != [("--descriptor", "example.json")]:
-        raise RuntimeError("physical target did not delegate exactly once")
+        target._load_target = original_load
+        target._require_inherited_queue_lease_fd = original_lease
+    if rc != 7 or calls != [(("--descriptor", "example.json"), "9")]:
+        raise RuntimeError("physical target did not delegate exactly once under queue lease")
+    if target.QUEUE_LEASE_FD_ENV in os.environ:
+        raise RuntimeError("physical target leaked queue lease environment")
     checks.append("exactly_once_delegation")
+
+    source = TARGET.read_text(encoding="utf-8")
+    for marker in (
+        "_require_inherited_queue_lease_fd",
+        "fcntl.LOCK_EX | fcntl.LOCK_NB",
+        "inherited canonical queue fd exists but no queue flock is held",
+        "RELAYLM_PHYSICAL_QUEUE_LEASE_FD",
+    ):
+        if marker not in source:
+            raise RuntimeError(f"queue lease marker missing: {marker}")
+    checks.append("canonical_queue_lease_required")
 
     print(json.dumps({
         "status": "PROJECTION_PROVENANCE_PHYSICAL_TARGET_SELFTEST_PASS",
