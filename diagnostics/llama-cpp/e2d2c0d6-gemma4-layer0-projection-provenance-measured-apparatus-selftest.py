@@ -16,6 +16,8 @@ DIGEST = HERE / "e2d2c0d6-gemma4-canonical-kv-directory-digest.py"
 DIGEST_SELFTEST = HERE / "e2d2c0d6-gemma4-canonical-kv-directory-digest-selftest.py"
 RESOURCE_GUARD = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py"
 RESOURCE_GUARD_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard-selftest.py"
+DESCRIPTOR_PREP = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py"
+DESCRIPTOR_LAUNCHER = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare-run.sh"
 
 def require(cond, message):
     if not cond:
@@ -39,7 +41,7 @@ def main():
     files = (
         DESCRIPTOR, RUNNER, RUNNER_SELFTEST, EXECUTE_ONCE, EXECUTE_SELFTEST,
         POSTHOC, POSTHOC_SELFTEST, DIGEST, DIGEST_SELFTEST,
-        RESOURCE_GUARD, RESOURCE_GUARD_SELFTEST,
+        RESOURCE_GUARD, RESOURCE_GUARD_SELFTEST, DESCRIPTOR_PREP,
     )
     for path in files:
         require(path.is_file(), f"missing measured apparatus file: {path}")
@@ -50,6 +52,18 @@ def main():
             check=False,
         )
         require(cp.returncode == 0, f"py_compile failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
+
+    require(DESCRIPTOR_LAUNCHER.is_file(), f"missing descriptor launcher: {DESCRIPTOR_LAUNCHER}")
+    launcher_syntax = subprocess.run(
+        ["bash", "-n", str(DESCRIPTOR_LAUNCHER)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    require(
+        launcher_syntax.returncode == 0,
+        f"bash -n failed for descriptor launcher: {launcher_syntax.stderr.decode('utf-8','replace')}",
+    )
 
     synthetic = {
         "runner": run_json(
@@ -78,6 +92,8 @@ def main():
     runner = RUNNER.read_text(encoding="utf-8")
     wrapper = EXECUTE_ONCE.read_text(encoding="utf-8")
     posthoc = POSTHOC.read_text(encoding="utf-8")
+    descriptor_prep = DESCRIPTOR_PREP.read_text(encoding="utf-8")
+    descriptor_launcher = DESCRIPTOR_LAUNCHER.read_text(encoding="utf-8")
 
     for marker in (
         'EXPECTED_PREMEASURED_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-generation-f-20260925T102433Z-474088").resolve()',
@@ -134,6 +150,68 @@ def main():
     ):
         require(marker in wrapper, f"execute-once wrapper missing marker: {marker}")
     require(wrapper.count("subprocess.run(guard_cmd, check=False)") == 1, "guarded measured child invocation surface != 1")
+
+    for marker in (
+        'LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS',
+        'LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_TRANSACTION_READY',
+        'descriptor_materializer_invocations": 1',
+        'physical_calls": 0',
+        'gpu_calls": 0',
+        'model_loads": 0',
+        'generation_requests": 0',
+        'measured_requests": 0',
+        'measured_execution_authorized_by_this_result": False',
+    ):
+        require(marker in descriptor_prep, f"descriptor transaction orchestrator missing marker: {marker}")
+
+    for forbidden in (
+        'e2d2c0d6-gemma4-layer0-projection-provenance-measured-run.py',
+        'e2d2c0d6-gemma4-layer0-projection-provenance-execute-once.py',
+        'e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py',
+        '"/completion"',
+        '"/v1/chat/completions"',
+        'nvidia-smi',
+        'subprocess.Popen',
+    ):
+        require(forbidden not in descriptor_prep, f"descriptor transaction orchestrator unexpectedly physical: {forbidden}")
+
+    for marker in (
+        'output root must not exist before canonical launcher',
+        'exec env -u PYTHONPYCACHEPREFIX',
+        'PYTHONDONTWRITEBYTECODE=1',
+        'e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py',
+    ):
+        require(marker in descriptor_launcher, f"descriptor launcher missing marker: {marker}")
+
+    require(
+        'PYTHONPYCACHEPREFIX="        'K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED',
+        'K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED',
+        'K_V_RUNTIME_PROVENANCE_MIXED_ACROSS_DUMPS',
+    ):
+        require(marker in posthoc, f"provenance posthoc marker missing: {marker}")
+
+    result = {
+        "status": "LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS",
+        "descriptor_generation": "provenance-measured-descriptor-20260925-a",
+        "attempt_id": "layer0-projection-provenance-20260925-a",
+        "synthetic_selftests": synthetic,
+        "physical_calls": 0,
+        "gpu_calls": 0,
+        "model_loads": 0,
+        "generation_requests": 0,
+        "measured_requests": 0,
+        "descriptor_transaction_gate": True,
+        "descriptor_launcher_gate": True,
+        "measured_execution_authorized": False,
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+ not in descriptor_launcher,
+        "descriptor launcher regressed to output-root pycache prefix",
+    )
 
     for marker in (
         'provenance.tsv',
