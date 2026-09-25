@@ -116,8 +116,27 @@ def validate_descriptor(descriptor_path: Path, model: Path):
     argv_sha = d.get("startup_canonical_argv_sha256")
     if not isinstance(argv_sha, str) or len(argv_sha) != 64:
         raise RuntimeError("descriptor startup canonical argv SHA invalid")
+    server_path = Path(runtime["llama_server"]["path"]).resolve()
+    measured_argv_sha = hashlib.sha256(canonical_argv_payload(server_path, model)).hexdigest()
+    require_equal(measured_argv_sha, argv_sha, "measured/startup canonical argv SHA")
 
     return d
+
+def canonical_argv_payload(server: Path, model: Path) -> bytes:
+    lines = [
+        f"server_bin={server}",
+        f"model_path={model}",
+        "--host=127.0.0.1",
+        "--ctx-size=8192",
+        "--parallel=1",
+        "--gpu-layers=999",
+        "--no-context-shift",
+        "--batch-size=512",
+        "--ubatch-size=512",
+        "--flash-attn=on",
+        "--log-verbosity=4",
+    ]
+    return ("\n".join(lines) + "\n").encode("utf-8")
 
 def http_get(port: int, path: str, timeout=2):
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
