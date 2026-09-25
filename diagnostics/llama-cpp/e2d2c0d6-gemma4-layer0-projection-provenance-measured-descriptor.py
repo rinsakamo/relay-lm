@@ -226,7 +226,7 @@ def main():
     require(not missing_manifest_paths, f"prepared manifest missing measured-critical artifact: {missing_manifest_paths}")
 
     descriptor = {
-        "descriptor_generation": "provenance-measured-descriptor-20260925-a",
+        "descriptor_generation": "provenance-measured-descriptor-20260925-b",
         "classification": "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY",
         "relaylm_authority_head": EXPECTED_AUTHORITY_HEAD,
         "relaylm_authority_tree": EXPECTED_AUTHORITY_TREE,

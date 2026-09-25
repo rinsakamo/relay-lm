@@ -184,32 +184,7 @@ def main():
         require(marker in descriptor_launcher, f"descriptor launcher missing marker: {marker}")
 
     require(
-        'PYTHONPYCACHEPREFIX="        'K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED',
-        'K_V_RUNTIME_PROVENANCE_DISTINCT_VALUE_IDENTICAL_SOURCE_SEMANTICS_UNEXPECTED',
-        'K_V_RUNTIME_PROVENANCE_MIXED_ACROSS_DUMPS',
-    ):
-        require(marker in posthoc, f"provenance posthoc marker missing: {marker}")
-
-    result = {
-        "status": "LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS",
-        "descriptor_generation": "provenance-measured-descriptor-20260925-a",
-        "attempt_id": "layer0-projection-provenance-20260925-a",
-        "synthetic_selftests": synthetic,
-        "physical_calls": 0,
-        "gpu_calls": 0,
-        "model_loads": 0,
-        "generation_requests": 0,
-        "measured_requests": 0,
-        "descriptor_transaction_gate": True,
-        "descriptor_launcher_gate": True,
-        "measured_execution_authorized": False,
-    }
-    print(json.dumps(result, indent=2, sort_keys=True))
-    return 0
-
-if __name__ == "__main__":
-    raise SystemExit(main())
- not in descriptor_launcher,
+        'PYTHONPYCACHEPREFIX="' not in descriptor_launcher,
         "descriptor launcher regressed to output-root pycache prefix",
     )
 
@@ -223,7 +198,7 @@ if __name__ == "__main__":
 
     result = {
         "status": "LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS",
-        "descriptor_generation": "provenance-measured-descriptor-20260925-a",
+        "descriptor_generation": "provenance-measured-descriptor-20260925-b",
         "attempt_id": "layer0-projection-provenance-20260925-a",
         "synthetic_selftests": synthetic,
         "physical_calls": 0,
@@ -231,6 +206,8 @@ if __name__ == "__main__":
         "model_loads": 0,
         "generation_requests": 0,
         "measured_requests": 0,
+        "descriptor_transaction_gate": True,
+        "descriptor_launcher_gate": True,
         "measured_execution_authorized": False,
     }
     print(json.dumps(result, indent=2, sort_keys=True))

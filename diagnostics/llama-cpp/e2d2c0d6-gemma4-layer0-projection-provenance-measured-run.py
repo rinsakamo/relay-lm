@@ -13,7 +13,7 @@ import sys
 import time
 
 ATTEMPT_ID = "layer0-projection-provenance-20260925-a"
-EXPECTED_DESCRIPTOR_GENERATION = "provenance-measured-descriptor-20260925-a"
+EXPECTED_DESCRIPTOR_GENERATION = "provenance-measured-descriptor-20260925-b"
 EXPECTED_PREMEASURED_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-generation-f-20260925T102433Z-474088").resolve()
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
 EXPECTED_W_HISTORICAL_DIGEST = "492663002bf7f1c37d7df2e346d7eff38ff21d6225040c21e07f8fa4984b7ce6"

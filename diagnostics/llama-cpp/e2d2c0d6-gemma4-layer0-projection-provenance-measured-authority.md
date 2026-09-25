@@ -49,7 +49,7 @@ Measured attempt id:
 
 Descriptor generation:
 
-`provenance-measured-descriptor-20260925-a`
+`provenance-measured-descriptor-20260925-b`
 
 The runner is restricted to the committed W/C requests:
 
@@ -124,9 +124,20 @@ This result still has:
 A later authority comment must pin the exact descriptor SHA before any physical
 measured transaction can be authorized.
 
+Descriptor generation `provenance-measured-descriptor-20260925-a` was consumed by a failed
+descriptor-only transaction before materialization because this static gate contained a
+syntax-corrupted duplicated tail. No physical/GPU/model/generation/measured request path was
+reached, and the measured attempt id remains unconsumed.
+
+The source-only repair removes the duplicated malformed tail and advances the descriptor
+generation to `provenance-measured-descriptor-20260925-b` while preserving measured attempt id
+`layer0-projection-provenance-20260925-a`.
+
+Repository source does not self-authorize a replacement transaction.
+
 Current state:
 
-`PROVENANCE_MEASURED_DESCRIPTOR_TRANSACTION_READY_FOR_AUTHORIZATION`
+`PROVENANCE_MEASURED_DESCRIPTOR_REPAIR_SOURCE_READY_NEW_TRANSACTION_NOT_YET_AUTHORIZED`
 
 Measured physical authority:
 
