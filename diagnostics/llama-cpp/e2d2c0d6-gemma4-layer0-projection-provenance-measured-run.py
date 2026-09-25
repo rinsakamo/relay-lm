@@ -191,6 +191,54 @@ class Server:
             "--log-verbosity", "4",
         ]
 
+    def verify_runtime_identity(self, env):
+        if self.proc is None:
+            raise RuntimeError(f"{self.label}: process unavailable for runtime identity")
+        pid = self.proc.pid
+        environ_path = Path(f"/proc/{pid}/environ")
+        maps_path = Path(f"/proc/{pid}/maps")
+        cmdline_path = Path(f"/proc/{pid}/cmdline")
+        if not environ_path.is_file() or not maps_path.is_file():
+            raise RuntimeError(f"{self.label}: proc runtime evidence unavailable")
+
+        actual_env_lines = environ_path.read_bytes().split(b"\0")
+        actual_env = {}
+        for raw in actual_env_lines:
+            if not raw:
+                continue
+            text = raw.decode("utf-8", "strict")
+            if "=" not in text:
+                raise RuntimeError(f"{self.label}: malformed proc environ entry: {text!r}")
+            key, value = text.split("=", 1)
+            if key in actual_env:
+                raise RuntimeError(f"{self.label}: duplicate proc environ key: {key}")
+            actual_env[key] = value
+        if actual_env != env:
+            raise RuntimeError(f"{self.label}: measured runtime environment differs from intended environment")
+        write_json(self.out / "proc-environ.health-ready.json", actual_env)
+
+        maps_text = maps_path.read_text(encoding="utf-8")
+        (self.out / "proc-maps.health-ready.txt").write_text(maps_text, encoding="utf-8")
+        if cmdline_path.is_file():
+            cmdline = [x.decode("utf-8", "replace") for x in cmdline_path.read_bytes().split(b"\0") if x]
+            write_json(self.out / "proc-cmdline.health-ready.json", cmdline)
+
+        loaded = {}
+        for key in ("llama_server_impl", "llama", "ggml", "ggml_base", "ggml_cpu", "ggml_cuda"):
+            expected = str(Path(self.descriptor["runtime"][key]["path"]).resolve())
+            soname = Path(expected).name
+            paths = sorted({
+                line.split()[-1]
+                for line in maps_text.splitlines()
+                if soname in line and line.split()
+            })
+            if paths != [expected]:
+                raise RuntimeError(
+                    f"{self.label}: loaded runtime path mismatch for {key}: {paths!r} != {[expected]!r}"
+                )
+            loaded[key] = {"expected": expected, "loaded_paths": paths}
+        write_json(self.out / "runtime-library-closure.json", loaded)
+
     def start(self):
         self.out.mkdir(parents=True, exist_ok=False)
         (self.out / "hermetic-home").mkdir()
@@ -230,6 +278,7 @@ class Server:
                 status, body = http_get(self.port, "/health")
                 attempts.append({"status": status, "body": body.decode("utf-8", "replace")})
                 if status == 200:
+                    self.verify_runtime_identity(env)
                     write_json(self.out / "startup.json", {"ready": True, "attempts": attempts})
                     return
             except Exception as exc:
