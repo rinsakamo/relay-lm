@@ -216,6 +216,15 @@ def main():
             require((qual_runtime.get(bkey) or {}).get("sha256") == actual, f"qualification runtime SHA mismatch: {name}")
         runtime[name] = {"path": str(path), "sha256": actual}
 
+    manifest_paths = {Path(entry["path"]).resolve() for entry in manifest["entries"]}
+    required_manifest_paths = {
+        (root / "build-stage" / "applied.patch").resolve(),
+        (root / "terminal.json").resolve(),
+        *{Path(entry["path"]).resolve() for entry in runtime.values()},
+    }
+    missing_manifest_paths = sorted(str(p) for p in required_manifest_paths - manifest_paths)
+    require(not missing_manifest_paths, f"prepared manifest missing measured-critical artifact: {missing_manifest_paths}")
+
     descriptor = {
         "descriptor_generation": "provenance-measured-descriptor-20260925-a",
         "classification": "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY",
