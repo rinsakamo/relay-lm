@@ -80,6 +80,12 @@
       "required_distributions": [
         "httpx"
       ]
+    },
+    "diagnostic:3006-projection-provenance": {
+      "branch": "diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916",
+      "module": "tools.diagnostic_projection_provenance_target",
+      "description": "Issue #3006 exactly-once Gemma4 projection-provenance measured wrapper through the canonical shared physical queue.",
+      "required_distributions": []
     }
   }
 }

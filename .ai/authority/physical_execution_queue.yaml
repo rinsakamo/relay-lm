@@ -15,11 +15,14 @@ implementation:
 - tools/relay_physical_run.py
 - tools/physical_execution_queue.py
 - tools/physical_execution_queue_smoke_target.py
+- tools/diagnostic_projection_provenance_target.py
 tests:
 - tests/unit/test_relay_physical_env.py
 - tests/unit/test_relay_physical_run.py
 - tests/unit/test_physical_execution_queue.py
 - tests/unit/test_physical_execution_queue_smoke_target.py
+- tests/unit/test_diagnostic_projection_provenance_target.py
+- diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-physical-target-selftest.py
 - tests/integration/test_physical_execution_queue_process_smoke.py
 annotations:
 - .ai/skills/physical-execution-queue/SKILL.md
