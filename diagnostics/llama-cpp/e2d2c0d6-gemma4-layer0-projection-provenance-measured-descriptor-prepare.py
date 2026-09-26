@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,40 @@ EXPECTED_PREMEASURED_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-prepar
 HERE = Path(__file__).resolve().parent
 STATIC = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-apparatus-selftest.py"
 MATERIALIZER = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor.py"
+EXPECTED_DESCRIPTOR_GENERATION = "provenance-measured-descriptor-20260925-b"
+EXPECTED_ATTEMPT_ID = "layer0-projection-provenance-20260925-a"
+
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def seal_output_root(root: Path):
+    records = []
+    manifest = root / "descriptor-artifact-manifest.sha256"
+    for p in sorted(root.rglob("*")):
+        if p == manifest:
+            continue
+        if p.is_symlink():
+            raise RuntimeError(f"descriptor evidence symlink forbidden: {p}")
+        if p.is_file():
+            records.append((str(p.relative_to(root)), sha256(p)))
+    manifest.write_text(
+        "".join(f"{digest}  {name}\n" for name, digest in records),
+        encoding="utf-8",
+    )
+    manifest_sha = sha256(manifest)
+    for p in sorted(root.rglob("*"), key=lambda x: len(x.parts), reverse=True):
+        if p.is_file():
+            os.chmod(p, 0o444)
+        elif p.is_dir():
+            os.chmod(p, 0o555)
+    os.chmod(root, 0o555)
+    return manifest_sha
+
 
 def write_json(path: Path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -32,6 +67,23 @@ def git(repo: Path, *args):
     if cp.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed rc={cp.returncode}: {cp.stderr.strip()}")
     return cp.stdout.strip()
+
+def refresh_authority(repo_root: Path, authority_head: str):
+    remote_ref = f"refs/remotes/origin/{AUTHORITY_BRANCH}"
+    branch_ref = f"refs/heads/{AUTHORITY_BRANCH}"
+    fetch = run_capture([
+        "git", "-C", str(repo_root), "fetch", "--quiet", "origin",
+        f"+{branch_ref}:{remote_ref}",
+    ])
+    if fetch.returncode != 0:
+        raise RuntimeError(f"failed to refresh diagnostic authority: {fetch.stderr.strip()}")
+    remote_head = git(repo_root, "rev-parse", remote_ref)
+    if remote_head != authority_head:
+        raise RuntimeError(
+            f"diagnostic authority moved: remote={remote_head} expected={authority_head}"
+        )
+    return remote_head
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -61,17 +113,11 @@ def main():
     if origin not in CANONICAL_ORIGINS:
         raise SystemExit(f"unexpected RelayLM authority origin: {origin}")
 
-    remote_ref = f"refs/remotes/origin/{AUTHORITY_BRANCH}"
-    branch_ref = f"refs/heads/{AUTHORITY_BRANCH}"
-    fetch = run_capture([
-        "git", "-C", str(repo_root), "fetch", "--quiet", "origin",
-        f"+{branch_ref}:{remote_ref}",
-    ])
-    if fetch.returncode != 0:
-        raise SystemExit(f"failed to refresh diagnostic authority: {fetch.stderr.strip()}")
-
     local_head = git(repo_root, "rev-parse", "HEAD")
-    remote_head = git(repo_root, "rev-parse", remote_ref)
+    try:
+        remote_head = refresh_authority(repo_root, authority_head)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     tree = git(repo_root, "rev-parse", "HEAD^{tree}")
     dirty = git(repo_root, "status", "--porcelain", "--untracked-files=all")
     if local_head != authority_head or remote_head != authority_head:
@@ -87,8 +133,10 @@ def main():
 
     out_root.mkdir(parents=True)
     env = dict(os.environ)
-    env.pop("PYTHONPYCACHEPREFIX", None)
+    for key in ("PYTHONPYCACHEPREFIX", "PYTHONPATH", "PYTHONHOME"):
+        env.pop(key, None)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONNOUSERSITE"] = "1"
 
     authority = {
         "authority_head": authority_head,
@@ -98,10 +146,17 @@ def main():
         "origin": origin,
         "premeasured_root": str(EXPECTED_PREMEASURED_ROOT),
         "model": str(model),
+        "python": {
+            "executable": sys.executable,
+            "version": sys.version,
+            "isolated": bool(sys.flags.isolated),
+            "no_user_site": bool(sys.flags.no_user_site),
+            "dont_write_bytecode": bool(sys.dont_write_bytecode),
+        },
     }
     write_json(out_root / "authority.json", authority)
 
-    static_cp = run_capture([sys.executable, str(STATIC)], env=env)
+    static_cp = run_capture([sys.executable, "-B", "-I", str(STATIC)], env=env)
     (out_root / "static.stdout.json").write_text(static_cp.stdout, encoding="utf-8")
     (out_root / "static.stderr.txt").write_text(static_cp.stderr, encoding="utf-8")
     (out_root / "static.exit-code.txt").write_text(f"{static_cp.returncode}\n", encoding="utf-8")
@@ -133,13 +188,24 @@ def main():
         raise RuntimeError("unexpected measured apparatus static classification")
     if static_obj.get("measured_execution_authorized") is not False:
         raise RuntimeError("static gate improperly authorizes measured execution")
+    if static_obj.get("descriptor_generation") != EXPECTED_DESCRIPTOR_GENERATION:
+        raise RuntimeError("static gate descriptor generation mismatch")
+    if static_obj.get("attempt_id") != EXPECTED_ATTEMPT_ID:
+        raise RuntimeError("static gate measured attempt mismatch")
+
+    remote_head = refresh_authority(repo_root, authority_head)
+    dirty_mid = git(repo_root, "status", "--porcelain", "--untracked-files=all")
+    if dirty_mid:
+        raise RuntimeError("authority checkout changed during static qualification")
 
     descriptor_path = out_root / "descriptor.json"
     materialize_cp = run_capture([
-        sys.executable, str(MATERIALIZER),
+        sys.executable, "-B", "-I", str(MATERIALIZER),
         "--premeasured-root", str(EXPECTED_PREMEASURED_ROOT),
         "--model", str(model),
         "--out", str(descriptor_path),
+        "--measured-authority-head", local_head,
+        "--measured-authority-tree", tree,
     ], env=env)
     (out_root / "materializer.stdout.json").write_text(materialize_cp.stdout, encoding="utf-8")
     (out_root / "materializer.stderr.txt").write_text(materialize_cp.stderr, encoding="utf-8")
@@ -167,7 +233,17 @@ def main():
     materialized = json.loads(materialize_cp.stdout)
     if materialized.get("status") != "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY":
         raise RuntimeError("unexpected descriptor materializer status")
+    if materialized.get("descriptor_generation") != EXPECTED_DESCRIPTOR_GENERATION:
+        raise RuntimeError("materialized descriptor generation mismatch")
+    if materialized.get("measured_attempt_id") != EXPECTED_ATTEMPT_ID:
+        raise RuntimeError("materialized measured attempt mismatch")
+    if (
+        materialized.get("measured_authority_head") != local_head
+        or materialized.get("measured_authority_tree") != tree
+    ):
+        raise RuntimeError("materialized measured authority identity mismatch")
 
+    remote_head = refresh_authority(repo_root, authority_head)
     dirty_after = git(repo_root, "status", "--porcelain", "--untracked-files=all")
     if dirty_after:
         raise RuntimeError("authority checkout changed during descriptor transaction")
@@ -191,9 +267,13 @@ def main():
         "measured_execution_authorized_by_this_result": False,
     }
     write_json(out_root / "terminal.json", terminal)
-    os.chmod(descriptor_path, 0o444)
-    os.chmod(out_root / "terminal.json", 0o444)
-    print(json.dumps(terminal, indent=2, sort_keys=True))
+    manifest_sha = seal_output_root(out_root)
+    output = {
+        **terminal,
+        "descriptor_artifact_manifest_sha256": manifest_sha,
+        "descriptor_root_mode": "0555",
+    }
+    print(json.dumps(output, indent=2, sort_keys=True))
     return 0
 
 if __name__ == "__main__":

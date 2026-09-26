@@ -22,7 +22,18 @@ EXPECTED_L0_SHA = "d777877485b3307d8ee76e6b6df783d00b4302bb700c405ac5cbf2f6d7344
 EXPECTED_LC_SHA = "63afb2a44ea12f14377ba52348616a0bd8ac3ebdd65d81d1a3ede1c4c2c64043"
 
 HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parents[1]
 FIXTURE = HERE / "fixtures" / "e2d2c0d6-gemma4-kv-v2"
+CRITICAL_APPARATUS = {
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-run.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-execute-once.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-canonical-kv-directory-digest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py",
+    "tools/diagnostic_projection_provenance_target.py",
+    ".ai/physical/llama_cpp_targets.json",
+}
 POSTHOC = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py"
 DIGEST_TOOL = HERE / "e2d2c0d6-gemma4-canonical-kv-directory-digest.py"
 
@@ -49,6 +60,52 @@ def load_json(path: Path):
 def write_json(path: Path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def fsync_directory(path: Path):
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def durable_mkdir(path: Path):
+    path.mkdir()
+    fsync_directory(path.parent)
+
+
+def durable_write_bytes(path: Path, payload: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as f:
+        f.write(payload)
+        f.flush()
+        os.fsync(f.fileno())
+    fsync_directory(path.parent)
+
+
+def seal_measured_root(root: Path):
+    manifest = root / "measured-artifact-manifest.sha256"
+    records = []
+    for p in sorted(root.rglob("*")):
+        if p == manifest:
+            continue
+        if p.is_symlink():
+            raise RuntimeError(f"measured evidence symlink forbidden: {p}")
+        if p.is_file():
+            records.append((str(p.relative_to(root)), sha256(p)))
+    durable_write_bytes(
+        manifest,
+        "".join(f"{digest}  {name}\n" for name, digest in records).encode("utf-8"),
+    )
+    manifest_sha = sha256(manifest)
+    for p in sorted(root.rglob("*"), key=lambda x: len(x.parts), reverse=True):
+        if p.is_file():
+            os.chmod(p, 0o444)
+        elif p.is_dir():
+            os.chmod(p, 0o555)
+    os.chmod(root, 0o555)
+    return manifest_sha
 
 def require_equal(observed, expected, label):
     if observed != expected:
@@ -91,7 +148,14 @@ def validate_descriptor(descriptor_path: Path, model: Path):
     require_equal(sha256(descriptor_path), expected_sha, "descriptor SHA256")
     d = load_json(descriptor_path)
     require_equal(d.get("descriptor_generation"), EXPECTED_DESCRIPTOR_GENERATION, "descriptor generation")
+    require_equal(d.get("measured_attempt_id"), ATTEMPT_ID, "descriptor measured attempt")
     require_equal(d.get("classification"), "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY", "descriptor classification")
+    measured_head = d.get("measured_authority_head")
+    measured_tree = d.get("measured_authority_tree")
+    if not isinstance(measured_head, str) or len(measured_head) != 40:
+        raise RuntimeError("descriptor measured authority HEAD invalid")
+    if not isinstance(measured_tree, str) or len(measured_tree) != 40:
+        raise RuntimeError("descriptor measured authority tree invalid")
     root = Path(d.get("premeasured_root", "")).resolve()
     require_equal(root, EXPECTED_PREMEASURED_ROOT, "descriptor premeasured root")
     require_equal((d.get("model") or {}).get("path"), str(model.resolve()), "descriptor model path")
@@ -112,6 +176,34 @@ def validate_descriptor(descriptor_path: Path, model: Path):
         if not p.is_file():
             raise RuntimeError(f"runtime artifact missing: {name}: {p}")
         require_equal(sha256(p), entry.get("sha256"), f"runtime SHA: {name}")
+
+    apparatus = d.get("measured_apparatus") or {}
+    if not isinstance(apparatus, dict) or not CRITICAL_APPARATUS.issubset(set(apparatus)):
+        raise RuntimeError("descriptor measured apparatus closure incomplete")
+    for rel, expected in apparatus.items():
+        p = (REPO_ROOT / rel).resolve()
+        if REPO_ROOT != p and REPO_ROOT not in p.parents:
+            raise RuntimeError(f"descriptor apparatus path escapes repository: {rel}")
+        if not p.is_file():
+            raise RuntimeError(f"descriptor apparatus source missing: {rel}")
+        require_equal(sha256(p), expected, f"measured apparatus SHA: {rel}")
+
+    requests = d.get("requests") or {}
+    for label, path, expected_sha in (
+        ("W", FIXTURE / "L0.request.json", EXPECTED_L0_SHA),
+        ("C", FIXTURE / "LC.request.json", EXPECTED_LC_SHA),
+    ):
+        entry = requests.get(label) or {}
+        require_equal(entry.get("sha256"), expected_sha, f"descriptor {label} request SHA")
+        require_equal(sha256(path), expected_sha, f"local {label} request SHA")
+
+    gpu_inventory = d.get("preparation_gpu_inventory")
+    if not isinstance(gpu_inventory, list) or len(gpu_inventory) != 1:
+        raise RuntimeError("descriptor preparation GPU inventory invalid")
+    gpu0 = gpu_inventory[0]
+    for key in ("index", "uuid", "name", "driver_version", "memory_total_mib"):
+        if key not in gpu0:
+            raise RuntimeError(f"descriptor preparation GPU identity missing: {key}")
 
     argv_sha = d.get("startup_canonical_argv_sha256")
     if not isinstance(argv_sha, str) or len(argv_sha) != 64:
@@ -198,7 +290,8 @@ class Server:
         environ_path = Path(f"/proc/{pid}/environ")
         maps_path = Path(f"/proc/{pid}/maps")
         cmdline_path = Path(f"/proc/{pid}/cmdline")
-        if not environ_path.is_file() or not maps_path.is_file():
+        exe_path = Path(f"/proc/{pid}/exe")
+        if not environ_path.is_file() or not maps_path.is_file() or not exe_path.exists():
             raise RuntimeError(f"{self.label}: proc runtime evidence unavailable")
 
         actual_env_lines = environ_path.read_bytes().split(b"\0")
@@ -219,9 +312,22 @@ class Server:
 
         maps_text = maps_path.read_text(encoding="utf-8")
         (self.out / "proc-maps.health-ready.txt").write_text(maps_text, encoding="utf-8")
-        if cmdline_path.is_file():
-            cmdline = [x.decode("utf-8", "replace") for x in cmdline_path.read_bytes().split(b"\0") if x]
-            write_json(self.out / "proc-cmdline.health-ready.json", cmdline)
+        actual_exe = Path(os.readlink(exe_path)).resolve()
+        expected_exe = self.binary.resolve()
+        require_equal(actual_exe, expected_exe, f"{self.label}: proc executable")
+        (self.out / "proc-executable.health-ready.txt").write_text(
+            str(actual_exe) + "\n", encoding="utf-8"
+        )
+
+        if not cmdline_path.is_file():
+            raise RuntimeError(f"{self.label}: proc cmdline unavailable")
+        cmdline = [
+            x.decode("utf-8", "strict")
+            for x in cmdline_path.read_bytes().split(b"\0")
+            if x
+        ]
+        require_equal(cmdline, self.command(), f"{self.label}: proc cmdline")
+        write_json(self.out / "proc-cmdline.health-ready.json", cmdline)
 
         loaded = {}
         for key in ("llama_server_impl", "llama", "ggml", "ggml_base", "ggml_cpu", "ggml_cuda"):
@@ -240,7 +346,9 @@ class Server:
         write_json(self.out / "runtime-library-closure.json", loaded)
 
     def start(self):
-        self.out.mkdir(parents=True, exist_ok=False)
+        if not self.out.parent.is_dir():
+            raise RuntimeError(f"{self.label}: server output parent missing")
+        durable_mkdir(self.out)
         (self.out / "hermetic-home").mkdir()
         (self.out / "hermetic-tmp").mkdir()
         write_json(self.out / "argv.json", self.command())
@@ -306,8 +414,11 @@ class Server:
 def send_request(server: Server, name: str, request_path: Path, expected_prompt: int):
     raw = request_path.read_bytes()
     record = server.out / f"{name}.request.json"
-    record.write_bytes(raw)
-    (server.out / f"{name}.request.sha256.txt").write_text(hashlib.sha256(raw).hexdigest() + "\n", encoding="utf-8")
+    durable_write_bytes(record, raw)
+    durable_write_bytes(
+        server.out / f"{name}.request.sha256.txt",
+        (hashlib.sha256(raw).hexdigest() + "\n").encode("utf-8"),
+    )
     status, headers, body = http_post_raw(server.port, "/completion", raw)
     write_json(server.out / f"{name}.http.json", {"status": status, "headers": headers})
     (server.out / f"{name}.response.raw.json").write_bytes(body)
@@ -335,6 +446,10 @@ def validate_inputs(args):
     lc = FIXTURE / "LC.request.json"
     validate_request(l0, EXPECTED_L0_SHA, 883, True)
     validate_request(lc, EXPECTED_LC_SHA, 2927, False)
+    w_prompt = load_json(l0)["prompt"]
+    c_prompt = load_json(lc)["prompt"]
+    if w_prompt[:512] != c_prompt[:512]:
+        raise RuntimeError("frozen W/C first 512 tokens differ")
     descriptor = validate_descriptor(args.descriptor, args.model)
     return {
         "attempt_id": ATTEMPT_ID,
@@ -373,7 +488,9 @@ def main():
         raise RuntimeError("--out-root is required for measured execution")
     if args.out_root.exists():
         raise RuntimeError(f"out root must not exist: {args.out_root}")
-    args.out_root.mkdir(parents=True)
+    if not args.out_root.parent.is_dir():
+        raise RuntimeError(f"measured output parent missing: {args.out_root.parent}")
+    durable_mkdir(args.out_root)
     write_json(args.out_root / "identity.json", identity)
 
     kv_root = args.out_root / "kv"
@@ -410,6 +527,20 @@ def main():
     missing = [str(p) for p in required if not p.is_dir()]
     if missing:
         raise RuntimeError(f"required measured dumps missing: {missing}")
+    actual_kv_dirs = {p.name for p in kv_root.iterdir() if p.is_dir()}
+    expected_kv_dirs = {"W-P512", "C-P512"}
+    if actual_kv_dirs != expected_kv_dirs:
+        raise RuntimeError(f"unexpected KV dump directories: {sorted(actual_kv_dirs)}")
+    actual_projection_dirs = {p.name for p in projection_root.iterdir() if p.is_dir()}
+    expected_projection_dirs = {
+        "W-p0-370-w371",
+        "W-p371-878-w508",
+        "C-p0-511-w512",
+    }
+    if actual_projection_dirs != expected_projection_dirs:
+        raise RuntimeError(
+            f"unexpected projection dump directories: {sorted(actual_projection_dirs)}"
+        )
 
     w_digest = digest_kv_dir(kv_root / "W-P512")
     c_digest = digest_kv_dir(kv_root / "C-P512")
@@ -456,7 +587,13 @@ def main():
         "measured_requests": 2,
     }
     write_json(args.out_root / "terminal.json", terminal)
-    print(json.dumps(terminal, indent=2, sort_keys=True))
+    manifest_sha = seal_measured_root(args.out_root)
+    output = {
+        **terminal,
+        "measured_artifact_manifest_sha256": manifest_sha,
+        "measured_root_mode": "0555",
+    }
+    print(json.dumps(output, indent=2, sort_keys=True))
     return 0
 
 if __name__ == "__main__":

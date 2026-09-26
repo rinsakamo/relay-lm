@@ -23,7 +23,11 @@ def main():
     lc = m.FIXTURE / "LC.request.json"
     m.validate_request(l0, m.EXPECTED_L0_SHA, 883, True)
     m.validate_request(lc, m.EXPECTED_LC_SHA, 2927, False)
-    checks.append("committed_request_identity")
+    w_prompt = json.loads(l0.read_text(encoding="utf-8"))["prompt"]
+    c_prompt = json.loads(lc.read_text(encoding="utf-8"))["prompt"]
+    if w_prompt[:512] != c_prompt[:512]:
+        raise RuntimeError("frozen W/C first 512 tokens differ")
+    checks.append("committed_request_identity_and_prefix")
 
     server = Path("/home/rinsa/example/bin/llama-server")
     model = Path("/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf")
@@ -75,6 +79,24 @@ def main():
     ):
         if marker not in source:
             raise RuntimeError(f"hermetic runtime marker missing: {marker}")
+    for marker in (
+        "durable_mkdir(args.out_root)",
+        "durable_mkdir(self.out)",
+        "durable_write_bytes(record, raw)",
+        "os.fsync(f.fileno())",
+        "proc-executable.health-ready.txt",
+        'require_equal(cmdline, self.command(), f"{self.label}: proc cmdline")',
+        "unexpected KV dump directories",
+        "unexpected projection dump directories",
+        "measured-artifact-manifest.sha256",
+        "seal_measured_root(args.out_root)",
+        "descriptor measured attempt",
+        "descriptor measured apparatus closure incomplete",
+    ):
+        if marker not in source:
+            raise RuntimeError(f"measured hardening marker missing: {marker}")
+    checks.append("durability_runtime_identity_and_sealing")
+
     checks.append("hermetic_runtime_contract")
 
     if m.EXPECTED_W_HISTORICAL_DIGEST == m.EXPECTED_C_HISTORICAL_DIGEST:

@@ -31,6 +31,10 @@ if [[ ! -f "$model" ]]; then
   echo "model missing: $model" >&2
   exit 69
 fi
+if [[ -z "${RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD:-}" ]]; then
+  echo "RELAYLM_DIAGNOSTIC_AUTHORITY_HEAD is required" >&2
+  exit 71
+fi
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 runner="$script_dir/e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py"
@@ -39,4 +43,10 @@ if [[ ! -f "$runner" ]]; then
   exit 70
 fi
 
-exec env -u PYTHONPYCACHEPREFIX   PYTHONDONTWRITEBYTECODE=1   python3 "$runner" --out-root "$out_root" --model "$model"
+exec env \
+  -u PYTHONPYCACHEPREFIX \
+  -u PYTHONPATH \
+  -u PYTHONHOME \
+  PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONNOUSERSITE=1 \
+  /usr/bin/python3 -B -I "$runner" --out-root "$out_root" --model "$model"

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import errno
+import fcntl
 import importlib.util
 import json
 from pathlib import Path
@@ -71,9 +72,46 @@ def main():
             "name": "empty_gpu_compute_parser",
             "ok": g.gpu_compute_processes() == [],
         })
+        with tempfile.TemporaryDirectory(prefix="relaylm-gpu-identity-selftest-") as td:
+            expected_path = Path(td) / "expected.json"
+            expected_path.write_text(json.dumps(inventory) + "\n", encoding="utf-8")
+            matched = g.validate_expected_gpu_inventory(inventory, expected_path)
+            results.append({
+                "name": "expected_gpu_identity_matches",
+                "ok": matched["required"] is True and matched["match"] is True,
+            })
+            mismatch = [{**inventory[0], "driver_version": "0.0"}]
+            not_matched = g.validate_expected_gpu_inventory(mismatch, expected_path)
+            results.append({
+                "name": "expected_gpu_identity_mismatch_detected",
+                "ok": not_matched["required"] is True and not_matched["match"] is False,
+            })
     finally:
         g.shutil.which = original_which
         g.subprocess.run = original_run
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-inherited-lock-selftest-") as td:
+        original_lock_root = g.LOCK_ROOT
+        try:
+            g.LOCK_ROOT = Path(td)
+            lock_path = g.LOCK_ROOT / g.safe_resource_id(g.RESOURCE_KEY)
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            held = lock_path.open("a+", encoding="utf-8")
+            try:
+                fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                g.validate_inherited_lock_fd(held.fileno(), lock_path)
+                results.append({"name": "inherited_queue_lock_validated", "ok": True})
+                fcntl.flock(held.fileno(), fcntl.LOCK_UN)
+                results.append({
+                    "name": "unlocked_inherited_fd_rejected",
+                    "ok": expect_runtime_error(
+                        lambda: g.validate_inherited_lock_fd(held.fileno(), lock_path)
+                    ),
+                })
+            finally:
+                held.close()
+        finally:
+            g.LOCK_ROOT = original_lock_root
 
     original_names = g.process_executable_names
     original_listener = g.listener_busy

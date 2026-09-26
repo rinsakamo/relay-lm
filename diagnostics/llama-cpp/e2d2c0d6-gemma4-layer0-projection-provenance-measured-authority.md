@@ -67,7 +67,13 @@ The runner requires the descriptor SHA through:
 before any measured execution.
 
 The measured runtime must match the preparation canonical argv identity and
-re-validates the exact runtime-library closure from /proc at health readiness.
+re-validates the exact runtime-library closure, executable path, and argv from
+/proc at health readiness.
+
+The descriptor also pins the current measured-authority HEAD/tree, the measured
+apparatus source closure, the canonical physical target/registry, the frozen W/C
+request identities, and the preparation GPU inventory. Physical preflight must
+reproduce those identities before W is submitted.
 
 The newly instrumented W/C KV directory digests must reproduce the frozen
 historical identities:
@@ -81,7 +87,14 @@ before provenance posthoc classification is accepted.
 
 Measured physical execution is not yet authorized.
 
-The next transaction is zero-GPU descriptor materialization only.
+Descriptor generation `provenance-measured-descriptor-20260925-b` is still
+unspent. The previous static-qualification authority for the earlier source
+head was superseded without invocation after adversarial review found additional
+hardening requirements.
+
+The next executable transaction, once separately authorized against the fresh
+hardened HEAD/tree, is **zero-GPU measured-apparatus static qualification only**.
+Descriptor materialization remains a later, separately authorized transaction.
 
 The descriptor materializer validates:
 
@@ -98,12 +111,18 @@ The descriptor materializer validates:
 - plain/probe startup canonical argv identity;
 - preparation resource-guard and quiescence evidence;
 - stable provenance markers;
-- absence of measured authorization in the preparation result.
+- absence of measured authorization in the preparation result;
+- exact measured apparatus and canonical queue-target source hashes;
+- exact measured-authority HEAD/tree;
+- frozen W/C request SHA/shape and first-512-token equality;
+- exact preparation GPU inventory.
 
 The canonical descriptor transaction launcher checks a fresh persistent output
-root before Python starts and runs with:
-
-`env -u PYTHONPYCACHEPREFIX PYTHONDONTWRITEBYTECODE=1`
+root before Python starts, removes Python path/home/cache injection, disables
+bytecode writes and user-site loading, and runs the system interpreter in
+isolated mode. The orchestrator re-fetches diagnostic authority before static
+qualification, before materialization, and before terminal success, and seals
+the successful descriptor evidence root with a SHA-256 manifest.
 
 The descriptor transaction itself invokes only:
 
@@ -124,6 +143,15 @@ This result still has:
 A later authority comment must pin the exact descriptor SHA before any physical
 measured transaction can be authorized.
 
+Physical execution must enter through the registered canonical target
+`diagnostic:3006-projection-provenance` and shared one-shot physical queue.
+The target requires the inherited canonical queue flock. The diagnostic resource
+guard reuses and validates that inherited flock rather than reacquiring it,
+while still performing GPU inventory/identity and quiescence checks. W request
+evidence is fsync-durable before HTTP submission; successful measured evidence
+is sealed read-only with a SHA-256 manifest before execute-once accepts a
+complete terminal.
+
 Descriptor generation `provenance-measured-descriptor-20260925-a` was consumed by a failed
 descriptor-only transaction before materialization because this static gate contained a
 syntax-corrupted duplicated tail. No physical/GPU/model/generation/measured request path was
@@ -137,7 +165,7 @@ Repository source does not self-authorize a replacement transaction.
 
 Current state:
 
-`PROVENANCE_MEASURED_DESCRIPTOR_REPAIR_SOURCE_READY_NEW_TRANSACTION_NOT_YET_AUTHORIZED`
+`PROVENANCE_MEASURED_DESCRIPTOR_GENERATION_B_HARDENING_SOURCE_READY_STATIC_NOT_YET_AUTHORIZED`
 
 Measured physical authority:
 

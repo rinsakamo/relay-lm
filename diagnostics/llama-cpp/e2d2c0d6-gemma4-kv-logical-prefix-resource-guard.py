@@ -127,6 +127,46 @@ def gpu_inventory():
     return rows
 
 
+def validate_expected_gpu_inventory(observed, expected_path: Path | None):
+    if expected_path is None:
+        return {"required": False, "match": None, "expected": None, "observed": observed}
+    if not expected_path.is_file():
+        raise RuntimeError(f"expected GPU inventory missing: {expected_path}")
+    expected = json.loads(expected_path.read_text(encoding="utf-8"))
+    if not isinstance(expected, list) or not expected:
+        raise RuntimeError("expected GPU inventory must be a non-empty list")
+    return {
+        "required": True,
+        "match": observed == expected,
+        "expected": expected,
+        "observed": observed,
+    }
+
+
+def validate_inherited_lock_fd(fd: int, lock_path: Path):
+    if fd <= 2:
+        raise RuntimeError(f"invalid inherited queue lease fd: {fd}")
+    proc_fd = Path(f"/proc/self/fd/{fd}")
+    if not proc_fd.exists():
+        raise RuntimeError(f"inherited queue lease fd unavailable: {fd}")
+    target = os.readlink(proc_fd)
+    if target != str(lock_path):
+        raise RuntimeError(
+            f"inherited queue lease fd path mismatch: {target!r} != {str(lock_path)!r}"
+        )
+    probe = lock_path.open("a+", encoding="utf-8")
+    try:
+        try:
+            fcntl.flock(probe.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        else:
+            fcntl.flock(probe.fileno(), fcntl.LOCK_UN)
+            raise RuntimeError("inherited queue lease fd is not backed by a held flock")
+    finally:
+        probe.close()
+
+
 def require_external_quiescence(evidence_root: Path):
     observations = []
     for index in range(2):
@@ -157,6 +197,8 @@ def require_external_quiescence(evidence_root: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--evidence-root", type=Path, required=True)
+    ap.add_argument("--expected-gpu-inventory", type=Path)
+    ap.add_argument("--inherited-lock-fd", type=int)
     ap.add_argument("command", nargs=argparse.REMAINDER)
     args = ap.parse_args()
 
@@ -169,7 +211,8 @@ def main():
         raise SystemExit(f"evidence root must not exist: {args.evidence_root}")
 
     args.evidence_root.mkdir(parents=True)
-    write_json(args.evidence_root / "gpu-inventory.json", gpu_inventory())
+    observed_gpu_inventory = gpu_inventory()
+    write_json(args.evidence_root / "gpu-inventory.json", observed_gpu_inventory)
     LOCK_ROOT.mkdir(parents=True, exist_ok=True)
     lock_path = LOCK_ROOT / safe_resource_id(RESOURCE_KEY)
     guard_path = args.evidence_root / "guard.json"
@@ -184,22 +227,54 @@ def main():
         "failure": None,
         "campaign_queue_receipt_created": False,
         "campaign_queue_or_spend_artifact_touched": False,
+        "gpu_identity_required": args.expected_gpu_inventory is not None,
+        "gpu_identity_match": None,
+        "lock_inherited": args.inherited_lock_fd is not None,
+        "inherited_lock_fd": args.inherited_lock_fd,
     }
     write_json(guard_path, guard)
 
-    lock_file = lock_path.open("a+", encoding="utf-8")
     try:
-        try:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            guard["guard_state"] = "NOT_ACQUIRED_BUSY"
-            guard["failure"] = "canonical local GPU flock is already held"
-            write_json(guard_path, guard)
-            return 6
-
-        guard["guard_state"] = "ACQUIRED_CANONICAL_DIAGNOSTIC_FLOCK"
-        guard["lock_acquired"] = True
+        gpu_identity = validate_expected_gpu_inventory(
+            observed_gpu_inventory, args.expected_gpu_inventory
+        )
+    except Exception as exc:
+        guard["guard_state"] = "GPU_IDENTITY_VALIDATION_FAILED"
+        guard["failure"] = f"{type(exc).__name__}: {exc}"
         write_json(guard_path, guard)
+        return 9
+    write_json(args.evidence_root / "gpu-identity-comparison.json", gpu_identity)
+    guard["gpu_identity_match"] = gpu_identity["match"]
+    if gpu_identity["required"] and not gpu_identity["match"]:
+        guard["guard_state"] = "GPU_IDENTITY_MISMATCH"
+        guard["failure"] = "current GPU inventory differs from frozen preparation identity"
+        write_json(guard_path, guard)
+        return 9
+
+    lock_file = None
+    lock_fd = None
+    owns_lock = False
+    try:
+        if args.inherited_lock_fd is not None:
+            validate_inherited_lock_fd(args.inherited_lock_fd, lock_path)
+            lock_fd = args.inherited_lock_fd
+            guard["guard_state"] = "INHERITED_CANONICAL_QUEUE_FLOCK_VALIDATED"
+            guard["lock_acquired"] = True
+            write_json(guard_path, guard)
+        else:
+            lock_file = lock_path.open("a+", encoding="utf-8")
+            lock_fd = lock_file.fileno()
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                guard["guard_state"] = "NOT_ACQUIRED_BUSY"
+                guard["failure"] = "canonical local GPU flock is already held"
+                write_json(guard_path, guard)
+                return 6
+            owns_lock = True
+            guard["guard_state"] = "ACQUIRED_CANONICAL_DIAGNOSTIC_FLOCK"
+            guard["lock_acquired"] = True
+            write_json(guard_path, guard)
 
         try:
             require_external_quiescence(args.evidence_root)
@@ -212,7 +287,8 @@ def main():
         guard["child_invoked"] = True
         write_json(guard_path, guard)
 
-        run = subprocess.run(command, pass_fds=(lock_file.fileno(),))
+        assert lock_fd is not None
+        run = subprocess.run(command, pass_fds=(lock_fd,))
         guard["child_returncode"] = run.returncode
         write_json(args.evidence_root / "child.exit.json", {"returncode": run.returncode})
         write_json(guard_path, guard)
@@ -222,7 +298,7 @@ def main():
         write_json(guard_path, guard)
         return 8
     finally:
-        if guard.get("lock_acquired"):
+        if owns_lock and lock_file is not None and guard.get("lock_acquired"):
             try:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
             except OSError as exc:
@@ -234,7 +310,14 @@ def main():
                 else:
                     guard["guard_state"] = "RELEASED_WITH_FAILURE_CANONICAL_DIAGNOSTIC_FLOCK"
             write_json(guard_path, guard)
-        lock_file.close()
+        elif args.inherited_lock_fd is not None and guard.get("lock_acquired"):
+            if guard.get("failure") is None:
+                guard["guard_state"] = "INHERITED_CANONICAL_QUEUE_FLOCK_PRESERVED"
+            else:
+                guard["guard_state"] = "INHERITED_CANONICAL_QUEUE_FLOCK_PRESERVED_WITH_FAILURE"
+            write_json(guard_path, guard)
+        if lock_file is not None:
+            lock_file.close()
 
 
 if __name__ == "__main__":

@@ -17,6 +17,10 @@ def load_module():
 
 def main():
     m = load_module()
+    if m.ATTEMPT_ID != "layer0-projection-provenance-20260925-a":
+        raise RuntimeError("execute-once attempt identity drift")
+    if m.EXPECTED_DESCRIPTOR_GENERATION != "provenance-measured-descriptor-20260925-b":
+        raise RuntimeError("execute-once descriptor generation drift")
 
     with tempfile.TemporaryDirectory(prefix="relaylm-provenance-wrapper-selftest-") as td:
         root = Path(td)
@@ -54,24 +58,66 @@ def main():
         if c["measured_w_submitted"] is not True or c["measured_c_submitted"] is not True:
             raise RuntimeError("partial W/C flags incorrect")
 
+        unsealed = root / "unsealed-terminal"
+        (unsealed / "server-W").mkdir(parents=True)
+        (unsealed / "server-W" / "W.request.json").write_text("{}\n", encoding="utf-8")
+        (unsealed / "terminal.json").write_text(
+            json.dumps({"primary_classification": "SHOULD_NOT_BE_TRUSTED"}) + "\n",
+            encoding="utf-8",
+        )
+        u = m.reconcile(unsealed, 8)
+        if u["primary_classification"] != "LAYER0_PROJECTION_PROVENANCE_PROBE_EXERCISED_INCOMPLETE":
+            raise RuntimeError("unsealed terminal was incorrectly accepted as complete")
+
         complete = root / "complete"
         complete.mkdir()
         terminal = {
             "primary_classification": "K_V_DISTINCT_RUNTIME_PROVENANCE_IDENTICAL_VALUES_REPRODUCED",
             "measured_attempt_consumed": True,
         }
-        (complete / "terminal.json").write_text(json.dumps(terminal) + "\n", encoding="utf-8")
-        d = m.reconcile(complete, 0)
+        terminal_path = complete / "terminal.json"
+        terminal_path.write_text(json.dumps(terminal) + "\n", encoding="utf-8")
+        manifest_path = complete / "measured-artifact-manifest.sha256"
+        manifest_path.write_text(
+            f"{m.sha256(terminal_path)}  terminal.json\n",
+            encoding="utf-8",
+        )
+        terminal_path.chmod(0o444)
+        manifest_path.chmod(0o444)
+        complete.chmod(0o555)
+        try:
+            d = m.reconcile(complete, 0)
+        finally:
+            complete.chmod(0o755)
+            terminal_path.chmod(0o644)
+            manifest_path.chmod(0o644)
         if d["primary_classification"] != terminal["primary_classification"]:
             raise RuntimeError("complete terminal classification not preserved")
         if d["measured_terminal_present"] is not True:
-            raise RuntimeError("complete terminal not detected")
+            raise RuntimeError("complete sealed terminal not detected")
+        if d.get("measured_evidence_sealed") is not True:
+            raise RuntimeError("complete measured evidence seal not recognized")
         if d["measured_attempt_consumed"] is not True or d["rerun_authorized"] is not False:
             raise RuntimeError("complete measured case has wrong consumption flags")
 
     source = TARGET.read_text(encoding="utf-8")
-    if source.count("subprocess.run(guard_cmd, check=False)") != 1:
+    if source.count(
+        "subprocess.run(guard_cmd, check=False, pass_fds=(queue_lease_fd,))"
+    ) != 1:
         raise RuntimeError("execute-once must invoke guarded measured child exactly once")
+    for marker in (
+        "canonical physical queue lease fd is required",
+        '"--inherited-lock-fd", str(queue_lease_fd)',
+        '"--expected-gpu-inventory", str(expected_gpu_path)',
+        "validate_descriptor_and_checkout",
+        "measured_seal_sha",
+        "seal_preflight_root",
+        "execute-once-artifact-manifest.sha256",
+    ):
+        if marker not in source:
+            raise RuntimeError(f"execute-once hardening marker missing: {marker}")
+    if '"-m", "py_compile"' in source:
+        raise RuntimeError("execute-once regressed to checkout-writing py_compile")
     for forbidden in ("while True", "retry", "RETRY", "rerun_authorized\": True"):
         if forbidden in source:
             raise RuntimeError(f"retry/rerun surface present: {forbidden}")

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import ast
 import json
 from pathlib import Path
 import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parents[1]
 DESCRIPTOR = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor.py"
 RUNNER = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-run.py"
 RUNNER_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-run-selftest.py"
@@ -18,14 +20,28 @@ RESOURCE_GUARD = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py"
 RESOURCE_GUARD_SELFTEST = HERE / "e2d2c0d6-gemma4-kv-logical-prefix-resource-guard-selftest.py"
 DESCRIPTOR_PREP = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py"
 DESCRIPTOR_LAUNCHER = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare-run.sh"
+PHYSICAL_TARGET = REPO_ROOT / "tools" / "diagnostic_projection_provenance_target.py"
+PHYSICAL_TARGET_SELFTEST = HERE / "e2d2c0d6-gemma4-layer0-projection-provenance-physical-target-selftest.py"
+PHYSICAL_TARGET_REGISTRY = REPO_ROOT / ".ai" / "physical" / "llama_cpp_targets.json"
 
 def require(cond, message):
     if not cond:
         raise RuntimeError(message)
 
+def constant_string(source: str, name: str):
+    tree = ast.parse(source)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        return node.value.value
+    raise RuntimeError(f"string constant missing: {name}")
+
+
 def run_json(path: Path, expected_status: str):
     cp = subprocess.run(
-        [sys.executable, str(path)],
+        [sys.executable, "-B", "-I", str(path)],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -42,18 +58,32 @@ def main():
         DESCRIPTOR, RUNNER, RUNNER_SELFTEST, EXECUTE_ONCE, EXECUTE_SELFTEST,
         POSTHOC, POSTHOC_SELFTEST, DIGEST, DIGEST_SELFTEST,
         RESOURCE_GUARD, RESOURCE_GUARD_SELFTEST, DESCRIPTOR_PREP,
+        PHYSICAL_TARGET, PHYSICAL_TARGET_SELFTEST,
     )
     for path in files:
         require(path.is_file(), f"missing measured apparatus file: {path}")
-        cp = subprocess.run(
-            [sys.executable, "-m", "py_compile", str(path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        require(cp.returncode == 0, f"py_compile failed for {path.name}: {cp.stderr.decode('utf-8','replace')}")
+        source = path.read_text(encoding="utf-8")
+        try:
+            compile(source, str(path), "exec")
+        except SyntaxError as exc:
+            raise RuntimeError(f"in-memory compile failed for {path.name}: {exc}") from exc
 
     require(DESCRIPTOR_LAUNCHER.is_file(), f"missing descriptor launcher: {DESCRIPTOR_LAUNCHER}")
+    require(PHYSICAL_TARGET_REGISTRY.is_file(), f"missing physical target registry: {PHYSICAL_TARGET_REGISTRY}")
+    registry = json.loads(PHYSICAL_TARGET_REGISTRY.read_text(encoding="utf-8"))
+    target_entry = (registry.get("targets") or {}).get("diagnostic:3006-projection-provenance") or {}
+    require(
+        target_entry.get("branch") == "diagnostic/llama-cpp-gemma4-swa-live-prefix-20260916",
+        "physical target registry branch mismatch",
+    )
+    require(
+        target_entry.get("module") == "tools.diagnostic_projection_provenance_target",
+        "physical target registry module mismatch",
+    )
+    require(
+        target_entry.get("required_distributions") == [],
+        "physical target registry dependency drift",
+    )
     launcher_syntax = subprocess.run(
         ["bash", "-n", str(DESCRIPTOR_LAUNCHER)],
         stdout=subprocess.PIPE,
@@ -86,6 +116,10 @@ def main():
             RESOURCE_GUARD_SELFTEST,
             "LOGICAL_PREFIX_RESOURCE_GUARD_SELFTEST_PASS",
         ),
+        "physical_target": run_json(
+            PHYSICAL_TARGET_SELFTEST,
+            "PROJECTION_PROVENANCE_PHYSICAL_TARGET_SELFTEST_PASS",
+        ),
     }
 
     descriptor = DESCRIPTOR.read_text(encoding="utf-8")
@@ -94,6 +128,33 @@ def main():
     posthoc = POSTHOC.read_text(encoding="utf-8")
     descriptor_prep = DESCRIPTOR_PREP.read_text(encoding="utf-8")
     descriptor_launcher = DESCRIPTOR_LAUNCHER.read_text(encoding="utf-8")
+    physical_target = PHYSICAL_TARGET.read_text(encoding="utf-8")
+    resource_guard = RESOURCE_GUARD.read_text(encoding="utf-8")
+
+    descriptor_generation = constant_string(descriptor, "DESCRIPTOR_GENERATION")
+    descriptor_attempt = constant_string(descriptor, "MEASURED_ATTEMPT_ID")
+    runner_generation = constant_string(runner, "EXPECTED_DESCRIPTOR_GENERATION")
+    runner_attempt = constant_string(runner, "ATTEMPT_ID")
+    wrapper_generation = constant_string(wrapper, "EXPECTED_DESCRIPTOR_GENERATION")
+    wrapper_attempt = constant_string(wrapper, "ATTEMPT_ID")
+    target_generation = constant_string(physical_target, "EXPECTED_DESCRIPTOR_GENERATION")
+    target_attempt = constant_string(physical_target, "EXPECTED_ATTEMPT_ID")
+    require(
+        descriptor_generation == "provenance-measured-descriptor-20260925-b",
+        "descriptor generation drift",
+    )
+    require(
+        descriptor_attempt == "layer0-projection-provenance-20260925-a",
+        "descriptor attempt drift",
+    )
+    require(
+        runner_generation == descriptor_generation == wrapper_generation == target_generation,
+        "descriptor generation mismatch across apparatus",
+    )
+    require(
+        runner_attempt == descriptor_attempt == wrapper_attempt == target_attempt,
+        "measured attempt mismatch across apparatus",
+    )
 
     for marker in (
         'EXPECTED_PREMEASURED_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-generation-f-20260925T102433Z-474088").resolve()',
@@ -105,6 +166,16 @@ def main():
         'verify_manifest(root)',
         'measured_execution_authorized_by_this_result": False',
         'LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY',
+        'MEASURED_APPARATUS_FILES',
+        '"tools/physical_execution_queue.py"',
+        '"tools/relay_physical_env.py"',
+        '"tools/relay_physical_run.py"',
+        '"measured_apparatus": apparatus',
+        '"preparation_gpu_inventory": preparation_gpu_inventory',
+        '"measured_authority_head": measured_authority_head',
+        '"measured_authority_tree": measured_authority_tree',
+        '"requests": request_evidence',
+        '"frozen W/C first 512 tokens differ"',
     ):
         require(marker in descriptor, f"descriptor materializer missing authority marker: {marker}")
 
@@ -131,6 +202,16 @@ def main():
         'subject_kv_matches_historical": True',
         'verify_runtime_identity',
         'runtime-library-closure.json',
+        'proc-executable.health-ready.txt',
+        'proc-cmdline.health-ready.json',
+        'durable_write_bytes',
+        'os.fsync(f.fileno())',
+        'frozen W/C first 512 tokens differ',
+        'unexpected KV dump directories',
+        'unexpected projection dump directories',
+        'measured-artifact-manifest.sha256',
+        'seal_measured_root',
+        'descriptor measured apparatus closure incomplete',
         '"GGML_CUDA_DISABLE_FUSION" in env',
     ):
         require(marker in runner, f"measured runner missing marker: {marker}")
@@ -141,15 +222,27 @@ def main():
 
     for marker in (
         'RELAYLM_PROVENANCE_MEASURED_DESCRIPTOR_SHA256',
-        'subprocess.run(guard_cmd, check=False)',
+        'subprocess.run(guard_cmd, check=False, pass_fds=(queue_lease_fd,))',
         'LAYER0_PROJECTION_PROVENANCE_PROBE_EXERCISED_INCOMPLETE',
         'LAYER0_PROJECTION_PROVENANCE_PROBE_NOT_EXERCISED',
         '"rerun_authorized": False',
         '"campaign_queue_receipt_created": False',
         '"campaign_queue_or_spend_artifact_touched": False',
+        'EXPECTED_DESCRIPTOR_GENERATION',
+        'canonical physical queue lease fd is required',
+        '"--inherited-lock-fd", str(queue_lease_fd)',
+        '"--expected-gpu-inventory", str(expected_gpu_path)',
+        'measured_seal_sha',
+        'seal_preflight_root',
+        'execute-once-artifact-manifest.sha256',
     ):
         require(marker in wrapper, f"execute-once wrapper missing marker: {marker}")
-    require(wrapper.count("subprocess.run(guard_cmd, check=False)") == 1, "guarded measured child invocation surface != 1")
+    require(
+        wrapper.count(
+            "subprocess.run(guard_cmd, check=False, pass_fds=(queue_lease_fd,))"
+        ) == 1,
+        "guarded measured child invocation surface != 1",
+    )
 
     for marker in (
         'LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS',
@@ -161,6 +254,11 @@ def main():
         'generation_requests": 0',
         'measured_requests": 0',
         'measured_execution_authorized_by_this_result": False',
+        'EXPECTED_DESCRIPTOR_GENERATION',
+        'EXPECTED_ATTEMPT_ID',
+        'refresh_authority',
+        'seal_output_root',
+        'descriptor_artifact_manifest_sha256',
     ):
         require(marker in descriptor_prep, f"descriptor transaction orchestrator missing marker: {marker}")
 
@@ -177,8 +275,12 @@ def main():
 
     for marker in (
         'output root must not exist before canonical launcher',
-        'exec env -u PYTHONPYCACHEPREFIX',
+        '-u PYTHONPYCACHEPREFIX',
+        '-u PYTHONPATH',
+        '-u PYTHONHOME',
         'PYTHONDONTWRITEBYTECODE=1',
+        'PYTHONNOUSERSITE=1',
+        '/usr/bin/python3 -B -I',
         'e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py',
     ):
         require(marker in descriptor_launcher, f"descriptor launcher missing marker: {marker}")
@@ -187,6 +289,25 @@ def main():
         'PYTHONPYCACHEPREFIX="' not in descriptor_launcher,
         "descriptor launcher regressed to output-root pycache prefix",
     )
+    require(
+        '"-m", "py_compile"' not in wrapper,
+        "execute-once regressed to checkout-writing py_compile",
+    )
+    for marker in (
+        "--inherited-lock-fd",
+        "validate_inherited_lock_fd",
+        "INHERITED_CANONICAL_QUEUE_FLOCK_VALIDATED",
+        "INHERITED_CANONICAL_QUEUE_FLOCK_PRESERVED",
+        "--expected-gpu-inventory",
+        "gpu_identity_match",
+    ):
+        require(marker in resource_guard, f"resource guard hardening marker missing: {marker}")
+    for marker in (
+        "RELAYLM_PHYSICAL_QUEUE_LEASE_FD",
+        "_require_inherited_queue_lease_fd",
+        "EXPECTED_DESCRIPTOR_GENERATION",
+    ):
+        require(marker in physical_target, f"physical target marker missing: {marker}")
 
     for marker in (
         'provenance.tsv',
@@ -198,8 +319,8 @@ def main():
 
     result = {
         "status": "LAYER0_PROJECTION_PROVENANCE_MEASURED_APPARATUS_STATIC_PASS",
-        "descriptor_generation": "provenance-measured-descriptor-20260925-b",
-        "attempt_id": "layer0-projection-provenance-20260925-a",
+        "descriptor_generation": descriptor_generation,
+        "attempt_id": descriptor_attempt,
         "synthetic_selftests": synthetic,
         "physical_calls": 0,
         "gpu_calls": 0,

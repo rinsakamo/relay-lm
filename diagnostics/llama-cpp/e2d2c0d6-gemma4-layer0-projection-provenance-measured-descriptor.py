@@ -7,6 +7,8 @@ from pathlib import Path
 import stat
 import sys
 
+DESCRIPTOR_GENERATION = "provenance-measured-descriptor-20260925-b"
+MEASURED_ATTEMPT_ID = "layer0-projection-provenance-20260925-a"
 EXPECTED_PREMEASURED_ROOT = Path("/home/rinsa/relaylm-evidence/provenance-preparation-generation-f-20260925T102433Z-474088").resolve()
 EXPECTED_AUTHORITY_HEAD = "a68beee0537e1ebc9845a12c73f2b588cdc9dd66"
 EXPECTED_AUTHORITY_TREE = "e9bee1fdd86f4d321182beb579376959f4b90930"
@@ -15,11 +17,62 @@ EXPECTED_SOURCE_HEAD = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
 EXPECTED_SOURCE_TREE = "6d39fd93dc91fc0a4bc86dffe9782d4f26318004"
 EXPECTED_MODEL_SHA = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
 EXPECTED_APPLIED_PATCH_SHA = "cbf9c2f61e2221328cd0db1d24127dd3d8f13be3681dd6dbfb135db51d6eff63"
+EXPECTED_PREPARATION_GPU_INVENTORY = [{
+    "index": 0,
+    "uuid": "GPU-3f02099a-88fd-abbc-f59d-dd16ffc63b23",
+    "name": "NVIDIA GeForce RTX 3060",
+    "driver_version": "591.44",
+    "memory_total_mib": 12288,
+}]
 EXPECTED_PATCHES = {
     "aligned_reuse_patch_sha256": "cef233d776686ea36f03174b0c1d729545e2356f7009d613df726bcaf16a856a",
     "logical_prefix_patch_sha256": "d62810fdc645cbb011c52047e9ba9227b1d6c29fafc0bac0e7cf659f6104e4c8",
     "projection_origin_patch_sha256": "61af8dce39b0dceb0ce12b7fef8014dcb8f94ba7564955783c5ff76c9d211674",
     "projection_provenance_patch_sha256": "413db229e31b1e68e760a354a34e61fae952aa237c81f37f2290b10c48905048",
+}
+
+HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parents[1]
+
+MEASURED_APPARATUS_FILES = (
+    ".ai/authority/physical_execution_queue.yaml",
+    ".ai/physical/llama_cpp_targets.json",
+    ".ai/physical/python_environment_policy.json",
+    "tools/physical_execution_queue.py",
+    "tools/relay_physical_env.py",
+    "tools/relay_physical_run.py",
+    "tools/diagnostic_projection_provenance_target.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-physical-target-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-run.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-run-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-execute-once.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-execute-once-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-posthoc.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-posthoc-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-canonical-kv-directory-digest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-canonical-kv-directory-digest-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-logical-prefix-resource-guard.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-kv-logical-prefix-resource-guard-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-apparatus-selftest.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare.py",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-descriptor-prepare-run.sh",
+    "diagnostics/llama-cpp/e2d2c0d6-gemma4-layer0-projection-provenance-measured-authority.md",
+)
+
+REQUESTS = {
+    "W": {
+        "path": "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2/L0.request.json",
+        "sha256": "d777877485b3307d8ee76e6b6df783d00b4302bb700c405ac5cbf2f6d7344f5d",
+        "prompt_tokens": 883,
+        "cache_prompt": True,
+    },
+    "C": {
+        "path": "diagnostics/llama-cpp/fixtures/e2d2c0d6-gemma4-kv-v2/LC.request.json",
+        "sha256": "63afb2a44ea12f14377ba52348616a0bd8ac3ebdd65d81d1a3ede1c4c2c64043",
+        "prompt_tokens": 2927,
+        "cache_prompt": False,
+    },
 }
 
 RUNTIME_FILES = {
@@ -91,11 +144,25 @@ def main():
     ap.add_argument("--premeasured-root", type=Path, required=True)
     ap.add_argument("--model", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--measured-authority-head", required=True)
+    ap.add_argument("--measured-authority-tree", required=True)
     args = ap.parse_args()
 
     root = args.premeasured_root.resolve()
     model = args.model.resolve()
     out = args.out.resolve()
+    measured_authority_head = args.measured_authority_head
+    measured_authority_tree = args.measured_authority_tree
+    require(
+        len(measured_authority_head) == 40
+        and all(c in "0123456789abcdef" for c in measured_authority_head),
+        "invalid measured authority HEAD",
+    )
+    require(
+        len(measured_authority_tree) == 40
+        and all(c in "0123456789abcdef" for c in measured_authority_tree),
+        "invalid measured authority tree",
+    )
 
     require(root == EXPECTED_PREMEASURED_ROOT, f"unexpected premeasured root: {root}")
     require(out != root and root not in out.parents, "descriptor output must be outside sealed premeasured root")
@@ -113,6 +180,9 @@ def main():
     startup = load_json(root / "qualification-stage" / "logical-prefix-startup-classification.json")
     guard = load_json(root / "qualification-stage" / "shared-resource-guard" / "guard.json")
     quiescence = load_json(root / "qualification-stage" / "shared-resource-guard" / "external-quiescence.json")
+    preparation_gpu_inventory = load_json(
+        root / "qualification-stage" / "shared-resource-guard" / "gpu-inventory.json"
+    )
 
     require(top.get("preparation_generation") == EXPECTED_GENERATION, "top generation mismatch")
     require(top.get("primary_classification") == "LAYER0_PROJECTION_PROVENANCE_PREMEASURED_READY", "top classification mismatch")
@@ -174,6 +244,10 @@ def main():
     require(guard.get("failure") is None, "resource guard failure present")
     require(guard.get("campaign_queue_receipt_created") is False, "campaign queue receipt created")
     require(guard.get("campaign_queue_or_spend_artifact_touched") is False, "campaign/spend artifact touched")
+    require(
+        preparation_gpu_inventory == EXPECTED_PREPARATION_GPU_INVENTORY,
+        "preparation GPU identity mismatch",
+    )
     require(isinstance(quiescence, list) and len(quiescence) == 2, "quiescence observation count mismatch")
     for obs in quiescence:
         require(obs.get("busy_processes") == [], "busy process in preparation quiescence")
@@ -225,8 +299,47 @@ def main():
     missing_manifest_paths = sorted(str(p) for p in required_manifest_paths - manifest_paths)
     require(not missing_manifest_paths, f"prepared manifest missing measured-critical artifact: {missing_manifest_paths}")
 
+    apparatus = {}
+    for rel in MEASURED_APPARATUS_FILES:
+        p = (REPO_ROOT / rel).resolve()
+        require(p.is_file(), f"measured apparatus source missing: {p}")
+        require(REPO_ROOT == p or REPO_ROOT in p.parents, f"apparatus path escapes repository: {p}")
+        apparatus[rel] = sha256(p)
+
+    request_evidence = {}
+    request_objects = {}
+    for label, expected in REQUESTS.items():
+        p = (REPO_ROOT / expected["path"]).resolve()
+        require(p.is_file(), f"{label} request missing: {p}")
+        require(sha256(p) == expected["sha256"], f"{label} request SHA mismatch")
+        obj = load_json(p)
+        request_objects[label] = obj
+        prompt = obj.get("prompt")
+        require(
+            isinstance(prompt, list) and len(prompt) == expected["prompt_tokens"],
+            f"{label} request prompt length mismatch",
+        )
+        require(
+            obj.get("cache_prompt") is expected["cache_prompt"],
+            f"{label} cache_prompt mismatch",
+        )
+        require(
+            obj.get("n_predict") == 1
+            and obj.get("temperature") == 0
+            and obj.get("stream") is False,
+            f"{label} request decoding contract mismatch",
+        )
+        request_evidence[label] = {**expected, "absolute_path": str(p)}
+    require(
+        request_objects["W"]["prompt"][:512] == request_objects["C"]["prompt"][:512],
+        "frozen W/C first 512 tokens differ",
+    )
+
     descriptor = {
-        "descriptor_generation": "provenance-measured-descriptor-20260925-b",
+        "descriptor_generation": DESCRIPTOR_GENERATION,
+        "measured_attempt_id": MEASURED_ATTEMPT_ID,
+        "measured_authority_head": measured_authority_head,
+        "measured_authority_tree": measured_authority_tree,
         "classification": "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY",
         "relaylm_authority_head": EXPECTED_AUTHORITY_HEAD,
         "relaylm_authority_tree": EXPECTED_AUTHORITY_TREE,
@@ -241,6 +354,9 @@ def main():
             "applied_patch_sha256": EXPECTED_APPLIED_PATCH_SHA,
         },
         "runtime": runtime,
+        "measured_apparatus": apparatus,
+        "requests": request_evidence,
+        "preparation_gpu_inventory": preparation_gpu_inventory,
         "startup_canonical_argv_sha256": argv_shas["plain"],
         "preparation_resource_guard": {
             "resource_key": guard.get("resource_key"),
@@ -264,6 +380,10 @@ def main():
     out.write_text(json.dumps(descriptor, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({
         "status": "LAYER0_PROJECTION_PROVENANCE_MEASURED_DESCRIPTOR_READY",
+        "descriptor_generation": DESCRIPTOR_GENERATION,
+        "measured_attempt_id": MEASURED_ATTEMPT_ID,
+        "measured_authority_head": measured_authority_head,
+        "measured_authority_tree": measured_authority_tree,
         "descriptor": str(out),
         "descriptor_sha256": sha256(out),
         "prepared_artifact_manifest_sha256": manifest["sha256"],
