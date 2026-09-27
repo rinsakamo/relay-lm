@@ -44,6 +44,15 @@
         "httpx"
       ]
     },
+    "diagnostic:3006-cache-correctness-repair-qualification": {
+      "branch": "v1",
+      "module": "tools.v1_cache_correctness_repair_qualification",
+      "description": "Proposal-gated #3013 repaired CUDA candidate comparison; exact later owner authority required before any model-facing request.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
+    },
     "v1:crystallization": {
       "branch": "v1",
       "module": "tools.v1_crystallization_llama_cpp_wsl",

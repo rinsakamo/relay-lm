@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -304,6 +304,7 @@ def _collect_llama_identity(
     *,
     llama_cpp_root: Path,
     server_binary: Path,
+    server_env: Mapping[str, str] | None = None,
 ) -> tuple[str, str, int]:
     if not server_binary.is_file() or not os.access(server_binary, os.X_OK):
         raise LlamaCppTransactionError(
@@ -313,7 +314,19 @@ def _collect_llama_identity(
         ["git", "rev-parse", "HEAD"],
         cwd=llama_cpp_root,
     ).strip()
-    version = _run_text([str(server_binary), "--version"]).strip()
+    completed = subprocess.run(
+        [str(server_binary), "--version"],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=None if server_env is None else dict(server_env),
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        raise LlamaCppTransactionError(
+            f"llama-server version probe failed: {detail}"
+        )
+    version = (completed.stdout or completed.stderr).strip()
     match = re.search(r"\bbuild\s+(\d+)\b", version)
     if match is None:
         raise LlamaCppTransactionError(
@@ -352,6 +365,7 @@ def _start_server(
     artifact_path: Path,
     port: int,
     log_path: Path,
+    server_env: Mapping[str, str] | None = None,
 ) -> tuple[subprocess.Popen[str], list[str]]:
     command = [
         str(server_binary),
@@ -381,6 +395,7 @@ def _start_server(
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             text=True,
+            env=None if server_env is None else dict(server_env),
         )
     except OSError as exc:
         raise LlamaCppTransactionError(

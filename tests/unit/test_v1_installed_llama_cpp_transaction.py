@@ -815,7 +815,13 @@ def test_doctor_and_serve_use_the_installed_console(monkeypatch: pytest.MonkeyPa
         pid = 123
 
     fake_process = FakeProcess()
-    monkeypatch.setattr(transaction.subprocess, "Popen", lambda command, **_: fake_process)
+    serve_commands: list[list[str]] = []
+
+    def fake_popen(command: list[str], **_: object) -> FakeProcess:
+        serve_commands.append(command)
+        return fake_process
+
+    monkeypatch.setattr(transaction.subprocess, "Popen", fake_popen)
     log_path = tmp_path / "relaylm-serve.log"
     process = transaction._start_installed_serve(
         installed=installed,
@@ -825,6 +831,31 @@ def test_doctor_and_serve_use_the_installed_console(monkeypatch: pytest.MonkeyPa
     )
     assert process is fake_process
     assert log_path.is_file()
+    assert serve_commands[-1] == [installed["console_path"], "serve", "--config", str(config_path)]
+
+    custom = {
+        **installed,
+        "python_path": str(tmp_path / "venv" / "bin" / "python"),
+    }
+    observation_path = tmp_path / "observer.json"
+    transaction._start_installed_serve(
+        installed=custom,
+        config_path=config_path,
+        cwd=tmp_path,
+        log_path=tmp_path / "qualification-serve.log",
+        runner_module="tools.v1_cache_correctness_qualification_serve",
+        repo_root=REPO_ROOT,
+        continuity_observation_path=observation_path,
+    )
+    assert serve_commands[-1] == [
+        custom["python_path"],
+        "-m",
+        "tools.v1_cache_correctness_qualification_serve",
+        "--config",
+        str(config_path),
+        "--observation-path",
+        str(observation_path),
+    ]
 
 
 def test_minimum_evidence_contract_and_review_boundary_are_explicit() -> None:

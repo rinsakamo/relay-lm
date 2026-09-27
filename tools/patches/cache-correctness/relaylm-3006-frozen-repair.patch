@@ -1,0 +1,85 @@
+diff --git a/tests/test-chat.cpp b/tests/test-chat.cpp
+index f27c91e4d..af0c00a63 100644
+--- a/tests/test-chat.cpp
++++ b/tests/test-chat.cpp
+@@ -7248,6 +7248,43 @@ static void test_msg_diffs_compute() {
+     }
+ }
+ 
++static void test_prompt_checkpoint_restore() {
++    struct test_case {
++        llama_pos pos_next;
++        llama_pos pos_min;
++        int32_t n_swa;
++        bool has_new_tokens;
++        bool restore;
++    };
++
++    const test_case cases[] = {
++        { 8,  0, 16, true,  false }, // full live prefix, older checkpoint must not replace it
++        { 8,  0, 16, false, false }, // final cached token is evaluated again for logits
++        { 8,  1, 16, true,  true  }, // required history was evicted
++        { 24, 8, 16, true,  false }, // nonzero SWA boundary is still resident
++        { 24, 9, 16, true,  true  }, // preserve the conservative restore boundary
++        { 24, 8, 16, false, true  }, // logits need one earlier token
++        { 24, 7, 16, false, false },
++        { 8,  0,  0, true,  false }, // ordinary attention
++        { 8,  0,  0, false, false },
++        { 8,  7,  0, true,  false }, // recurrent state immediately before continuation
++        { 8,  8,  0, true,  true  }, // recurrent state already contains the next token
++        { 8,  7,  0, false, true  }, // recurrent logits need a checkpoint
++        { 8,  7,  1, true,  false }, // one-token SWA / recurrent boundary
++        { 8,  7,  1, false, true  },
++        { 8,  8, 16, true,  true  }, // hybrid recurrent state blocks reuse
++        { 1,  0, 16, false, false }, // logits re-evaluation clears the whole one-token state
++    };
++
++    for (const auto & tc : cases) {
++        const auto pos_min_thold = std::max(0, tc.pos_next - tc.n_swa - (tc.has_new_tokens ? 0 : 1));
++        std::cout << "[checkpoint] next=" << tc.pos_next << " min=" << tc.pos_min
++                  << " swa=" << tc.n_swa << " new=" << tc.has_new_tokens
++                  << " restore=" << tc.restore << '\n';
++        assert_equals(tc.restore, server_prompt_checkpoint_required(tc.pos_min, pos_min_thold, tc.n_swa));
++    }
++}
++
+ int main(int argc, char ** argv) {
+     bool detailed_debug    = false;
+     bool only_run_filtered = false;
+@@ -7320,6 +7357,7 @@ int main(int argc, char ** argv) {
+     } else
+ #endif
+     {
++        test_prompt_checkpoint_restore();
+         test_msg_diffs_compute();
+         test_msgs_oaicompat_json_conversion();
+         test_msg_token_delimiters_split();
+diff --git a/tools/server/server-common.h b/tools/server/server-common.h
+index 6c681a2cf..e58052fe7 100644
+--- a/tools/server/server-common.h
++++ b/tools/server/server-common.h
+@@ -37,6 +37,11 @@ using json = common_json;
+ 
+ using raw_buffer = std::vector<uint8_t>;
+ 
++inline bool server_prompt_checkpoint_required(llama_pos pos_min, llama_pos pos_min_thold, int32_t n_swa) {
++    // SWA may reuse a resident boundary; recurrent state must precede the next token.
++    return n_swa > 0 ? pos_min > pos_min_thold : pos_min >= pos_min_thold;
++}
++
+ template <typename T>
+ static T json_value(const json & body, const std::string & key, const T & default_value) {
+     // Fallback null to default value
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+index fe068d3e9..6ae40a66b 100644
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -3346,7 +3346,7 @@ private:
+                                     SLT_WRN(slot, "%s\n", st1.str().c_str());
+                                 }
+ 
+-                                if (pos_min >= pos_min_thold) {
++                                if (server_prompt_checkpoint_required(pos_min, pos_min_thold, n_swa)) {
+                                     // search for a context checkpoint
+                                     const auto it = std::find_if(
+                                         slot.prompt.checkpoints.rbegin(),

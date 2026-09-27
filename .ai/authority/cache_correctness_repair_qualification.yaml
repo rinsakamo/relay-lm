@@ -1,0 +1,29 @@
+schema_version: 1
+id: cache_correctness_repair_qualification
+owner_issue: 3013
+summary: >-
+  Proposal-only RelayLM v1 carriage for exactly-once CUDA qualification of the
+  prepared llama.cpp resident-SWA equality-boundary repair, with matched cold
+  and reused arms, exact runtime/source/model pins, durable request accounting,
+  and no physical execution authority until a later exact owner comment.
+canonical_surfaces:
+  - docs/reference/actual-model-cache-correctness-repair-qualification.md
+references:
+  - docs/reference/actual-model-llama-cpp-qualification.md
+  - docs/reference/physical-execution-queue.md
+implementation:
+  - .ai/physical/llama_cpp_targets.json
+  - tools/cache_correctness_repair_runtime.py
+  - tools/v1_cache_correctness_repair_qualification.py
+  - tools/v1_cache_correctness_qualification_serve.py
+  - tools/v1_installed_llama_cpp_transaction.py
+  - tools/patches/cache-correctness/relaylm-3006-frozen-repair.patch
+  - tools/patches/cache-correctness/relaylm-3013-trace-observability.patch
+  - src/relaylm/actual_model_stage_r_llama_cpp_transaction.py
+tests:
+  - tests/unit/test_v1_cache_correctness_repair_qualification.py
+  - tests/unit/test_v1_installed_llama_cpp_transaction.py
+  - tests/unit/test_actual_model_stage_r_llama_cpp_transaction.py
+depends_on:
+  - actual_model_llama_cpp_qualification
+  - physical_execution_queue
