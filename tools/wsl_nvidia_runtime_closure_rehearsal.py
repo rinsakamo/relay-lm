@@ -186,12 +186,14 @@ def collect_candidate_manifest(*, candidate_binary: Path, model_path: Path) -> d
         if wsl_closure is None:
             raise RehearsalError("candidate does not resolve CUDA through the WSL guest shim")
         gpu = candidate_runtime.run_text(candidate_runtime.GPU_QUERY_COMMAND)
-        server_record = libraries[str(binary)]
+        server_record = libraries.get(str(binary))
     except candidate_runtime.RuntimePinError as exc:
         raise RehearsalError("candidate static runtime closure is not sealable") from exc
     model_record = candidate_runtime._sealed_file_record(model, require_regular_lexical_path=True)
-    if server_record.get("path") != str(binary):
+    if not isinstance(server_record, Mapping):
         raise RehearsalError("candidate library closure omitted the exact server binary")
+    if not isinstance(server_record.get("identity"), Mapping):
+        raise RehearsalError("candidate library closure omitted the exact server file identity")
     if server_record.get("sha256") != EXPECTED_SERVER_SHA256:
         raise RehearsalError("candidate binary digest differs from the preserved attempt-B artifact")
     return {
