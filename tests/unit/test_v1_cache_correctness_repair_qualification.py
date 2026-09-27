@@ -580,7 +580,12 @@ def _sealed_map_line(path: Path, *, identity: tuple[int, int, int] | None = None
     return f"7f000000-7f001000 r-xp 00000000 {major:x}:{minor:x} {inode} {path}{suffix}"
 
 
-def _closure_gate_fixture(tmp_path: Path, *, wsl: bool = True) -> tuple[dict[str, object], dict[str, Path]]:
+def _closure_gate_fixture(
+    tmp_path: Path,
+    *,
+    wsl: bool = True,
+    payload_hardlink_alias: bool = False,
+) -> tuple[dict[str, object], dict[str, Path]]:
     build = tmp_path / "candidate-build"
     binary_root = build / "bin"
     binary_root.mkdir(parents=True)
@@ -622,36 +627,113 @@ def _closure_gate_fixture(tmp_path: Path, *, wsl: bool = True) -> tuple[dict[str
         loader_copy.write_bytes(shim.read_bytes())
         driver_payload = package / "libcuda.so.1.1"
         driver_payload.write_bytes(b"distinct host NVIDIA CUDA driver payload")
+        if payload_hardlink_alias:
+            alias = tmp_path / "bind-visible" / driver_payload.name
+            alias.parent.mkdir()
+            os.link(driver_payload, alias)
+            objects["payload_hardlink_alias"] = alias
+        gdma_companion = package / "libnvdxgdmal.so.1"
+        gdma_companion.write_bytes(b"WSL NVIDIA GDMA runtime companion")
+        (package / "unobserved-extra.so").write_bytes(b"unknown same-package library")
+        (package / "libnvidia-ml.so.1").write_bytes(b"unrelated NVIDIA management library")
+        inf_path = package / "nvmdi.inf"
+        inf_path.write_text(
+            "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n",
+            encoding="utf-8",
+        )
         objects.update(
             {
                 "shim": wsl_lib / "libcuda.so.1",
                 "loader_copy": loader_copy,
                 "driver_payload": driver_payload,
+                "gdma_companion": gdma_companion,
+                "driver_package_root": package,
+                "driver_inf": inf_path,
             }
         )
         dependencies["libcuda.so.1"] = runtime._sealed_file_record(wsl_lib / "libcuda.so.1")
         shim_aliases = [runtime._sealed_file_record(path) for path in sorted(wsl_lib.glob("libcuda.so*"))]
+        shim_elf = {"soname": "libcuda.so.1", "needed": ["libc.so.6", "libdl.so.2", "libpthread.so.0"]}
         accepted = [
             {
                 **record,
+                "elf_identity": shim_elf,
                 "role": "wsl-cuda-shim-alias",
                 "relation": "same-device-inode-hardlink-alias",
             }
             for record in shim_aliases
         ]
         payload_record = runtime._sealed_file_record(driver_payload)
-        accepted.append(
-            {
-                **payload_record,
-                "role": "nvidia-wsl-user-mode-driver-payload",
-                "relation": "distinct-driver-payload-in-the-sealed-wsl-package",
-            }
-        )
+        payload_object = {
+            **payload_record,
+            "package_name": package.name,
+            "role": "nvidia-wsl-user-mode-driver-payload",
+            "relation": "logical-libcuda-driver-payload",
+            "attempt_b_evidence": "sealed-in-preflight; complete-map-membership-not-preserved",
+            "elf_identity": {
+                "soname": "libcuda.so.1",
+                "needed": ["libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1"],
+            },
+        }
+        gdma_record = runtime._sealed_file_record(gdma_companion)
+        gdma_object = {
+            **gdma_record,
+            "package_name": package.name,
+            "role": "nvidia-wsl-cuda-runtime-companion",
+            "relation": "mapped-by-attempt-b-cuda-initialization",
+            "attempt_b_evidence": "live-identity-gate-observed-mapped",
+            "elf_identity": {
+                "soname": "libnvdxgdmal.so.1",
+                "needed": ["libc.so.6", "libdl.so.2", "libpthread.so.0"],
+            },
+        }
+        accepted.extend((payload_object, gdma_object))
+        inf_record = runtime._sealed_file_record(inf_path)
+        loader_record = runtime._sealed_file_record(loader_copy)
         wsl_closure = {
-            "schema_version": 1,
-            "contract": "wsl-cuda-driver-shim-and-package-payload-v1",
+            "schema_version": 2,
+            "contract": runtime.WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT,
             "logical_dependency": "libcuda.so.1",
-            "driver_package": {"payload": {**payload_record, "soname": "libcuda.so.1"}},
+            "shim_mount": {
+                "mountpoint": str(wsl_lib),
+                "filesystem": "overlay",
+                "source": "none",
+                "mount_options": "rw,nosuid,nodev",
+                "super_options": "rw,lowerdir=/gpu_lib_packaged",
+            },
+            "driver_mount": {
+                "mountpoint": str(driver_root),
+                "filesystem": "9p",
+                "source": "drivers",
+                "mount_options": "ro,nosuid,nodev",
+                "super_options": "ro,access=client",
+            },
+            "shim": {
+                **runtime._sealed_file_record(wsl_lib / "libcuda.so.1"),
+                "elf_identity": shim_elf,
+                "aliases": [
+                    {**record, "elf_identity": shim_elf}
+                    for record in shim_aliases
+                ],
+            },
+            "driver_package": {
+                "root": str(package),
+                "name": package.name,
+                "directory_identity": runtime._directory_identity(package),
+                "inf": {
+                    **inf_record,
+                    "driver_date": "12/02/2025",
+                    "driver_version": "32.0.15.9144",
+                },
+                "loader_copy": {
+                    **loader_record,
+                    "elf_identity": shim_elf,
+                },
+                "loader_relation": "same-bytes-distinct-mounted-object",
+                "runtime_objects": [payload_object, gdma_object],
+                "payload": {**payload_object, "soname": "libcuda.so.1"},
+                "payload_relation": "distinct-object-distinct-bytes",
+            },
             "accepted_mapped_objects": accepted,
         }
 
@@ -707,6 +789,24 @@ def _verify_fixture_maps(
     monkeypatch.setattr(Path, "is_file", fake_is_file)
     monkeypatch.setattr(Path, "read_text", fake_read_text)
     monkeypatch.setattr(qualification, "_process_start_ticks", lambda observed_pid: 77)
+
+    def fixture_elf_identity(path: Path) -> dict[str, object]:
+        if path.name == "libnvdxgdmal.so.1":
+            return {
+                "soname": "libnvdxgdmal.so.1",
+                "needed": ["libc.so.6", "libdl.so.2", "libpthread.so.0"],
+            }
+        if path.name == "libcuda.so.1.1" and path.parent.name.startswith("nvmdi.inf_"):
+            return {
+                "soname": "libcuda.so.1",
+                "needed": ["libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1"],
+            }
+        return {
+            "soname": "libcuda.so.1",
+            "needed": ["libc.so.6", "libdl.so.2", "libpthread.so.0"],
+        }
+
+    monkeypatch.setattr(runtime, "_elf_identity", fixture_elf_identity)
     return qualification._verify_loaded_library_closure(
         process=SimpleNamespace(pid=pid),
         binary=objects["binary"],
@@ -716,7 +816,7 @@ def _verify_fixture_maps(
     )
 
 
-def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
+def test_wsl_cuda_driver_closure_records_only_role_bound_package_runtime_objects(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -733,6 +833,9 @@ def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
     loader_copy.write_bytes(shim.read_bytes())
     payload = package / "libcuda.so.1.1"
     payload.write_bytes(b"different driver payload bytes")
+    gdma = package / "libnvdxgdmal.so.1"
+    gdma.write_bytes(b"observed WSL runtime companion")
+    (package / "unobserved-extra.so").write_bytes(b"not an admitted package object")
     (package / "nvmdi.inf").write_text(
         "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n", encoding="utf-8"
     )
@@ -742,11 +845,25 @@ def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
         f"67 62 0:41 / {lib_root} rw,nosuid,nodev - overlay none rw,lowerdir=/gpu_lib_packaged\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(
-        runtime,
-        "run_text",
-        lambda *args, **kwargs: "0x000000000000000e (SONAME) Library soname: [libcuda.so.1]",
-    )
+    def fake_readelf(command: list[str], **kwargs: object) -> str:
+        path = Path(command[-1])
+        if path.name == "libnvdxgdmal.so.1":
+            soname = "libnvdxgdmal.so.1"
+            needed = ["libc.so.6", "libdl.so.2", "libpthread.so.0"]
+        elif path.name == "libcuda.so.1.1" and path.parent == package:
+            soname = "libcuda.so.1"
+            needed = ["libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1"]
+        else:
+            soname = "libcuda.so.1"
+            needed = ["libc.so.6", "libdl.so.2", "libpthread.so.0"]
+        return "\n".join(
+            [
+                *(f"(NEEDED) Shared library: [{item}]" for item in needed),
+                f"(SONAME) Library soname: [{soname}]",
+            ]
+        )
+
+    monkeypatch.setattr(runtime, "run_text", fake_readelf)
     real_stat_identity = runtime._stat_identity
 
     def observed_wsl_identity(path: Path) -> dict[str, int]:
@@ -763,6 +880,8 @@ def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
             identity["device"] = 36
             identity["inode"] = 6755399441257569
             identity["links"] = 1
+        elif path.parent == package:
+            identity["device"] = 36
         return identity
 
     monkeypatch.setattr(runtime, "_stat_identity", observed_wsl_identity)
@@ -782,7 +901,7 @@ def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
     )
 
     assert sealed is not None
-    assert sealed["contract"] == "wsl-cuda-driver-shim-and-package-payload-v1"
+    assert sealed["contract"] == runtime.WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT
     assert sealed["driver_package"]["inf"]["driver_version"] == "32.0.15.9144"
     assert sealed["driver_package"]["payload"]["soname"] == "libcuda.so.1"
     assert sealed["shim"]["identity"]["device"] == 44
@@ -794,11 +913,22 @@ def test_wsl_cuda_driver_closure_records_the_observed_two_object_topology(
     assert sealed["shim"]["sha256"] == runtime.sha256_file(loader_copy)
     assert sealed["driver_package"]["payload"]["sha256"] != sealed["shim"]["sha256"]
     assert sealed["driver_package"]["payload"]["identity"]["inode"] != sealed["shim"]["identity"]["inode"]
+    assert [Path(item["path"]).name for item in sealed["driver_package"]["runtime_objects"]] == [
+        "libcuda.so.1.1",
+        "libnvdxgdmal.so.1",
+    ]
+    assert sealed["driver_package"]["runtime_objects"][1]["attempt_b_evidence"] == (
+        "live-identity-gate-observed-mapped"
+    )
+    assert str(package / "unobserved-extra.so") not in {
+        item["path"] for item in sealed["accepted_mapped_objects"]
+    }
     assert {item["path"] for item in sealed["accepted_mapped_objects"]} == {
         str(lib_root / "libcuda.so"),
         str(lib_root / "libcuda.so.1"),
         str(lib_root / "libcuda.so.1.1"),
         str(payload),
+        str(gdma),
     }
 
     ambiguous_package = driver_root / "nvmdi.inf_amd64_fedcba9876543210"
@@ -818,13 +948,46 @@ def test_loaded_closure_accepts_only_exact_sealed_wsl_objects(
     tmp_path: Path,
 ) -> None:
     manifest, objects = _closure_gate_fixture(tmp_path)
-    paths = [objects[name] for name in ("binary", "ggml", "llama", "cudart", "cublas", "shim", "driver_payload")]
+    paths = [
+        objects[name]
+        for name in (
+            "binary",
+            "ggml",
+            "llama",
+            "cudart",
+            "cublas",
+            "shim",
+            "driver_payload",
+            "gdma_companion",
+        )
+    ]
 
     result = _verify_fixture_maps(monkeypatch, manifest, objects, paths, require_cuda=True)
 
     assert result["loaded_closure_matches_manifest"] is True
     assert str(objects["driver_payload"]) in result["wsl_cuda_driver_objects"]
+    assert str(objects["gdma_companion"]) in result["wsl_cuda_driver_objects"]
     assert str(objects["driver_payload"]) in result["loaded_libraries"]
+    assert str(objects["gdma_companion"]) in result["loaded_libraries"]
+
+
+@pytest.mark.parametrize("package_member", ["driver_payload", "gdma_companion"])
+def test_each_exact_sealed_nvidia_runtime_package_member_passes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    package_member: str,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+
+    result = _verify_fixture_maps(
+        monkeypatch,
+        manifest,
+        objects,
+        [objects["binary"], objects[package_member]],
+    )
+
+    assert result["loaded_closure_matches_manifest"] is True
+    assert str(objects[package_member]) in result["wsl_cuda_driver_objects"]
 
 
 @pytest.mark.parametrize("copy_identical", [False, True])
@@ -858,6 +1021,104 @@ def test_unobserved_package_loader_copy_is_not_an_accepted_runtime_alias(
         )
 
 
+@pytest.mark.parametrize("unknown_name", ["unobserved-extra.so", "libnvidia-ml.so.1"])
+def test_unknown_same_inf_package_library_is_not_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    unknown_name: str,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    unknown = objects["driver_package_root"] / unknown_name
+
+    with pytest.raises(qualification.QualificationTargetError, match="undeclared library"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], unknown])
+
+
+@pytest.mark.parametrize("copy_identical", [False, True])
+def test_same_nvidia_companion_path_in_another_driver_package_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    copy_identical: bool,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    other_package = objects["driver_package_root"].parent / "nvmdi.inf_amd64_fedcba9876543210"
+    other_package.mkdir()
+    duplicate = other_package / "libnvdxgdmal.so.1"
+    duplicate.write_bytes(
+        objects["gdma_companion"].read_bytes() if copy_identical else b"different package object"
+    )
+
+    with pytest.raises(qualification.QualificationTargetError, match="undeclared library"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], duplicate])
+
+
+def test_changed_driver_inf_and_package_revision_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    objects["driver_inf"].write_text(
+        "[Version]\nDriverVer=01/01/2026,99.0.0.0\n", encoding="utf-8"
+    )
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"]])
+
+    manifest, objects = _closure_gate_fixture(tmp_path / "revision")
+    package = manifest["build"]["wsl_cuda_driver_closure"]["driver_package"]
+    package["root"] = str(objects["driver_package_root"].parent / "nvmdi.inf_amd64_newrevision")
+    package["name"] = "nvmdi.inf_amd64_newrevision"
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"]])
+
+
+def test_changed_package_path_and_elf_identity_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    closure = manifest["build"]["wsl_cuda_driver_closure"]
+    closure["driver_package"]["runtime_objects"][1]["path"] = str(
+        objects["driver_package_root"].parent / "different" / "libnvdxgdmal.so.1"
+    )
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"]])
+
+    manifest, objects = _closure_gate_fixture(tmp_path / "elf")
+    closure = manifest["build"]["wsl_cuda_driver_closure"]
+    closure["driver_package"]["runtime_objects"][1]["elf_identity"]["needed"] = ["libcuda.so.1"]
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"]])
+
+
+def test_changed_package_object_digest_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    objects["gdma_companion"].write_bytes(b"changed runtime companion bytes")
+
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
+        _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], objects["gdma_companion"]])
+
+
+def test_wrong_cuda_toolkit_library_path_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    wrong_toolkit = tmp_path / "other-cuda" / "libcudart.so.99"
+    wrong_toolkit.parent.mkdir()
+    wrong_toolkit.write_bytes(b"wrong CUDA toolkit runtime")
+
+    with pytest.raises(qualification.QualificationTargetError, match="undeclared library"):
+        _verify_fixture_maps(
+            monkeypatch,
+            manifest,
+            objects,
+            [objects["binary"], wrong_toolkit],
+        )
+
+
 def test_loaded_closure_rejects_changed_digest_and_changed_sealed_object(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -865,7 +1126,7 @@ def test_loaded_closure_rejects_changed_digest_and_changed_sealed_object(
     manifest, objects = _closure_gate_fixture(tmp_path)
     payload = objects["driver_payload"]
     payload.write_bytes(b"mutated driver payload with same path")
-    with pytest.raises(qualification.QualificationTargetError, match="object identity changed"):
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
         _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], payload])
 
     manifest, objects = _closure_gate_fixture(tmp_path / "digest")
@@ -877,7 +1138,7 @@ def test_loaded_closure_rejects_changed_digest_and_changed_sealed_object(
         if item["path"] == str(payload):
             item["identity"] = changed_identity
     wsl_closure["driver_package"]["payload"]["identity"] = changed_identity
-    with pytest.raises(qualification.QualificationTargetError, match="digest is outside"):
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
         _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], payload])
 
     manifest, objects = _closure_gate_fixture(tmp_path / "second")
@@ -886,7 +1147,7 @@ def test_loaded_closure_rejects_changed_digest_and_changed_sealed_object(
     replacement.write_bytes(payload.read_bytes())
     payload.unlink()
     replacement.rename(payload)
-    with pytest.raises(qualification.QualificationTargetError, match="object identity changed"):
+    with pytest.raises(qualification.QualificationTargetError, match="package closure changed"):
         _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], payload])
 
 
@@ -921,7 +1182,19 @@ def test_previous_process_map_attestation_rejects_deleted_driver_mapping(
     tmp_path: Path,
 ) -> None:
     manifest, objects = _closure_gate_fixture(tmp_path)
-    first_paths = [objects[name] for name in ("binary", "ggml", "llama", "cudart", "cublas", "shim", "driver_payload")]
+    first_paths = [
+        objects[name]
+        for name in (
+            "binary",
+            "ggml",
+            "llama",
+            "cudart",
+            "cublas",
+            "shim",
+            "driver_payload",
+            "gdma_companion",
+        )
+    ]
     first = _verify_fixture_maps(monkeypatch, manifest, objects, first_paths, require_cuda=True)
     second_paths = [path for path in first_paths if path != objects["driver_payload"]]
 
@@ -1012,7 +1285,11 @@ def test_wsl_manifest_collection_rejects_symlink_alias(
         f"1 0 0:1 / {driver_root} ro - 9p drivers ro\n2 0 0:2 / {lib_root} rw - overlay none rw\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(runtime, "run_text", lambda *args, **kwargs: "SONAME [libcuda.so.1]")
+    monkeypatch.setattr(
+        runtime,
+        "run_text",
+        lambda *args, **kwargs: "(SONAME) Library soname: [libcuda.so.1]",
+    )
     closure_input = {
         "/candidate/libggml-cuda.so": {
             "dependencies": {"libcuda.so.1": runtime._sealed_file_record(lib_root / "libcuda.so.1")}
@@ -1041,7 +1318,7 @@ def test_sealed_wsl_path_replaced_by_symlink_fails_even_when_target_is_same_obje
 
     with pytest.raises(
         qualification.QualificationTargetError,
-        match="not canonical|no longer a direct regular file",
+        match="package closure changed|not canonical|no longer a direct regular file",
     ):
         _verify_fixture_maps(
             monkeypatch,
@@ -1090,10 +1367,8 @@ def test_bind_visible_hardlink_alias_cannot_evade_sealed_path_membership(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    manifest, objects = _closure_gate_fixture(tmp_path)
-    alias = tmp_path / "bind-visible" / "libcuda.so.1.1"
-    alias.parent.mkdir()
-    os.link(objects["driver_payload"], alias)
+    manifest, objects = _closure_gate_fixture(tmp_path, payload_hardlink_alias=True)
+    alias = objects["payload_hardlink_alias"]
     assert alias.stat().st_dev == objects["driver_payload"].stat().st_dev
     assert alias.stat().st_ino == objects["driver_payload"].stat().st_ino
 

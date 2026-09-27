@@ -1395,15 +1395,39 @@ def _verify_loaded_library_closure(
     wsl_driver_closure = manifest["build"].get("wsl_cuda_driver_closure")
     accepted_wsl_paths: set[str] = set()
     if wsl_driver_closure is not None:
+        try:
+            accepted_objects = candidate_runtime.verify_wsl_cuda_driver_closure(
+                wsl_driver_closure
+            )
+        except candidate_runtime.RuntimePinError as exc:
+            raise QualificationTargetError(
+                "candidate WSL NVIDIA runtime package closure changed"
+            ) from exc
+        shim = wsl_driver_closure.get("shim")
+        shim_path = shim.get("path") if isinstance(shim, dict) else None
+        logical_dependencies = [
+            dependency
+            for record in roots.values()
+            for dependency in [
+                record.get("dependencies", {}).get("libcuda.so.1")
+                if isinstance(record.get("dependencies"), dict)
+                else None
+            ]
+            if isinstance(dependency, dict)
+        ]
         if (
-            not isinstance(wsl_driver_closure, dict)
-            or wsl_driver_closure.get("contract") != "wsl-cuda-driver-shim-and-package-payload-v1"
-            or wsl_driver_closure.get("logical_dependency") != "libcuda.so.1"
+            not isinstance(shim, dict)
+            or not logical_dependencies
+            or {item.get("path") for item in logical_dependencies} != {shim_path}
+            or any(
+                item.get("sha256") != shim.get("sha256")
+                or item.get("identity") != shim.get("identity")
+                for item in logical_dependencies
+            )
         ):
-            raise QualificationTargetError("candidate WSL CUDA driver closure contract is malformed")
-        accepted_objects = wsl_driver_closure.get("accepted_mapped_objects")
-        if not isinstance(accepted_objects, list) or not accepted_objects:
-            raise QualificationTargetError("candidate WSL CUDA driver object set is empty")
+            raise QualificationTargetError(
+                "candidate logical libcuda dependency is outside the sealed WSL shim"
+            )
         for item in accepted_objects:
             if not isinstance(item, dict) or item.get("path") != item.get("realpath"):
                 raise QualificationTargetError("candidate WSL CUDA mapped object is not an exact regular path")
@@ -1483,11 +1507,14 @@ def _verify_loaded_library_closure(
     if require_cuda:
         _require_cuda_library_set(list(loaded))
         if wsl_driver_closure is not None:
-            if not isinstance(wsl_driver_closure, dict):
-                raise QualificationTargetError("candidate WSL CUDA driver package closure is malformed")
             driver_package = wsl_driver_closure.get("driver_package")
             payload = driver_package.get("payload") if isinstance(driver_package, dict) else None
             payload_path = payload.get("path") if isinstance(payload, dict) else None
+            runtime_objects = (
+                driver_package.get("runtime_objects")
+                if isinstance(driver_package, dict)
+                else None
+            )
             if (
                 not isinstance(payload_path, str)
                 or payload_path not in accepted_wsl_paths
@@ -1496,6 +1523,15 @@ def _verify_loaded_library_closure(
                 != {"sha256": payload.get("sha256"), "identity": payload.get("identity")}
             ):
                 raise QualificationTargetError("candidate server did not map its sealed WSL CUDA driver payload")
+            required_package_paths = {
+                item.get("path")
+                for item in runtime_objects
+                if isinstance(item, dict)
+            } if isinstance(runtime_objects, list) else set()
+            if not required_package_paths or not required_package_paths.issubset(loaded_paths):
+                raise QualificationTargetError(
+                    "candidate server did not map every sealed WSL NVIDIA runtime object"
+                )
     return {
         "pid": pid,
         "process_start_ticks": _process_start_ticks(pid),

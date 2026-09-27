@@ -1,79 +1,134 @@
 # WSL CUDA driver library identity attestation
 
-Issue #3015 repairs the CUDA driver closure consumed by the proposal-gated
-#3013 qualification. The host audit found a WSL dispatch chain with two
-different ELF objects. The `ldd` dependency and the `/proc/<pid>/maps` driver
-payload are related by the WSL driver architecture; they are not aliases of
-one file.
+Issue #3015 established the WSL CUDA guest-shim to NVIDIA package-payload
+relationship for #3013. Issue #3018 extends that contract after attempt B
+stopped at the first undeclared live mapping, `libnvdxgdmal.so.1`. The product
+cache remains disabled; this apparatus change does not authorize a CUDA
+qualification or a physical rehearsal.
 
-## Host topology observed on 2026-09-27
+## Attempt-B evidence boundary
 
-All paths below were inspected read-only. The WSL `lib` mount is an overlay;
-the Windows NVIDIA package is exposed by a read-only 9p mount at
-`/usr/lib/wsl/drivers`.
+The preserved attempt-B preflight, cold transaction, attempt summary, server
+log, cleanup record, and evidence manifests were read in place. The cold
+failure names this live path:
 
-| Path | lstat/stat | Size | SHA256 | Relation |
-| --- | --- | ---: | --- | --- |
-| `/usr/lib/wsl/lib/libcuda.so` | regular, mode `0o100555`, device `44`, inode `5348024557713090`, nlink `4` | 175,360 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | Same object as the next two paths; not a symlink |
-| `/usr/lib/wsl/lib/libcuda.so.1` | regular, mode `0o100555`, device `44`, inode `5348024557713090`, nlink `4` | 175,360 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | Same object as the other two WSL `lib` paths; `ldd` resolves here |
-| `/usr/lib/wsl/lib/libcuda.so.1.1` | regular, mode `0o100555`, device `44`, inode `5348024557713090`, nlink `4` | 175,360 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | Same object as the other two WSL `lib` paths; not the mapped driver payload |
-| `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libcuda_loader.so` | regular, mode `0o100555`, device `36`, inode `5348024557713090`, nlink `4` | 175,360 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | Identical bytes to the shim, but a different mounted object because its device differs |
-| `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/nvmdi.inf` | regular, mode `0o100555`, device `36`, inode `7036874417978311`, nlink `1` | 313,790 | `5dd20d066e2c64897ee94064c600f9ed4d278c6be09c17d59e387ce5632f8442` | Package metadata; records driver date/version and is sealed with the payload |
-| `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libcuda.so.1.1` | regular, mode `0o100555`, device `36`, inode `6755399441257569`, nlink `1` | 25,874,608 | `dda4d950a8cbaa7d3c490e5684636547f2b502c6763a46bd652b8e3c8783e188` | Distinct object and distinct bytes; ELF SONAME is `libcuda.so.1`; this was the path in attempt A's process maps |
+```text
+/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libnvdxgdmal.so.1
+```
 
-For every row, `lstat` and `stat` reported the same regular-file type, mode,
-device, inode, and size. Every path had `readlink = none` and `realpath` equal
-to its lexical path. The three `/usr/lib/wsl/lib` names share device and inode on the same
-overlay mount, so they are hard-link names for one regular file object. The
-driver-package loader has the same byte digest and inode number, but a
-different device and a different mount; the identity contract treats it as a
-byte-identical copy, not as the same file object. The large `libcuda.so.1.1`
-payload has a different device/inode and different bytes from the shim.
+No `/proc/746241/maps`, derived process-map list, executable/start-time
+snapshot, or complete closure trace was preserved. The complete attempt-B
+mapped-file set therefore cannot be recovered. The only NVIDIA package path
+directly proven mapped at the failed gate is `libnvdxgdmal.so.1`. The
+`libcuda.so.1.1` payload and `libcuda_loader.so` are in B's prepared closure
+evidence, but their B map membership cannot be independently confirmed. Every
+other package member has unknown B map membership; absence from the saved
+evidence is not evidence that it was unmapped. No attempt was spent to
+reconstruct the missing map.
 
-The package-local `nvmdi.inf` at
-`/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/nvmdi.inf` reports
-`DriverVer=12/02/2025, 32.0.15.9144`. The failed #3013 attempt A independently recorded the mapped
-path above during its single server/model-load attempt, before any model-facing POST. NVIDIA's
-[CUDA on WSL guide](https://docs.nvidia.com/cuda/wsl-user-guide/) describes
-the Windows-host CUDA driver as stubbed into WSL. Together, the package mount,
-matching `libcuda_loader.so`, the payload's SONAME, and attempt A's process-map
-observation establish the narrow relation: the `/usr/lib/wsl/lib` object is
-the guest-facing shim, while the separate NVIDIA package object is the mapped
-driver payload behind it. They must not be collapsed into one object identity.
+### Preserved package identity and proven mappings
 
-## Sealed identity contract
+The preflight bound package directory
+`/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85`, device 36, inode
+7036874417978311, mode 33133, size 313790, link count 1, ctime_ns
+1765707979487323400, mtime_ns 1764690947000000000, and SHA256
+`5dd20d066e2c64897ee94064c600f9ed4d278c6be09c17d59e387ce5632f8442`. Its
+`nvmdi.inf` records DriverVer `12/02/2025, 32.0.15.9144`.
 
-Candidate runtime manifest format 2 records a deterministic
-`build.wsl_cuda_driver_closure` only when `ldd` resolves the logical
-`libcuda.so.1` dependency to the recognized WSL shim. Preparation requires:
+| Role | Literal path | realpath | Device / inode | Mode / size / links | ctime_ns / mtime_ns | SHA256 | ELF SONAME / NEEDED | Attempt-B membership |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| WSL guest shim aliases | `/usr/lib/wsl/lib/libcuda.so`, `.so.1`, `.so.1.1` | Same as each literal path | 44 / 5348024557713090 | 33133 / 175360 / 4 | 1765707995028388500 / 1764690947000000000 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | SONAME `libcuda.so.1`; same ELF identity for all aliases | Prepared closure evidence only; full map membership not preserved |
+| Package payload | `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libcuda.so.1.1` | Same as literal path | 36 / 6755399441257569 | 33133 / 25874608 / 1 | 1765707985838876900 / 1764690947000000000 | `dda4d950a8cbaa7d3c490e5684636547f2b502c6763a46bd652b8e3c8783e188` | `libcuda.so.1`; `libc.so.6`, `libm.so.6`, `libdl.so.2`, `libpthread.so.0`, `librt.so.1` | In B preflight closure; live mapping not independently recoverable |
+| Required CUDA initialization companion | `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libnvdxgdmal.so.1` | Same as literal path | 36 / 3377699720738305 | 33133 / 67576 / 1 | 1765707986239722500 / 1764690947000000000 | `d99311dd67f6fd05f5ee16515dcacaf2afef816580f10e19eb512353701b4741` | `libnvdxgdmal.so.1`; `libc.so.6`, `libdl.so.2`, `libpthread.so.0` | **Observed mapped:** the B live identity gate reported this exact undeclared path |
+| Loader relationship evidence only | `/usr/lib/wsl/drivers/nvmdi.inf_amd64_47a93ea256b1ab85/libcuda_loader.so` | Same as literal path | 36 / 5348024557713090 | 33133 / 175360 / 4 | 1765707995028388500 / 1764690947000000000 | `03a829ea8da94688327685c726b80ad64305ed4ed579b3092e8ee4bc17252ebd` | SONAME `libcuda.so.1`; `libc.so.6`, `libdl.so.2`, `libpthread.so.0` | Membership not independently recoverable; not an accepted mapped path |
 
-- the exact WSL `lib` and `drivers` mountpoints and observed filesystem roles;
-- the known WSL shim names to identify one regular file object;
-- exactly one `libcuda.so.1.1` payload in the read-only NVIDIA package layout;
-- the package's `libcuda_loader.so` to match the shim bytes while retaining
-  its distinct path and object identity as package evidence;
-- an NVIDIA `nvmdi.inf` driver version and payload ELF SONAME `libcuda.so.1`.
+The shim and package loader have matching bytes and inode values on different
+mounted devices, so they remain distinct file identities. `libcuda.so.1.1` is
+also a distinct object and byte stream from the guest shim.
 
-For each accepted mapped object, the manifest seals its exact path, canonical
-path, device, inode, mode, size, link count, ctime, mtime, and SHA256. Runtime
-acceptance requires the `/proc/<pid>/maps` path to be in that exact set, the
-map's major/minor device and inode to match the sealed stat identity, the live
-file identity to remain unchanged, and the digest to match. Runtime hashes
-the mapped files again at each attestation and requires the process map set to
-remain stable after the first attestation. The separate driver payload is a
-member of this explicit WSL contract; basename and hash alone never authorize
-a path. The package's `libcuda_loader.so` copy helps prove the package
-relationship, but is not accepted as a mapped runtime path because attempt A
-observed the package's `libcuda.so.1.1` payload instead.
+## Exact package static inspection
 
-All other libraries keep exact-path identity. The special object set is
-constructed only from the WSL `libcuda.so.1` dependency and its single,
-validated NVIDIA package. An arbitrary `libcuda.so*` under `/tmp` or another
-driver package is not in the set. No generic alias rule applies to
-`libggml`, `libllama`, `libcublas`, or the CUDA toolkit runtime.
+The exact package contains these 18 shared objects. Package presence alone
+does not admit an object. Only the two role-bearing members in the preceding
+table are accepted by the runtime contract.
 
-The existing process executable, argv, environment, CUDA toolkit, candidate
-binary, candidate libraries, fresh `v1` head, and exact #3013 authority-comment
-checks remain in force before every model-facing POST. Product cache stays
-disabled; checkpointing stays enabled; `--swa-full` remains absent. This repair
-does not authorize a physical run and does not revive attempt A.
+| Package object | Static classification | Rationale and attempt-B evidence |
+| --- | --- | --- |
+| `libcuda.so.1.1` | Required mapped runtime payload | SONAME is `libcuda.so.1`; sealed by the existing #3015 preparation path. B's complete map is absent, so direct B membership is unknown. |
+| `libnvdxgdmal.so.1` | Required mapped CUDA initialization companion | Exact path was observed at B's failed live identity gate. NVIDIA's [WSL2 CUDA runtime report](https://github.com/NVIDIA/nvidia-container-toolkit/issues/520) documents that Windows driver 555+ needs this object mapped for CUDA initialization. |
+| `libcuda_loader.so` | Evidence-only package object | SONAME and bytes match the shim, but the distinct 9p object is not admitted as a process-map alias. |
+| `libnvidia-gpucomp.so`, `libnvidia-nvvm.so.4`, `libnvidia-nvvm70.so.4`, `libnvidia-ptxjitcompiler.so.1`, `libnvidia-tileiras.so` | Unknown possible dynamic-load objects | Names occur in CUDA/JIT strings or related loader metadata, but the saved B map does not establish this model-load path. Fail closed. |
+| `libnvdxdlkernels.so`, `libnvwgf2umx.so` | Unknown possible dynamic-load objects | No direct `DT_NEEDED` edge from the sealed payload or `libnvdxgdmal.so.1`; no B map evidence. Fail closed. |
+| `libcudadebugger.so.1` | Unrelated debugger subgraph | Debugger support; no edge from the sealed CUDA payload's `DT_NEEDED` list. |
+| `libnvcuvid.so.1` | Unrelated video decode subgraph | Its direct `DT_NEEDED` includes `libdxcore.so`; the video path is not the CUDA compute initialization path used here. |
+| `libnvidia-encode.so.1`, `libnvidia-opticalflow.so.1` | Unrelated video subgraph | Both have a direct dependency on `libnvcuvid.so.1`; not reached by the sealed compute payload's direct ELF dependencies. |
+| `libnvidia-ml.so.1`, `libnvidia-ml_loader.so` | Unrelated management subgraph | NVML names are not direct dependencies of the sealed compute payload. |
+| `libnvidia-ngx.so.1`, `libnvoptix_loader.so.1` | Unrelated graphics/NGX subgraphs | No direct dependency from the sealed compute payload or its observed companion. |
+
+The package `libcuda.so.1.1` and `libnvdxgdmal.so.1` each have only ordinary
+system libraries in their direct `DT_NEEDED` entries. There is no direct ELF
+dependency from one to the other. The companion is admitted based on the
+attempt-B live gate observation and WSL CUDA runtime evidence, not because its
+filename appears in the package. The `libdxcore.so` string in package objects
+is not itself evidence that this model-load path mapped it. Its only direct
+package `DT_NEEDED` edge in this inventory is from the unrelated
+`libnvcuvid.so.1` video path. No other possible dynamic object is admitted
+without a separate owner-authorized evidence update.
+
+## Contract v2
+
+The candidate manifest records
+`build.wsl_cuda_driver_closure` with schema version 2 and contract
+`wsl-nvidia-cuda-runtime-package-closure-v2`. It binds:
+
+- logical dependency `libcuda.so.1` to the exact WSL guest shim path, aliases,
+  mount identity, file identity, SHA256, ELF SONAME, and `DT_NEEDED` list;
+- the read-only 9p `drivers` mount and one exact
+  `nvmdi.inf_amd64_<identity>` directory, including directory identity and
+  INF path, identity, digest, date, and driver version;
+- the package loader copy as relationship evidence only; and
+- exactly two package runtime objects, each with literal and real paths,
+  device/inode, mode, size, link count, ctime/mtime, SHA256, SONAME,
+  `DT_NEEDED`, role, package name, and evidence relationship.
+
+The package object set is fixed in code to `libcuda.so.1.1` and
+`libnvdxgdmal.so.1`; collection does not glob package `.so` files. A different
+INF revision, package directory, path, device/inode, metadata, SHA, ELF
+identity, role, or relationship fails closed. An unknown `.so` in the same
+directory, the same basename in another package, or identical bytes at
+`/tmp` or elsewhere under `/usr/lib/wsl/drivers` is not admitted.
+
+At each live closure attestation, runtime verifies the sealed shim, package
+directory, INF, loader relationship, and both role-bearing package objects.
+Every mapped library must then be either an exact ordinary path in the sealed
+candidate `ldd` closure or an exact path in the explicit WSL accepted-object
+set. The map's major/minor device and inode, live direct regular-file identity,
+sealed full identity, and SHA256 must match. The #3013 caller retains its
+before-every-model-facing-POST re-attestation and stable-map checks. Ordinary
+non-WSL closures keep their exact-path behavior.
+
+The package set is fail-closed: evidence-only, unrelated, and unknown objects
+are never silently promoted into the accepted mapping set. The contract does
+not accept a package wildcard, basename match, hash match at any path, or
+whatever `/proc/maps` happens to report.
+
+## Zero-request rehearsal boundary
+
+The registered #3018 target is
+`diagnostic:3018-wsl-nvidia-runtime-closure-rehearsal`, with a distinct
+apparatus attempt identity. Its proposal freezes the exact candidate manifest,
+server/model/runtime digests, descriptor, receipt, preflight and output paths,
+port 1234, argv, one server launch, one model load, and zero model-facing
+POSTs, generation requests, input-count requests, or public completions. It
+waits for the same model-loaded server state, captures the complete
+`/proc/<pid>/maps` snapshot twice, attests the mapped library closure, and
+terminates the owned process. Its code makes no HTTP call, checks that the
+server log contains no POST, does not invoke RelayLM, and does not exercise
+cache correctness.
+
+The descriptor marker `PROPOSAL_ONLY_NOT_EXECUTION_AUTHORITY` cannot authorize
+execution. A later exact #3018 owner comment must bind the descriptor digest,
+candidate, model, closure, target, attempt, and zero-request ceilings; the
+canonical physical queue remains mandatory. Preparing the descriptor is
+separate from execution. This contract repair does not create #3013 attempt C
+or grant authority for any rehearsal.
