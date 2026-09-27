@@ -348,6 +348,44 @@ def test_server_log_must_not_record_a_model_facing_post() -> None:
         rehearsal._assert_no_model_facing_post_log(
             "llama_server: model loaded\nPOST /v1/chat/completions 200\n"
         )
+    assert rehearsal._model_facing_post_log_lines(
+        "POST /completion 200\nPOST /tokenize 200\n"
+    ) == ["POST /completion 200", "POST /tokenize 200"]
+
+
+def test_final_server_log_counts_requests_and_blocks_success() -> None:
+    summary: dict[str, object] = {
+        "model_facing_post_count": 0,
+        "model_loaded_marker_count": 1,
+        "failure": None,
+    }
+
+    terminal = rehearsal._apply_final_server_log_evidence(
+        summary,
+        rehearsal.PASS_TERMINAL,
+        f"{rehearsal.MODEL_LOADED_MARKER}\nPOST /completion 200\n",
+    )
+
+    assert terminal == rehearsal.BLOCKED_TERMINAL
+    assert summary["model_facing_post_count"] == 1
+    assert summary["failure"] == {
+        "type": "UnexpectedModelFacingPOST",
+        "message": "server log recorded 1 POST request(s)",
+    }
+
+
+def test_two_map_snapshots_must_bind_the_same_process_start() -> None:
+    first = {
+        "pid": 123,
+        "process_start_ticks": 456,
+        "executable": "/candidate/bin/llama-server",
+        "argv": ["/candidate/bin/llama-server", "-m", "/model.gguf"],
+    }
+    rehearsal._require_same_process_identity(first, dict(first))
+
+    changed = {**first, "process_start_ticks": 457}
+    with pytest.raises(rehearsal.RehearsalError, match="identity changed"):
+        rehearsal._require_same_process_identity(first, changed)
 
 
 def test_queue_receipt_must_bind_the_exact_running_child(

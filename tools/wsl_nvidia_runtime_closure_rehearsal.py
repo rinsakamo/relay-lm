@@ -883,9 +883,50 @@ def _assert_zero_request_counters(summary: Mapping[str, Any]) -> None:
 
 
 def _assert_no_model_facing_post_log(log_text: str) -> None:
-    for line in log_text.splitlines():
-        if re.search(r"\bPOST\s+/", line, flags=re.IGNORECASE):
-            raise RehearsalError("candidate server log records a model-facing POST")
+    if _model_facing_post_log_lines(log_text):
+        raise RehearsalError("candidate server log records a model-facing POST")
+
+
+def _model_facing_post_log_lines(log_text: str) -> list[str]:
+    return [
+        line
+        for line in log_text.splitlines()
+        if re.search(r"\bPOST\s+/", line, flags=re.IGNORECASE)
+    ]
+
+
+def _require_same_process_identity(
+    first: Mapping[str, Any], second: Mapping[str, Any]
+) -> None:
+    if (
+        first.get("pid") != second.get("pid")
+        or first.get("process_start_ticks") != second.get("process_start_ticks")
+        or first.get("executable") != second.get("executable")
+        or first.get("argv") != second.get("argv")
+    ):
+        raise RehearsalError("candidate server process identity changed between map snapshots")
+
+
+def _apply_final_server_log_evidence(
+    summary: dict[str, Any], terminal: str, log_text: str
+) -> str:
+    post_lines = _model_facing_post_log_lines(log_text)
+    marker_count = log_text.count(MODEL_LOADED_MARKER)
+    summary["model_facing_post_count"] = len(post_lines)
+    summary["model_loaded_marker_count"] = marker_count
+    if post_lines:
+        summary["failure"] = {
+            "type": "UnexpectedModelFacingPOST",
+            "message": f"server log recorded {len(post_lines)} POST request(s)",
+        }
+        return BLOCKED_TERMINAL
+    if marker_count != 1 and terminal == PASS_TERMINAL:
+        summary["failure"] = {
+            "type": "ModelLoadEvidenceError",
+            "message": "final server log did not contain exactly one model-loaded marker",
+        }
+        return BLOCKED_TERMINAL
+    return terminal
 
 
 def run_target(
@@ -1033,6 +1074,7 @@ def run_target(
             expected_argv=argv,
             expected_environment=server["environment"],
         )
+        _require_same_process_identity(process_identity, second_identity)
         second_maps = maps_path.read_text(encoding="utf-8")
         _write_json(
             output_root / "process-maps-second.json",
@@ -1086,6 +1128,29 @@ def run_target(
                 "type": "ProcessCleanupError",
                 "message": "owned candidate server did not terminate",
             }
+        try:
+            final_log = (output_root / "llama-server.log").read_text(
+                encoding="utf-8", errors="replace"
+            )
+            terminal = _apply_final_server_log_evidence(
+                attempt_summary, terminal, final_log
+            )
+        except OSError as exc:
+            if terminal == PASS_TERMINAL:
+                terminal = BLOCKED_TERMINAL
+                attempt_summary["failure"] = {
+                    "type": "ServerLogEvidenceError",
+                    "message": f"final server log could not be read: {type(exc).__name__}",
+                }
+        if terminal == PASS_TERMINAL:
+            try:
+                _assert_zero_request_counters(attempt_summary)
+            except RehearsalError as exc:
+                terminal = BLOCKED_TERMINAL
+                attempt_summary["failure"] = {
+                    "type": type(exc).__name__,
+                    "message": str(exc)[:1000],
+                }
         attempt_summary["terminal"] = terminal
         attempt_summary["state"] = terminal
         _write_json(output_root / "attempt-summary.json", attempt_summary)
