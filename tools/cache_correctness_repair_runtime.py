@@ -78,6 +78,30 @@ class RuntimePinError(RuntimeError):
     """The exact patched CUDA candidate cannot be identified safely."""
 
 
+WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT = "wsl-nvidia-cuda-runtime-package-closure-v2"
+WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS = (
+    {
+        "name": "libcuda.so.1.1",
+        "role": "nvidia-wsl-user-mode-driver-payload",
+        "relation": "logical-libcuda-driver-payload",
+        "soname": "libcuda.so.1",
+        "attempt_b_evidence": "sealed-in-preflight; complete-map-membership-not-preserved",
+    },
+    {
+        "name": "libnvdxgdmal.so.1",
+        "role": "nvidia-wsl-cuda-runtime-companion",
+        "relation": "mapped-by-attempt-b-cuda-initialization",
+        "soname": "libnvdxgdmal.so.1",
+        "attempt_b_evidence": "live-identity-gate-observed-mapped",
+    },
+)
+WSL_NVIDIA_INF_PACKAGE_MEMBERS = (
+    "libcuda.so.1.1",
+    "libcuda_loader.so",
+    "libnvdxgdmal.so.1",
+)
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -271,6 +295,24 @@ def _stat_identity(path: Path) -> dict[str, int]:
     }
 
 
+def _directory_identity(path: Path) -> dict[str, int]:
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise RuntimePinError(f"WSL NVIDIA package directory is unavailable: {path}") from exc
+    if not stat.S_ISDIR(info.st_mode):
+        raise RuntimePinError(f"WSL NVIDIA package path is not a direct directory: {path}")
+    return {
+        "device": info.st_dev,
+        "inode": info.st_ino,
+        "mode": info.st_mode,
+        "size": info.st_size,
+        "links": info.st_nlink,
+        "ctime_ns": info.st_ctime_ns,
+        "mtime_ns": info.st_mtime_ns,
+    }
+
+
 def _sealed_file_record(path: Path, *, require_regular_lexical_path: bool = False) -> dict[str, Any]:
     lexical_path = Path(os.path.abspath(path))
     try:
@@ -350,15 +392,43 @@ def _driver_version_from_inf(path: Path) -> tuple[str, str]:
     return match.group(1).strip(), match.group(2).strip()
 
 
-def _elf_soname(path: Path) -> str:
+def _driver_inf_declared_package_members(path: Path) -> list[str]:
+    try:
+        content = path.read_text(encoding="utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        raise RuntimePinError("WSL NVIDIA driver INF is unavailable") from exc
+    missing = [
+        name
+        for name in WSL_NVIDIA_INF_PACKAGE_MEMBERS
+        if re.search(
+            rf"(?im)^\s*{re.escape(name)}\s*=\s*1(?:\s*,|\s*$)",
+            content,
+        )
+        is None
+    ]
+    if missing:
+        raise RuntimePinError(
+            f"WSL NVIDIA driver INF does not declare the sealed runtime package members: {missing}"
+        )
+    return sorted(WSL_NVIDIA_INF_PACKAGE_MEMBERS)
+
+
+def _elf_identity(path: Path) -> dict[str, Any]:
     try:
         output = run_text(["readelf", "-d", str(path)])
     except RuntimePinError as exc:
         raise RuntimePinError("cannot inspect WSL CUDA driver ELF identity") from exc
-    match = re.search(r"\(SONAME\).*\[([^\]]+)\]", output)
-    if match is None:
+    soname_matches = re.findall(r"\(SONAME\).*\[([^\]]+)\]", output)
+    if len(soname_matches) != 1:
         raise RuntimePinError("WSL CUDA driver payload has no ELF SONAME")
-    return match.group(1)
+    return {
+        "soname": soname_matches[0],
+        "needed": re.findall(r"\(NEEDED\).*\[([^\]]+)\]", output),
+    }
+
+
+def _elf_soname(path: Path) -> str:
+    return str(_elf_identity(path)["soname"])
 
 
 def collect_wsl_cuda_driver_closure(
@@ -368,12 +438,13 @@ def collect_wsl_cuda_driver_closure(
     wsl_driver_root: Path = Path("/usr/lib/wsl/drivers"),
     mountinfo_path: Path = Path("/proc/self/mountinfo"),
 ) -> dict[str, Any] | None:
-    """Seal the observed WSL CUDA shim and its exact mapped driver package.
+    """Seal the observed WSL CUDA shim and bounded NVIDIA runtime package.
 
-    This is a two-object WSL dispatch contract, not a path or byte alias:
-    ldd resolves the guest shim under ``/usr/lib/wsl/lib`` while CUDA maps the
-    distinct NVIDIA user-mode payload from the read-only 9p driver package.
-    Ordinary Linux closures return ``None`` and retain exact-path matching.
+    The accepted set names roles supported by runtime evidence: the distinct
+    NVIDIA user-mode payload and the WSL CUDA runtime companion observed at the
+    #3013 attempt-B identity gate. No other package member is admitted by
+    *-glob or directory membership. Ordinary Linux closures return ``None``
+    and retain exact-path matching.
     """
     wsl_lib_root = Path(os.path.abspath(wsl_lib_root))
     wsl_driver_root = Path(os.path.abspath(wsl_driver_root))
@@ -416,6 +487,9 @@ def collect_wsl_cuda_driver_closure(
     shim_record = _sealed_file_record(stub_path, require_regular_lexical_path=True)
     if shim_record["path"] != shim_record["realpath"]:
         raise RuntimePinError("WSL CUDA shim path resolves through an unsealed symlink")
+    shim_elf_identity = _elf_identity(stub_path)
+    if shim_elf_identity["soname"] != "libcuda.so.1":
+        raise RuntimePinError("WSL CUDA shim ELF SONAME is invalid")
     for dependency in logical_dependencies[str(stub_path)]:
         if (
             dependency.get("sha256") != shim_record["sha256"]
@@ -432,7 +506,7 @@ def collect_wsl_cuda_driver_closure(
             or alias["sha256"] != shim_record["sha256"]
         ):
             raise RuntimePinError("WSL CUDA shim aliases do not identify one sealed file object")
-        shim_aliases.append(alias)
+        shim_aliases.append({**alias, "elf_identity": shim_elf_identity})
     if not any(record["path"] == str(stub_path) for record in shim_aliases):
         raise RuntimePinError("the ldd-resolved WSL CUDA shim path is absent")
 
@@ -446,14 +520,17 @@ def collect_wsl_cuda_driver_closure(
     if payload_path.name != "libcuda.so.1.1":
         raise RuntimePinError("WSL NVIDIA driver payload has an unexpected mapped filename")
     payload = _sealed_file_record(payload_path, require_regular_lexical_path=True)
-    if payload["path"] != payload["realpath"] or _elf_soname(payload_path) != "libcuda.so.1":
+    payload_elf_identity = _elf_identity(payload_path)
+    if payload["path"] != payload["realpath"] or payload_elf_identity["soname"] != "libcuda.so.1":
         raise RuntimePinError("WSL NVIDIA driver payload ELF identity is invalid")
 
     loader_path = package_root / "libcuda_loader.so"
     loader_copy = _sealed_file_record(loader_path, require_regular_lexical_path=True)
+    loader_elf_identity = _elf_identity(loader_path)
     if (
         loader_copy["path"] != loader_copy["realpath"]
         or loader_copy["sha256"] != shim_record["sha256"]
+        or loader_elf_identity != shim_elf_identity
         or (
             loader_copy["identity"]["device"], loader_copy["identity"]["inode"]
         ) == (shim_record["identity"]["device"], shim_record["identity"]["inode"])
@@ -468,41 +545,265 @@ def collect_wsl_cuda_driver_closure(
     inf_path = package_root / "nvmdi.inf"
     inf_date, inf_version = _driver_version_from_inf(inf_path)
     inf_record = _sealed_file_record(inf_path, require_regular_lexical_path=True)
+    inf_package_members = _driver_inf_declared_package_members(inf_path)
+
+    package_runtime_objects: list[dict[str, Any]] = []
+    for specification in WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS:
+        object_path = package_root / specification["name"]
+        object_record = _sealed_file_record(object_path, require_regular_lexical_path=True)
+        elf_identity = _elf_identity(object_path)
+        if (
+            object_record["path"] != object_record["realpath"]
+            or elf_identity["soname"] != specification["soname"]
+        ):
+            raise RuntimePinError(
+                f"WSL NVIDIA runtime package object has an unexpected identity: {object_path}"
+            )
+        package_runtime_objects.append(
+            {
+                **object_record,
+                "package_name": package_root.name,
+                "role": specification["role"],
+                "relation": specification["relation"],
+                "attempt_b_evidence": specification["attempt_b_evidence"],
+                "elf_identity": elf_identity,
+            }
+        )
 
     accepted: list[dict[str, Any]] = []
     for alias in shim_aliases:
         accepted.append(
             {
                 **alias,
+                "elf_identity": shim_elf_identity,
                 "role": "wsl-cuda-shim-alias",
                 "relation": "same-device-inode-hardlink-alias",
             }
         )
-    accepted.append(
-        {
-            **payload,
-            "role": "nvidia-wsl-user-mode-driver-payload",
-            "relation": "distinct-driver-payload-in-the-sealed-wsl-package",
-        }
-    )
+    accepted.extend(package_runtime_objects)
+    payload_object = package_runtime_objects[0]
     return {
-        "schema_version": 1,
-        "contract": "wsl-cuda-driver-shim-and-package-payload-v1",
+        "schema_version": 2,
+        "contract": WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT,
         "logical_dependency": "libcuda.so.1",
         "shim_mount": lib_mount,
         "driver_mount": driver_mount,
-        "shim": {**shim_record, "aliases": shim_aliases},
+        "shim": {
+            **shim_record,
+            "elf_identity": shim_elf_identity,
+            "aliases": shim_aliases,
+        },
         "driver_package": {
             "root": str(package_root),
             "name": package_root.name,
-            "inf": {**inf_record, "driver_date": inf_date, "driver_version": inf_version},
-            "loader_copy": loader_copy,
+            "directory_identity": _directory_identity(package_root),
+            "inf": {
+                **inf_record,
+                "driver_date": inf_date,
+                "driver_version": inf_version,
+                "package_members": inf_package_members,
+            },
+            "loader_copy": {**loader_copy, "elf_identity": loader_elf_identity},
             "loader_relation": "same-bytes-distinct-mounted-object",
-            "payload": {**payload, "soname": "libcuda.so.1"},
+            "runtime_objects": package_runtime_objects,
+            "payload": {**payload_object, "soname": "libcuda.so.1"},
             "payload_relation": "distinct-object-distinct-bytes",
         },
         "accepted_mapped_objects": accepted,
     }
+
+
+def verify_wsl_cuda_driver_closure(closure: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Re-attest every sealed WSL/NVIDIA object and its package relation.
+
+    This is called with each live process-map check, including immediately
+    before every model-facing POST. Its schema admits only the role-bearing
+    package objects returned by ``collect_wsl_cuda_driver_closure``.
+    """
+
+    if (
+        not isinstance(closure, Mapping)
+        or closure.get("schema_version") != 2
+        or closure.get("contract") != WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT
+        or closure.get("logical_dependency") != "libcuda.so.1"
+    ):
+        raise RuntimePinError("WSL NVIDIA runtime package closure contract is malformed")
+
+    def verify_file(record: Any, expected_path: Path, *, label: str) -> dict[str, Any]:
+        if not isinstance(record, Mapping):
+            raise RuntimePinError(f"sealed WSL CUDA {label} record is malformed")
+        expected = _sealed_file_record(expected_path, require_regular_lexical_path=True)
+        if any(record.get(key) != expected[key] for key in ("path", "realpath", "sha256", "identity")):
+            raise RuntimePinError(f"sealed WSL CUDA {label} identity changed: {expected_path}")
+        return expected
+
+    shim = closure.get("shim")
+    if not isinstance(shim, Mapping):
+        raise RuntimePinError("sealed WSL CUDA shim record is malformed")
+    shim_path_value = shim.get("path")
+    shim_mount = closure.get("shim_mount")
+    driver_mount = closure.get("driver_mount")
+    if (
+        not isinstance(shim_path_value, str)
+        or not isinstance(shim_mount, Mapping)
+        or not isinstance(driver_mount, Mapping)
+        or shim_mount.get("filesystem") != "overlay"
+        or driver_mount.get("filesystem") != "9p"
+        or driver_mount.get("source") != "drivers"
+        or "ro" not in str(driver_mount.get("mount_options", "")).split(",")
+    ):
+        raise RuntimePinError("sealed WSL CUDA mount or shim relationship changed")
+    shim_path = Path(shim_path_value)
+    shim_root = Path(str(shim_mount.get("mountpoint", "")))
+    if shim_path.parent != shim_root or shim_path.name not in {
+        "libcuda.so",
+        "libcuda.so.1",
+        "libcuda.so.1.1",
+    }:
+        raise RuntimePinError("sealed WSL CUDA shim path is outside its exact mount")
+    shim_record = verify_file(shim, shim_path, label="shim")
+    shim_elf = _elf_identity(shim_path)
+    if shim_elf.get("soname") != "libcuda.so.1" or shim.get("elf_identity") != shim_elf:
+        raise RuntimePinError("sealed WSL CUDA shim ELF identity changed")
+
+    aliases = shim.get("aliases")
+    if not isinstance(aliases, list) or not aliases:
+        raise RuntimePinError("sealed WSL CUDA shim aliases are malformed")
+    expected_alias_names = {"libcuda.so", "libcuda.so.1", "libcuda.so.1.1"}
+    if {Path(str(item.get("path", ""))).name for item in aliases if isinstance(item, Mapping)} != expected_alias_names:
+        raise RuntimePinError("sealed WSL CUDA shim alias set changed")
+    try:
+        live_alias_paths = {path.name for path in shim_root.glob("libcuda.so*")}
+    except OSError as exc:
+        raise RuntimePinError("sealed WSL CUDA shim directory is unavailable") from exc
+    if live_alias_paths != expected_alias_names:
+        raise RuntimePinError("live WSL CUDA shim alias set changed")
+    accepted: list[dict[str, Any]] = []
+    for alias in aliases:
+        if not isinstance(alias, Mapping):
+            raise RuntimePinError("sealed WSL CUDA shim alias record is malformed")
+        alias_path = shim_root / str(alias.get("path", "")).rsplit("/", 1)[-1]
+        alias_record = verify_file(alias, alias_path, label="shim alias")
+        if (
+            alias_record["identity"]["device"] != shim_record["identity"]["device"]
+            or alias_record["identity"]["inode"] != shim_record["identity"]["inode"]
+            or alias_record["sha256"] != shim_record["sha256"]
+            or alias.get("elf_identity") != shim_elf
+        ):
+            raise RuntimePinError("sealed WSL CUDA shim aliases no longer identify one object")
+        accepted.append(
+            {
+                **alias_record,
+                "elf_identity": shim_elf,
+                "role": "wsl-cuda-shim-alias",
+                "relation": "same-device-inode-hardlink-alias",
+            }
+        )
+
+    driver_package = closure.get("driver_package")
+    if not isinstance(driver_package, Mapping):
+        raise RuntimePinError("sealed WSL NVIDIA driver package is malformed")
+    package_root_value = driver_package.get("root")
+    package_name = driver_package.get("name")
+    driver_root = Path(str(driver_mount.get("mountpoint", "")))
+    if (
+        not isinstance(package_root_value, str)
+        or not isinstance(package_name, str)
+        or re.fullmatch(r"nvmdi\.inf_amd64_[0-9a-f]+", package_name, flags=re.IGNORECASE) is None
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA package identity is malformed")
+    package_root = Path(package_root_value)
+    try:
+        canonical_package_root = package_root.resolve(strict=True)
+    except OSError as exc:
+        raise RuntimePinError("sealed WSL NVIDIA package path is unavailable") from exc
+    if (
+        package_root.parent != driver_root
+        or package_root.name != package_name
+        or canonical_package_root != package_root
+        or not package_root.is_dir()
+        or driver_package.get("directory_identity") != _directory_identity(package_root)
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA package path or INF relation changed")
+
+    inf = driver_package.get("inf")
+    if not isinstance(inf, Mapping):
+        raise RuntimePinError("sealed WSL NVIDIA INF record is malformed")
+    inf_record = verify_file(inf, package_root / "nvmdi.inf", label="driver INF")
+    inf_date, inf_version = _driver_version_from_inf(Path(inf_record["path"]))
+    package_members = _driver_inf_declared_package_members(Path(inf_record["path"]))
+    if (
+        inf.get("driver_date") != inf_date
+        or inf.get("driver_version") != inf_version
+        or inf.get("package_members") != package_members
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA INF version changed")
+
+    loader_copy = driver_package.get("loader_copy")
+    loader_record = verify_file(loader_copy, package_root / "libcuda_loader.so", label="package loader")
+    loader_elf = _elf_identity(Path(loader_record["path"]))
+    if (
+        not isinstance(loader_copy, Mapping)
+        or driver_package.get("loader_relation") != "same-bytes-distinct-mounted-object"
+        or loader_copy.get("elf_identity") != loader_elf
+        or loader_elf != shim_elf
+        or loader_record["sha256"] != shim_record["sha256"]
+        or (
+            loader_record["identity"]["device"],
+            loader_record["identity"]["inode"],
+        )
+        == (shim_record["identity"]["device"], shim_record["identity"]["inode"])
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA package loader relation changed")
+
+    raw_objects = driver_package.get("runtime_objects")
+    if not isinstance(raw_objects, list) or len(raw_objects) != len(WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS):
+        raise RuntimePinError("sealed WSL NVIDIA runtime package object set is malformed")
+    verified_objects: list[dict[str, Any]] = []
+    for specification, raw_object in zip(WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS, raw_objects, strict=True):
+        if not isinstance(raw_object, Mapping):
+            raise RuntimePinError("sealed WSL NVIDIA runtime package object is malformed")
+        object_path = package_root / specification["name"]
+        object_record = verify_file(raw_object, object_path, label="runtime package object")
+        elf_identity = _elf_identity(object_path)
+        expected_fields = {
+            "package_name": package_name,
+            "role": specification["role"],
+            "relation": specification["relation"],
+            "attempt_b_evidence": specification["attempt_b_evidence"],
+            "elf_identity": elf_identity,
+        }
+        if (
+            elf_identity.get("soname") != specification["soname"]
+            or any(raw_object.get(key) != value for key, value in expected_fields.items())
+        ):
+            raise RuntimePinError("sealed WSL NVIDIA runtime package role or ELF identity changed")
+        verified_objects.append({**object_record, **expected_fields})
+
+    payload = driver_package.get("payload")
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get("soname") != "libcuda.so.1"
+        or driver_package.get("payload_relation") != "distinct-object-distinct-bytes"
+        or any(
+        payload.get(key) != verified_objects[0].get(key)
+        for key in ("path", "realpath", "sha256", "identity", "package_name", "role", "relation", "attempt_b_evidence", "elf_identity")
+        )
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA payload relation changed")
+    if (
+        verified_objects[0]["sha256"] == shim_record["sha256"]
+        or (
+            verified_objects[0]["identity"]["device"],
+            verified_objects[0]["identity"]["inode"],
+        )
+        == (shim_record["identity"]["device"], shim_record["identity"]["inode"])
+    ):
+        raise RuntimePinError("sealed WSL NVIDIA payload is no longer distinct from the guest shim")
+    expected_accepted = accepted + verified_objects
+    if closure.get("accepted_mapped_objects") != expected_accepted:
+        raise RuntimePinError("sealed WSL NVIDIA accepted mapped-object set changed")
+    return expected_accepted
 
 
 def collect_static_library_closure(build_root: Path) -> dict[str, dict[str, Any]]:

@@ -53,6 +53,15 @@
         "httpx"
       ]
     },
+    "diagnostic:3018-wsl-nvidia-runtime-closure-rehearsal": {
+      "branch": "v1",
+      "module": "tools.wsl_nvidia_runtime_closure_rehearsal",
+      "description": "#3018 proposal-gated one-load zero-request WSL NVIDIA process-map closure rehearsal; no model-facing POSTs.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
+    },
     "v1:crystallization": {
       "branch": "v1",
       "module": "tools.v1_crystallization_llama_cpp_wsl",
