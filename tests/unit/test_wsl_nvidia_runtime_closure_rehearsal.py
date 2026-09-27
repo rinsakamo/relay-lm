@@ -115,6 +115,81 @@ def test_target_is_registered_on_canonical_v1_physical_runner() -> None:
     assert target.required_distributions == ("build", "httpx")
 
 
+def test_candidate_manifest_uses_static_closure_key_for_server_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    build_root = tmp_path / "candidate-build"
+    binary = build_root / "bin" / "llama-server"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"server")
+    binary.chmod(0o755)
+    model = tmp_path / "model.gguf"
+    model.write_bytes(b"model")
+    binary_sha256 = "a" * 64
+    model_sha256 = "b" * 64
+    binary_identity = {
+        "device": 1,
+        "inode": 2,
+        "mode": 33261,
+        "size": 6,
+        "nlink": 1,
+        "ctime_ns": 3,
+        "mtime_ns": 4,
+    }
+    shared_libraries = {
+        str(binary.resolve()): {
+            "sha256": binary_sha256,
+            "identity": binary_identity,
+            "dependencies": {},
+            "kernel_vdso_is_process_supplied": False,
+        }
+    }
+    wsl_closure = {"contract": "wsl-nvidia-cuda-runtime-package-closure-v2"}
+    monkeypatch.setattr(rehearsal, "EXPECTED_SERVER_BINARY", binary.resolve())
+    monkeypatch.setattr(rehearsal, "EXPECTED_SERVER_SHA256", binary_sha256)
+    monkeypatch.setattr(candidate_runtime, "MODEL_PATH", model.resolve())
+    monkeypatch.setattr(candidate_runtime, "MODEL_SHA256", model_sha256)
+    monkeypatch.setattr(
+        rehearsal,
+        "_sha256_file",
+        lambda path: model_sha256 if Path(path).resolve() == model.resolve() else binary_sha256,
+    )
+    monkeypatch.setattr(
+        candidate_runtime,
+        "collect_static_library_closure",
+        lambda root: shared_libraries,
+    )
+    monkeypatch.setattr(
+        candidate_runtime,
+        "collect_wsl_cuda_driver_closure",
+        lambda libraries: wsl_closure,
+    )
+    monkeypatch.setattr(candidate_runtime, "run_text", lambda command: "gpu-identity")
+    monkeypatch.setattr(
+        candidate_runtime,
+        "_sealed_file_record",
+        lambda path, **kwargs: {
+            "path": str(Path(path).resolve()),
+            "realpath": str(Path(path).resolve()),
+            "sha256": model_sha256,
+            "identity": {**binary_identity, "inode": 5, "size": 5},
+        },
+    )
+
+    manifest = rehearsal.collect_candidate_manifest(
+        candidate_binary=binary,
+        model_path=model,
+    )
+
+    assert manifest["server"] == {
+        "path": str(binary.resolve()),
+        "sha256": binary_sha256,
+        "identity": binary_identity,
+    }
+    assert manifest["build"]["shared_libraries"] == shared_libraries
+    assert manifest["build"]["wsl_cuda_driver_closure"] == wsl_closure
+
+
 def test_proposal_descriptor_freezes_zero_request_limits(tmp_path: Path) -> None:
     descriptor = _descriptor(tmp_path)
 
