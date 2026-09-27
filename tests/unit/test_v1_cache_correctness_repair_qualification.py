@@ -153,7 +153,7 @@ def test_descriptor_schema_binds_attempt_owner_source_and_disabled_product_cache
 ) -> None:
     validated = qualification.validate_descriptor(_descriptor(tmp_path))
 
-    assert validated["payload"]["attempt_id"] == "cache-correctness-repair-qualification-20260927-a"
+    assert validated["payload"]["attempt_id"] == "cache-correctness-repair-qualification-20260927-b"
     assert validated["payload"]["repository"]["execution_branch"] == "v1"
     assert validated["payload"]["request_policy"]["product_cache_policy"] == "disabled"
     assert validated["roots"]["cold"] == tmp_path / "attempt-output" / "cold"
@@ -165,7 +165,7 @@ def test_descriptor_schema_binds_attempt_owner_source_and_disabled_product_cache
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("attempt_id", "cache-correctness-repair-qualification-20260927-b"),
+        ("attempt_id", "cache-correctness-repair-qualification-20260927-a"),
         ("target_id", "diagnostic:3006-projection-provenance"),
         ("owner_branch", "main"),
         ("authority_mode", "EXECUTION_AUTHORITY_GRANTED"),
@@ -1338,7 +1338,7 @@ def test_candidate_server_environment_strips_inherited_llama_overrides(
 
 
 def test_failure_and_attempt_identifiers_cannot_replay_retry_reseed_or_fallback() -> None:
-    assert qualification.ATTEMPT_ID.endswith("-20260927-a")
+    assert qualification.ATTEMPT_ID == "cache-correctness-repair-qualification-20260927-b"
     assert qualification.GENERATION_MAXIMUM == 8
     assert qualification.INPUT_COUNT_MAXIMUM == 24
     assert qualification.MODEL_FACING_MAXIMUM == 32
