@@ -95,6 +95,11 @@ WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS = (
         "attempt_b_evidence": "live-identity-gate-observed-mapped",
     },
 )
+WSL_NVIDIA_INF_PACKAGE_MEMBERS = (
+    "libcuda.so.1.1",
+    "libcuda_loader.so",
+    "libnvdxgdmal.so.1",
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -387,6 +392,27 @@ def _driver_version_from_inf(path: Path) -> tuple[str, str]:
     return match.group(1).strip(), match.group(2).strip()
 
 
+def _driver_inf_declared_package_members(path: Path) -> list[str]:
+    try:
+        content = path.read_text(encoding="utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        raise RuntimePinError("WSL NVIDIA driver INF is unavailable") from exc
+    missing = [
+        name
+        for name in WSL_NVIDIA_INF_PACKAGE_MEMBERS
+        if re.search(
+            rf"(?im)^\s*{re.escape(name)}\s*=\s*1(?:\s*,|\s*$)",
+            content,
+        )
+        is None
+    ]
+    if missing:
+        raise RuntimePinError(
+            f"WSL NVIDIA driver INF does not declare the sealed runtime package members: {missing}"
+        )
+    return sorted(WSL_NVIDIA_INF_PACKAGE_MEMBERS)
+
+
 def _elf_identity(path: Path) -> dict[str, Any]:
     try:
         output = run_text(["readelf", "-d", str(path)])
@@ -519,6 +545,7 @@ def collect_wsl_cuda_driver_closure(
     inf_path = package_root / "nvmdi.inf"
     inf_date, inf_version = _driver_version_from_inf(inf_path)
     inf_record = _sealed_file_record(inf_path, require_regular_lexical_path=True)
+    inf_package_members = _driver_inf_declared_package_members(inf_path)
 
     package_runtime_objects: list[dict[str, Any]] = []
     for specification in WSL_NVIDIA_RUNTIME_PACKAGE_OBJECTS:
@@ -570,7 +597,12 @@ def collect_wsl_cuda_driver_closure(
             "root": str(package_root),
             "name": package_root.name,
             "directory_identity": _directory_identity(package_root),
-            "inf": {**inf_record, "driver_date": inf_date, "driver_version": inf_version},
+            "inf": {
+                **inf_record,
+                "driver_date": inf_date,
+                "driver_version": inf_version,
+                "package_members": inf_package_members,
+            },
             "loader_copy": {**loader_copy, "elf_identity": loader_elf_identity},
             "loader_relation": "same-bytes-distinct-mounted-object",
             "runtime_objects": package_runtime_objects,
@@ -699,7 +731,12 @@ def verify_wsl_cuda_driver_closure(closure: Mapping[str, Any]) -> list[dict[str,
         raise RuntimePinError("sealed WSL NVIDIA INF record is malformed")
     inf_record = verify_file(inf, package_root / "nvmdi.inf", label="driver INF")
     inf_date, inf_version = _driver_version_from_inf(Path(inf_record["path"]))
-    if inf.get("driver_date") != inf_date or inf.get("driver_version") != inf_version:
+    package_members = _driver_inf_declared_package_members(Path(inf_record["path"]))
+    if (
+        inf.get("driver_date") != inf_date
+        or inf.get("driver_version") != inf_version
+        or inf.get("package_members") != package_members
+    ):
         raise RuntimePinError("sealed WSL NVIDIA INF version changed")
 
     loader_copy = driver_package.get("loader_copy")

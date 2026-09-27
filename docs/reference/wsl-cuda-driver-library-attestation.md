@@ -85,7 +85,8 @@ The candidate manifest records
   mount identity, file identity, SHA256, ELF SONAME, and `DT_NEEDED` list;
 - the read-only 9p `drivers` mount and one exact
   `nvmdi.inf_amd64_<identity>` directory, including directory identity and
-  INF path, identity, digest, date, and driver version;
+  INF path, identity, digest, date, driver version, and declarations for the
+  payload, loader copy, and runtime companion;
 - the package loader copy as relationship evidence only; and
 - exactly two package runtime objects, each with literal and real paths,
   device/inode, mode, size, link count, ctime/mtime, SHA256, SONAME,

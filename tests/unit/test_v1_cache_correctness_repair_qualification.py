@@ -638,7 +638,9 @@ def _closure_gate_fixture(
         (package / "libnvidia-ml.so.1").write_bytes(b"unrelated NVIDIA management library")
         inf_path = package / "nvmdi.inf"
         inf_path.write_text(
-            "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n",
+            "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n"
+            "libcuda.so.1.1 = 1\nlibcuda_loader.so = 1\n"
+            "libnvdxgdmal.so.1 = 1\n",
             encoding="utf-8",
         )
         objects.update(
@@ -724,6 +726,11 @@ def _closure_gate_fixture(
                     **inf_record,
                     "driver_date": "12/02/2025",
                     "driver_version": "32.0.15.9144",
+                    "package_members": [
+                        "libcuda.so.1.1",
+                        "libcuda_loader.so",
+                        "libnvdxgdmal.so.1",
+                    ],
                 },
                 "loader_copy": {
                     **loader_record,
@@ -837,7 +844,10 @@ def test_wsl_cuda_driver_closure_records_only_role_bound_package_runtime_objects
     gdma.write_bytes(b"observed WSL runtime companion")
     (package / "unobserved-extra.so").write_bytes(b"not an admitted package object")
     (package / "nvmdi.inf").write_text(
-        "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n", encoding="utf-8"
+        "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n"
+        "libcuda.so.1.1 = 1\nlibcuda_loader.so = 1\n"
+        "libnvdxgdmal.so.1 = 1\n",
+        encoding="utf-8",
     )
     mountinfo = tmp_path / "mountinfo"
     mountinfo.write_text(
@@ -903,6 +913,11 @@ def test_wsl_cuda_driver_closure_records_only_role_bound_package_runtime_objects
     assert sealed is not None
     assert sealed["contract"] == runtime.WSL_NVIDIA_RUNTIME_PACKAGE_CONTRACT
     assert sealed["driver_package"]["inf"]["driver_version"] == "32.0.15.9144"
+    assert sealed["driver_package"]["inf"]["package_members"] == [
+        "libcuda.so.1.1",
+        "libcuda_loader.so",
+        "libnvdxgdmal.so.1",
+    ]
     assert sealed["driver_package"]["payload"]["soname"] == "libcuda.so.1"
     assert sealed["shim"]["identity"]["device"] == 44
     assert sealed["driver_package"]["loader_copy"]["identity"]["device"] == 36
@@ -941,6 +956,18 @@ def test_wsl_cuda_driver_closure_records_only_role_bound_package_runtime_objects
             wsl_driver_root=driver_root,
             mountinfo_path=mountinfo,
         )
+
+
+def test_wsl_inf_must_declare_each_sealed_runtime_package_member(tmp_path: Path) -> None:
+    inf_path = tmp_path / "nvmdi.inf"
+    inf_path.write_text(
+        "[Version]\nDriverVer=12/02/2025,32.0.15.9144\n"
+        "libcuda.so.1.1 = 1\nlibcuda_loader.so = 1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(runtime.RuntimePinError, match="does not declare"):
+        runtime._driver_inf_declared_package_members(inf_path)
 
 
 def test_loaded_closure_accepts_only_exact_sealed_wsl_objects(
