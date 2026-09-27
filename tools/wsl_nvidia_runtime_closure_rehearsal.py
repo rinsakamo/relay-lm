@@ -331,6 +331,11 @@ def prepare_proposal(
     evidence_root = evidence_root.expanduser().resolve()
     if _git(repo_root, "branch", "--show-current") != "v1" or _git(repo_root, "status", "--porcelain"):
         raise RehearsalError("proposal preparation requires a clean exact v1 checkout")
+    repository_identity = {
+        "head": _git(repo_root, "rev-parse", "HEAD"),
+        "tree": _git(repo_root, "rev-parse", "HEAD^{tree}"),
+    }
+    _verify_repository(repo_root, repository_identity)
     paths = _proposal_paths(evidence_root)
     if any(path.exists() for path in paths.values()):
         raise RehearsalError("a frozen rehearsal proposal path already exists")
@@ -345,6 +350,7 @@ def prepare_proposal(
         descriptor_path=paths["descriptor"],
         roots=paths,
     )
+    _verify_repository(repo_root, descriptor["repository"])
     _validate_descriptor(descriptor)
     _write_json(paths["candidate_manifest"], manifest, exclusive=True)
     _write_json(paths["descriptor"], descriptor, exclusive=True)
@@ -638,13 +644,42 @@ def verify_execution_authority(
     }
 
 
-def _verify_queue_receipt(path: Path) -> dict[str, Any]:
+def _verify_queue_receipt(
+    path: Path,
+    *,
+    repo_root: Path,
+    descriptor_path: Path,
+    authority_comment_id: int,
+) -> dict[str, Any]:
     receipt = _read_json_object(path)
+    expected_command = [
+        sys.executable,
+        "-m",
+        "tools.wsl_nvidia_runtime_closure_rehearsal",
+        "--descriptor",
+        str(descriptor_path.resolve()),
+        "--authority-comment-id",
+        str(authority_comment_id),
+    ]
+    expected_command_hash = _sha256_bytes(
+        json.dumps(
+            expected_command,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    )
     if (
-        receipt.get("receipt_path") != str(path.resolve())
+        receipt.get("schema_version") != 2
+        or not isinstance(receipt.get("request_id"), str)
+        or re.fullmatch(r"[0-9a-f]{32}", receipt["request_id"]) is None
+        or receipt.get("receipt_path") != str(path.resolve())
         or receipt.get("target_label") != TARGET_ID
         or receipt.get("resource_key") != RESOURCE_KEY
-        or receipt.get("state") not in {"FINAL_PREFLIGHT", "CHILD_RUNNING"}
+        or receipt.get("command_executable") != Path(sys.executable).name
+        or receipt.get("command_argv_sha256") != expected_command_hash
+        or receipt.get("cwd") != str(repo_root.resolve())
+        or receipt.get("state") != "RUNNING"
+        or receipt.get("lease_state") != "ACQUIRED"
     ):
         raise RehearsalError("canonical physical queue receipt does not bind this rehearsal")
     return receipt
@@ -872,7 +907,12 @@ def run_target(
         descriptor_sha256=descriptor_sha256,
         descriptor=descriptor,
     )
-    receipt = _verify_queue_receipt(Path(roots["receipt"]))
+    receipt = _verify_queue_receipt(
+        Path(roots["receipt"]),
+        repo_root=repo_root,
+        descriptor_path=descriptor_path,
+        authority_comment_id=authority_comment_id,
+    )
     preflight_root = Path(roots["preflight"])
     output_root = Path(roots["output"])
     preflight_root.mkdir(mode=0o700, parents=True, exist_ok=False)

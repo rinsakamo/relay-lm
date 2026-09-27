@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -344,4 +347,55 @@ def test_server_log_must_not_record_a_model_facing_post() -> None:
     with pytest.raises(rehearsal.RehearsalError, match="model-facing POST"):
         rehearsal._assert_no_model_facing_post_log(
             "llama_server: model loaded\nPOST /v1/chat/completions 200\n"
+        )
+
+
+def test_queue_receipt_must_bind_the_exact_running_child(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path.resolve()
+    descriptor_path = (tmp_path / "descriptor.json").resolve()
+    receipt_path = (tmp_path / "receipt.json").resolve()
+    authority_comment_id = 603
+    command = [
+        sys.executable,
+        "-m",
+        "tools.wsl_nvidia_runtime_closure_rehearsal",
+        "--descriptor",
+        str(descriptor_path),
+        "--authority-comment-id",
+        str(authority_comment_id),
+    ]
+    receipt = {
+        "schema_version": 2,
+        "request_id": "a" * 32,
+        "receipt_path": str(receipt_path),
+        "target_label": rehearsal.TARGET_ID,
+        "resource_key": rehearsal.RESOURCE_KEY,
+        "command_executable": Path(sys.executable).name,
+        "command_argv_sha256": hashlib.sha256(
+            json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest(),
+        "cwd": str(repo_root),
+        "state": "RUNNING",
+        "lease_state": "ACQUIRED",
+    }
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    verified = rehearsal._verify_queue_receipt(
+        receipt_path,
+        repo_root=repo_root,
+        descriptor_path=descriptor_path,
+        authority_comment_id=authority_comment_id,
+    )
+    assert verified["request_id"] == "a" * 32
+
+    receipt["state"] = "FINAL_PREFLIGHT"
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(rehearsal.RehearsalError, match="queue receipt"):
+        rehearsal._verify_queue_receipt(
+            receipt_path,
+            repo_root=repo_root,
+            descriptor_path=descriptor_path,
+            authority_comment_id=authority_comment_id,
         )
