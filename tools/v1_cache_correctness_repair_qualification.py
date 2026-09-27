@@ -19,6 +19,7 @@ import re
 import shlex
 import shutil
 import socket
+import stat
 import subprocess
 from threading import RLock
 from typing import Any
@@ -632,6 +633,8 @@ def verify_descriptor_runtime(
     server_binary = Path(manifest["server"]["path"]).expanduser().resolve()
     if _sha256_file(server_binary).removeprefix("sha256:") != manifest["server"]["sha256"]:
         raise QualificationTargetError("candidate llama-server hash changed after build")
+    if candidate_runtime._stat_identity(server_binary) != manifest["server"].get("identity"):
+        raise QualificationTargetError("candidate llama-server object identity changed after build")
     if Path(manifest["model"]["path"]).resolve() != candidate_runtime.MODEL_PATH.resolve():
         raise QualificationTargetError("runtime manifest model path mismatch")
     if manifest["model"].get("sha256") != candidate_runtime.MODEL_SHA256:
@@ -652,6 +655,9 @@ def verify_descriptor_runtime(
     actual_closure = candidate_runtime.collect_static_library_closure(build_root)
     if actual_closure != manifest["build"]["shared_libraries"]:
         raise QualificationTargetError("candidate shared-library closure changed after build")
+    actual_wsl_driver_closure = candidate_runtime.collect_wsl_cuda_driver_closure(actual_closure)
+    if actual_wsl_driver_closure != manifest["build"].get("wsl_cuda_driver_closure"):
+        raise QualificationTargetError("WSL CUDA driver object closure changed after manifest creation")
     _verify_live_gpu_identity(manifest)
     if not _port_is_free(1234) or not _port_is_free(18090):
         raise QualificationTargetError("one of the sole frozen ports is occupied; no alternate is allowed")
@@ -674,6 +680,7 @@ def verify_descriptor_runtime(
         "server_binary": str(server_binary),
         "server_sha256": manifest["server"]["sha256"],
         "shared_library_closure": manifest["build"]["shared_libraries"],
+        "wsl_cuda_driver_closure": manifest["build"]["wsl_cuda_driver_closure"],
         "model_path": manifest["model"]["path"],
         "model_sha256": manifest["model"]["sha256"],
         "runtime_environment": {
@@ -713,7 +720,7 @@ def _validate_candidate_source_identity(
 
 
 def _verify_candidate_runtime_manifest(manifest: dict[str, Any]) -> None:
-    if manifest.get("format_version") != 1 or manifest.get("kind") != "relaylm-3013-repaired-cuda-candidate":
+    if manifest.get("format_version") != 2 or manifest.get("kind") != "relaylm-3013-repaired-cuda-candidate":
         raise QualificationTargetError("candidate runtime manifest kind or schema is invalid")
     source = manifest.get("source")
     build = manifest.get("build")
@@ -731,11 +738,22 @@ def _verify_candidate_runtime_manifest(manifest: dict[str, Any]) -> None:
         raise QualificationTargetError("candidate CUDA toolkit or architecture identity is invalid")
     if build.get("build_type") != "Release":
         raise QualificationTargetError("candidate build is not a Release CUDA build")
+    wsl_driver_closure = build.get("wsl_cuda_driver_closure")
+    if wsl_driver_closure is not None and (
+        not isinstance(wsl_driver_closure, dict)
+        or wsl_driver_closure.get("schema_version") != 1
+        or wsl_driver_closure.get("contract")
+        != "wsl-cuda-driver-shim-and-package-payload-v1"
+        or wsl_driver_closure.get("logical_dependency") != "libcuda.so.1"
+    ):
+        raise QualificationTargetError("candidate manifest has a malformed WSL CUDA driver object contract")
 
     build_root = Path(str(build.get("build_root", ""))).expanduser().resolve()
     server_path = (build_root / "bin" / "llama-server").resolve()
     if Path(str(server.get("path", ""))).expanduser().resolve() != server_path:
         raise QualificationTargetError("candidate server path is outside the pinned build root")
+    if server.get("identity") != candidate_runtime._stat_identity(server_path):
+        raise QualificationTargetError("candidate server object identity is not the sealed build object")
     if server.get("swa_full") is not False or server.get("checkpointing_disabled") is not False:
         raise QualificationTargetError("candidate server manifest disables SWA or checkpointing")
     if server.get("server_slots") != 1:
@@ -1347,14 +1365,51 @@ def _verify_loaded_library_closure(
     if not maps_path.is_file():
         raise QualificationTargetError("cannot inspect candidate server loaded-library closure")
     roots = manifest["build"]["shared_libraries"]
-    expected_paths = {str(Path(binary).resolve())}
+    expected_paths: set[str] = set()
+    expected_records: dict[str, dict[str, Any]] = {}
+
+    def add_expected_file(path_value: Any, digest: Any, identity: Any) -> None:
+        if not isinstance(path_value, str) or not isinstance(digest, str) or not isinstance(identity, dict):
+            raise QualificationTargetError("candidate manifest has an incomplete sealed library identity")
+        resolved = str(Path(path_value).resolve())
+        if resolved != path_value:
+            raise QualificationTargetError("candidate manifest library path is not canonical")
+        existing = expected_records.get(resolved)
+        record = {"sha256": digest, "identity": identity}
+        if existing is not None and existing != record:
+            raise QualificationTargetError(f"candidate manifest conflicts on one file identity: {resolved}")
+        expected_records[resolved] = record
+        expected_paths.add(resolved)
+
+    binary_path = str(Path(binary).resolve())
+    add_expected_file(binary_path, manifest["server"].get("sha256"), manifest["server"].get("identity"))
     for root, record in roots.items():
-        expected_paths.add(str(Path(root).resolve()))
-        expected_paths.update(
-            value["path"]
-            for value in record["dependencies"].values()
-            if isinstance(value, dict) and isinstance(value.get("path"), str)
-        )
+        add_expected_file(root, record.get("sha256"), record.get("identity"))
+        dependencies = record.get("dependencies")
+        if not isinstance(dependencies, dict):
+            raise QualificationTargetError("candidate manifest dependency closure is malformed")
+        for value in dependencies.values():
+            if isinstance(value, dict):
+                add_expected_file(value.get("path"), value.get("sha256"), value.get("identity"))
+
+    wsl_driver_closure = manifest["build"].get("wsl_cuda_driver_closure")
+    accepted_wsl_paths: set[str] = set()
+    if wsl_driver_closure is not None:
+        if (
+            not isinstance(wsl_driver_closure, dict)
+            or wsl_driver_closure.get("contract") != "wsl-cuda-driver-shim-and-package-payload-v1"
+            or wsl_driver_closure.get("logical_dependency") != "libcuda.so.1"
+        ):
+            raise QualificationTargetError("candidate WSL CUDA driver closure contract is malformed")
+        accepted_objects = wsl_driver_closure.get("accepted_mapped_objects")
+        if not isinstance(accepted_objects, list) or not accepted_objects:
+            raise QualificationTargetError("candidate WSL CUDA driver object set is empty")
+        for item in accepted_objects:
+            if not isinstance(item, dict) or item.get("path") != item.get("realpath"):
+                raise QualificationTargetError("candidate WSL CUDA mapped object is not an exact regular path")
+            add_expected_file(item.get("path"), item.get("sha256"), item.get("identity"))
+            accepted_wsl_paths.add(item["path"])
+
     loaded_paths: set[str] = set()
     mapped_file_ids: dict[str, set[tuple[int, int, int]]] = {}
     for line in maps_path.read_text(encoding="utf-8").splitlines():
@@ -1372,61 +1427,81 @@ def _verify_loaded_library_closure(
                 raise QualificationTargetError(f"candidate server mapped an undeclared library: {normalized}")
             loaded_paths.add(normalized)
             mapped_file_ids.setdefault(normalized, set()).add(map_identity)
-    if str(binary.resolve()) not in loaded_paths:
+    if binary_path not in loaded_paths:
         raise QualificationTargetError("candidate server binary is absent from its process maps")
-    expected_hashes: dict[str, str] = {}
-    expected_hashes[str(binary.resolve())] = manifest["server"]["sha256"]
-    for root, record in roots.items():
-        expected_hashes[str(Path(root).resolve())] = record["sha256"]
-        for value in record["dependencies"].values():
-            if isinstance(value, dict):
-                expected_hashes[value["path"]] = value["sha256"]
-    previous_hashes = (
-        previous_attestation.get("loaded_libraries", {})
-        if isinstance(previous_attestation, dict)
-        else {}
-    )
     previous_identities = (
         previous_attestation.get("file_identities", {})
         if isinstance(previous_attestation, dict)
         else {}
     )
+    if isinstance(previous_attestation, dict):
+        previous_paths = set(previous_attestation.get("loaded_libraries", {}))
+        if previous_paths != loaded_paths:
+            raise QualificationTargetError("candidate server loaded-library mapping changed after attestation")
     loaded: dict[str, str] = {}
     file_identities: dict[str, dict[str, int]] = {}
     for path in sorted(loaded_paths):
-        expected_hash = expected_hashes.get(path)
-        if expected_hash is None:
+        expected_record = expected_records.get(path)
+        if expected_record is None:
             raise QualificationTargetError(f"loaded library is outside frozen closure: {path}")
-        stat = Path(path).stat()
-        identity = {
-            "device": stat.st_dev,
-            "inode": stat.st_ino,
-            "size": stat.st_size,
-            "ctime_ns": stat.st_ctime_ns,
-            "mtime_ns": stat.st_mtime_ns,
-        }
-        expected_map_identity = (os.major(stat.st_dev), os.minor(stat.st_dev), stat.st_ino)
+        if path in accepted_wsl_paths:
+            lexical_path = Path(path)
+            try:
+                lexical_identity = lexical_path.lstat()
+                canonical_path = lexical_path.resolve(strict=True)
+            except OSError as exc:
+                raise QualificationTargetError(
+                    f"sealed WSL CUDA library path is unavailable: {path}"
+                ) from exc
+            if not stat.S_ISREG(lexical_identity.st_mode) or str(canonical_path) != path:
+                raise QualificationTargetError(
+                    f"sealed WSL CUDA library path is no longer a direct regular file: {path}"
+                )
+        try:
+            identity = candidate_runtime._stat_identity(Path(path))
+        except candidate_runtime.RuntimePinError as exc:
+            raise QualificationTargetError(f"sealed candidate library is unavailable: {path}") from exc
+        if identity != expected_record["identity"]:
+            raise QualificationTargetError(f"sealed candidate library object identity changed: {path}")
+        expected_map_identity = (
+            os.major(identity["device"]),
+            os.minor(identity["device"]),
+            identity["inode"],
+        )
         if mapped_file_ids.get(path) != {expected_map_identity}:
             raise QualificationTargetError(
                 f"candidate server mapping no longer names the attested file identity: {path}"
             )
         prior_identity = previous_identities.get(path)
-        prior_hash = previous_hashes.get(path)
-        if prior_identity == identity and isinstance(prior_hash, str):
-            digest = prior_hash
-        else:
-            digest = _sha256_file(Path(path))
-        if digest.removeprefix("sha256:") != expected_hash:
+        if prior_identity is not None and prior_identity != identity:
+            raise QualificationTargetError(f"candidate server library identity drifted between POSTs: {path}")
+        digest = _sha256_file(Path(path))
+        if digest.removeprefix("sha256:") != expected_record["sha256"]:
             raise QualificationTargetError(f"loaded library digest is outside frozen closure: {path}")
         loaded[path] = digest
         file_identities[path] = identity
     if require_cuda:
         _require_cuda_library_set(list(loaded))
+        if wsl_driver_closure is not None:
+            if not isinstance(wsl_driver_closure, dict):
+                raise QualificationTargetError("candidate WSL CUDA driver package closure is malformed")
+            driver_package = wsl_driver_closure.get("driver_package")
+            payload = driver_package.get("payload") if isinstance(driver_package, dict) else None
+            payload_path = payload.get("path") if isinstance(payload, dict) else None
+            if (
+                not isinstance(payload_path, str)
+                or payload_path not in accepted_wsl_paths
+                or payload_path not in loaded_paths
+                or expected_records.get(payload_path)
+                != {"sha256": payload.get("sha256"), "identity": payload.get("identity")}
+            ):
+                raise QualificationTargetError("candidate server did not map its sealed WSL CUDA driver payload")
     return {
         "pid": pid,
         "process_start_ticks": _process_start_ticks(pid),
         "loaded_libraries": dict(sorted(loaded.items())),
         "file_identities": file_identities,
+        "wsl_cuda_driver_objects": sorted(loaded_paths & accepted_wsl_paths),
         "loaded_closure_matches_manifest": True,
         "binary_sha256": f"sha256:{manifest['server']['sha256']}",
     }
@@ -1451,7 +1526,7 @@ def _parse_mapped_file_record(
         )
     except (IndexError, ValueError) as exc:
         raise QualificationTargetError("candidate process map file identity is malformed") from exc
-    return str(Path(raw_path).resolve()), identity, deleted
+    return raw_path, identity, deleted
 
 
 def _require_cuda_library_set(loaded_paths: list[str]) -> None:

@@ -1,0 +1,17 @@
+schema_version: 1
+id: wsl_cuda_driver_library_attestation
+owner_issue: 3015
+summary: >-
+  Fail-closed RelayLM v1 qualification identity for the WSL CUDA guest shim
+  and its separately mapped NVIDIA driver-package payload.
+canonical_surfaces:
+  - docs/reference/wsl-cuda-driver-library-attestation.md
+references:
+  - docs/reference/actual-model-cache-correctness-repair-qualification.md
+implementation:
+  - tools/cache_correctness_repair_runtime.py
+  - tools/v1_cache_correctness_repair_qualification.py
+tests:
+  - tests/unit/test_v1_cache_correctness_repair_qualification.py
+depends_on:
+  - cache_correctness_repair_qualification

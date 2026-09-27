@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import stat
 import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -255,6 +256,255 @@ def parse_ldd_closure(output: str) -> dict[str, str | None]:
     return closure
 
 
+def _stat_identity(path: Path) -> dict[str, int]:
+    info = path.stat()
+    if not stat.S_ISREG(info.st_mode):
+        raise RuntimePinError(f"shared-library identity is not a regular file: {path}")
+    return {
+        "device": info.st_dev,
+        "inode": info.st_ino,
+        "mode": info.st_mode,
+        "size": info.st_size,
+        "links": info.st_nlink,
+        "ctime_ns": info.st_ctime_ns,
+        "mtime_ns": info.st_mtime_ns,
+    }
+
+
+def _sealed_file_record(path: Path, *, require_regular_lexical_path: bool = False) -> dict[str, Any]:
+    lexical_path = Path(os.path.abspath(path))
+    try:
+        lexical_stat = lexical_path.lstat()
+        canonical_path = lexical_path.resolve(strict=True)
+    except OSError as exc:
+        raise RuntimePinError(f"shared-library path is unavailable: {lexical_path}") from exc
+    if require_regular_lexical_path and not stat.S_ISREG(lexical_stat.st_mode):
+        raise RuntimePinError(f"sealed WSL CUDA object must be a regular path: {lexical_path}")
+    try:
+        before = _stat_identity(canonical_path)
+        digest = sha256_file(canonical_path)
+        after = _stat_identity(canonical_path)
+    except OSError as exc:
+        raise RuntimePinError(f"shared-library object is unavailable: {canonical_path}") from exc
+    if before != after:
+        raise RuntimePinError(f"shared-library object changed while it was being sealed: {canonical_path}")
+    return {
+        "path": str(lexical_path),
+        "realpath": str(canonical_path),
+        "sha256": digest,
+        "identity": after,
+    }
+
+
+def _decode_mount_field(value: str) -> str:
+    return re.sub(
+        r"\\([0-7]{3})",
+        lambda match: chr(int(match.group(1), 8)),
+        value,
+    )
+
+
+def _mount_record(mountinfo_path: Path, mountpoint: Path) -> dict[str, str]:
+    expected = str(mountpoint)
+    try:
+        lines = mountinfo_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise RuntimePinError("WSL CUDA mount topology is unavailable") from exc
+    matches: list[dict[str, str]] = []
+    for line in lines:
+        if " - " not in line:
+            continue
+        before, after = line.split(" - ", maxsplit=1)
+        left = before.split()
+        right = after.split()
+        if len(left) < 6 or len(right) < 3:
+            continue
+        observed_mountpoint = _decode_mount_field(left[4])
+        if observed_mountpoint != expected:
+            continue
+        matches.append(
+            {
+                "mountpoint": observed_mountpoint,
+                "filesystem": right[0],
+                "source": _decode_mount_field(right[1]),
+                "mount_options": left[5],
+                "super_options": ",".join(right[2:]),
+            }
+        )
+    if len(matches) != 1:
+        raise RuntimePinError(f"WSL CUDA mountpoint is missing or ambiguous: {expected}")
+    return matches[0]
+
+
+def _driver_version_from_inf(path: Path) -> tuple[str, str]:
+    try:
+        content = path.read_text(encoding="utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        raise RuntimePinError("WSL NVIDIA driver INF is unavailable") from exc
+    match = re.search(
+        r"(?im)^\s*DriverVer\s*=\s*([^,\r\n]+)\s*,\s*([^\r\n]+)",
+        content,
+    )
+    if match is None:
+        raise RuntimePinError("WSL NVIDIA driver INF has no DriverVer identity")
+    return match.group(1).strip(), match.group(2).strip()
+
+
+def _elf_soname(path: Path) -> str:
+    try:
+        output = run_text(["readelf", "-d", str(path)])
+    except RuntimePinError as exc:
+        raise RuntimePinError("cannot inspect WSL CUDA driver ELF identity") from exc
+    match = re.search(r"\(SONAME\).*\[([^\]]+)\]", output)
+    if match is None:
+        raise RuntimePinError("WSL CUDA driver payload has no ELF SONAME")
+    return match.group(1)
+
+
+def collect_wsl_cuda_driver_closure(
+    shared_libraries: Mapping[str, Mapping[str, Any]],
+    *,
+    wsl_lib_root: Path = Path("/usr/lib/wsl/lib"),
+    wsl_driver_root: Path = Path("/usr/lib/wsl/drivers"),
+    mountinfo_path: Path = Path("/proc/self/mountinfo"),
+) -> dict[str, Any] | None:
+    """Seal the observed WSL CUDA shim and its exact mapped driver package.
+
+    This is a two-object WSL dispatch contract, not a path or byte alias:
+    ldd resolves the guest shim under ``/usr/lib/wsl/lib`` while CUDA maps the
+    distinct NVIDIA user-mode payload from the read-only 9p driver package.
+    Ordinary Linux closures return ``None`` and retain exact-path matching.
+    """
+    wsl_lib_root = Path(os.path.abspath(wsl_lib_root))
+    wsl_driver_root = Path(os.path.abspath(wsl_driver_root))
+    logical_dependencies: dict[str, list[Mapping[str, Any]]] = {}
+    for record in shared_libraries.values():
+        dependencies = record.get("dependencies")
+        if not isinstance(dependencies, Mapping):
+            continue
+        dependency = dependencies.get("libcuda.so.1")
+        if isinstance(dependency, Mapping) and isinstance(dependency.get("path"), str):
+            dependency_path = str(Path(dependency["path"]).resolve())
+            logical_dependencies.setdefault(dependency_path, []).append(dependency)
+
+    exact_wsl_stub_paths = {
+        str((wsl_lib_root / name).resolve())
+        for name in ("libcuda.so", "libcuda.so.1", "libcuda.so.1.1")
+    }
+    wsl_stub_paths = set(logical_dependencies).intersection(exact_wsl_stub_paths)
+    if not wsl_stub_paths:
+        return None
+    if len(wsl_stub_paths) != 1 or set(logical_dependencies) != wsl_stub_paths:
+        raise RuntimePinError("candidate resolves libcuda.so.1 through ambiguous WSL shim paths")
+    stub_path = Path(next(iter(wsl_stub_paths)))
+
+    lib_mount = _mount_record(mountinfo_path, wsl_lib_root)
+    if lib_mount["filesystem"] != "overlay":
+        raise RuntimePinError("WSL CUDA shim is not on the observed WSL lib overlay")
+    driver_mount = _mount_record(mountinfo_path, wsl_driver_root)
+    if (
+        driver_mount["filesystem"] != "9p"
+        or driver_mount["source"] != "drivers"
+        or "ro" not in driver_mount["mount_options"].split(",")
+    ):
+        raise RuntimePinError("WSL CUDA driver package is not on the read-only WSL drivers mount")
+
+    local_candidates = sorted(wsl_lib_root.glob("libcuda.so*"))
+    supported_local_names = {"libcuda.so", "libcuda.so.1", "libcuda.so.1.1"}
+    if {path.name for path in local_candidates} - supported_local_names:
+        raise RuntimePinError("WSL CUDA shim directory has an unrecognized libcuda.so alias")
+    shim_record = _sealed_file_record(stub_path, require_regular_lexical_path=True)
+    if shim_record["path"] != shim_record["realpath"]:
+        raise RuntimePinError("WSL CUDA shim path resolves through an unsealed symlink")
+    for dependency in logical_dependencies[str(stub_path)]:
+        if (
+            dependency.get("sha256") != shim_record["sha256"]
+            or dependency.get("identity") != shim_record["identity"]
+        ):
+            raise RuntimePinError("WSL CUDA shim changed while the static closure was being sealed")
+    shim_aliases: list[dict[str, Any]] = []
+    for alias_path in local_candidates:
+        alias = _sealed_file_record(alias_path, require_regular_lexical_path=True)
+        if (
+            alias["path"] != alias["realpath"]
+            or alias["identity"]["device"] != shim_record["identity"]["device"]
+            or alias["identity"]["inode"] != shim_record["identity"]["inode"]
+            or alias["sha256"] != shim_record["sha256"]
+        ):
+            raise RuntimePinError("WSL CUDA shim aliases do not identify one sealed file object")
+        shim_aliases.append(alias)
+    if not any(record["path"] == str(stub_path) for record in shim_aliases):
+        raise RuntimePinError("the ldd-resolved WSL CUDA shim path is absent")
+
+    payload_candidates = sorted(wsl_driver_root.glob("*/libcuda.so*"))
+    if len(payload_candidates) != 1:
+        raise RuntimePinError("WSL NVIDIA driver package has a missing or ambiguous libcuda payload")
+    payload_path = payload_candidates[0]
+    package_root = payload_path.parent
+    if re.fullmatch(r"nvmdi\.inf_amd64_[0-9a-f]+", package_root.name, flags=re.IGNORECASE) is None:
+        raise RuntimePinError("WSL CUDA payload is outside the sealed NVIDIA driver package layout")
+    if payload_path.name != "libcuda.so.1.1":
+        raise RuntimePinError("WSL NVIDIA driver payload has an unexpected mapped filename")
+    payload = _sealed_file_record(payload_path, require_regular_lexical_path=True)
+    if payload["path"] != payload["realpath"] or _elf_soname(payload_path) != "libcuda.so.1":
+        raise RuntimePinError("WSL NVIDIA driver payload ELF identity is invalid")
+
+    loader_path = package_root / "libcuda_loader.so"
+    loader_copy = _sealed_file_record(loader_path, require_regular_lexical_path=True)
+    if (
+        loader_copy["path"] != loader_copy["realpath"]
+        or loader_copy["sha256"] != shim_record["sha256"]
+        or (
+            loader_copy["identity"]["device"], loader_copy["identity"]["inode"]
+        ) == (shim_record["identity"]["device"], shim_record["identity"]["inode"])
+    ):
+        raise RuntimePinError("WSL NVIDIA package loader does not match the sealed WSL CUDA shim bytes")
+    if (
+        payload["sha256"] == shim_record["sha256"]
+        or (payload["identity"]["device"], payload["identity"]["inode"])
+        == (shim_record["identity"]["device"], shim_record["identity"]["inode"])
+    ):
+        raise RuntimePinError("WSL NVIDIA driver payload is not a distinct mapped driver object")
+    inf_path = package_root / "nvmdi.inf"
+    inf_date, inf_version = _driver_version_from_inf(inf_path)
+    inf_record = _sealed_file_record(inf_path, require_regular_lexical_path=True)
+
+    accepted: list[dict[str, Any]] = []
+    for alias in shim_aliases:
+        accepted.append(
+            {
+                **alias,
+                "role": "wsl-cuda-shim-alias",
+                "relation": "same-device-inode-hardlink-alias",
+            }
+        )
+    accepted.append(
+        {
+            **payload,
+            "role": "nvidia-wsl-user-mode-driver-payload",
+            "relation": "distinct-driver-payload-in-the-sealed-wsl-package",
+        }
+    )
+    return {
+        "schema_version": 1,
+        "contract": "wsl-cuda-driver-shim-and-package-payload-v1",
+        "logical_dependency": "libcuda.so.1",
+        "shim_mount": lib_mount,
+        "driver_mount": driver_mount,
+        "shim": {**shim_record, "aliases": shim_aliases},
+        "driver_package": {
+            "root": str(package_root),
+            "name": package_root.name,
+            "inf": {**inf_record, "driver_date": inf_date, "driver_version": inf_version},
+            "loader_copy": loader_copy,
+            "loader_relation": "same-bytes-distinct-mounted-object",
+            "payload": {**payload, "soname": "libcuda.so.1"},
+            "payload_relation": "distinct-object-distinct-bytes",
+        },
+        "accepted_mapped_objects": accepted,
+    }
+
+
 def collect_static_library_closure(build_root: Path) -> dict[str, dict[str, Any]]:
     bin_root = build_root / "bin"
     roots = [bin_root / "llama-server"]
@@ -279,13 +529,12 @@ def collect_static_library_closure(build_root: Path) -> dict[str, dict[str, Any]
             raise RuntimePinError(f"ldd failed for candidate dependency: {binary}")
         output = completed.stdout or completed.stderr
         dependencies = parse_ldd_closure(output)
+        root_record = _sealed_file_record(binary)
         closure[str(binary.resolve())] = {
-            "sha256": sha256_file(binary),
+            "sha256": root_record["sha256"],
+            "identity": root_record["identity"],
             "dependencies": {
-                name: {
-                    "path": path,
-                    "sha256": sha256_file(Path(path)),
-                }
+                name: _sealed_file_record(Path(path))
                 for name, path in sorted(dependencies.items())
                 if path is not None
             },
@@ -450,8 +699,10 @@ def collect_manifest(
         if not Path(path).is_file() or not os.access(path, os.X_OK):
             raise RuntimePinError("one of the deterministic candidate test binaries is missing")
     closure = collect_static_library_closure(build_root)
+    wsl_cuda_driver_closure = collect_wsl_cuda_driver_closure(closure)
+    server_record = closure[str(binary)]
     return {
-        "format_version": 1,
+        "format_version": 2,
         "kind": "relaylm-3013-repaired-cuda-candidate",
         "source": {
             "repository": UPSTREAM_REPOSITORY,
@@ -518,6 +769,7 @@ def collect_manifest(
             "host": run_text(["uname", "-a"]),
             "gpu": run_text(GPU_QUERY_COMMAND),
             "shared_libraries": closure,
+            "wsl_cuda_driver_closure": wsl_cuda_driver_closure,
             "test_binaries": {
                 name: {"path": path, "sha256": sha256_file(Path(path))}
                 for name, path in test_binaries.items()
@@ -526,7 +778,8 @@ def collect_manifest(
         },
         "server": {
             "path": str(binary),
-            "sha256": sha256_file(binary),
+            "sha256": server_record["sha256"],
+            "identity": server_record["identity"],
             "startup_argv_template": [
                 str(binary),
                 "-m",
