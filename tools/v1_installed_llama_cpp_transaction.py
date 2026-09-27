@@ -29,7 +29,7 @@ import sysconfig
 import tempfile
 from threading import RLock, Thread
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -235,7 +235,18 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
+def _run_transaction(
+    args: argparse.Namespace,
+    *,
+    evidence_root: Path,
+    target_name: str = TARGET_NAME,
+    server_binary_override: Path | None = None,
+    server_env: Mapping[str, str] | None = None,
+    proxy_factory: Callable[..., "_ForwardingProxy"] | None = None,
+    serve_runner_module: str | None = None,
+    continuity_observation_path: Path | None = None,
+    server_closure_gate: Callable[[subprocess.Popen[str], Path], Mapping[str, Any]] | None = None,
+) -> int:
     repo_root = Path(args.repo_root).expanduser().resolve()
     llama_cpp_root = Path(args.llama_cpp_root).expanduser().resolve()
     server_process: subprocess.Popen[str] | None = None
@@ -248,7 +259,7 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
     snapshots: dict[str, Any] = {}
     summary: dict[str, Any] = {
         "format_version": TRANSACTION_FORMAT_VERSION,
-        "target": TARGET_NAME,
+        "target": target_name,
         "evidence_root": str(evidence_root),
         "disposition": None,
         "classification": None,
@@ -310,10 +321,15 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
 
         summary["phase"] = "server_laboratory"
         _require_llama_port(args.llama_port)
-        server_binary = llama_cpp_root / "build" / "bin" / "llama-server"
+        server_binary = (
+            llama_cpp_root / "build" / "bin" / "llama-server"
+            if server_binary_override is None
+            else server_binary_override.expanduser().resolve()
+        )
         revision, version, build_number = _collect_llama_identity(
             llama_cpp_root=llama_cpp_root,
             server_binary=server_binary,
+            server_env=server_env,
         )
         gpu_identity = _collect_gpu_identity()
         if not _port_is_free("127.0.0.1", args.llama_port):
@@ -325,6 +341,7 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             artifact_path=artifact_path,
             port=args.llama_port,
             log_path=evidence_root / "llama-server.log",
+            server_env=server_env,
         )
         summary["server_launch_count"] = 1
         summary["server"] = {
@@ -342,6 +359,11 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             process=server_process,
             origin=f"http://127.0.0.1:{args.llama_port}",
         )
+        if server_closure_gate is not None:
+            # Inspect mapped files after exec/startup settles and before any model-facing POST.
+            summary["server"]["loaded_library_closure"] = dict(
+                server_closure_gate(server_process, server_binary)
+            )
         probe = _probe_server(
             origin=f"http://127.0.0.1:{args.llama_port}",
             expected_slots=DEFAULT_SLOTS,
@@ -381,7 +403,8 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
         )
         relay_port = _resolve_relay_port(args.relay_port)
         ledger = RequestLedger(expected_model=request_model)
-        proxy = _ForwardingProxy(
+        proxy_type = _ForwardingProxy if proxy_factory is None else proxy_factory
+        proxy = proxy_type(
             origin=f"http://127.0.0.1:{args.llama_port}",
             ledger=ledger,
         )
@@ -417,18 +440,26 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
         _write_json(evidence_root / "doctor.json", doctor)
 
         summary["phase"] = "installed_serve"
+        serve_command = _installed_serve_command(
+            installed=installed,
+            config_path=config_path,
+            runner_module=serve_runner_module,
+            repo_root=repo_root,
+            continuity_observation_path=continuity_observation_path,
+        )
         relay_process = _start_installed_serve(
             installed=installed,
             config_path=config_path,
             cwd=evidence_root,
             log_path=evidence_root / "relaylm-serve.log",
+            runner_module=serve_runner_module,
+            repo_root=repo_root,
+            continuity_observation_path=continuity_observation_path,
         )
         summary["relay_serve_launch_count"] = 1
         summary["relay_server"] = {
             "pid": relay_process.pid,
-            "command": _shell_join(
-                [installed["console_path"], "serve", "--config", str(config_path)]
-            ),
+            "command": _shell_join(serve_command),
             "log_path": str(evidence_root / "relaylm-serve.log"),
             "installed_package_path": installed["module_path"],
         }
@@ -452,6 +483,8 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             ledger,
             expected_count=CANONICAL_GENERATION_COUNTS_BY_EXECUTION["buffered"],
         )
+        if continuity_observation_path is not None:
+            _get_json(f"http://127.0.0.1:{relay_port}/__qualification/flush")
         snapshots["after_buffered"] = _snapshot_packages(fixture)
 
         summary["phase"] = "streaming_request"
@@ -463,7 +496,20 @@ def _run_transaction(args: argparse.Namespace, *, evidence_root: Path) -> int:
             ledger,
             expected_count=SEMANTIC_GENERATION_CEILING,
         )
+        if continuity_observation_path is not None:
+            _get_json(f"http://127.0.0.1:{relay_port}/__qualification/flush")
         snapshots["after_streaming"] = _snapshot_packages(fixture)
+        if continuity_observation_path is not None:
+            if not continuity_observation_path.is_file():
+                raise InstalledLlamaCppTransactionError(
+                    "runtime continuity observer did not seal its materialization record"
+                )
+            continuity_observation = _read_json_object(continuity_observation_path)
+            summary["continuity_materialization"] = continuity_observation
+            shutil.copy2(
+                continuity_observation_path,
+                evidence_root / "continuity-materialization.json",
+            )
 
         _write_json(
             evidence_root / "buffered-execution.json",
@@ -1450,18 +1496,60 @@ def _run_installed_doctor(
     }
 
 
+def _installed_serve_command(
+    *,
+    installed: Mapping[str, Any],
+    config_path: Path,
+    runner_module: str | None,
+    repo_root: Path | None,
+    continuity_observation_path: Path | None,
+) -> list[str]:
+    if runner_module is None:
+        return [installed["console_path"], "serve", "--config", str(config_path)]
+    if repo_root is None or continuity_observation_path is None:
+        raise InstalledLlamaCppTransactionError(
+            "qualification serve runner requires repository and observer paths"
+        )
+    return [
+        str(installed["python_path"]),
+        "-m",
+        runner_module,
+        "--config",
+        str(config_path),
+        "--observation-path",
+        str(continuity_observation_path),
+    ]
+
+
 def _start_installed_serve(
     *,
     installed: Mapping[str, Any],
     config_path: Path,
     cwd: Path,
     log_path: Path,
+    runner_module: str | None = None,
+    repo_root: Path | None = None,
+    continuity_observation_path: Path | None = None,
 ) -> subprocess.Popen[str]:
-    command = [installed["console_path"], "serve", "--config", str(config_path)]
+    command = _installed_serve_command(
+        installed=installed,
+        config_path=config_path,
+        runner_module=runner_module,
+        repo_root=repo_root,
+        continuity_observation_path=continuity_observation_path,
+    )
     environment = _installed_environment(
         Path(installed["transaction_root"]) / "home",
         dependency_overlay=Path(installed["controlled_dependency_overlay"]["path"]),
     )
+    if runner_module is not None:
+        assert repo_root is not None
+        existing_path = environment.get("PYTHONPATH")
+        environment["PYTHONPATH"] = os.pathsep.join(
+            item
+            for item in (str(repo_root.resolve()), existing_path)
+            if item
+        )
     with log_path.open("a", encoding="utf-8") as log:
         try:
             process = subprocess.Popen(
@@ -2342,6 +2430,8 @@ def _response_wire_evidence(body: bytes, *, streaming: bool) -> dict[str, Any]:
         text = body.decode("utf-8", errors="replace")
         content_parts: list[str] = []
         event_count = 0
+        finish_reason: str | None = None
+        usage: dict[str, Any] | None = None
         for line in text.splitlines():
             if not line.startswith("data:"):
                 continue
@@ -2355,16 +2445,27 @@ def _response_wire_evidence(body: bytes, *, streaming: bool) -> dict[str, Any]:
             event_count += 1
             choices = event.get("choices") if isinstance(event, dict) else None
             if isinstance(choices, list) and choices and isinstance(choices[0], Mapping):
+                observed_finish_reason = choices[0].get("finish_reason")
+                if isinstance(observed_finish_reason, str):
+                    finish_reason = observed_finish_reason
                 delta = choices[0].get("delta")
                 if isinstance(delta, Mapping) and isinstance(delta.get("content"), str):
                     content_parts.append(delta["content"])
+            event_usage = event.get("usage") if isinstance(event, dict) else None
+            if isinstance(event_usage, Mapping):
+                usage = dict(event_usage)
         content = "".join(content_parts)
-        return {
+        evidence = {
             "event_count": event_count,
+            "finish_reason": finish_reason,
             "content_length": len(content),
             "content_sha256": f"sha256:{hashlib.sha256(content.encode('utf-8')).hexdigest()}",
             "content_excerpt": _bounded_text(content),
         }
+        if usage is not None:
+            evidence["usage"] = _usage_wire_evidence(usage)
+        evidence["native_structured_output"] = _structured_output_wire_evidence(content)
+        return evidence
     try:
         payload = json.loads(body)
     except json.JSONDecodeError:
@@ -2401,6 +2502,7 @@ def _response_wire_evidence(body: bytes, *, streaming: bool) -> dict[str, Any]:
             wire = json.loads(normalized)
         except json.JSONDecodeError:
             wire = None
+        evidence["native_structured_output"] = _structured_output_wire_evidence(content)
         if isinstance(wire, dict):
             evidence["wire_keys"] = sorted(wire)
             evidence["state_candidate_count"] = _bounded_collection_count(wire.get("state_candidates"))
@@ -2409,12 +2511,48 @@ def _response_wire_evidence(body: bytes, *, streaming: bool) -> dict[str, Any]:
             )
     usage = payload.get("usage") if isinstance(payload, dict) else None
     if isinstance(usage, Mapping):
-        evidence["usage"] = {
-            key: usage[key]
-            for key in ("prompt_tokens", "completion_tokens", "total_tokens")
-            if isinstance(usage.get(key), int) and not isinstance(usage.get(key), bool)
-        }
+        evidence["usage"] = _usage_wire_evidence(usage)
     return evidence
+
+
+def _usage_wire_evidence(usage: Mapping[str, Any]) -> dict[str, Any]:
+    selected = {
+        key: usage[key]
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+        if isinstance(usage.get(key), int) and not isinstance(usage.get(key), bool)
+    }
+    prompt_details = usage.get("prompt_tokens_details")
+    cached_tokens = (
+        prompt_details.get("cached_tokens")
+        if isinstance(prompt_details, Mapping)
+        else None
+    )
+    if isinstance(cached_tokens, int) and not isinstance(cached_tokens, bool):
+        selected["cached_tokens"] = cached_tokens
+        prompt_tokens = selected.get("prompt_tokens")
+        if isinstance(prompt_tokens, int):
+            selected["prompt_eval_tokens"] = prompt_tokens - cached_tokens
+    return selected
+
+
+def _structured_output_wire_evidence(content: str) -> dict[str, Any]:
+    normalized = _normalize_extraction_content(content)
+    try:
+        wire = json.loads(normalized)
+    except json.JSONDecodeError:
+        return {"valid_json_object": False, "required_keys_present": False}
+    if not isinstance(wire, dict):
+        return {"valid_json_object": False, "required_keys_present": False}
+    required = {"state_candidates", "continuity_candidates"}
+    return {
+        "valid_json_object": True,
+        "required_keys_present": required.issubset(wire),
+        "keys": sorted(wire),
+        "state_candidate_count": _bounded_collection_count(wire.get("state_candidates")),
+        "continuity_candidate_count": _bounded_collection_count(
+            wire.get("continuity_candidates")
+        ),
+    }
 
 
 def _normalize_extraction_content(content: str) -> str:

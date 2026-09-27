@@ -1,0 +1,112 @@
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+index 6ae40a66b..ed33bc368 100644
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -26,6 +26,7 @@
+ #include <random>
+ #include <utility>
+ #include <fstream>
++#include <iterator>
+ 
+ // fix problem with std::min and std::max
+ #if defined(_WIN32)
+@@ -2087,6 +2088,10 @@ private:
+     }
+ 
+     void send_final_response(server_slot & slot) {
++        SLT_TRC(slot,
++                "3013 prompt-result task_id=%d slot_id=%d input_tokens=%d prompt_eval_tokens=%d cache_n=%d stop_type=%d\n",
++                slot.task->id, slot.id, slot.task->n_tokens(), slot.stats.n_prompt_processed,
++                slot.stats.n_prompt_cached, (int) slot.stop);
+         auto res = std::make_unique<server_task_result_cmpl_final>();
+ 
+         res->id      = slot.task->id;
+@@ -3298,6 +3303,7 @@ private:
+ 
+                             if (n_past > 0 && n_past <= slot.prompt.n_tokens()) {
+                                 const auto pos_min = llama_memory_seq_pos_min(llama_get_memory(ctx_tgt), slot.id);
++                                const auto pos_max = llama_memory_seq_pos_max(llama_get_memory(ctx_tgt), slot.id);
+                                 if (pos_min == -1) {
+                                     SLT_ERR(slot, "n_past = %d, slot.prompt.tokens.size() = %d, seq_id = %d, pos_min = %d\n", n_past, (int) slot.prompt.tokens.size(), slot.id, pos_min);
+                                     GGML_ABORT("pos_min == -1, but n_past > 0 - should not happen: https://github.com/ggml-org/llama.cpp/pull/13833#discussion_r2116181237");
+@@ -3346,7 +3352,26 @@ private:
+                                     SLT_WRN(slot, "%s\n", st1.str().c_str());
+                                 }
+ 
+-                                if (server_prompt_checkpoint_required(pos_min, pos_min_thold, n_swa)) {
++                                const auto n_past_before_checkpoint_decision = n_past;
++                                const bool checkpoint_restore_required = server_prompt_checkpoint_required(pos_min, pos_min_thold, n_swa);
++                                bool checkpoint_selected = false;
++                                int checkpoint_selected_index = -1;
++                                int checkpoint_selected_pos_min = -1;
++                                int checkpoint_selected_pos_max = -1;
++                                SLT_TRC(slot,
++                                        "3013 reuse-decision task_id=%d slot_id=%d input_tokens=%d lcp=%d live_pos_min=%d live_pos_max=%d n_swa=%d pos_min_thold=%d n_past_before=%d restore_required=%s checkpoints=%zu\n",
++                                        slot.task->id, slot.id, slot.task->n_tokens(), n_past_before_checkpoint_decision,
++                                        pos_min, pos_max, n_swa, pos_min_thold, n_past_before_checkpoint_decision,
++                                        checkpoint_restore_required ? "true" : "false", slot.prompt.checkpoints.size());
++                                size_t checkpoint_index = 0;
++                                for (const auto & candidate : slot.prompt.checkpoints) {
++                                    SLT_TRC(slot,
++                                            "3013 checkpoint-candidate task_id=%d slot_id=%d index=%zu pos_min=%d pos_max=%d n_tokens=%" PRId64 "\n",
++                                            slot.task->id, slot.id, checkpoint_index, candidate.pos_min, candidate.pos_max, candidate.n_tokens);
++                                    ++checkpoint_index;
++                                }
++
++                                if (checkpoint_restore_required) {
+                                     // search for a context checkpoint
+                                     const auto it = std::find_if(
+                                         slot.prompt.checkpoints.rbegin(),
+@@ -3366,6 +3391,11 @@ private:
+ 
+                                     if (!do_reset) {
+                                         // restore the context checkpoint
++                                        checkpoint_selected = true;
++                                        checkpoint_selected_index = (int) std::distance(
++                                                slot.prompt.checkpoints.begin(), std::prev(it.base()));
++                                        checkpoint_selected_pos_min = it->pos_min;
++                                        checkpoint_selected_pos_max = it->pos_max;
+                                         it->load_tgt(ctx_tgt, slot.id, LLAMA_STATE_SEQ_FLAGS_PARTIAL_ONLY);
+                                         it->load_dft(ctx_dft, slot.id, LLAMA_STATE_SEQ_FLAGS_PARTIAL_ONLY);
+                                         // restore the draft's speculative state
+@@ -3383,6 +3413,12 @@ private:
+                                         n_past = 0;
+                                     }
+                                 }
++                                SLT_TRC(slot,
++                                        "3013 reuse-result task_id=%d slot_id=%d selected_checkpoint=%s selected_index=%d selected_pos_min=%d selected_pos_max=%d n_past_before=%d n_past_after=%d outcome=%s\n",
++                                        slot.task->id, slot.id, checkpoint_selected ? "checkpoint" : "NONE",
++                                        checkpoint_selected_index, checkpoint_selected_pos_min, checkpoint_selected_pos_max,
++                                        n_past_before_checkpoint_decision, n_past,
++                                        !checkpoint_restore_required ? "resident-prefix-retained" : (checkpoint_selected ? "checkpoint-restored" : "full-prompt-reset"));
+                             }
+ 
+                             {
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+index ed33bc368..053be258b 100644
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -3419,6 +3419,23 @@ private:
+                                         checkpoint_selected_index, checkpoint_selected_pos_min, checkpoint_selected_pos_max,
+                                         n_past_before_checkpoint_decision, n_past,
+                                         !checkpoint_restore_required ? "resident-prefix-retained" : (checkpoint_selected ? "checkpoint-restored" : "full-prompt-reset"));
++                            } else if (n_past == 0) {
++                                const auto empty_slot_pos_min = llama_memory_seq_pos_min(llama_get_memory(ctx_tgt), slot.id);
++                                const auto empty_slot_pos_max = llama_memory_seq_pos_max(llama_get_memory(ctx_tgt), slot.id);
++                                SLT_TRC(slot,
++                                        "3013 reuse-decision task_id=%d slot_id=%d input_tokens=%d lcp=0 live_pos_min=%d live_pos_max=%d n_swa=%d pos_min_thold=%d n_past_before=0 restore_required=not-evaluated decision_state=empty-slot checkpoints=%zu\n",
++                                        slot.task->id, slot.id, slot.task->n_tokens(), empty_slot_pos_min, empty_slot_pos_max,
++                                        n_swa, pos_min_thold, slot.prompt.checkpoints.size());
++                                size_t checkpoint_index = 0;
++                                for (const auto & candidate : slot.prompt.checkpoints) {
++                                    SLT_TRC(slot,
++                                            "3013 checkpoint-candidate task_id=%d slot_id=%d index=%zu pos_min=%d pos_max=%d n_tokens=%" PRId64 "\n",
++                                            slot.task->id, slot.id, checkpoint_index, candidate.pos_min, candidate.pos_max, candidate.n_tokens);
++                                    ++checkpoint_index;
++                                }
++                                SLT_TRC(slot,
++                                        "3013 reuse-result task_id=%d slot_id=%d selected_checkpoint=NONE selected_index=-1 selected_pos_min=-1 selected_pos_max=-1 n_past_before=0 n_past_after=0 outcome=empty-slot-full-prompt\n",
++                                        slot.task->id, slot.id);
+                             }
+ 
+                             {
