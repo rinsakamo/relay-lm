@@ -26,7 +26,7 @@ from tools import v1_cache_correctness_repair_qualification as qualification
 
 OWNER_ISSUE = 3018
 TARGET_ID = "diagnostic:3018-wsl-nvidia-runtime-closure-rehearsal"
-ATTEMPT_ID = "wsl-nvidia-runtime-closure-rehearsal-20260927-a"
+ATTEMPT_ID = "wsl-nvidia-runtime-closure-rehearsal-20260928-b"
 PROPOSAL_STATUS = "PROPOSAL_ONLY_NOT_EXECUTION_AUTHORITY"
 AUTHORIZATION_MARKER = "WSL_NVIDIA_RUNTIME_LIBRARY_CLOSURE_REHEARSAL_AUTHORIZED"
 REVOKE_MARKERS = (
