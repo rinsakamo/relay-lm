@@ -1032,6 +1032,7 @@ def run_target(
             process,
             float(server["startup_timeout_seconds"]),
         )
+        _verify_repository(repo_root, descriptor["repository"])
         authority = verify_execution_authority(
             comment_id=authority_comment_id,
             descriptor_sha256=descriptor_sha256,
