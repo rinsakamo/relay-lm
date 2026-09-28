@@ -660,6 +660,8 @@ def _verify_queue_receipt(
         "tools.wsl_nvidia_runtime_closure_rehearsal",
         "--descriptor",
         str(descriptor_path.resolve()),
+        "--repo-root",
+        str(repo_root.resolve()),
         "--authority-comment-id",
         str(authority_comment_id),
     ]
