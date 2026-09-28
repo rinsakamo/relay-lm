@@ -224,6 +224,49 @@ def _server_environment(manifest: Mapping[str, Any]) -> dict[str, str]:
     return environment
 
 
+def _validate_frozen_server_environment(
+    environment: Mapping[str, str],
+    manifest: Mapping[str, Any],
+) -> None:
+    allowed_names = {
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "LD_LIBRARY_PATH",
+        "CUDA_HOME",
+        "CUDA_PATH",
+        "CUDA_VISIBLE_DEVICES",
+    }
+    if any(
+        not isinstance(name, str) or not isinstance(value, str)
+        for name, value in environment.items()
+    ):
+        raise RehearsalError("frozen candidate server environment is malformed")
+    if set(environment) - allowed_names:
+        raise RehearsalError("frozen candidate server environment has undeclared variables")
+    if any("TOKEN" in name.upper() or "KEY" in name.upper() for name in environment):
+        raise RehearsalError("frozen candidate server environment includes a credential name")
+
+    build_bin = str(Path(manifest["build"]["build_root"]).resolve() / "bin")
+    required = {
+        "LD_LIBRARY_PATH": os.pathsep.join(
+            [build_bin, "/usr/local/cuda-12.8/lib64", "/usr/lib/wsl/lib"]
+        ),
+        "CUDA_HOME": "/usr/local/cuda-12.8",
+        "CUDA_PATH": "/usr/local/cuda-12.8",
+    }
+    gpu_line = str(manifest["build"]["gpu"]).splitlines()[0]
+    fields = [field.strip() for field in gpu_line.split(",")]
+    if len(fields) >= 2:
+        required["CUDA_VISIBLE_DEVICES"] = fields[1]
+    if any(environment.get(name) != value for name, value in required.items()):
+        raise RehearsalError("frozen candidate server environment changed its runtime bindings")
+
+
 def _expected_argv(manifest: Mapping[str, Any], output_root: Path) -> list[str]:
     server = manifest["server"]
     model = manifest["model"]
@@ -507,9 +550,10 @@ def _verify_descriptor_runtime(
         or live_gpu != manifest["build"].get("gpu")
     ):
         raise RehearsalError("candidate static library or WSL NVIDIA package closure drifted")
-    expected_environment = _server_environment(manifest)
-    if descriptor["server"].get("environment") != expected_environment:
-        raise RehearsalError("candidate server environment changed after proposal freeze")
+    _validate_frozen_server_environment(
+        descriptor["server"]["environment"],
+        manifest,
+    )
     expected_argv = _expected_argv(manifest, Path(descriptor["roots"]["output"]))
     if descriptor["server"].get("argv") != expected_argv:
         raise RehearsalError("candidate server argv changed after proposal freeze")
