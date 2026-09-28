@@ -489,6 +489,8 @@ def test_queue_receipt_must_bind_the_exact_running_child(
         "tools.wsl_nvidia_runtime_closure_rehearsal",
         "--descriptor",
         str(descriptor_path),
+        "--repo-root",
+        str(repo_root),
         "--authority-comment-id",
         str(authority_comment_id),
     ]
@@ -516,6 +518,61 @@ def test_queue_receipt_must_bind_the_exact_running_child(
     )
     assert verified["request_id"] == "a" * 32
 
+    missing_repo_root_command = [
+        sys.executable,
+        "-m",
+        "tools.wsl_nvidia_runtime_closure_rehearsal",
+        "--descriptor",
+        str(descriptor_path),
+        "--authority-comment-id",
+        str(authority_comment_id),
+    ]
+    receipt["command_argv_sha256"] = hashlib.sha256(
+        json.dumps(
+            missing_repo_root_command,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(rehearsal.RehearsalError, match="queue receipt"):
+        rehearsal._verify_queue_receipt(
+            receipt_path,
+            repo_root=repo_root,
+            descriptor_path=descriptor_path,
+            authority_comment_id=authority_comment_id,
+        )
+
+    wrong_repo_root_command = [
+        sys.executable,
+        "-m",
+        "tools.wsl_nvidia_runtime_closure_rehearsal",
+        "--descriptor",
+        str(descriptor_path),
+        "--repo-root",
+        str((tmp_path / "wrong-repo").resolve()),
+        "--authority-comment-id",
+        str(authority_comment_id),
+    ]
+    receipt["command_argv_sha256"] = hashlib.sha256(
+        json.dumps(
+            wrong_repo_root_command,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(rehearsal.RehearsalError, match="queue receipt"):
+        rehearsal._verify_queue_receipt(
+            receipt_path,
+            repo_root=repo_root,
+            descriptor_path=descriptor_path,
+            authority_comment_id=authority_comment_id,
+        )
+
+    receipt["command_argv_sha256"] = hashlib.sha256(
+        json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
     receipt["state"] = "FINAL_PREFLIGHT"
     receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
     with pytest.raises(rehearsal.RehearsalError, match="queue receipt"):
