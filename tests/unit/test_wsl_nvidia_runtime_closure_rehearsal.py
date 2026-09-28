@@ -476,6 +476,107 @@ def test_two_map_snapshots_must_bind_the_same_process_start() -> None:
         rehearsal._require_same_process_identity(first, changed)
 
 
+def test_frozen_server_environment_does_not_depend_on_runner_ambient(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    build_root = (tmp_path / "candidate-build").resolve()
+    manifest = {
+        "build": {
+            "build_root": str(build_root),
+            "gpu": "NVIDIA GeForce RTX 3060, GPU-frozen",
+        }
+    }
+    frozen = {
+        "PATH": "/proposal/bin",
+        "HOME": "/proposal/home",
+        "USER": "proposal-user",
+        "LD_LIBRARY_PATH": ":".join(
+            [
+                str(build_root / "bin"),
+                "/usr/local/cuda-12.8/lib64",
+                "/usr/lib/wsl/lib",
+            ]
+        ),
+        "CUDA_HOME": "/usr/local/cuda-12.8",
+        "CUDA_PATH": "/usr/local/cuda-12.8",
+        "CUDA_VISIBLE_DEVICES": "GPU-frozen",
+    }
+
+    monkeypatch.setenv("PATH", "/runner/bin")
+    monkeypatch.setenv("HOME", "/runner/home")
+    monkeypatch.setenv("USER", "runner-user")
+
+    rehearsal._validate_frozen_server_environment(frozen, manifest)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("LD_LIBRARY_PATH", "/wrong/runtime"),
+        ("CUDA_HOME", "/wrong/cuda"),
+        ("CUDA_PATH", "/wrong/cuda"),
+        ("CUDA_VISIBLE_DEVICES", "GPU-other"),
+    ],
+)
+def test_frozen_server_environment_rejects_runtime_binding_drift(
+    tmp_path: Path,
+    field: str,
+    value: str,
+) -> None:
+    build_root = (tmp_path / "candidate-build").resolve()
+    manifest = {
+        "build": {
+            "build_root": str(build_root),
+            "gpu": "NVIDIA GeForce RTX 3060, GPU-frozen",
+        }
+    }
+    frozen = {
+        "PATH": "/proposal/bin",
+        "LD_LIBRARY_PATH": ":".join(
+            [
+                str(build_root / "bin"),
+                "/usr/local/cuda-12.8/lib64",
+                "/usr/lib/wsl/lib",
+            ]
+        ),
+        "CUDA_HOME": "/usr/local/cuda-12.8",
+        "CUDA_PATH": "/usr/local/cuda-12.8",
+        "CUDA_VISIBLE_DEVICES": "GPU-frozen",
+    }
+    frozen[field] = value
+
+    with pytest.raises(rehearsal.RehearsalError, match="runtime bindings"):
+        rehearsal._validate_frozen_server_environment(frozen, manifest)
+
+
+def test_frozen_server_environment_rejects_undeclared_variable(tmp_path: Path) -> None:
+    build_root = (tmp_path / "candidate-build").resolve()
+    manifest = {
+        "build": {
+            "build_root": str(build_root),
+            "gpu": "NVIDIA GeForce RTX 3060, GPU-frozen",
+        }
+    }
+    frozen = {
+        "PATH": "/proposal/bin",
+        "EXTRA_RUNTIME_FLAG": "1",
+        "LD_LIBRARY_PATH": ":".join(
+            [
+                str(build_root / "bin"),
+                "/usr/local/cuda-12.8/lib64",
+                "/usr/lib/wsl/lib",
+            ]
+        ),
+        "CUDA_HOME": "/usr/local/cuda-12.8",
+        "CUDA_PATH": "/usr/local/cuda-12.8",
+        "CUDA_VISIBLE_DEVICES": "GPU-frozen",
+    }
+
+    with pytest.raises(rehearsal.RehearsalError, match="undeclared variables"):
+        rehearsal._validate_frozen_server_environment(frozen, manifest)
+
+
 def test_queue_receipt_must_bind_the_exact_running_child(
     tmp_path: Path,
 ) -> None:
