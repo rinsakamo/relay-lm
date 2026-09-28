@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 from pathlib import Path
 import sys
@@ -447,6 +448,18 @@ def test_final_server_log_counts_requests_and_blocks_success() -> None:
         "type": "UnexpectedModelFacingPOST",
         "message": "server log recorded 1 POST request(s)",
     }
+
+
+def test_run_target_revalidates_repository_after_model_load_before_live_attestation() -> None:
+    source = inspect.getsource(rehearsal.run_target)
+
+    model_loaded = source.index("_wait_for_model_loaded(")
+    repository_check = source.index("_verify_repository(", model_loaded)
+    authority_check = source.index("verify_execution_authority(", model_loaded)
+    process_check = source.index("_verify_server_process_identity(", model_loaded)
+    map_capture = source.index('maps_path = Path(f"/proc/{process.pid}/maps")', model_loaded)
+
+    assert model_loaded < repository_check < authority_check < process_check < map_capture
 
 
 def test_two_map_snapshots_must_bind_the_same_process_start() -> None:
