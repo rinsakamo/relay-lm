@@ -986,6 +986,18 @@ def run_target(
     descriptor_path = descriptor_path.expanduser().resolve(strict=True)
     repo_root = repo_root.expanduser().resolve()
     descriptor = _read_json_object(descriptor_path)
+    try:
+        raw_receipt_path = descriptor["roots"]["receipt"]
+    except (KeyError, TypeError) as exc:
+        raise RehearsalError("proposal descriptor omitted the queue receipt path") from exc
+    if not isinstance(raw_receipt_path, str):
+        raise RehearsalError("proposal descriptor queue receipt path is malformed")
+    receipt = _verify_queue_receipt(
+        Path(raw_receipt_path),
+        repo_root=repo_root,
+        descriptor_path=descriptor_path,
+        authority_comment_id=authority_comment_id,
+    )
     manifest, roots, descriptor_sha256 = _verify_descriptor_runtime(
         descriptor_path=descriptor_path,
         repo_root=repo_root,
@@ -995,12 +1007,6 @@ def run_target(
         comment_id=authority_comment_id,
         descriptor_sha256=descriptor_sha256,
         descriptor=descriptor,
-    )
-    receipt = _verify_queue_receipt(
-        Path(roots["receipt"]),
-        repo_root=repo_root,
-        descriptor_path=descriptor_path,
-        authority_comment_id=authority_comment_id,
     )
     preflight_root = Path(roots["preflight"])
     output_root = Path(roots["output"])
