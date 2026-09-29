@@ -450,6 +450,16 @@ def test_final_server_log_counts_requests_and_blocks_success() -> None:
     }
 
 
+def test_run_target_validates_queue_receipt_before_runtime_and_owner_authority() -> None:
+    source = inspect.getsource(rehearsal.run_target)
+
+    receipt_check = source.index("_verify_queue_receipt(")
+    runtime_check = source.index("_verify_descriptor_runtime(")
+    authority_check = source.index("verify_execution_authority(")
+
+    assert receipt_check < runtime_check < authority_check
+
+
 def test_run_target_revalidates_repository_after_model_load_before_live_attestation() -> None:
     source = inspect.getsource(rehearsal.run_target)
 
