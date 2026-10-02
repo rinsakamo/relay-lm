@@ -601,10 +601,12 @@ def test_run_target_no_gpu_end_to_end_and_fault_injection(
         }
 
     closure_calls = 0
+    captured_maps: list[str] = []
 
     def closure_gate(*args: object, **kwargs: object) -> dict[str, object]:
         nonlocal closure_calls
         closure_calls += 1
+        assert kwargs.get("map_text") == captured_maps[closure_calls - 1]
         events.append("closure")
         if failure == "first_closure" and closure_calls == 1:
             raise rehearsal.RehearsalError("unknown unsealed NVIDIA object")
@@ -625,6 +627,7 @@ def test_run_target_no_gpu_end_to_end_and_fault_injection(
             )
             if failure == "maps_change" and map_reads == 2:
                 text += "7f002000-7f003000 rw-p 00000000 00:00 0 [stack]\n"
+            captured_maps.append(text)
             return text
         return original_read(path, *args, **kwargs)
 
