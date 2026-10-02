@@ -5,6 +5,7 @@ import inspect
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -448,6 +449,52 @@ def test_final_server_log_counts_requests_and_blocks_success() -> None:
         "type": "UnexpectedModelFacingPOST",
         "message": "server log recorded 1 POST request(s)",
     }
+
+
+def test_frozen_descriptor_checkout_root_is_exact(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    frozen = (tmp_path / "frozen-checkout").resolve()
+    other = (tmp_path / "other-identical-checkout").resolve()
+    frozen.mkdir()
+    other.mkdir()
+    head = "a" * 40
+    tree = "b" * 40
+    expected = {"root": str(frozen), "branch": "v1", "head": head, "tree": tree}
+
+    def fake_git(root: Path, *args: str) -> str:
+        values = {
+            ("branch", "--show-current"): "v1",
+            ("status", "--porcelain"): "",
+            ("rev-parse", "HEAD"): head,
+            ("rev-parse", "HEAD^{tree}"): tree,
+        }
+        return values[args]
+
+    monkeypatch.setattr(rehearsal, "_git", fake_git)
+    monkeypatch.setattr(
+        rehearsal.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0, stdout=f"{head}\\trefs/heads/v1\\n"
+        ),
+    )
+    rehearsal._verify_repository(frozen, expected)
+    with pytest.raises(rehearsal.RehearsalError, match="checkout root"):
+        rehearsal._verify_repository(other, expected)
+
+
+def test_sealed_evidence_requires_independent_file_hash_readback(tmp_path: Path) -> None:
+    evidence = tmp_path / "sealed"
+    evidence.mkdir()
+    file = evidence / "first-map.json"
+    file.write_text('{"complete_snapshot":true}', encoding="utf-8")
+    manifest = rehearsal._seal_directory(evidence)
+    assert rehearsal.verify_evidence_manifest(evidence) == manifest
+
+    file.write_text('{"complete_snapshot":false}', encoding="utf-8")
+    with pytest.raises(rehearsal.RehearsalError, match="read-back"):
+        rehearsal.verify_evidence_manifest(evidence)
 
 
 def test_run_target_validates_queue_receipt_before_runtime_and_owner_authority() -> None:
