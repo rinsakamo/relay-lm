@@ -1359,6 +1359,7 @@ def _verify_loaded_library_closure(
     manifest: dict[str, Any],
     require_cuda: bool = False,
     previous_attestation: dict[str, Any] | None = None,
+    map_text: str | None = None,
 ) -> dict[str, Any]:
     pid = process.pid
     maps_path = Path(f"/proc/{pid}/maps")
@@ -1441,7 +1442,12 @@ def _verify_loaded_library_closure(
 
     loaded_paths: set[str] = set()
     mapped_file_ids: dict[str, set[tuple[int, int, int]]] = {}
-    for line in maps_path.read_text(encoding="utf-8").splitlines():
+    if map_text is not None and not isinstance(map_text, str):
+        raise QualificationTargetError("supplied complete process map is malformed")
+    attested_map_text = (
+        map_text if map_text is not None else maps_path.read_text(encoding="utf-8")
+    )
+    for line in attested_map_text.splitlines():
         mapped = _parse_mapped_file_record(line)
         if mapped is None:
             continue
