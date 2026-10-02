@@ -1140,6 +1140,7 @@ def run_target(
             binary=binary,
             manifest=manifest,
             require_cuda=True,
+            map_text=first_maps,
         )
         attempt_summary["closure_attestations"].append(
             {"process_identity": process_identity, "closure": first}
@@ -1174,6 +1175,7 @@ def run_target(
             manifest=manifest,
             require_cuda=True,
             previous_attestation=first,
+            map_text=second_maps,
         )
         attempt_summary["closure_attestations"].append(
             {"process_identity": second_identity, "closure": second}
