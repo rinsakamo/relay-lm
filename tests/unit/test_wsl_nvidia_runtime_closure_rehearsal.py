@@ -497,6 +497,236 @@ def test_sealed_evidence_requires_independent_file_hash_readback(tmp_path: Path)
         rehearsal.verify_evidence_manifest(evidence)
 
 
+@pytest.mark.parametrize(
+    ("failure", "expected_first_map", "expected_second_map"),
+    [
+        ("pass", True, True),
+        ("first_closure", True, False),
+        ("maps_change", True, True),
+        ("post", True, True),
+        ("owner_revoked", False, False),
+        ("cleanup", True, True),
+    ],
+)
+def test_run_target_no_gpu_end_to_end_and_fault_injection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    expected_first_map: bool,
+    expected_second_map: bool,
+) -> None:
+    """Exercise the actual target orchestration without a GPU, process or HTTP."""
+    descriptor = _descriptor(tmp_path)
+    descriptor_path = Path(descriptor["roots"]["descriptor"])
+    manifest_path = Path(descriptor["candidate"]["manifest_path"])
+    receipt_path = Path(descriptor["roots"]["receipt"])
+    output = Path(descriptor["roots"]["output"])
+    preflight = Path(descriptor["roots"]["preflight"])
+    manifest_path.write_text('{"fixture":"no-gpu"}', encoding="utf-8")
+    descriptor_path.write_text(json.dumps(descriptor), encoding="utf-8")
+    descriptor_hash = hashlib.sha256(descriptor_path.read_bytes()).hexdigest()
+    owner_id = 12345678
+    command = [
+        sys.executable,
+        "-m",
+        "tools.wsl_nvidia_runtime_closure_rehearsal",
+        "--descriptor",
+        str(descriptor_path),
+        "--repo-root",
+        str(tmp_path.resolve()),
+        "--authority-comment-id",
+        str(owner_id),
+    ]
+    receipt = {
+        "schema_version": 2,
+        "request_id": "c" * 32,
+        "receipt_path": str(receipt_path),
+        "target_label": rehearsal.TARGET_ID,
+        "resource_key": rehearsal.RESOURCE_KEY,
+        "command_executable": Path(sys.executable).name,
+        "command_argv_sha256": hashlib.sha256(
+            json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest(),
+        "cwd": str(tmp_path.resolve()),
+        "state": "RUNNING",
+        "lease_state": "ACQUIRED",
+    }
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    manifest = {
+        "server": {"path": descriptor["candidate"]["server_binary"]},
+        "build": {
+            "shared_libraries": {
+                descriptor["candidate"]["server_binary"]: {"dependencies": {}}
+            },
+            "wsl_cuda_driver_closure": {
+                "shim": {"aliases": []},
+                "driver_package": {"root": "/unused-driver", "runtime_objects": []},
+            },
+        },
+    }
+    events: list[str] = []
+    true_receipt_gate = rehearsal._verify_queue_receipt
+
+    def receipt_gate(*args: object, **kwargs: object) -> dict[str, object]:
+        events.append("receipt")
+        return true_receipt_gate(*args, **kwargs)
+
+    def runtime_gate(**kwargs: object) -> tuple[dict[str, object], dict[str, str], str]:
+        events.append("runtime")
+        rehearsal._validate_descriptor(kwargs["descriptor"])
+        return manifest, descriptor["roots"], descriptor_hash
+
+    authority_calls = 0
+
+    def authority_gate(**kwargs: object) -> dict[str, object]:
+        nonlocal authority_calls
+        events.append("authority")
+        authority_calls += 1
+        if failure == "owner_revoked" and authority_calls == 2:
+            raise rehearsal.RehearsalError("fresh owner authority revoked after model load")
+        return {"comment_id": owner_id, "fresh_lookup": True}
+
+    fake_pid = 987654321
+
+    def fake_popen(
+        argv: list[str], **kwargs: object
+    ) -> SimpleNamespace:
+        events.append("launch")
+        assert argv == descriptor["server"]["argv"]
+        assert kwargs["env"] == descriptor["server"]["environment"]
+        assert kwargs["start_new_session"] is True
+        return SimpleNamespace(pid=fake_pid)
+
+    def model_loaded(log_path: Path, process: object, timeout: float) -> None:
+        events.append("model_loaded")
+        log = rehearsal.MODEL_LOADED_MARKER + "\n"
+        if failure == "post":
+            log += "POST /completion 200\n"
+        log_path.write_text(log, encoding="utf-8")
+
+    def process_identity(*args: object, **kwargs: object) -> dict[str, object]:
+        events.append("identity")
+        return {
+            "pid": fake_pid,
+            "process_start_ticks": 123,
+            "executable": descriptor["candidate"]["server_binary"],
+            "argv": descriptor["server"]["argv"],
+        }
+
+    closure_calls = 0
+
+    def closure_gate(*args: object, **kwargs: object) -> dict[str, object]:
+        nonlocal closure_calls
+        closure_calls += 1
+        events.append("closure")
+        if failure == "first_closure" and closure_calls == 1:
+            raise rehearsal.RehearsalError("unknown unsealed NVIDIA object")
+        return {"loaded_closure_matches_manifest": True, "file_identities": {}}
+
+    original_read = Path.read_text
+    map_reads = 0
+
+    def read_text(path: Path, *args: object, **kwargs: object) -> str:
+        nonlocal map_reads
+        if path == Path(f"/proc/{fake_pid}/maps"):
+            map_reads += 1
+            events.append("maps")
+            text = (
+                "7f000000-7f001000 r-xp 00000000 08:01 42 "
+                + descriptor["candidate"]["server_binary"]
+                + "\n"
+            )
+            if failure == "maps_change" and map_reads == 2:
+                text += "7f002000-7f003000 rw-p 00000000 00:00 0 [stack]\n"
+            return text
+        return original_read(path, *args, **kwargs)
+
+    def cleanup(*args: object, **kwargs: object) -> dict[str, object]:
+        events.append("cleanup")
+        return {"terminated": failure != "cleanup", "method": "synthetic"}
+
+    monkeypatch.setattr(rehearsal, "_verify_queue_receipt", receipt_gate)
+    monkeypatch.setattr(rehearsal, "_verify_descriptor_runtime", runtime_gate)
+    monkeypatch.setattr(rehearsal, "verify_execution_authority", authority_gate)
+    monkeypatch.setattr(
+        rehearsal,
+        "_verify_repository",
+        lambda *args, **kwargs: events.append("postload_repository"),
+    )
+    monkeypatch.setattr(rehearsal.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(rehearsal, "_wait_for_model_loaded", model_loaded)
+    monkeypatch.setattr(rehearsal, "_verify_server_process_identity", process_identity)
+    monkeypatch.setattr(rehearsal.qualification, "_verify_loaded_library_closure", closure_gate)
+    monkeypatch.setattr(rehearsal, "_terminate_owned_process", cleanup)
+    monkeypatch.setattr(rehearsal.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(Path, "read_text", read_text)
+
+    exit_code = rehearsal.run_target(
+        descriptor_path=descriptor_path,
+        repo_root=tmp_path,
+        authority_comment_id=owner_id,
+    )
+
+    assert exit_code == (0 if failure == "pass" else 2)
+    assert events[:3] == ["receipt", "runtime", "authority"]
+    assert "model_loaded" in events
+    assert events.index("model_loaded") < events.index("postload_repository")
+    assert events[-1] == "cleanup"
+    assert preflight.joinpath("evidence-manifest.json").exists()
+    assert output.joinpath("evidence-manifest.json").exists()
+    assert rehearsal.verify_evidence_manifest(preflight)["file_count"] == 3
+    rehearsal.verify_evidence_manifest(output)
+    assert output.joinpath("process-maps-first.json").exists() is expected_first_map
+    assert output.joinpath("process-maps-second.json").exists() is expected_second_map
+    summary = json.loads(output.joinpath("attempt-summary.json").read_text())
+    assert summary["terminal"] == (
+        rehearsal.PASS_TERMINAL if failure == "pass" else rehearsal.BLOCKED_TERMINAL
+    )
+    assert summary["server_launch_count"] == 1
+    assert summary["candidate_model_load_attempts"] == 1
+    assert summary["model_facing_post_count"] == (1 if failure == "post" else 0)
+    assert summary["generation_request_count"] == 0
+    assert summary["input_count_request_count"] == 0
+    assert summary["public_completion_count"] == 0
+    assert summary["scientific_attempt_consumed"] is False
+    if expected_first_map:
+        first = json.loads(output.joinpath("process-maps-first.json").read_text())
+        assert first["complete_snapshot"] is True
+        assert first["line_count"] == 1
+        assert first["sha256"] == hashlib.sha256(first["content"].encode()).hexdigest()
+    if failure == "pass":
+        assert len(summary["closure_attestations"]) == 2
+        assert events.index("model_loaded") < events.index("identity") < events.index("maps")
+        assert closure_calls == 2
+        assert summary["cleanup"]["terminated"] is True
+    else:
+        assert summary["failure"] is not None
+
+
+def test_invalid_receipt_never_creates_preflight_or_starts_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    descriptor = _descriptor(tmp_path)
+    descriptor_path = Path(descriptor["roots"]["descriptor"])
+    descriptor_path.write_text(json.dumps(descriptor), encoding="utf-8")
+    receipt_path = Path(descriptor["roots"]["receipt"])
+    receipt_path.write_text('{"state":"RUNNING","command_argv_sha256":"wrong"}')
+    monkeypatch.setattr(
+        rehearsal,
+        "_verify_descriptor_runtime",
+        lambda **kwargs: pytest.fail("runtime gate must not run without receipt"),
+    )
+    with pytest.raises(rehearsal.RehearsalError, match="queue receipt"):
+        rehearsal.run_target(
+            descriptor_path=descriptor_path,
+            repo_root=tmp_path,
+            authority_comment_id=12345678,
+        )
+    assert not Path(descriptor["roots"]["preflight"]).exists()
+    assert not Path(descriptor["roots"]["output"]).exists()
+
+
 def test_run_target_validates_queue_receipt_before_runtime_and_owner_authority() -> None:
     source = inspect.getsource(rehearsal.run_target)
 
