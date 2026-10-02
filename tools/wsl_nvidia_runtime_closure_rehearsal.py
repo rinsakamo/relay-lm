@@ -133,6 +133,8 @@ def _git(repo_root: Path, *args: str) -> str:
 
 def _verify_repository(repo_root: Path, expected: Mapping[str, Any]) -> None:
     repo_root = repo_root.expanduser().resolve()
+    if str(repo_root) != expected.get("root"):
+        raise RehearsalError("descriptor checkout root differs from the exact running checkout")
     if (
         _git(repo_root, "branch", "--show-current") != "v1"
         or _git(repo_root, "status", "--porcelain")
