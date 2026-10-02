@@ -1394,6 +1394,7 @@ def _verify_loaded_library_closure(
 
     wsl_driver_closure = manifest["build"].get("wsl_cuda_driver_closure")
     accepted_wsl_paths: set[str] = set()
+    nvidia_package_root: str | None = None
     if wsl_driver_closure is not None:
         try:
             accepted_objects = candidate_runtime.verify_wsl_cuda_driver_closure(
@@ -1403,6 +1404,10 @@ def _verify_loaded_library_closure(
             raise QualificationTargetError(
                 "candidate WSL NVIDIA runtime package closure changed"
             ) from exc
+        package = wsl_driver_closure.get("driver_package")
+        nvidia_package_root = package.get("root") if isinstance(package, dict) else None
+        if not isinstance(nvidia_package_root, str) or not nvidia_package_root.startswith("/"):
+            raise QualificationTargetError("sealed NVIDIA driver package root is missing")
         shim = wsl_driver_closure.get("shim")
         shim_path = shim.get("path") if isinstance(shim, dict) else None
         logical_dependencies = [
@@ -1441,12 +1446,21 @@ def _verify_loaded_library_closure(
         if mapped is None:
             continue
         path, map_identity, deleted = mapped
+        inside_nvidia_package = (
+            nvidia_package_root is not None
+            and path.startswith(nvidia_package_root + "/")
+        )
         if deleted:
-            if ".so" in Path(path).name or Path(path).name == binary.name:
+            if ".so" in Path(path).name or Path(path).name == binary.name or inside_nvidia_package:
                 raise QualificationTargetError("candidate server mapped a deleted executable or library")
             continue
         normalized = path
-        if normalized in expected_paths or ".so" in Path(normalized).name or normalized == str(binary.resolve()):
+        if (
+            normalized in expected_paths
+            or ".so" in Path(normalized).name
+            or normalized == str(binary.resolve())
+            or inside_nvidia_package
+        ):
             if normalized not in expected_paths:
                 raise QualificationTargetError(f"candidate server mapped an undeclared library: {normalized}")
             loaded_paths.add(normalized)
