@@ -826,6 +826,27 @@ def _seal_directory(root: Path) -> dict[str, Any]:
             }
     manifest = {"format_version": 1, "file_count": len(files), "files": files}
     _write_json(root / "evidence-manifest.json", manifest, exclusive=True)
+    verify_evidence_manifest(root)
+    return manifest
+
+
+def verify_evidence_manifest(root: Path) -> dict[str, Any]:
+    """Independently re-read a sealed evidence directory and every listed file."""
+    root = root.expanduser().resolve(strict=True)
+    manifest = _read_json_object(root / "evidence-manifest.json")
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(root.rglob("*")):
+        if path == root / "evidence-manifest.json":
+            continue
+        if path.is_symlink():
+            raise RehearsalError(f"sealed evidence contains a symlink: {path}")
+        if path.is_file():
+            files[path.relative_to(root).as_posix()] = {
+                "bytes": path.stat().st_size,
+                "sha256": _sha256_file(path),
+            }
+    if manifest != {"format_version": 1, "file_count": len(files), "files": files}:
+        raise RehearsalError("sealed rehearsal evidence manifest failed read-back verification")
     return manifest
 
 
