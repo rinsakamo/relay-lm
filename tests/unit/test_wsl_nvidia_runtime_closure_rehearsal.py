@@ -12,6 +12,7 @@ import pytest
 import tools.relay_physical_run as physical_runner
 import tools.wsl_nvidia_runtime_closure_rehearsal as rehearsal
 from tools import cache_correctness_repair_runtime as candidate_runtime
+from tools import physical_execution_queue as queue
 
 
 def _descriptor(tmp_path: Path) -> dict[str, object]:
@@ -537,21 +538,6 @@ def test_run_target_no_gpu_end_to_end_and_fault_injection(
         "--authority-comment-id",
         str(owner_id),
     ]
-    receipt = {
-        "schema_version": 2,
-        "request_id": "c" * 32,
-        "receipt_path": str(receipt_path),
-        "target_label": rehearsal.TARGET_ID,
-        "resource_key": rehearsal.RESOURCE_KEY,
-        "command_executable": Path(sys.executable).name,
-        "command_argv_sha256": hashlib.sha256(
-            json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        ).hexdigest(),
-        "cwd": str(tmp_path.resolve()),
-        "state": "RUNNING",
-        "lease_state": "ACQUIRED",
-    }
-    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
 
     manifest = {
         "server": {"path": descriptor["candidate"]["server_binary"]},
@@ -662,13 +648,31 @@ def test_run_target_no_gpu_end_to_end_and_fault_injection(
     monkeypatch.setattr(rehearsal.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(Path, "read_text", read_text)
 
-    exit_code = rehearsal.run_target(
-        descriptor_path=descriptor_path,
-        repo_root=tmp_path,
-        authority_comment_id=owner_id,
+    exit_code = queue.run_queued_command(
+        queue.QueueConfig(
+            resource_key=rehearsal.RESOURCE_KEY,
+            target_label=rehearsal.TARGET_ID,
+            receipt_path=receipt_path,
+            lock_root=tmp_path / "locks",
+            cwd=tmp_path.resolve(),
+            idle_confirmations=1,
+        ),
+        command,
+        busy_probe=lambda: (),
+        child_runner=lambda *args, **kwargs: SimpleNamespace(
+            returncode=rehearsal.run_target(
+                descriptor_path=descriptor_path,
+                repo_root=tmp_path,
+                authority_comment_id=owner_id,
+            )
+        ),
     )
 
     assert exit_code == (0 if failure == "pass" else 2)
+    final_receipt = json.loads(receipt_path.read_text())
+    assert final_receipt["state"] == "CHILD_EXITED"
+    assert final_receipt["lease_state"] == "RELEASED"
+    assert final_receipt["child_exit_code"] == exit_code
     assert events[:3] == ["receipt", "runtime", "authority"]
     assert "model_loaded" in events
     assert events.index("model_loaded") < events.index("postload_repository")
