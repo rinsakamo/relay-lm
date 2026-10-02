@@ -635,6 +635,7 @@ def _closure_gate_fixture(
         gdma_companion = package / "libnvdxgdmal.so.1"
         gdma_companion.write_bytes(b"WSL NVIDIA GDMA runtime companion")
         (package / "unobserved-extra.so").write_bytes(b"unknown same-package library")
+        (package / "undeclared-nvidia-image").write_bytes(b"unknown package mapping without .so suffix")
         (package / "libnvidia-ml.so.1").write_bytes(b"unrelated NVIDIA management library")
         inf_path = package / "nvmdi.inf"
         inf_path.write_text(
@@ -1059,6 +1060,29 @@ def test_unknown_same_inf_package_library_is_not_accepted(
 
     with pytest.raises(qualification.QualificationTargetError, match="undeclared library"):
         _verify_fixture_maps(monkeypatch, manifest, objects, [objects["binary"], unknown])
+
+
+@pytest.mark.parametrize("deleted", [False, True])
+def test_unknown_nvidia_package_mapping_without_so_suffix_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    deleted: bool,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    unknown = objects["driver_package_root"] / "undeclared-nvidia-image"
+    assert unknown.is_file()
+
+    with pytest.raises(
+        qualification.QualificationTargetError,
+        match="deleted executable or library" if deleted else "undeclared library",
+    ):
+        _verify_fixture_maps(
+            monkeypatch,
+            manifest,
+            objects,
+            [objects["binary"], unknown],
+            deleted={unknown} if deleted else None,
+        )
 
 
 @pytest.mark.parametrize("copy_identical", [False, True])
