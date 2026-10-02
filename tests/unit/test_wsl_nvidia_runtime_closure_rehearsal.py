@@ -476,7 +476,7 @@ def test_frozen_descriptor_checkout_root_is_exact(
         rehearsal.subprocess,
         "run",
         lambda *args, **kwargs: SimpleNamespace(
-            returncode=0, stdout=f"{head}\\trefs/heads/v1\\n"
+            returncode=0, stdout=f"{head}\trefs/heads/v1\n"
         ),
     )
     rehearsal._verify_repository(frozen, expected)
