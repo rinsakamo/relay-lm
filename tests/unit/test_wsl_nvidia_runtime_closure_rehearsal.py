@@ -194,6 +194,90 @@ def test_candidate_manifest_uses_static_closure_key_for_server_identity(
     assert manifest["build"]["wsl_cuda_driver_closure"] == wsl_closure
 
 
+def test_prepare_proposal_exact_root_selfcheck_creates_only_frozen_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise the real preparation function, including both repository gates."""
+    checkout = (tmp_path / "persistent-isolated-v1").resolve()
+    checkout.mkdir()
+    evidence = (tmp_path / "evidence").resolve()
+    head = "a" * 40
+    tree = "b" * 40
+    git_values = {
+        ("branch", "--show-current"): "v1",
+        ("status", "--porcelain"): "",
+        ("rev-parse", "HEAD"): head,
+        ("rev-parse", "HEAD^{tree}"): tree,
+    }
+    monkeypatch.setattr(
+        rehearsal, "_git",
+        lambda root, *args: git_values[args] if root == checkout else pytest.fail(
+            "proposal checked a different repository"
+        ),
+    )
+    monkeypatch.setattr(
+        rehearsal.subprocess, "run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0, stdout=f"{head}\trefs/heads/v1\n"
+        ),
+    )
+    monkeypatch.setattr(
+        rehearsal.subprocess, "Popen",
+        lambda *args, **kwargs: pytest.fail("proposal started a process"),
+    )
+    closure = {"contract": "synthetic-no-gpu-closure"}
+    frozen_manifest = {
+        "server": {
+            "path": str(rehearsal.EXPECTED_SERVER_BINARY),
+            "sha256": rehearsal.EXPECTED_SERVER_SHA256,
+        },
+        "model": {
+            "path": str(candidate_runtime.MODEL_PATH.resolve()),
+            "sha256": candidate_runtime.MODEL_SHA256,
+        },
+        "build": {"wsl_cuda_driver_closure": closure},
+    }
+    monkeypatch.setattr(
+        rehearsal, "collect_candidate_manifest",
+        lambda **kwargs: dict(frozen_manifest),
+    )
+    monkeypatch.setattr(
+        rehearsal, "_server_environment",
+        lambda manifest: {"PATH": "/usr/bin", "HOME": "/tmp"},
+    )
+    gates: list[dict[str, str]] = []
+    real_verify = rehearsal._verify_repository
+
+    def record_repository_gate(root: Path, expected: dict[str, str]) -> None:
+        gates.append(dict(expected))
+        real_verify(root, expected)
+
+    monkeypatch.setattr(rehearsal, "_verify_repository", record_repository_gate)
+    result = rehearsal.prepare_proposal(
+        repo_root=checkout,
+        candidate_binary=rehearsal.EXPECTED_SERVER_BINARY,
+        model_path=candidate_runtime.MODEL_PATH,
+        evidence_root=evidence,
+    )
+    assert len(gates) == 2
+    assert all(gate["root"] == str(checkout) for gate in gates)
+    assert all(gate["head"] == head and gate["tree"] == tree for gate in gates)
+    assert result["status"] == rehearsal.PROPOSAL_STATUS
+    descriptor_path = Path(result["descriptor_path"])
+    manifest_path = Path(result["candidate_manifest_path"])
+    assert descriptor_path.is_file() and manifest_path.is_file()
+    assert rehearsal._sha256_file(descriptor_path) == result["descriptor_sha256"]
+    assert rehearsal._sha256_file(manifest_path) == result["candidate_manifest_sha256"]
+    descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+    assert descriptor["repository"] == {
+        "root": str(checkout), "branch": "v1", "head": head, "tree": tree,
+    }
+    assert descriptor["candidate"]["manifest_sha256"] == result["candidate_manifest_sha256"]
+    assert not Path(result["receipt_path"]).exists()
+    assert not Path(result["preflight_root"]).exists()
+    assert not Path(result["output_root"]).exists()
+
+
 def test_proposal_descriptor_freezes_zero_request_limits(tmp_path: Path) -> None:
     descriptor = _descriptor(tmp_path)
 
