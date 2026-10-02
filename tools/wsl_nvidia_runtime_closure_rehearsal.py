@@ -9,11 +9,13 @@ proposal descriptor; the proposal marker itself is never execution authority.
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -794,6 +796,27 @@ def _wait_for_model_loaded(log_path: Path, process: subprocess.Popen[str], timeo
     raise RehearsalError("candidate server did not reach the frozen model-loaded marker")
 
 
+def _owned_session_group_quiescent(group_id: int) -> bool:
+    """The launched server owns a new session/process group with PGID == PID."""
+    try:
+        os.killpg(group_id, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    return False
+
+
+def _rehearsal_port_quiescent() -> bool:
+    """Fail closed if port 1234 still accepts traffic or cannot be inspected."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as connection:
+            connection.settimeout(0.5)
+            return connection.connect_ex(("127.0.0.1", PORT)) == errno.ECONNREFUSED
+    except OSError:
+        return False
+
+
 def _terminate_owned_process(process: subprocess.Popen[str] | None) -> dict[str, Any]:
     if process is None:
         return {"terminated": True, "exit_code": None, "method": "not-started"}
@@ -809,7 +832,17 @@ def _terminate_owned_process(process: subprocess.Popen[str] | None) -> dict[str,
     else:
         code = process.poll()
         method = "already-exited"
-    return {"terminated": process.poll() is not None, "exit_code": code, "method": method}
+    # Parent exit alone is insufficient: an owned-session child might retain
+    # the listener or a mapped NVIDIA library after the parent exits.
+    group_quiescent = _owned_session_group_quiescent(process.pid)
+    port_quiescent = _rehearsal_port_quiescent()
+    return {
+        "terminated": process.poll() is not None and group_quiescent and port_quiescent,
+        "exit_code": code,
+        "method": method,
+        "owned_session_group_quiescent": group_quiescent,
+        "port_quiescent": port_quiescent,
+    }
 
 
 def _seal_directory(root: Path) -> dict[str, Any]:
