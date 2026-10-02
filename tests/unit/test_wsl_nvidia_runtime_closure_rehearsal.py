@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import hashlib
 import inspect
 import json
@@ -450,6 +451,59 @@ def test_final_server_log_counts_requests_and_blocks_success() -> None:
         "type": "UnexpectedModelFacingPOST",
         "message": "server log recorded 1 POST request(s)",
     }
+
+
+@pytest.mark.parametrize(
+    ("group_remains", "port_remains"),
+    [(False, False), (True, False), (False, True), (True, True)],
+)
+def test_owned_process_cleanup_requires_session_and_port_quiescence(
+    monkeypatch: pytest.MonkeyPatch,
+    group_remains: bool,
+    port_remains: bool,
+) -> None:
+    class FakeProcess:
+        pid = 737373
+
+        def __init__(self) -> None:
+            self.stopped = False
+
+        def poll(self) -> int | None:
+            return 0 if self.stopped else None
+
+        def terminate(self) -> None:
+            self.stopped = True
+
+        def wait(self, timeout: float) -> int:
+            return 0
+
+    class FakeSocket:
+        def __enter__(self) -> "FakeSocket":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def settimeout(self, timeout: float) -> None:
+            assert timeout > 0
+
+        def connect_ex(self, address: tuple[str, int]) -> int:
+            assert address == ("127.0.0.1", rehearsal.PORT)
+            return 0 if port_remains else errno.ECONNREFUSED
+
+    def check_group(pgid: int, signal_number: int) -> None:
+        assert pgid == FakeProcess.pid
+        assert signal_number == 0
+        if not group_remains:
+            raise ProcessLookupError()
+
+    monkeypatch.setattr(rehearsal.os, "killpg", check_group)
+    monkeypatch.setattr(rehearsal.socket, "socket", lambda *args, **kwargs: FakeSocket())
+
+    result = rehearsal._terminate_owned_process(FakeProcess())
+    assert result["owned_session_group_quiescent"] is (not group_remains)
+    assert result["port_quiescent"] is (not port_remains)
+    assert result["terminated"] is (not group_remains and not port_remains)
 
 
 def test_frozen_descriptor_checkout_root_is_exact(
