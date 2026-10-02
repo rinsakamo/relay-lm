@@ -381,6 +381,7 @@ def prepare_proposal(
     if _git(repo_root, "branch", "--show-current") != "v1" or _git(repo_root, "status", "--porcelain"):
         raise RehearsalError("proposal preparation requires a clean exact v1 checkout")
     repository_identity = {
+        "root": str(repo_root),
         "head": _git(repo_root, "rev-parse", "HEAD"),
         "tree": _git(repo_root, "rev-parse", "HEAD^{tree}"),
     }
