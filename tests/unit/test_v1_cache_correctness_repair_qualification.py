@@ -773,6 +773,7 @@ def _verify_fixture_maps(
     previous_attestation: dict[str, object] | None = None,
     overrides: dict[Path, tuple[int, int, int]] | None = None,
     deleted: set[Path] | None = None,
+    supplied_map_text: str | None = None,
 ) -> dict[str, object]:
     pid = 424242
     maps_path = Path(f"/proc/{pid}/maps")
@@ -821,6 +822,7 @@ def _verify_fixture_maps(
         manifest=manifest,
         require_cuda=require_cuda,
         previous_attestation=previous_attestation,
+        map_text=supplied_map_text,
     )
 
 
@@ -997,6 +999,24 @@ def test_loaded_closure_accepts_only_exact_sealed_wsl_objects(
     assert str(objects["gdma_companion"]) in result["wsl_cuda_driver_objects"]
     assert str(objects["driver_payload"]) in result["loaded_libraries"]
     assert str(objects["gdma_companion"]) in result["loaded_libraries"]
+
+
+def test_closure_uses_supplied_saved_snapshot_not_a_second_maps_read(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    manifest, objects = _closure_gate_fixture(tmp_path)
+    with pytest.raises(
+        qualification.QualificationTargetError,
+        match="binary is absent from its process maps",
+    ):
+        _verify_fixture_maps(
+            monkeypatch,
+            manifest,
+            objects,
+            [objects["binary"]],
+            supplied_map_text="7000-8000 rw-p 00000000 00:00 0 [heap]\\n",
+        )
 
 
 @pytest.mark.parametrize("package_member", ["driver_payload", "gdma_companion"])
