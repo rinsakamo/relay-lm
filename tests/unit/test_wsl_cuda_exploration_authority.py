@@ -11,6 +11,7 @@ from tools import wsl_cuda_exploration_ledger as ledger
 
 def grant() -> dict:
     return {
+        "frozen_campaign_sha256": "f" * 64,
         "schema_version": 1,
         "kind": authority.MARKER,
         "campaign_id": ledger.CAMPAIGN_ID,

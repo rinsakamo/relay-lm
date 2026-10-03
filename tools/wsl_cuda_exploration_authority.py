@@ -22,7 +22,7 @@ REVOKE_MARKERS = ("WSL_CUDA_EXPLORATION_EXECUTION_REVOKED", "WSL_CUDA_EXPLORATIO
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 SHA1 = re.compile(r"[0-9a-f]{40}\Z")
 FIELDS = frozenset({
-    "schema_version", "kind", "campaign_id", "proposal_sha256", "budget_comment_id",
+    "frozen_campaign_sha256", "schema_version", "kind", "campaign_id", "proposal_sha256", "budget_comment_id",
     "maximum_exploration_trials", "contract_version", "approved_base_head", "target_id",
     "resource_key", "evidence_root", "python_executable", "python_policy_sha256",
     "python_fingerprint", "server_binary", "server_sha256", "model_path", "model_sha256",
@@ -74,7 +74,7 @@ def validate_grant(grant: Any) -> dict[str, Any]:
         raise ExplorationGrantError("grant altered the approved campaign or zero-request limits")
     if not isinstance(grant["approved_base_head"], str) or not SHA1.fullmatch(grant["approved_base_head"]):
         raise ExplorationGrantError("grant lacks an exact protected-v1 base HEAD")
-    for key in ("python_policy_sha256", "python_fingerprint", "server_sha256", "model_sha256"):
+    for key in ("frozen_campaign_sha256", "python_policy_sha256", "python_fingerprint", "server_sha256", "model_sha256"):
         if not isinstance(grant[key], str) or not SHA256.fullmatch(grant[key]):
             raise ExplorationGrantError(f"grant {key} requires exact SHA256")
     for key in ("evidence_root", "python_executable", "server_binary", "model_path"):
@@ -165,7 +165,7 @@ def verify_owner_execution_grant(
             bool(selected_time) and str(c.get("created_at", "")) > selected_time
         )
         if later and isinstance(c.get("body"), str) and any(
-            c["body"].strip().startswith(marker) for marker in REVOKE_MARKERS
+            c["body"].strip().startswith(marker) for marker in (*REVOKE_MARKERS, MARKER)
         ):
             raise ExplorationGrantError("a later owner comment revoked this campaign")
     return grant, grant_sha256(grant)

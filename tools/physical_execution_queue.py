@@ -180,6 +180,8 @@ def run_queued_command(
 
     lock_file = lock_path.open("a+", encoding="utf-8")
     locked = False
+    receipt["controller_pid"] = os.getpid()
+    receipt["queue_lock_fd"] = lock_file.fileno()
     try:
         while not locked:
             try:
