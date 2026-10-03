@@ -138,7 +138,8 @@ def verify_owner_execution_grant(
     if type(comment_id) is not int or comment_id <= ledger.BUDGET_COMMENT_ID:
         raise ExplorationGrantError("a distinct later exact owner execution comment is required")
     if issue_reader is None:
-        issue_reader = lambda: rehearsal._gh_json(["repos/rinsakamo/relay-lm/issues/3018"])
+        def issue_reader() -> Any:
+            return rehearsal._gh_json(["repos/rinsakamo/relay-lm/issues/3018"])
     if comments_reader is None:
         comments_reader = rehearsal._gh_comments
     try:
