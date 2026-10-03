@@ -146,6 +146,14 @@ def test_owner_and_later_revocation_and_closed_issue_fail() -> None:
         authority.verify_owner_execution_grant(ledger.BUDGET_COMMENT_ID)
 
 
+def test_duplicate_json_keys_fail_closed() -> None:
+    fence = chr(96) * 3
+    raw = json.dumps(grant(), sort_keys=True)
+    ambiguous = raw.replace('"schema_version": 1', '"schema_version": 1, "schema_version": 1')
+    with pytest.raises(authority.ExplorationGrantError, match="duplicate keys"):
+        authority.extract_grant(authority.MARKER + "\n" + fence + "json\n" + ambiguous + "\n" + fence)
+
+
 def test_grant_scope_is_a_frozen_copy() -> None:
     original = grant()
     decoded = authority.validate_grant(copy.deepcopy(original))
