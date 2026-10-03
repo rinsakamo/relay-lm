@@ -73,6 +73,16 @@ execution-grant verifier or physical launcher**. Calling its Python functions
 or creating its ledger grants no physical authority. An executable owner grant,
 registered target, dedicated launcher and runtime tests are all still mandatory.
 
+A later executable owner grant must be posted as one standalone owner comment:
+the first line is `WSL_CUDA_EXPLORATION_EXECUTION_GRANTED_V1`, followed by one
+fenced JSON object. The repository-owned validator rejects duplicate/extra
+keys, ambiguous bodies, overbroad scopes, incorrect budget identity, all HTTP
+methods, altered model/GPU/toolkit identities, closed owner issue, a non-owner
+grant, and a later owner revocation. The canonical SHA256 is calculated from
+sorted compact JSON fields rather than GitHub Markdown bytes. This validator
+is available independently of the deferred executable target and cannot
+launch any process or spend a trial.
+
 ## Diagnostic capture and strict acceptance
 
 Unknown libraries are diagnostic findings. They must not interrupt bounded
