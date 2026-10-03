@@ -1,6 +1,5 @@
 """Atomic exploration budget: never refund, repeat or infer physical permission."""
 
-import json
 import multiprocessing
 from pathlib import Path
 
