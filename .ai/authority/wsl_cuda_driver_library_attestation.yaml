@@ -16,9 +16,11 @@ implementation:
   - tools/v1_cache_correctness_repair_qualification.py
   - tools/wsl_nvidia_runtime_closure_rehearsal.py
   - tools/wsl_runtime_maps_diagnostic.py
+  - tools/wsl_cuda_exploration_ledger.py
 tests:
   - tests/unit/test_v1_cache_correctness_repair_qualification.py
   - tests/unit/test_wsl_nvidia_runtime_closure_rehearsal.py
   - tests/unit/test_wsl_runtime_maps_diagnostic.py
+  - tests/unit/test_wsl_cuda_exploration_ledger.py
 depends_on:
   - cache_correctness_repair_qualification
