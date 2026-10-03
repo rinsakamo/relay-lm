@@ -3,8 +3,9 @@
 Owner: #3018. Infrastructure parent: #3013. Scientific parent: #3006.
 
 This is the campaign design and implementation admission contract. It grants
-zero physical invocations. The offline diagnostic is implemented; the campaign
-launcher, budget ledger, and independent reproducibility target are deferred
+zero physical invocations. The offline diagnostic and durable, standalone
+exploration budget ledger are implemented; the campaign launcher, executable
+registered target, and independent reproducibility target remain deferred
 until separately implemented, tested, and merged. No existing rehearsal target
 may substitute for them. In particular, rehearsal E remains consumed.
 
@@ -60,6 +61,17 @@ numbers, an atomic locked ledger, and read-back verified receipts. Restarting a
 controller never refunds or repeats a reserved trial. Ambiguous consumption is
 spent and requires reconciliation. A successor uses a new ID/output/receipt;
 never rewrite a failed trial, regenerate E, or reuse any scientific authority.
+
+The standalone `tools.wsl_cuda_exploration_ledger` implements the fixed
+campaign ID, proposal digest, owner budget comment and eight-slot ceiling. It
+supports create-once storage, locked exclusive reservation, durable atomic
+replacement with read-back, and immutable terminal recording. A RESERVED trial
+is spent even if the controller crashes; it blocks its successor until exact
+reconciliation. A BLOCKED trial with unknown cleanup also blocks successors;
+strict PASS permanently closes exploration. The ledger is storage, **not an
+execution-grant verifier or physical launcher**. Calling its Python functions
+or creating its ledger grants no physical authority. An executable owner grant,
+registered target, dedicated launcher and runtime tests are all still mandatory.
 
 ## Diagnostic capture and strict acceptance
 
