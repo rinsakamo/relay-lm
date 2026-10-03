@@ -7,6 +7,7 @@ summary: >-
   CUDA initialization companion sealed by the successor audit.
 canonical_surfaces:
   - docs/reference/wsl-cuda-driver-library-attestation.md
+  - docs/reference/wsl-cuda-exploratory-campaign.md
 references:
   - docs/reference/actual-model-cache-correctness-repair-qualification.md
 implementation:
@@ -14,8 +15,10 @@ implementation:
   - tools/cache_correctness_repair_runtime.py
   - tools/v1_cache_correctness_repair_qualification.py
   - tools/wsl_nvidia_runtime_closure_rehearsal.py
+  - tools/wsl_runtime_maps_diagnostic.py
 tests:
   - tests/unit/test_v1_cache_correctness_repair_qualification.py
   - tests/unit/test_wsl_nvidia_runtime_closure_rehearsal.py
+  - tests/unit/test_wsl_runtime_maps_diagnostic.py
 depends_on:
   - cache_correctness_repair_qualification

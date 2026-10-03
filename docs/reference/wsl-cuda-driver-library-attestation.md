@@ -1,5 +1,11 @@
 # WSL CUDA driver library identity attestation
 
+The distinct [exploratory campaign design](wsl-cuda-exploratory-campaign.md)
+defines bounded discovery before independent reproduction. Its offline maps
+diagnostic is implemented; the campaign launcher remains deferred. Neither
+the design nor diagnostic grants execution authority or changes strict closure
+acceptance below. Consumed rehearsal E cannot be replayed.
+
 Issue #3015 established the WSL CUDA guest-shim to NVIDIA package-payload
 relationship for #3013. Issue #3018 extends that contract after attempt B
 stopped at the first undeclared live mapping, `libnvdxgdmal.so.1`. The product
