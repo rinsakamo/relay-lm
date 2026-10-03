@@ -112,8 +112,19 @@ def extract_grant(body: Any) -> dict[str, Any]:
     fence = chr(96) * 3
     if len(lines) < 4 or lines[0] != MARKER or lines[1] != fence + "json" or lines[-1] != fence:
         raise ExplorationGrantError("owner grant must be one standalone structured JSON comment")
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ExplorationGrantError("execution JSON contains duplicate keys")
+            result[key] = value
+        return result
+
     try:
-        return validate_grant(json.loads("\n".join(lines[2:-1])))
+        return validate_grant(json.loads(
+            "\n".join(lines[2:-1]),
+            object_pairs_hook=reject_duplicate_keys,
+        ))
     except json.JSONDecodeError as exc:
         raise ExplorationGrantError("owner execution JSON is invalid") from exc
 
