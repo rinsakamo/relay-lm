@@ -199,3 +199,11 @@ LocalCodex owns the non-exclusive preparation step. It verifies/reuses the
 persistent physical environment first; only an absent environment may be
 created by the explicit idempotent `--prepare` action. Drift is fail-closed and
 requires explicit `--rebuild`, never an in-transaction repair.
+
+
+The schema-v2 receipt includes `controller_pid` and `queue_lock_fd`. The latter
+is the descriptor inherited by the target through `pass_fds`; its number alone
+is not authority. The #3018 exploration target verifies the live canonical
+runner parent, fixed resource lock path, matching inherited device/inode and
+an independently observed held lock, as well as receipt/argv/reservation binding.
+This does not turn a saved receipt into reusable execution authority.

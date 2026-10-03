@@ -2,7 +2,7 @@
 
 The distinct [exploratory campaign design](wsl-cuda-exploratory-campaign.md)
 defines bounded discovery before independent reproduction. Its offline maps
-diagnostic is implemented; the campaign launcher remains deferred. Neither
+diagnostic and grant-gated campaign launcher are implemented. Neither
 the design nor diagnostic grants execution authority or changes strict closure
 acceptance below. Consumed rehearsal E cannot be replayed.
 

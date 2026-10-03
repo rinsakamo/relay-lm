@@ -4,9 +4,9 @@ Owner: #3018. Infrastructure parent: #3013. Scientific parent: #3006.
 
 This is the campaign design and implementation admission contract. It grants
 zero physical invocations. The offline diagnostic and durable, standalone
-exploration budget ledger are implemented; the campaign launcher, executable
-registered target, and independent reproducibility target remain deferred
-until separately implemented, tested, and merged. No existing rehearsal target
+exploration budget ledger, campaign launcher and registered target are implemented.
+The independent reproducibility target remains deferred until a successful
+exploration freeze supplies its exact condition. No existing rehearsal target
 may substitute for them. In particular, rehearsal E remains consumed.
 
 ## Order and evidence classes
@@ -80,7 +80,7 @@ keys, ambiguous bodies, overbroad scopes, incorrect budget identity, all HTTP
 methods, altered model/GPU/toolkit identities, closed owner issue, a non-owner
 grant, and a later owner revocation. The canonical SHA256 is calculated from
 sorted compact JSON fields rather than GitHub Markdown bytes. This validator
-is available independently of the deferred executable target and cannot
+is available independently of the executable target and cannot
 launch any process or spend a trial.
 
 ## Diagnostic capture and strict acceptance
@@ -185,7 +185,7 @@ be replayed. Product cache stays disabled throughout.
 
 ## Implementation admission tests before physical authority can be exercised
 
-The future campaign implementation must test missing/revoked/mismatched grants,
+The campaign admission tests cover missing/revoked/mismatched grants,
 zero/overrun budgets, simultaneous reservation, restart after reservation,
 pre-launch failure accounting, distinct output identities, queue receipt binding,
 source/host drift, malformed/unknown maps with continued capture, final-log
@@ -194,3 +194,80 @@ cleanup, unreleased GPU/process/port state, and immutable evidence sealing.
 Strict closure regressions must remain green independently. No physical trial
 may run until these gates and the registered target are merged under the four
 required exact-head CI checks with squash merge.
+
+## Executable launcher contract
+
+`tools.wsl_cuda_exploration --prepare --repo-root <clean-v1> --evidence-root
+<new-absolute-root>` collects the current static candidate manifest, host and
+persistent Python identities without a server/model load. It exclusively writes
+`freeze.json` and `grant-proposal.json`. The grant additionally requires
+`frozen_campaign_sha256`, binding the entire freeze: exact checkout HEAD/tree,
+static manifest, environment, all eight argv/output identities and timeouts.
+A proposal is never executable, even when posted by the repository owner.
+
+After a separate owner grant is posted, use the persistent physical interpreter:
+
+```text
+python -m tools.wsl_cuda_exploration --launch --freeze <root>/freeze.json \
+  --comment-id <exact-owner-grant> --grant-sha256 <canonical-grant-sha256>
+```
+
+One invocation reserves one trial and invokes `tools.relay_physical_run` once.
+No loop, retry or refund is implicit. Source successors must be clean current
+protected v1 descendants of the approved base, with changes limited to exact
+approved paths. The current contract fixes binary, model, static manifest and
+host bytes; a binary or static closure change requires a new reviewed freeze
+and grant, not a silent grant substitution or a reset ledger. A later structured
+execution grant supersedes older grants. Fresh authority is checked before
+reservation, in the queued target, immediately before startup and after load.
+
+The target checks the exact descriptor hash against the last reservation and
+the receipt's full child argv hash, then verifies the inherited queue lock and
+canonical runner parent. Its exclusive durable started record prevents receipt
+replay. Pre-launch/controller failures with missing terminal evidence remain
+RESERVED, consumed and blocking; manual reconciliation cannot refund them.
+Target-side pre-launch failures after entry seal BLOCKED evidence. The outer
+launcher independently reads the manifest, released receipt and summary before
+finalizing. Every successor rechecks all earlier manifest and receipt hashes.
+HTTP/missing-log/unknown-cleanup results prohibit continuation.
+
+The first observed map is explicitly labeled immediate-after-spawn with unknown
+CUDA phase. Missing observations remain unavailable. Both complete post-load
+maps are saved before diagnostics or strict closure. Diagnostics enumerate all
+lines, including unknown libraries, malformed maps and identity discrepancies.
+Strict closure is unchanged and never accepts those findings. Final logs detect
+all logged HTTP verbs, including custom request verbs. No readiness HTTP is
+sent. Cleanup checks owned session/group, GPU query success with no allocations,
+and passive IPv4/IPv6 listener absence. WSL telemetry that cannot establish GPU
+release blocks completion rather than inferring zero usage.
+
+SIGTERM/SIGINT enter cleanup; uncatchable death leaves the reservation blocking.
+The outer runner wait is bounded by startup + cleanup + 180 seconds; timeout
+leaves ambiguous consumption and no successor. Cleanup uses the frozen timeout.
+A PASS requires exact one-load log evidence, zero HTTP, both strict attestations,
+verified cleanup, independently read evidence and successful queue termination.
+It writes an exclusive success-freeze record and closes exploration in the ledger.
+Independent cold-start execution remains separately unauthorized.
+
+
+## WSL guest and overlay identity repair boundary
+
+DxCore belongs to the independent WSL guest runtime role, never the NVIDIA INF
+package role. Microsoft's [WSL source configuration](https://github.com/microsoft/WSL/blob/master/UserConfig.cmake.sample)
+installs the DxCore source output separately from the Direct3D outputs. A future
+acceptance record must pin its exact lexical path, content and ELF identity
+(including explicit absence of SONAME when observed), WSL distribution/build
+provenance and mount relation. Observed co-membership with CUDA is not a proven
+loader dependency. The current strict verifier intentionally still rejects it.
+
+An overlay object can expose different device identities through different
+views; see the [kernel overlayfs inode documentation](https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html).
+A candidate typed identity proof must bind the exact process mount namespace,
+unchanged mountinfo/overlay layers and mount options, literal path, open mapped
+object reference, inode, size, content and ELF identity. Both raw device values
+must remain recorded. A future verifier may accept only a separately tested
+relation proving those views refer to the same object; SHA equality or a mount
+prefix alone is insufficient. Copy-up, remount/layer change, inaccessible backing
+object, stale PID/start identity or unproven xino translation must reject.
+Until that proof exists, device mismatch remains a strict failure. The campaign
+apparatus supplies full maps for investigating it and grants no exception.

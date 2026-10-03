@@ -123,6 +123,15 @@
       "required_distributions": [
         "httpx"
       ]
+    },
+    "diagnostic:3018-wsl-cuda-exploration": {
+      "branch": "v1",
+      "module": "tools.wsl_cuda_exploration",
+      "description": "#3018 reserved single-load zero-HTTP campaign trial; exact structured owner grant required.",
+      "required_distributions": [
+        "build",
+        "httpx"
+      ]
     }
   }
 }
